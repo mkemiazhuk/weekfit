@@ -49,21 +49,12 @@ enum WeekFitWeatherPeriod: String, Equatable, Sendable {
     }
 
     var accessibilityLabel: String {
-        if WeekFitUsesRussianLanguage() {
-            switch self {
-            case .dawn: return "Рассвет"
-            case .day: return "День"
-            case .goldenHour: return "Золотой час"
-            case .dusk: return "Сумерки"
-            case .night: return "Ночь"
-            }
-        }
         switch self {
-        case .dawn: return "Dawn"
-        case .day: return "Day"
-        case .goldenHour: return "Golden hour"
-        case .dusk: return "Dusk"
-        case .night: return "Night"
+        case .dawn: return WeekFitTrilingual("Dawn", "Рассвет", "黎明")
+        case .day: return WeekFitTrilingual("Day", "День", "白天")
+        case .goldenHour: return WeekFitTrilingual("Golden hour", "Золотой час", "黄金时刻")
+        case .dusk: return WeekFitTrilingual("Dusk", "Сумерки", "黄昏")
+        case .night: return WeekFitTrilingual("Night", "Ночь", "夜晚")
         }
     }
 }

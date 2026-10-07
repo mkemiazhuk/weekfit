@@ -12,20 +12,23 @@ struct WeekFitCountNounForms {
     let russianOne: String
     let russianFew: String
     let russianMany: String
+    let chinese: String
 
     static func standard(
         englishOne: String,
         englishOther: String,
         russianOne: String,
         russianFew: String,
-        russianMany: String
+        russianMany: String,
+        chinese: String
     ) -> WeekFitCountNounForms {
         WeekFitCountNounForms(
             englishOne: englishOne,
             englishOther: englishOther,
             russianOne: russianOne,
             russianFew: russianFew,
-            russianMany: russianMany
+            russianMany: russianMany,
+            chinese: chinese
         )
     }
 }
@@ -75,6 +78,15 @@ enum WeekFitCountPluralization {
         return code.hasPrefix("ru")
     }
 
+    static func isChineseSimplified(locale: Locale = WeekFitCurrentLocale()) -> Bool {
+        if locale.identifier == WeekFitCurrentLocale().identifier {
+            return WeekFitUsesChineseSimplifiedLanguage()
+        }
+        let id = locale.identifier.lowercased()
+        let code = locale.language.languageCode?.identifier.lowercased() ?? id
+        return code == "zh" || id.contains("hans") || id.hasPrefix("zh-cn") || id.hasPrefix("zh_cn")
+    }
+
     static func noun(
         count: Int,
         category: Category,
@@ -100,6 +112,10 @@ enum WeekFitCountPluralization {
             }
         }
 
+        if isChineseSimplified(locale: locale) {
+            return forms.chinese
+        }
+
         return count == 1 ? forms.englishOne : forms.englishOther
     }
 
@@ -117,7 +133,7 @@ enum WeekFitCountPluralization {
         locale: Locale = WeekFitCurrentLocale()
     ) -> String {
         let count = max(0, Int(quantity.rounded()))
-        if isRussian(locale: locale) {
+        if isRussian(locale: locale) || isChineseSimplified(locale: locale) {
             return "\(formattedQuantity) \(noun(count: count, category: .portion, locale: locale))"
         }
 
@@ -275,7 +291,8 @@ enum WeekFitCountPluralization {
                 englishOther: "workouts",
                 russianOne: "тренировка",
                 russianFew: "тренировки",
-                russianMany: "тренировок"
+                russianMany: "тренировок",
+                chinese: "次训练"
             )
 
         case .meal:
@@ -284,7 +301,8 @@ enum WeekFitCountPluralization {
                 englishOther: "meals",
                 russianOne: "прием пищи",
                 russianFew: "приема пищи",
-                russianMany: "приемов пищи"
+                russianMany: "приемов пищи",
+                chinese: "餐"
             )
 
         case .habit:
@@ -293,7 +311,8 @@ enum WeekFitCountPluralization {
                 englishOther: "habits",
                 russianOne: "привычка",
                 russianFew: "привычки",
-                russianMany: "привычек"
+                russianMany: "привычек",
+                chinese: "习惯"
             )
 
         case .recovery:
@@ -302,7 +321,8 @@ enum WeekFitCountPluralization {
                 englishOther: "recovery activities",
                 russianOne: "восстановление",
                 russianFew: "восстановления",
-                russianMany: "восстановлений"
+                russianMany: "восстановлений",
+                chinese: "恢复活动"
             )
 
         case .plannedItem:
@@ -311,7 +331,8 @@ enum WeekFitCountPluralization {
                 englishOther: "planned items",
                 russianOne: "элемент плана",
                 russianFew: "элемента плана",
-                russianMany: "элементов плана"
+                russianMany: "элементов плана",
+                chinese: "计划项"
             )
 
         case .session:
@@ -320,7 +341,8 @@ enum WeekFitCountPluralization {
                 englishOther: "sessions",
                 russianOne: "тренировка",
                 russianFew: "тренировки",
-                russianMany: "тренировок"
+                russianMany: "тренировок",
+                chinese: "次训练"
             )
 
         case .portion:
@@ -329,7 +351,8 @@ enum WeekFitCountPluralization {
                 englishOther: "portions",
                 russianOne: "порция",
                 russianFew: "порции",
-                russianMany: "порций"
+                russianMany: "порций",
+                chinese: "份"
             )
 
         case .plannedPoint:
@@ -338,7 +361,8 @@ enum WeekFitCountPluralization {
                 englishOther: "planned items",
                 russianOne: "пункт",
                 russianFew: "пункта",
-                russianMany: "пунктов"
+                russianMany: "пунктов",
+                chinese: "计划项"
             )
 
         case .day:
@@ -347,7 +371,8 @@ enum WeekFitCountPluralization {
                 englishOther: "days",
                 russianOne: "день",
                 russianFew: "дня",
-                russianMany: "дней"
+                russianMany: "дней",
+                chinese: "天"
             )
 
         case .night:
@@ -356,7 +381,8 @@ enum WeekFitCountPluralization {
                 englishOther: "nights",
                 russianOne: "ночь",
                 russianFew: "ночи",
-                russianMany: "ночей"
+                russianMany: "ночей",
+                chinese: "晚"
             )
 
         case .minuteAccusative:
@@ -365,7 +391,8 @@ enum WeekFitCountPluralization {
                 englishOther: "minutes",
                 russianOne: "минуту",
                 russianFew: "минуты",
-                russianMany: "минут"
+                russianMany: "минут",
+                chinese: "分钟"
             )
 
         case .hourNominative:
@@ -374,7 +401,8 @@ enum WeekFitCountPluralization {
                 englishOther: "hours",
                 russianOne: "час",
                 russianFew: "часа",
-                russianMany: "часов"
+                russianMany: "часов",
+                chinese: "小时"
             )
 
         case .ingredientAdded:
@@ -383,7 +411,8 @@ enum WeekFitCountPluralization {
                 englishOther: "added",
                 russianOne: "добавлен",
                 russianFew: "добавлено",
-                russianMany: "добавлено"
+                russianMany: "добавлено",
+                chinese: "已添加"
             )
 
         case .drink:
@@ -392,7 +421,8 @@ enum WeekFitCountPluralization {
                 englishOther: "drinks",
                 russianOne: "напиток",
                 russianFew: "напитка",
-                russianMany: "напитков"
+                russianMany: "напитков",
+                chinese: "杯饮品"
             )
         }
     }

@@ -51,16 +51,21 @@ enum CoachObservationStore {
     ) async {
         guard healthManager.isHealthAccessRequested else { return }
 
-        let sleepMinutes = healthManager.sleepMinutes
-        guard sleepMinutes > 0 else { return }
+        let dayKey = CoachDailyObservation.dayKey(for: date)
+        let existing = observation(for: dayKey)
 
-        let recoveryPercent = healthManager.recoveryBreakdown.total > 0
+        // Today can show recovery before sleep finishes syncing. Persist either signal.
+        let liveSleep = healthManager.sleepMinutes
+        let liveRecovery = healthManager.recoveryBreakdown.total > 0
             ? healthManager.recoveryBreakdown.total
             : Int(healthManager.readyScore.rounded())
+        let sleepMinutes = liveSleep > 0 ? liveSleep : (existing?.sleepMinutes ?? 0)
+        let recoveryPercent = liveRecovery > 0 ? liveRecovery : (existing?.recoveryPercent ?? 0)
+        guard sleepMinutes > 0 || recoveryPercent > 0 else { return }
 
         let bedStartMinutes = healthManager.bedStart.map {
             RecoveryScoreEngine.normalizedBedtimeMinutes($0)
-        }
+        } ?? existing?.bedStartNormalizedMinutes
 
         let dayActivities = DailyStateSnapshotBuilder.activities(on: date, from: plannedActivities)
         let healthSnapshot: NutritionMetricsSnapshot? = {
@@ -90,7 +95,7 @@ enum CoachObservationStore {
 
         upsert(
             CoachObservationAssembler.makeObservation(
-                dayKey: CoachDailyObservation.dayKey(for: date),
+                dayKey: dayKey,
                 sleepMinutes: sleepMinutes,
                 recoveryPercent: recoveryPercent,
                 bedStartNormalizedMinutes: bedStartMinutes,
@@ -167,12 +172,20 @@ enum CoachObservationStore {
             let recoveryPercent: Int
             let bedStartMinutes: Int?
 
-            if let existing, existing.hasSleepSignal {
-                sleepMinutes = existing.sleepMinutes
-                recoveryPercent = existing.recoveryPercent
+            if let existing, existing.hasSleepSignal || existing.hasRecoverySignal {
+                sleepMinutes = existing.hasSleepSignal
+                    ? existing.sleepMinutes
+                    : max(0, loadedMetrics.sleepMinutes)
+                recoveryPercent = existing.hasRecoverySignal
+                    ? max(existing.recoveryPercent, loadedMetrics.recoveryPercent)
+                    : loadedMetrics.recoveryPercent
                 bedStartMinutes = existing.bedStartNormalizedMinutes
+                    ?? loadedSleep.bedStart.map { RecoveryScoreEngine.normalizedBedtimeMinutes($0) }
+                // Still nothing usable after merge — skip.
+                guard sleepMinutes > 0 || recoveryPercent > 0 else { continue }
             } else {
-                guard loadedMetrics.sleepMinutes > 0 else { continue }
+                // Recovery-only days are valid; do not require sleep to persist the day.
+                guard loadedMetrics.sleepMinutes > 0 || loadedMetrics.recoveryPercent > 0 else { continue }
                 sleepMinutes = loadedMetrics.sleepMinutes
                 recoveryPercent = loadedMetrics.recoveryPercent
                 bedStartMinutes = loadedSleep.bedStart.map {

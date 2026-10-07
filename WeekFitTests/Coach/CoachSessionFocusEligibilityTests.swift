@@ -40,6 +40,39 @@ final class CoachSessionFocusEligibilityTests: XCTestCase {
         XCTAssertEqual(focus.activity?.title, "Noon Ride")
     }
 
+    func testActiveWalkIsCoachLiveSessionAndOwnsFocus() {
+        let now = date(hour: 13, minute: 10)
+        let walk = snapshot(type: "recovery", title: "Walk", hour: 13, duration: 45, on: now)
+
+        XCTAssertEqual(CoachActivityClassifier.type(for: walk), .walk)
+        XCTAssertEqual(CoachActivityClassifier.family(for: walk), .recovery)
+        XCTAssertTrue(walk.isActive(at: now))
+        XCTAssertTrue(CoachSessionPhaseStability.isCoachLiveSession(walk, now: now))
+
+        let input = makeInput(now: now, activities: [walk])
+        let focus = CoachFocusResolver.resolve(input: input)
+        XCTAssertEqual(focus.source, .active)
+        XCTAssertEqual(focus.phase, .during)
+        XCTAssertEqual(focus.activity?.title, "Walk")
+
+        let result = CoachEngine.evaluate(input: input)
+        XCTAssertEqual(result.context.sessionPhase, .during)
+        XCTAssertEqual(result.context.activityType, .walk)
+        switch result.scenario {
+        case .walkLightDay, .walkAfterHeavyLoad, .walkRecoveryAction, .walkEveningWindDown:
+            break
+        default:
+            XCTFail("Expected a walk* scenario, got \(result.scenario)")
+        }
+        // Without HR, walk chrome was historically .recovery — sessionIsLive forces .live.
+        let color = CoachPresentationResolver.semanticColor(
+            for: result.scenario,
+            liveHeartRateZone: nil,
+            sessionIsLive: true
+        )
+        XCTAssertTrue(color.isLiveSessionChrome)
+    }
+
     func testMealIsNotSessionFocusCandidate() {
         let meal = snapshot(
             type: "meal",

@@ -149,11 +149,11 @@ struct NutritionMealTimelineCard: View {
     private func macroLine(for meal: PlannedActivity) -> some View {
         let fiber = PlannedActivityNutritionResolver.resolvedFiber(for: meal, in: mealCatalog)
         return HStack(spacing: 8) {
-            macroChip("P", meal.protein, proteinColor)
-            macroChip("C", meal.carbs, carbsColor)
-            macroChip("F", meal.fats, fatColor)
+            macroChip(WeekFitLocalizedString("nutrition.macro.protein.short"), meal.protein, proteinColor)
+            macroChip(WeekFitLocalizedString("nutrition.macro.carbs.short"), meal.carbs, carbsColor)
+            macroChip(WeekFitLocalizedString("nutrition.macro.fats.short"), meal.fats, fatColor)
             if fiber > 0 {
-                macroChip("Fi", fiber, fiberColor)
+                macroChip(WeekFitLocalizedString("meals.library.macroFiber"), fiber, fiberColor)
             }
         }
         .font(NutritionDetailsDesign.Typography.mealMeta)
@@ -166,13 +166,18 @@ struct NutritionMealTimelineCard: View {
             Text(label)
                 .fontWeight(.semibold)
                 .foregroundStyle(tint)
-            Text("\(value)g")
+            Text(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), value))
                 .foregroundStyle(WeekFitLightTokens.textTertiary)
         }
     }
 
     private func timeText(for date: Date) -> String {
-        date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
+        date.formatted(
+            .dateTime
+                .hour(.twoDigits(amPM: .omitted))
+                .minute(.twoDigits)
+                .locale(WeekFitCurrentLocale())
+        )
     }
 
     private func timelineTitle(for meal: PlannedActivity) -> String {

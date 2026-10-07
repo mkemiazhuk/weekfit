@@ -152,30 +152,39 @@ struct QuickItem: Codable, Identifiable, Equatable {
         let trimmed = storedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return storedTitle }
 
-        let isRussian = WeekFitUsesRussianLanguage()
         let lowered = trimmed.lowercased()
 
-        if isRussian {
+        switch WeekFitCurrentAppLanguage() {
+        case .russian:
             return russianTitlesByStoredTitle[lowered] ?? trimmed
+        case .chineseSimplified:
+            return chineseTitlesByStoredTitle[lowered]
+                ?? englishTitlesByRussianTitle[lowered].map { chineseTitlesByStoredTitle[$0.lowercased()] ?? $0 }
+                ?? trimmed
+        case .english:
+            // Titles previously persisted while Russian was active (e.g. "Вода").
+            return englishTitlesByRussianTitle[lowered] ?? trimmed
         }
-
-        // Titles previously persisted while Russian was active (e.g. "Вода").
-        return englishTitlesByRussianTitle[lowered] ?? trimmed
     }
 
     static func localizedSubtitle(for item: QuickItem) -> String {
         let trimmed = item.subtitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return item.subtitle }
 
-        guard WeekFitUsesRussianLanguage() else {
+        switch WeekFitCurrentAppLanguage() {
+        case .russian:
+            if let localized = russianSubtitlesByID[item.id] {
+                return localized
+            }
+            return russianSubtitlesByStoredSubtitle[trimmed.lowercased()] ?? trimmed
+        case .chineseSimplified:
+            if let localized = chineseSubtitlesByID[item.id] {
+                return localized
+            }
+            return chineseSubtitlesByStoredSubtitle[trimmed.lowercased()] ?? trimmed
+        case .english:
             return trimmed
         }
-
-        if let localized = russianSubtitlesByID[item.id] {
-            return localized
-        }
-
-        return russianSubtitlesByStoredSubtitle[trimmed.lowercased()] ?? trimmed
     }
 
     private static let russianTitlesByStoredTitle: [String: String] = [
@@ -217,12 +226,55 @@ struct QuickItem: Codable, Identifiable, Equatable {
         "red wine": "Красное вино"
     ]
 
+    private static let chineseTitlesByStoredTitle: [String: String] = [
+        "water": "水",
+        "coffee": "咖啡",
+        "iced coffee": "冰咖啡",
+        "kefir": "开菲尔",
+        "espresso": "意式浓缩",
+        "tonic": "汤力水",
+        "tea": "茶",
+        "cocoa": "可可",
+        "milk": "牛奶",
+        "orange juice": "橙汁",
+        "protein shake": "蛋白奶昔",
+        "tomato juice": "番茄汁",
+        "banana": "香蕉",
+        "apple": "苹果",
+        "orange": "橙子",
+        "nectarine": "油桃",
+        "peach": "桃子",
+        "watermelon": "西瓜",
+        "strawberries": "草莓",
+        "blueberries": "蓝莓",
+        "greek yogurt": "希腊酸奶",
+        "protein bar": "蛋白棒",
+        "mixed nuts": "混合坚果",
+        "dark chocolate": "黑巧克力",
+        "rice cakes": "米饼",
+        "ice cream": "冰淇淋",
+        "cookies": "曲奇",
+        "croissant": "可颂",
+        "muffin": "马芬",
+        "toast": "吐司",
+        "cola": "可乐",
+        "pepsi": "百事可乐",
+        "fanta": "芬达",
+        "beer": "啤酒",
+        "white wine": "白葡萄酒",
+        "red wine": "红葡萄酒"
+    ]
+
     private static let englishTitlesByRussianTitle: [String: String] = {
         Dictionary(uniqueKeysWithValues: russianTitlesByStoredTitle.map { ($0.value.lowercased(), $0.key.capitalizedSentence) })
     }()
 
     private static let russianSubtitlesByID: [String: String] = [
         "drink_water": "Гидратация"
+    ]
+
+    private static let chineseSubtitlesByID: [String: String] = [
+        "drink_water": "补水"
     ]
 
     private static let russianSubtitlesByStoredSubtitle: [String: String] = [
@@ -260,6 +312,43 @@ struct QuickItem: Codable, Identifiable, Equatable {
         "lager beer": "Светлое пиво",
         "dry white wine": "Сухое белое вино",
         "dry red wine": "Сухое красное вино"
+    ]
+
+    private static let chineseSubtitlesByStoredSubtitle: [String: String] = [
+        "hydration support": "补水支持",
+        "quick caffeine boost": "快速咖啡因提振",
+        "cold caffeine boost": "冰爽咖啡因提振",
+        "probiotic dairy drink": "益生菌奶饮",
+        "strong coffee shot": "浓郁咖啡",
+        "light sparkling refreshment": "清爽气泡饮",
+        "light warm drink": "清淡热饮",
+        "warm chocolate comfort": "温暖可可饮",
+        "simple protein drink": "简易蛋白饮",
+        "fast carbs and vitamin c": "快速碳水与维生素 C",
+        "fast recovery support": "快速恢复支持",
+        "electrolyte-rich hydration": "富含电解质的补水",
+        "quick energy": "快速能量",
+        "light fruit snack": "清淡水果加餐",
+        "fresh light snack": "新鲜轻食",
+        "high-protein snack": "高蛋白加餐",
+        "portable recovery snack": "便携恢复加餐",
+        "healthy fats and satiety": "健康脂肪与饱腹感",
+        "small sweet snack": "小份甜食",
+        "light carb snack": "轻碳水加餐",
+        "juicy summer fruit": "多汁夏日水果",
+        "sweet seasonal fruit": "时令甜果",
+        "refreshing summer fruit": "清爽夏日水果",
+        "fresh berry snack": "新鲜浆果",
+        "antioxidant-rich berries": "富含抗氧化剂的浆果",
+        "classic frozen treat": "经典冰品",
+        "sweet baked snack": "甜烘焙点心",
+        "buttery bakery snack": "黄油烘焙点心",
+        "soft sweet treat": "柔软甜食",
+        "classic cola soda": "经典可乐汽水",
+        "orange soda": "橙味汽水",
+        "lager beer": "拉格啤酒",
+        "dry white wine": "干白葡萄酒",
+        "dry red wine": "干红葡萄酒"
     ]
 }
 

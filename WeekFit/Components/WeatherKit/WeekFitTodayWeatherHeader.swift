@@ -132,7 +132,7 @@ struct WeekFitTodayWeatherHeader: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(WeekFitTheme.primaryText)
 
-                Text(WeekFitUsesRussianLanguage() ? "Включить погоду" : "Enable Local Weather")
+                Text(WeekFitTrilingual("Enable Local Weather", "Включить погоду", "开启本地天气"))
                     .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
@@ -149,12 +149,14 @@ struct WeekFitTodayWeatherHeader: View {
                     .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
             }
             .accessibilityLabel(
-                Text(WeekFitUsesRussianLanguage() ? "Включить местную погоду" : "Enable Local Weather")
+                Text(WeekFitTrilingual("Enable Local Weather", "Включить местную погоду", "开启本地天气"))
             )
             .accessibilityHint(
-                Text(WeekFitUsesRussianLanguage()
-                    ? "Запросит разрешение на использование геолокации."
-                    : "Requests When In Use location permission.")
+                Text(WeekFitTrilingual(
+                    "Requests When In Use location permission.",
+                    "Запросит разрешение на использование геолокации.",
+                    "将请求“使用期间”定位权限。"
+                ))
             )
         }
         .buttonStyle(.plain)

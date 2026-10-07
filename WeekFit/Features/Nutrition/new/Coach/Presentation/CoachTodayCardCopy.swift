@@ -131,28 +131,27 @@ enum CoachTodayCardCopy {
     }
 
     private static func whyTitle(for scenario: CoachScenarioKey) -> String {
-        let russian = WeekFitUsesRussianLanguage()
         switch scenario {
         case .walkLightDay, .walkAfterHeavyLoad:
-            return russian ? "Держите легко" : "Keep it light"
+            return WeekFitTrilingual("Keep it light", "Держите легко", "保持轻松")
         case .walkRecoveryAction:
-            return russian ? "Разгрузить ноги" : "Ease the legs"
+            return WeekFitTrilingual("Ease the legs", "Разгрузить ноги", "放松双腿")
         case .walkEveningWindDown:
-            return russian ? "Сбавьте обороты" : "Wind down"
+            return WeekFitTrilingual("Wind down", "Сбавьте обороты", "放慢节奏")
         case .protectTomorrowFresh, .tomorrowProtection:
-            return russian ? "Запас на завтра" : "Save it for tomorrow"
+            return WeekFitTrilingual("Save it for tomorrow", "Запас на завтра", "留给明天")
         case .recoveryAfterHeavyYesterday:
-            return russian ? "Спокойный день" : "Recovery day"
+            return WeekFitTrilingual("Recovery day", "Спокойный день", "恢复日")
         case .activeStrength, .duringStrength:
-            return russian ? "С запасом" : "Leave something"
+            return WeekFitTrilingual("Leave something", "С запасом", "留点余力")
         case .activeEndurance, .duringEndurance:
-            return russian ? "Держите ритм" : "Hold your pace"
+            return WeekFitTrilingual("Hold your pace", "Держите ритм", "保持节奏")
         case .saunaPreparation, .saunaActive:
-            return russian ? "Не перегревайтесь" : "Don't overheat"
+            return WeekFitTrilingual("Don't overheat", "Не перегревайтесь", "别过热")
         case .activeRecovery, .duringRecovery:
-            return russian ? "Мягкий сброс" : "Soft reset"
+            return WeekFitTrilingual("Soft reset", "Мягкий сброс", "轻柔放松")
         default:
-            return russian ? "План на сегодня" : "Today's plan"
+            return WeekFitTrilingual("Today's plan", "План на сегодня", "今日计划")
         }
     }
 

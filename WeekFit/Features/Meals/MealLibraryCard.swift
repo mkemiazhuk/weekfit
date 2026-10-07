@@ -322,7 +322,7 @@ struct MealLibraryGridCard: View {
                             }
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(WeekFitUsesRussianLanguage() ? "Ещё" : "More")
+                    .accessibilityLabel(WeekFitTrilingual("More", "Ещё", "更多"))
                 }
             }
 

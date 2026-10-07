@@ -95,7 +95,7 @@ struct WeekFitWeatherBadge: View {
         .accessibilityLabel(Text(accessibilitySentence ?? "Current weather unavailable"))
         .accessibilityHint(
             onTap != nil
-                ? Text(WeekFitUsesRussianLanguage() ? "Открывает детали погоды и источник данных" : "Opens weather details and data attribution")
+                ? Text(WeekFitTrilingual("Opens weather details and data attribution", "Открывает детали погоды и источник данных", "打开天气详情与数据来源"))
                 : Text("")
         )
         .accessibilityAddTraits(onTap != nil ? .isButton : [])

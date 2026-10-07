@@ -18,15 +18,16 @@ enum CoachMindfulRecoveryPresentation {
         activityType: CoachActivityType,
         russian: Bool
     ) -> String {
+        _ = russian
         switch activityType {
         case .breathing:
-            return russian ? "Дыхание" : "Breath work"
+            return WeekFitTrilingual("Breath work", "Дыхание", "呼吸练习")
         case .yoga:
-            return russian ? "Йога" : "Yoga"
+            return WeekFitTrilingual("Yoga", "Йога", "瑜伽")
         case .stretching:
-            return russian ? "Растяжка" : "Stretching"
+            return WeekFitTrilingual("Stretching", "Растяжка", "拉伸")
         default:
-            return russian ? "Восстановление" : "Recovery"
+            return WeekFitTrilingual("Recovery", "Восстановление", "恢复")
         }
     }
 
@@ -34,15 +35,16 @@ enum CoachMindfulRecoveryPresentation {
         activityType: CoachActivityType,
         russian: Bool
     ) -> String {
+        _ = russian
         switch activityType {
         case .breathing:
-            return russian ? "Дыхание" : "Breath work"
+            return WeekFitTrilingual("Breath work", "Дыхание", "呼吸练习")
         case .yoga:
-            return russian ? "Йога" : "Yoga time"
+            return WeekFitTrilingual("Yoga time", "Йога", "瑜伽时间")
         case .stretching:
-            return russian ? "Растяжка" : "Stretch time"
+            return WeekFitTrilingual("Stretch time", "Растяжка", "拉伸时间")
         default:
-            return russian ? "Восстановление" : "Recovery time"
+            return WeekFitTrilingual("Recovery time", "Восстановление", "恢复时间")
         }
     }
 
@@ -50,15 +52,16 @@ enum CoachMindfulRecoveryPresentation {
         activityType: CoachActivityType,
         russian: Bool
     ) -> String {
+        _ = russian
         switch activityType {
         case .breathing:
-            return russian ? "Дыхание" : "Breath work"
+            return WeekFitTrilingual("Breath work", "Дыхание", "呼吸练习")
         case .yoga:
-            return russian ? "Йога" : "Yoga session"
+            return WeekFitTrilingual("Yoga session", "Йога", "瑜伽训练")
         case .stretching:
-            return russian ? "Растяжка" : "Stretch session"
+            return WeekFitTrilingual("Stretch session", "Растяжка", "拉伸训练")
         default:
-            return russian ? "Восстановительная тренировка" : "Recovery session"
+            return WeekFitTrilingual("Recovery session", "Восстановительная тренировка", "恢复训练")
         }
     }
 }

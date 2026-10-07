@@ -1042,6 +1042,8 @@ private extension ProfileView {
             return WeekFitLocalizedString("settings.language.option.english")
         case .russian:
             return WeekFitLocalizedString("settings.language.option.russian")
+        case .chineseSimplified:
+            return WeekFitLocalizedString("settings.language.option.chineseSimplified")
         }
     }
 

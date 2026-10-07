@@ -755,7 +755,10 @@ enum CoachTeaserCopy {
         )
     }
 
-    private static func bi(_ english: String, _ russian: String) -> CoachBilingualText {
-        CoachBilingualText.en(english, russian)
+    private static func bi(_ english: String, _ russian: String, chinese: String? = nil) -> CoachBilingualText {
+        let resolvedChinese = chinese
+            ?? CoachChineseOverrides.resolved(english: english)
+            ?? english
+        return CoachBilingualText.en(english, russian, chinese: resolvedChinese)
     }
 }

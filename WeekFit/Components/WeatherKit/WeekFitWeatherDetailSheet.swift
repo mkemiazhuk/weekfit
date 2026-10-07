@@ -18,7 +18,7 @@ struct WeekFitWeatherDetailSheet: View {
 
     private var locationLabel: String {
         summary.placeName
-            ?? (WeekFitUsesRussianLanguage() ? "Рядом с вами" : "Near you")
+            ?? WeekFitTrilingual("Near you", "Рядом с вами", "你附近")
     }
 
     var body: some View {
@@ -63,7 +63,7 @@ private extension WeekFitWeatherDetailSheet {
     var sheetHeader: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(WeekFitUsesRussianLanguage() ? "Погода" : "Weather")
+                Text(WeekFitTrilingual("Weather", "Погода", "天气"))
                     .font(.system(size: 26, weight: .bold, design: .default))
                     .foregroundStyle(tokens.textPrimary)
                     .lineLimit(1)
@@ -234,7 +234,6 @@ private extension WeekFitWeatherDetailSheet {
     }
 
     func metricContent(for kind: WeekFitWeatherMetricKind) -> (icon: String, label: String, value: String, tint: Color) {
-        let isRu = WeekFitUsesRussianLanguage()
         let system = unitsStore.resolvedSystem
         let accent = tokens.primaryAccent
         let secondary = tokens.metricIconTint
@@ -244,7 +243,7 @@ private extension WeekFitWeatherDetailSheet {
             let value = WeekFitUnitPolicy.temperatureValueForBadge(summary.feelsLike, system: system)
             return (
                 "thermometer.medium",
-                isRu ? "Ощущается" : "Feels like",
+                WeekFitTrilingual("Feels like", "Ощущается", "体感"),
                 "\(value)°",
                 accent
             )
@@ -258,7 +257,7 @@ private extension WeekFitWeatherDetailSheet {
             } ?? "—"
             return (
                 "thermometer.sun",
-                isRu ? "Макс / Мин" : "High / Low",
+                WeekFitTrilingual("High / Low", "Макс / Мин", "最高 / 最低"),
                 "\(high)° / \(low)°",
                 Color(red: 0.90, green: 0.55, blue: 0.40)
             )
@@ -266,7 +265,7 @@ private extension WeekFitWeatherDetailSheet {
         case .humidity:
             return (
                 "humidity",
-                isRu ? "Влажность" : "Humidity",
+                WeekFitTrilingual("Humidity", "Влажность", "湿度"),
                 "\(summary.humidityPercent)%",
                 Color(red: 0.35, green: 0.60, blue: 0.92)
             )
@@ -274,7 +273,7 @@ private extension WeekFitWeatherDetailSheet {
         case .wind:
             return (
                 "wind",
-                isRu ? "Ветер" : "Wind",
+                WeekFitTrilingual("Wind", "Ветер", "风力"),
                 WeekFitUnitPolicy.formatSpeed(summary.windSpeed, system: system),
                 secondary
             )
@@ -282,7 +281,7 @@ private extension WeekFitWeatherDetailSheet {
         case .uvIndex:
             return (
                 "sun.max",
-                isRu ? "УФ-индекс" : "UV Index",
+                WeekFitTrilingual("UV Index", "УФ-индекс", "紫外线指数"),
                 uvLabel,
                 Color(red: 0.96, green: 0.76, blue: 0.26)
             )
@@ -291,7 +290,7 @@ private extension WeekFitWeatherDetailSheet {
             let chance = summary.precipitationChance ?? 0
             return (
                 "cloud.rain",
-                isRu ? "Осадки" : "Rain chance",
+                WeekFitTrilingual("Rain chance", "Осадки", "降雨概率"),
                 "\(chance)%",
                 tokens.primaryAccent
             )
@@ -299,7 +298,7 @@ private extension WeekFitWeatherDetailSheet {
         case .visibility:
             return (
                 "eye",
-                isRu ? "Видимость" : "Visibility",
+                WeekFitTrilingual("Visibility", "Видимость", "能见度"),
                 visibilityLabel(system: system),
                 Color(red: 0.55, green: 0.65, blue: 0.78)
             )
@@ -307,7 +306,7 @@ private extension WeekFitWeatherDetailSheet {
         case .sunriseSunset:
             return (
                 "sunrise.fill",
-                isRu ? "Восход / Закат" : "Sunrise / Sunset",
+                WeekFitTrilingual("Sunrise / Sunset", "Восход / Закат", "日出 / 日落"),
                 sunTimesLabel,
                 Color(red: 0.95, green: 0.68, blue: 0.35)
             )
@@ -315,15 +314,14 @@ private extension WeekFitWeatherDetailSheet {
     }
 
     var uvLabel: String {
-        let isRu = WeekFitUsesRussianLanguage()
         let val = summary.uvIndex
         let descriptor: String
         switch val {
-        case 0...2:  descriptor = isRu ? "Низкий" : "Low"
-        case 3...5:  descriptor = isRu ? "Средний" : "Moderate"
-        case 6...7:  descriptor = isRu ? "Высокий" : "High"
-        case 8...10: descriptor = isRu ? "Очень высокий" : "Very High"
-        default:     descriptor = isRu ? "Экстремальный" : "Extreme"
+        case 0...2:  descriptor = WeekFitTrilingual("Low", "Низкий", "低")
+        case 3...5:  descriptor = WeekFitTrilingual("Moderate", "Средний", "中等")
+        case 6...7:  descriptor = WeekFitTrilingual("High", "Высокий", "高")
+        case 8...10: descriptor = WeekFitTrilingual("Very High", "Очень высокий", "很高")
+        default:     descriptor = WeekFitTrilingual("Extreme", "Экстремальный", "极高")
         }
         return "\(val) · \(descriptor)"
     }
@@ -365,7 +363,7 @@ private extension WeekFitWeatherDetailSheet {
                     .font(.system(size: 12.5, weight: .semibold))
                     .foregroundStyle(coachInsightAccent)
 
-                Text(WeekFitUsesRussianLanguage() ? "Совет тренера" : "Coach Insight")
+                Text(WeekFitTrilingual("Coach Insight", "Совет тренера", "教练建议"))
                     .font(.system(size: 12.5, weight: .bold, design: .rounded))
                     .foregroundStyle(coachInsightAccent)
             }

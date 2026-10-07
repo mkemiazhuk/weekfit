@@ -3758,7 +3758,7 @@ struct TodayView: View {
             return activityTime(activity.date)
         }
 
-        let prefix = WeekFitUsesRussianLanguage() ? "Завтра" : "Tomorrow"
+        let prefix = WeekFitTrilingual("Tomorrow", "Завтра", "明天")
         return "\(prefix) \(activityTime(activity.date))"
     }
 

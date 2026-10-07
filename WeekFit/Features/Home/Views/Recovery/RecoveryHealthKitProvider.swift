@@ -397,10 +397,10 @@ final class RecoveryHealthKitProvider {
                 restingHeartRate: restingHeartRate,
                 hrv: hrv,
                 recoveryInput: nil,
-                insightTitle: "No sleep detected",
-                insightText: "Apple Health does not have sleep data for this night.",
-                actionTitle: "Recommended",
-                actionText: "Use Apple Watch during sleep or check Sleep Focus settings."
+                insightTitle: WeekFitLocalizedString("recovery.insight.noSleep.title"),
+                insightText: WeekFitLocalizedString("recovery.insight.noSleep.text"),
+                actionTitle: WeekFitLocalizedString("recovery.insight.noSleep.actionTitle"),
+                actionText: WeekFitLocalizedString("recovery.insight.noSleep.actionText")
             )
         }
 
@@ -664,54 +664,54 @@ final class RecoveryHealthKitProvider {
 
         guard asleepMinutes > 0 else {
             return (
-                "No sleep detected",
-                "Apple Health does not have sleep data for this night.",
-                "Recommended",
-                "Use Apple Watch during sleep or check Sleep Focus settings."
+                WeekFitLocalizedString("recovery.insight.noSleep.title"),
+                WeekFitLocalizedString("recovery.insight.noSleep.text"),
+                WeekFitLocalizedString("recovery.insight.noSleep.actionTitle"),
+                WeekFitLocalizedString("recovery.insight.noSleep.actionText")
             )
         }
 
         if sleepScore >= 82 {
             return (
-                "Strong sleep recovery",
-                "Sleep duration and sleep structure were supportive overnight.",
-                "Night summary",
-                "Your sleep pattern looks stable enough to support recovery."
+                WeekFitLocalizedString("recovery.insight.strong.title"),
+                WeekFitLocalizedString("recovery.insight.strong.text"),
+                WeekFitLocalizedString("recovery.insight.strong.actionTitle"),
+                WeekFitLocalizedString("recovery.insight.strong.actionText")
             )
         }
 
         if sleepScore >= 65 {
             return (
-                "Moderate sleep recovery",
-                "Sleep was useful, but recovery signals were not fully optimal.",
-                "Night summary",
-                "Look at awake time, deep sleep and REM sleep to understand the score."
+                WeekFitLocalizedString("recovery.insight.moderate.title"),
+                WeekFitLocalizedString("recovery.insight.moderate.text"),
+                WeekFitLocalizedString("recovery.insight.moderate.actionTitle"),
+                WeekFitLocalizedString("recovery.insight.moderate.actionText")
             )
         }
 
         if deepMinutes < 60 {
             return (
-                "Low deep sleep",
-                "Deep sleep was limited, which may reduce physical recovery quality.",
-                "Night summary",
-                "A consistent bedtime and lower late-evening stimulation may help."
+                WeekFitLocalizedString("recovery.insight.lowDeep.title"),
+                WeekFitLocalizedString("recovery.insight.lowDeep.text"),
+                WeekFitLocalizedString("recovery.insight.lowDeep.actionTitle"),
+                WeekFitLocalizedString("recovery.insight.lowDeep.actionText")
             )
         }
 
         if awakenings >= 4 {
             return (
-                "Interrupted sleep",
-                "Several awake moments reduced sleep continuity during the night.",
-                "Night summary",
-                "Sleep continuity had a visible impact on recovery quality."
+                WeekFitLocalizedString("recovery.insight.interrupted.title"),
+                WeekFitLocalizedString("recovery.insight.interrupted.text"),
+                WeekFitLocalizedString("recovery.insight.interrupted.actionTitle"),
+                WeekFitLocalizedString("recovery.insight.interrupted.actionText")
             )
         }
 
         return (
-            "Light recovery night",
-            "Sleep and overnight signals suggest recovery was not fully restored.",
-            "Night summary",
-            "Review sleep duration, awake time and HRV to understand the result."
+            WeekFitLocalizedString("recovery.insight.light.title"),
+            WeekFitLocalizedString("recovery.insight.light.text"),
+            WeekFitLocalizedString("recovery.insight.light.actionTitle"),
+            WeekFitLocalizedString("recovery.insight.light.actionText")
         )
     }
 }

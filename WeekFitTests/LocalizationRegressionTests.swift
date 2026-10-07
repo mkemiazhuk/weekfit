@@ -11,7 +11,7 @@ final class LocalizationRegressionTests: XCTestCase {
         super.tearDown()
     }
 
-    func testExplicitEnglishAndRussianLookup() {
+    func testExplicitEnglishRussianAndChineseLookup() {
         XCTAssertEqual(
             WeekFitLocalizedString("settings.language.title", locale: Locale(identifier: "en")),
             "Language"
@@ -19,6 +19,27 @@ final class LocalizationRegressionTests: XCTestCase {
         XCTAssertEqual(
             WeekFitLocalizedString("settings.language.title", locale: Locale(identifier: "ru")),
             "Язык"
+        )
+        XCTAssertEqual(
+            WeekFitLocalizedString("settings.language.title", locale: Locale(identifier: "zh-Hans")),
+            "语言"
+        )
+        // Detail sheets must resolve via zh-Hans.lproj (not bare "zh").
+        XCTAssertEqual(
+            WeekFitLocalizedString("activity.activityDetails", locale: Locale(identifier: "zh-Hans")),
+            "活动详情"
+        )
+        XCTAssertEqual(
+            WeekFitLocalizedString("nutrition.details.title", locale: Locale(identifier: "zh-Hans")),
+            "营养详情"
+        )
+        XCTAssertEqual(
+            WeekFitLocalizedString("recovery.details.title", locale: Locale(identifier: "zh-Hans")),
+            "恢复详情"
+        )
+        XCTAssertEqual(
+            WeekFitLocalizedString("today.upNext.title", locale: Locale(identifier: "zh-Hans")),
+            "接下来"
         )
         XCTAssertEqual(
             WeekFitLocalizedString("settings.nightComfort.title", locale: Locale(identifier: "en")),

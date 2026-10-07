@@ -536,6 +536,7 @@ enum AppText {
             enum Option {
                 static let english: LocalizedStringResource = "settings.language.option.english"
                 static let russian: LocalizedStringResource = "settings.language.option.russian"
+                static let chineseSimplified: LocalizedStringResource = "settings.language.option.chineseSimplified"
             }
         }
 
@@ -635,10 +636,11 @@ func WeekFitLocalizedString(_ key: String, locale: Locale? = nil) -> String {
 }
 
 private func WeekFitBundleLocalizedString(_ key: String, locale: Locale) -> String {
-    let languageCode = locale.language.languageCode?.identifier ?? locale.identifier
-
-    if let languageBundlePath = Bundle.main.path(forResource: languageCode, ofType: "lproj"),
-       let languageBundle = Bundle(path: languageBundlePath) {
+    for resource in WeekFitLocalizationLprojResourceCandidates(for: locale) {
+        guard let languageBundlePath = Bundle.main.path(forResource: resource, ofType: "lproj"),
+              let languageBundle = Bundle(path: languageBundlePath) else {
+            continue
+        }
         let localized = languageBundle.localizedString(forKey: key, value: nil, table: nil)
         if localized != key {
             return localized
@@ -653,6 +655,34 @@ private func WeekFitBundleLocalizedString(_ key: String, locale: Locale) -> Stri
     return key
 }
 
+/// `.lproj` folder names to try for a locale.
+/// Important: `Locale(identifier: "zh-Hans").language.languageCode` is `"zh"`, but the
+/// compiled String Catalog ships as `zh-Hans.lproj` — so the bare language code alone misses Chinese.
+private func WeekFitLocalizationLprojResourceCandidates(for locale: Locale) -> [String] {
+    var candidates: [String] = []
+    func append(_ value: String?) {
+        guard let value, !value.isEmpty, !candidates.contains(value) else { return }
+        candidates.append(value)
+    }
+
+    append(locale.identifier)
+    append(locale.identifier.replacingOccurrences(of: "_", with: "-"))
+
+    let languageCode = locale.language.languageCode?.identifier
+    let scriptCode = locale.language.script?.identifier
+    if let languageCode, let scriptCode {
+        append("\(languageCode)-\(scriptCode)")
+    }
+    // Prefer app language raw value when the locale matches (e.g. zh-Hans).
+    if let appLanguage = AppLanguage(rawValue: locale.identifier)
+        ?? AppLanguage(rawValue: locale.identifier.replacingOccurrences(of: "_", with: "-")) {
+        append(appLanguage.rawValue)
+    }
+    append(languageCode)
+
+    return candidates
+}
+
 func WeekFitCurrentLocale() -> Locale {
     WeekFitLocalizationCache.current.locale
 }
@@ -664,6 +694,26 @@ func WeekFitCurrentLanguageCode() -> String {
 /// Prefer this over `locale.identifier.hasPrefix("ru")` — language code is explicit app state.
 func WeekFitUsesRussianLanguage() -> Bool {
     WeekFitCurrentLanguageCode() == AppLanguage.russian.rawValue
+}
+
+func WeekFitUsesChineseSimplifiedLanguage() -> Bool {
+    WeekFitCurrentLanguageCode() == AppLanguage.chineseSimplified.rawValue
+}
+
+/// Pick display copy for the current app language. Prefer localization keys when practical.
+func WeekFitTrilingual(_ english: String, _ russian: String, _ chinese: String) -> String {
+    switch WeekFitCurrentAppLanguage() {
+    case .russian:
+        return russian
+    case .chineseSimplified:
+        return chinese
+    case .english:
+        return english
+    }
+}
+
+func WeekFitCurrentAppLanguage() -> AppLanguage {
+    AppLanguage(rawValue: WeekFitCurrentLanguageCode()) ?? .english
 }
 
 func WeekFitWarmLocalizationCache() {
@@ -693,13 +743,26 @@ func WeekFitCoachRuntimeLocalizedString(_ value: String, russian: Bool? = nil) -
     let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else { return value }
 
-    let isRussian = russian ?? WeekFitUsesRussianLanguage()
+    let language = WeekFitCurrentAppLanguage()
     if let pair = WeekFitCoachRuntimeCopy[trimmed] {
-        return WeekFitCoachHumanizedText(isRussian ? WeekFitRussianCoachText(pair.ru) : pair.en)
+        let text: String = {
+            switch language {
+            case .russian:
+                return pair.ru
+            case .chineseSimplified:
+                return CoachChineseOverrides.resolved(english: pair.en)
+                    ?? CoachChineseOverrides.resolved(english: trimmed)
+                    ?? pair.en
+            case .english:
+                return pair.en
+            }
+        }()
+        let cleaned = language == .russian ? WeekFitRussianCoachText(text) : text
+        return WeekFitCoachHumanizedText(cleaned)
     }
 
     let localized = WeekFitLocalizedString(value)
-    let cleaned = isRussian ? WeekFitRussianCoachText(localized) : localized
+    let cleaned = language == .russian ? WeekFitRussianCoachText(localized) : localized
     return WeekFitCoachHumanizedText(cleaned)
 }
 

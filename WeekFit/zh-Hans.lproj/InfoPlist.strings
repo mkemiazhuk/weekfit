@@ -1,0 +1,3 @@
+"NSCameraUsageDescription" = "WeekFit 使用相机，方便你为自定义食物添加照片。";
+"NSHealthShareUsageDescription" = "WeekFit 使用你的健康与活动数据，个性化每日计划。";
+"NSHealthUpdateUsageDescription" = "WeekFit 从 Apple 健康读取锻炼与活动数据，以保持计划准确。应用不会将锻炼写回 Apple 健康。";

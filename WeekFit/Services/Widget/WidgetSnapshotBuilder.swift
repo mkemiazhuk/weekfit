@@ -13,7 +13,7 @@ enum WidgetSnapshotBuilder {
         plannedActivities: [PlannedActivity]
     ) -> WeekFitWidgetSnapshot {
         let dateKey = WeekFitWidgetSnapshot.dayKey(for: now, calendar: calendar)
-        WeekFitWidgetCopy.applyLanguage(WeekFitUsesRussianLanguage() ? "ru" : "en")
+        WeekFitWidgetCopy.applyLanguage(WeekFitCurrentLanguageCode())
         let activityGoal = max(1, Int(automatedActivityGoal(from: healthManager).rounded()))
         let activityCalories = Int(healthManager.activeCalories.rounded())
         let activityProgress = Double(activityCalories) / Double(activityGoal)
@@ -78,7 +78,7 @@ enum WidgetSnapshotBuilder {
             completedItems: completedItems,
             totalItems: totalItems,
             updatedAt: now,
-            languageCode: WeekFitUsesRussianLanguage() ? "ru" : "en"
+            languageCode: WeekFitCurrentLanguageCode()
         )
     }
 

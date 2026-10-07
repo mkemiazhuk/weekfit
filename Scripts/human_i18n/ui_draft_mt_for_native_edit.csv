@@ -1,0 +1,179 @@
+english,russian_hint,chinese,status,notes
+ when your body is ready.,", когда организм готов.",当你的身体准备好了。,draft_mt,UI string
+%.1fh average vs a 7h target.,%.1f ч в среднем при цели 7 ч.,%.1fh平均值vs 7h目标值。,draft_mt,UI string
+%1$.1f / %2$.1f L,%1$.1f / %2$.1f л,%1$.1f/%2$.1f升,draft_mt,UI string
+%1$@ and %2$@,%1$@ и %2$@,%1$@和%2$@,draft_mt,UI string
+"%1$@ and %2$@. Together, these signals increased today’s Stress Index.",%1$@ и %2$@. Вместе эти сигналы повысили сегодняшний индекс нагрузки.,%1$@和%2$@.这些信号共同增加了今天的压力指数。,draft_mt,UI string
+"%1$@ is %2$@ today. Use this %3$@ to stay loose, not to add fatigue before loading.","%1$@ — это %2$@ сегодня. Используйте эту %3$@, чтобы оставаться разогретым, а не добавлять усталость перед нагрузкой.",%1$@就是今天的%2$@。使用这款%3$@保持松动，在装载前不会增加疲劳。,draft_mt,UI string
+"%1$@ is meant to support recovery. Keep this %2$@ easy so the day stays restorative, not draining.","%1$@ должна поддерживать восстановление. Держите эту %2$@ легкой, чтобы день оставался восстановительным, а не истощающим.",%1$@旨在支持恢复。保持这款%2$@轻松，让白天保持恢复，而不是消耗。,draft_mt,UI string
+%1$@ is the key workload today. Keep this %2$@ relaxed so you preserve legs and fueling for the main effort.,"%1$@ — главная нагрузка сегодня. Держите %2$@ спокойно, чтобы сохранить силы и качество движения.",%1$@是当今的关键工作负载。让这款%2$@保持放松，这样您就可以保留双腿，为主要工作加油。,draft_mt,UI string
+%1$@ is the next meaningful block. Keep this %2$@ easy so you arrive fresh instead of carrying extra fatigue.,"%1$@ — следующий важный блок. Держите эту %2$@ легкой, чтобы прийти свежим, а не с лишней усталостью.",%1$@是下一个有意义的区块。保持这款%2$@轻松，让您到达新鲜，而不是带来额外的疲劳。,draft_mt,UI string
+%1$@ is the next useful reset. Keep this %2$@ easy so appetite and digestion stay steady.,"%1$@ — сейчас полезный вариант. Держите %2$@ легкой, чтобы аппетит и пищеварение оставались стабильными.",%1$@是下一个有用的重置。保持这款%2$@轻松，让食欲和消化保持稳定。,draft_mt,UI string
+%1$@ portions · %2$d kcal,%1$@ порции · %2$d ккал,%1$@份· %2$d千卡,draft_mt,UI string
+"%1$@ will add heat stress. Keep this %2$@ easy so you start hydrated, calm, and not already taxed.","%1$@ добавит тепловой стресс. Держите эту %2$@ легкой, чтобы начать гидратированным, спокойным и без лишней нагрузки.",%1$@会增加热应力。保持这款%2$@轻松，这样您就可以开始补充水分、保持冷静，而且不会过税。,draft_mt,UI string
+%1$@ · %2$@ portions,%1$@ · %2$@ порции,%1$@ · %2$@份,draft_mt,UI string
+%1$@ · %2$d kcal,%1$@ · %2$d ккал,%1$@ · %2$d千卡,draft_mt,UI string
+%1$@ · %2$d ml,%1$@ · %2$d мл,%1$@·%2$d毫升,draft_mt,UI string
+%1$@ · Done today,%1$@ · Сегодня выполнено,%1$@ ·今天完成,draft_mt,UI string
+%1$@ · View today’s step,%1$@ · Смотреть шаг на сегодня,%1$@ ·查看今天的步骤,draft_mt,UI string
+"%1$@ — your usual %2$@, at %3$@","%1$@ — обычно в %2$@, в %3$@",%1$@ —您通常的%2$@ ， %3$@,draft_mt,UI string
+"%1$@, %2$d calories","%1$@, %2$d калорий","%1$@, %2$d卡路里",draft_mt,UI string
+"%1$@, and %2$@",%1$@ и %2$@,%1$@和%2$@,draft_mt,UI string
+"%1$@, while %2$@.","%1$@, в то время как %2$@.",%1$@ ，而%2$@。,draft_mt,UI string
+%1$d bpm vs your %3$d-day baseline %2$d bpm,%1$d уд/мин к вашему базовому значению за %3$d дн. %2$d уд/мин,%1$d bpm对比您的%3$d天基线%2$d bpm,draft_mt,UI string
+%1$d ms vs your %3$d-day baseline %2$d ms,%1$d мс к вашему базовому значению за %3$d дн. %2$d мс,%1$d毫秒对比您的%3$d天基线%2$d毫秒,draft_mt,UI string
+%1$d of %2$d breaks marked,Отмечено %1$d из %2$d пауз,%1$d/%2$d间断已标记,draft_mt,UI string
+%1$d of %2$d days completed,Выполнено %1$d из %2$d дней,%1$d/%2$d天完成,draft_mt,UI string
+%1$d of %2$d days completed · View summary,Выполнено %1$d из %2$d дней · Смотреть итоги,%1$d/%2$d天已完成·查看摘要,draft_mt,UI string
+%1$lld kcal • P %2$lldg,%1$lld ккал • Б %2$lld г,% 1 $ lld千卡• P % 2 $ lldg,draft_mt,UI string
+"%@ %@ For %@, make this quality work rather than extra volume.","%@ %@ Для %@ сделайте это качественной работой, а не дополнительным объемом.",%@ %@对于%@ ，让这种质量发挥作用，而不是额外的音量。,draft_mt,UI string
+%@ %@ Keep the next part of the day easy so the session supports fitness instead of adding fatigue.,"%@ %@ Держите следующую часть дня легкой, чтобы тренировка помогла форме, а не добавила усталость.",%@ %@保持一天的下一部分轻松，以便课程支持健身，而不是增加疲劳。,draft_mt,UI string
+%@ %@ Keep the rest of the day easy so the session does not stack unnecessary fatigue.,"%@ %@ Проведите остаток дня легко, чтобы тренировка не добавила лишнюю усталость.",%@ %@保持一天的其余时间轻松，这样会话就不会累积不必要的疲劳。,draft_mt,UI string
+%@ %@ Shift the rest of the day away from intensity so your body can absorb the load.,"%@ %@ Уведите остаток дня от интенсивности, чтобы тело могло усвоить нагрузку.",%@ %@将一天的其余时间从强度转移，这样你的身体就可以吸收负荷。,draft_mt,UI string
+"%@ %@ Use this %@ session to build aerobic volume, not extra intensity.","%@ %@ Используйте эту тренировку %@ для аэробного объема, а не для дополнительной интенсивности.",%@%@使用此%@会话来构建有氧音量，而不是额外的强度。,draft_mt,UI string
+"%@ (Greek yogurt, eggs, chicken or shake)","%@ (греческий йогурт, яйца, курица или шейк)",%@ （希腊酸奶、鸡蛋、鸡肉或奶昔）,draft_mt,UI string
+%@ (from Health),%@ (из Health),%@ （来自健康）,draft_mt,UI string
+"%@ Cool down, keep the next block easy and let recovery start.","%@ Заминка, затем держите следующий блок легким и дайте восстановлению начаться.",%@ 冷静下来，下一个模块保持简单，让身体开始恢复。,draft_mt,UI string
+%@ Good. Keep the rest of the evening easy so this work supports recovery.,"%@ Хорошо. Держите остаток вечера легким, чтобы эта работа поддержала восстановление.",%@很好。让晚上的其余时间保持轻松，以便这项工作支持恢复。,draft_mt,UI string
+%@ Keep it easy or stop early if the body does not come around.,"%@ Держите легко или остановитесь раньше, если тело не включается.",%@保持轻松或在身体不转动时提前停止。,draft_mt,UI string
+"%@ Keep this block easy: comfortable range only, no painful positions, and stop before discomfort.","%@ Держите этот блок легким: только комфортная амплитуда, без болезненных положений, остановитесь до дискомфорта.",%@保持此块容易：仅在舒适的范围内，没有疼痛的姿势，并在不适之前停止。,draft_mt,UI string
+%@ Keep this steady and avoid turning volume into intensity.,%@ Держите это ровно и не превращайте объем в интенсивность.,%@保持稳定，避免将音量转化为强度。,draft_mt,UI string
+%@ Let this movement help recovery rather than turning it into training.,"%@ Пусть это движение помогает восстановлению, а не превращается в тренировку.",%@让这个动作帮助恢复，而不是将其转化为训练。,draft_mt,UI string
+"%@ Make this a clean execution session, not a test of your limit.","%@ Сделайте эту тренировку чистой по выполнению, а не проверкой предела.",%@使这成为一个干净的执行会话，而不是对您的限制的测试。,draft_mt,UI string
+%@ No training moment needs attention right now.,%@ Сейчас в тренировках все идет спокойно.,%@目前没有需要注意的训练时刻。,draft_mt,UI string
+%@ Play with control and avoid turning every rally into a maximal effort.,%@ Играйте с контролем и не превращайте каждый розыгрыш в максимальное усилие.,%@尽情玩耍，避免将每次拉力变成最大努力。,draft_mt,UI string
+"%@ Recovery is below target, so the workload may be outpacing adaptation.",%@ Восстановление ниже цели — нагрузка может опережать адаптацию.,%@恢复低于目标，因此工作负载可能超出适应速度。,draft_mt,UI string
+"%@ Recovery is not keeping pace, so the issue looks like load management rather than motivation.","%@ Восстановление не успевает — проблема скорее в управлении нагрузкой, чем в мотивации.",%@Recovery没有跟上步伐，因此问题看起来是负载管理而不是动机。,draft_mt,UI string
+"%@ Recovery remained stable, suggesting your body is absorbing the workload well.",%@ Восстановление оставалось стабильным — организм хорошо поглощает нагрузку.,%@Recovery保持稳定，表明您的身体正在很好地吸收工作量。,draft_mt,UI string
+"%@ Recovery stayed stable, suggesting your body is absorbing the workload well.",%@ Восстановление оставалось стабильным — организм хорошо поглощает нагрузку.,%@Recovery保持稳定，表明您的身体正在很好地吸收工作量。,draft_mt,UI string
+%@ Return to baseline and keep the rest of the day steady.,%@ Вернитесь к базовому состоянию и держите остаток дня ровным.,%@回到基线并保持当天剩余时间的稳定。,draft_mt,UI string
+"%@ This block should help you recover, not create more load.","%@ Этот блок должен помогать восстановлению, а не создавать дополнительную нагрузку.",%@此块应帮助您恢复，而不是创建更多负载。,draft_mt,UI string
+"%@ This walk should help recovery, not become extra training.","%@ Эта прогулка должна помочь восстановлению, а не стать дополнительной тренировкой.",%@此步行应有助于康复，而不是成为额外的训练。,draft_mt,UI string
+%@ This was the right kind of work after a loaded day. Keep the next part easy and let recovery continue.,%@ Это был правильный тип работы после нагруженного дня. Держите следующую часть легкой и дайте восстановлению продолжиться.,%@在忙碌了一天之后，这是正确的工作方式。让下一部分变得简单，让恢复继续进行。,draft_mt,UI string
+%@ Use this as recovery support and stay within a comfortable range.,%@ Используйте это как поддержку восстановления и оставайтесь в комфортной амплитуде.,%@将其用作恢复支持，并保持在舒适的范围内。,draft_mt,UI string
+%@ Use this breathing block to lower arousal before the next part of the evening.,"%@ Используйте этот дыхательный блок, чтобы снизить возбуждение перед следующей частью вечера.",%@在晚上的下一部分之前使用此呼吸阻滞来降低唤醒。,draft_mt,UI string
+%@ active,%@ идет сейчас,%@激活,draft_mt,UI string
+%@ active kcal completed so far. There is room to build.,%@ активных ккал уже выполнено. Есть пространство добавить.,%@活动大卡到目前为止已完成。还有空间可以建造。,draft_mt,UI string
+%@ active time,%@ активного времени,%@激活时间,draft_mt,UI string
+%@ already sent the training signal. Recovery is the priority now.,%@ уже дала тренировочный сигнал. Теперь главное — восстановиться.,%@已发送训练信号。恢复是当务之急。,draft_mt,UI string
+%@ already served recovery. Keep the next step easy.,%@ уже помогла восстановлению. Следующий шаг держите легким.,%@已提供恢复。轻松完成下一步。,draft_mt,UI string
+%@ and %@,%@ и %@,%@和%@,draft_mt,UI string
+%@ average,%@ в среднем,%@平均值,draft_mt,UI string
+%@ can support the day if it stays easy.,"%@ поможет дню, если останется легкой.",%@可以支持这一天，如果它保持简单。,draft_mt,UI string
+%@ can support this. \(priority.supportBullets.first ?? ,%@ может помочь этому фокусу.,%@可以支持此功能。\ (priority.supportBullets.first??,draft_mt,UI string
+%@ complete,%@ завершено,%@完成,draft_mt,UI string
+%@ completed,%@ завершено,%@已完成,draft_mt,UI string
+%@ completed recently.,%@ недавно завершено.,%@最近已完成。,draft_mt,UI string
+%@ completed • about %@ kcal burned.,%@ завершено • около %@ ккал,%@已完成•约%@大卡已燃烧。,draft_mt,UI string
+%@ completed.,%@ завершено.,%@已完成。,draft_mt,UI string
+%@ deleted,%@ удалено,%@已删除,draft_mt,UI string
+%@ finished %@ ago.,%@ завершена %@ назад.,%@在%@前完成。,draft_mt,UI string
+%@ in progress,%@ выполняется,%@进行中,draft_mt,UI string
+%@ is about to start.,%@ скоро начнется.,%@即将开始。,draft_mt,UI string
+"%@ is active, and its value today comes from supporting recovery rather than creating fitness.","%@ идет сейчас, и ее ценность сегодня — помочь восстановиться, а не добавить форму.",%@是活跃的，其今天的价值来自支持恢复，而不是创造健身。,draft_mt,UI string
+%@ is completed.,%@ завершена.,%@完成。,draft_mt,UI string
+%@ is done.,%@ завершена.,%@完成。,draft_mt,UI string
+%@ is done. Keep the rest simple and build food and fluids gradually.,%@ завершена. Держите остаток дня простым и постепенно доберите еду и воду.,%@完成。保持其余简单并逐渐构建食物和液体。,draft_mt,UI string
+%@ is done. That supports the day; no post-workout recovery push is needed.,%@ завершена. Это поддерживает день; дополнительный восстановительный рывок после тренировки не нужен.,%@已完成。这支持当天；无需锻炼后恢复推送。,draft_mt,UI string
+%@ is in its main block now.,%@ сейчас в основном блоке.,%@现在位于其主区块中。,draft_mt,UI string
+%@ is in progress,%@ выполняется,%@正在进行中,draft_mt,UI string
+"%@ is live, and the opening minutes are for settling in.","%@ уже идет, и первые минуты нужны, чтобы войти в ритм.",%@已上线，开场时间为安顿时间。,draft_mt,UI string
+"%@ is live, but today's sleep and recovery profile does not support productive hard work.","%@ уже идет, но сон и восстановление сегодня не поддерживают продуктивную тяжелую работу.",%@现已上线，但今天的睡眠和恢复情况不支持富有成效的努力工作。,draft_mt,UI string
+%@ is live. %@,%@ идет сейчас. %@,%@已上线。%@,draft_mt,UI string
+%@ is near the finish.,%@ близко к финишу.,%@已接近尾声。,draft_mt,UI string
+"%@ is not the problem; the ceiling is. Poor sleep makes intensity expensive today, so start easier and be willing to turn this into easier work.","%@ — не проблема; проблема в потолке. Плохой сон делает интенсивность дорогой сегодня, поэтому начните легче и будьте готовы превратить это в более легкую работу.",%@不是问题；天花板是。如今，睡眠不足会使强度变得昂贵，因此，从轻松开始，并愿意将其转化为更轻松的工作。,draft_mt,UI string
+"%@ is recovery support today, not fitness. Keep it easy.","%@ сегодня для восстановления, не для формы. Держите легко.",%@是今天的恢复支持，而不是健身。保持轻松。,draft_mt,UI string
+"%@ is still ahead, and recent food looks light for the work you are asking from the body.","%@ еще впереди, а недавней еды маловато для такой работы.",%@仍然领先，最近的食物看起来很浅，适合您对身体的要求。,draft_mt,UI string
+"%@ is the clearest pattern. The rest of the screen explains whether that signal is supported by training, nutrition and hydration consistency.","%@ — самый явный паттерн. Остальная часть экрана объясняет, поддерживается ли этот сигнал стабильностью тренировок, питания и гидратации.",%@是最清晰的图案。屏幕的其余部分解释了该信号是否得到训练、营养和水分一致性的支持。,draft_mt,UI string
+%@ kcal,%@ ккал,%@大卡,draft_mt,UI string
+%@ later sets the ceiling.,%@ позже задает темп.,%@后来设定了上限。,draft_mt,UI string
+%@ later today,%@ позже сегодня,%@今天晚些时候,draft_mt,UI string
+%@ logged,Добавлено: %@,%@已记录,draft_mt,UI string
+%@ nutrition window is approaching. Ideal opportunity to stage amino assets and steady your glucose baseline.,Приближается окно питания %@. Хороший момент поддержать белок и стабилизировать энергию.,%@营养窗口即将到来。分期氨基资产和稳定血糖基线的理想机会。,draft_mt,UI string
+%@ of training is still planned today.,Сегодня еще запланировано %@ тренировки.,%@的培训今天仍在计划中。,draft_mt,UI string
+%@ portions,%@ порции,%@份,draft_mt,UI string
+%@ session,%@ тренировка,%@会话,draft_mt,UI string
+%@ session is currently active.,%@ сейчас активна.,%@会话当前处于活动状态。,draft_mt,UI string
+%@ starts %@,%@ начнитеs %@,%@启动%@,draft_mt,UI string
+"%@ starts %@. Keep the day pointed at the work, not the clock.","%@ начнется %@. Держите день направленным на работу, а не на часы.",%@启动%@。将白天指向工作，而不是时钟。,draft_mt,UI string
+"%@ starts in %@, and the two things that matter now are fluid and quick fuel.",%@ начнется через %@. Сейчас важны две вещи: вода и быстрая энергия.,%@从%@开始，现在重要的两件事是流体和快速燃料。,draft_mt,UI string
+%@ starts in %@. Fuel is the useful lever before the session starts.,%@ начнется через %@. Перед стартом главный рычаг — еда.,%@从%@开始。在课程开始之前，燃料是有用的杠杆。,draft_mt,UI string
+%@ starts in %@. Fueling has started and readiness looks good.,"%@ начнется через %@. Еда уже пошла, готовность выглядит хорошо.",%@从%@开始。加油已经开始，准备状态看起来不错。,draft_mt,UI string
+%@ starts in %@. Hydration is the useful lever before the session starts.,%@ начнется через %@. Перед стартом главный рычаг — вода.,%@从%@开始。在课程开始之前，水合作用是有用的杠杆。,draft_mt,UI string
+%@ starts in %lld hour.,%@ начнется через %lld ч.,%@在%lld小时后开始。,draft_mt,UI string
+%@ starts in %lld min.,%@ начнется через %lld мин.,%@开始于%lld最小值。,draft_mt,UI string
+%@ starts in %lld minutes,%@ начнется через %lld мин,%@在%lld分钟后开始,draft_mt,UI string
+%@ starts in %lldh %lldm.,%@ начнется через %lld ч %lld мин.,%@从%lldh%lldm开始。,draft_mt,UI string
+%@ starts soon. Keep the first 10 minutes easy before deciding whether to build effort.,"%@ скоро начнется. Держите первые 10 минут легкими, прежде чем решать, добавлять ли усилие.",%@即将开始。在决定是否构建工作之前，请轻松保持前10分钟。,draft_mt,UI string
+%@ synced,Синхронизировано с %@,%@已同步,draft_mt,UI string
+%@ today at %@.,%@ сегодня в %@.,%@今天在%@。,draft_mt,UI string
+%@ vs baseline,%@ к базовому,%@与基线,draft_mt,UI string
+%@ with %@,%@ с %@,%@搭配%@,draft_mt,UI string
+%@ — %@ completed.,%@ — %@ выполнено.,%@—%@已完成。,draft_mt,UI string
+%@ — tap to review,"%@ — нажмите, чтобы посмотреть",%@—轻触以查看,draft_mt,UI string
+%@ • %lld min,%@ • %lld мин,%@•%lld最小,draft_mt,UI string
+"%@, and %@",%@ и %@,%@和%@,draft_mt,UI string
+"%@, and \(parts.joined(separator: ",%@ и остальное,%@和\ (parts.joined (分隔符：,draft_mt,UI string
+%@-hour,%@ ч,%@-小时,draft_mt,UI string
+%@. This contributed to today’s Stress Index.,%@. Это повлияло на сегодняшний индекс нагрузки.,%@。这促成了今天的压力指数。,draft_mt,UI string
+%@/month,%@/мес,%@/月,draft_mt,UI string
+%@/year,%@/год,%@/年,draft_mt,UI string
+%@L logged today,%@ л записано сегодня,%@L今天记录,draft_mt,UI string
+%@L logged • keep building the base,%@ л записано • продолжайте набирать базу,%@L已记录•继续构建底座,draft_mt,UI string
+%@L of %@L completed,%@ л из %@ л выполнено,%@L/%@L完成,draft_mt,UI string
+%@L remaining to target,%@ л осталось до цели,%@L剩余至目标,draft_mt,UI string
+%@L water remaining,осталось %@ л воды,%@L剩余水量,draft_mt,UI string
+%@g protein remaining,%@g белок осталось,%@g剩余蛋白质,draft_mt,UI string
+%d adjustment,%d правка,%d调整,draft_mt,UI string
+%d adjustments,%d правок,%d调整,draft_mt,UI string
+%d bpm below baseline,%d уд/мин ниже базового,%dbpm低于基线,draft_mt,UI string
+%d days free,%d дней бесплатно,%d天免费,draft_mt,UI string
+%d min,%d мин,%d最小值,draft_mt,UI string
+%d min deep,%d мин глубокого сна,%d最小深度,draft_mt,UI string
+%d min · %@,%d мин · %@,%d最小·%@,draft_mt,UI string
+%d min → %d min,%d мин → %d мин,%d最小→%d最小,draft_mt,UI string
+%d tips,%d подсказок,%d提示,draft_mt,UI string
+%d%% above baseline,%d%% выше базового,%d%%高于基线,draft_mt,UI string
+%d%% below baseline,%d%% ниже базового,%d%%低于基线,draft_mt,UI string
+%d%% efficiency,%d%% эффективность,%d%%效率,draft_mt,UI string
+%d%% of goal,%d%% от цели,目标的%d%%,draft_mt,UI string
+%d-day baseline,Базовое значение за %d дн.,%d-日基线,draft_mt,UI string
+"A short chat about today’s sleep, training, and food.","Короткий чат про сегодняшний сон, тренировки и еду.",用简短对话了解今天的睡眠、训练和饮食。,draft_mt,UI string
+Assistant,Ассистент,助手,draft_mt,UI string
+Back,Назад,返回,draft_mt,UI string
+Calories,Калории,热量,draft_mt,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Cancel,Отмена,取消,draft_mt,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Clear,Очистить,晴朗,draft_mt,UI string
+Close,Закрыть,关闭,draft_mt,UI string
+Coach Insight,Наблюдение тренера,教练建议,draft_mt,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Continue,Продолжить,继续,draft_mt,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Continue →,Продолжить →,继续 →,draft_mt,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Delete,Удалить,删除,draft_mt,UI string
+Edit,Изменить,编辑,draft_mt,UI string
+Free trial,Пробный период,免费试用,draft_mt,UI string
+Fuel,Питание,饮食,draft_mt,UI string
+Insights,Инсайты,洞察,draft_mt,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Language,Язык,语言,draft_mt,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Log a meal,Записать еду,记录一餐,draft_mt,UI string
+Meals,Блюда,饮食,draft_mt,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Monthly,Месяц,每月,draft_mt,UI string
+Move,Движение,活动,draft_mt,UI string
+Next,Дальше,下一步,draft_mt,UI string
+No data yet,Данных пока нет,暂无数据,draft_mt,UI string
+Not now,Не сейчас,暂不,draft_mt,UI string
+Open →,Открыть →,打开 →,draft_mt,UI string
+Other,Другое,其他,draft_mt,UI string
+Other topic,Другая тема,其他主题,draft_mt,UI string
+Plan,План,计划,draft_mt,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein,Белки,蛋白质,draft_mt,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Restore Purchases,Восстановить покупки,恢复购买,draft_mt,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save,Сохранить,保存,draft_mt,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Scan barcode,Скан штрихкода,扫描条码,draft_mt,UI string
+Settings,Настройки,设置,draft_mt,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Skip,Пропустить,跳过,draft_mt,UI string
+Steps,Шаги,步数,draft_mt,UI string
+Tomorrow,Завтра,明天,draft_mt,UI string
+Try again,Попробовать снова,再试一次,draft_mt,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Water,Вода,水分,draft_mt,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+h,ч,小时,draft_mt,UI string
+m,м,米,draft_mt,UI string

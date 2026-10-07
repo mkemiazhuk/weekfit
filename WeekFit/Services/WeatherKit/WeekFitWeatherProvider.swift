@@ -279,59 +279,53 @@ enum WeekFitWeatherCondition: String, Sendable {
     case other
 
     func shortLabel(isDaylight: Bool = true) -> String {
-        if WeekFitUsesRussianLanguage() {
-            switch self {
-            case .clear: return isDaylight ? "Солнечно" : "Ясно"
-            case .partlyCloudy: return "Переменная облачность"
-            case .cloudy: return "Облачно"
-            case .rain: return "Дождь"
-            case .snow: return "Снег"
-            case .storm: return "Гроза"
-            case .windy: return "Ветрено"
-            case .fog: return "Туман"
-            case .other: return "Другое"
-            }
-        }
-
         switch self {
-        case .clear: return isDaylight ? "Sunny" : "Clear"
-        case .partlyCloudy: return "Partly cloudy"
-        case .cloudy: return "Cloudy"
-        case .rain: return "Rain"
-        case .snow: return "Snow"
-        case .storm: return "Storm"
-        case .windy: return "Windy"
-        case .fog: return "Fog"
-        case .other: return "Other"
+        case .clear:
+            return isDaylight
+                ? WeekFitTrilingual("Sunny", "Солнечно", "晴")
+                : WeekFitTrilingual("Clear", "Ясно", "晴朗")
+        case .partlyCloudy:
+            return WeekFitTrilingual("Partly cloudy", "Переменная облачность", "多云")
+        case .cloudy:
+            return WeekFitTrilingual("Cloudy", "Облачно", "阴")
+        case .rain:
+            return WeekFitTrilingual("Rain", "Дождь", "雨")
+        case .snow:
+            return WeekFitTrilingual("Snow", "Снег", "雪")
+        case .storm:
+            return WeekFitTrilingual("Storm", "Гроза", "雷暴")
+        case .windy:
+            return WeekFitTrilingual("Windy", "Ветрено", "有风")
+        case .fog:
+            return WeekFitTrilingual("Fog", "Туман", "雾")
+        case .other:
+            return WeekFitTrilingual("Other", "Другое", "其他")
         }
     }
 
     /// Tight Today-header pill copy. Prefer short words that fit beside the avatar.
     func compactBadgeLabel(isDaylight: Bool = true) -> String {
-        if WeekFitUsesRussianLanguage() {
-            switch self {
-            case .clear: return isDaylight ? "Солнечно" : "Ясно"
-            case .partlyCloudy: return "Перем."
-            case .cloudy: return "Облачно"
-            case .rain: return "Дождь"
-            case .snow: return "Снег"
-            case .storm: return "Гроза"
-            case .windy: return "Ветер"
-            case .fog: return "Туман"
-            case .other: return "Погода"
-            }
-        }
-
         switch self {
-        case .clear: return isDaylight ? "Sunny" : "Clear"
-        case .partlyCloudy: return "Partly"
-        case .cloudy: return "Cloudy"
-        case .rain: return "Rain"
-        case .snow: return "Snow"
-        case .storm: return "Storm"
-        case .windy: return "Windy"
-        case .fog: return "Fog"
-        case .other: return "Other"
+        case .clear:
+            return isDaylight
+                ? WeekFitTrilingual("Sunny", "Солнечно", "晴")
+                : WeekFitTrilingual("Clear", "Ясно", "晴朗")
+        case .partlyCloudy:
+            return WeekFitTrilingual("Partly", "Перем.", "多云")
+        case .cloudy:
+            return WeekFitTrilingual("Cloudy", "Облачно", "阴")
+        case .rain:
+            return WeekFitTrilingual("Rain", "Дождь", "雨")
+        case .snow:
+            return WeekFitTrilingual("Snow", "Снег", "雪")
+        case .storm:
+            return WeekFitTrilingual("Storm", "Гроза", "雷暴")
+        case .windy:
+            return WeekFitTrilingual("Wind", "Ветер", "风")
+        case .fog:
+            return WeekFitTrilingual("Fog", "Туман", "雾")
+        case .other:
+            return WeekFitTrilingual("Other", "Другое", "其他")
         }
     }
 

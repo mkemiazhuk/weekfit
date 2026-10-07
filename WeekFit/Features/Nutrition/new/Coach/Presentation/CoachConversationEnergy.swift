@@ -140,13 +140,18 @@ enum CoachConversationEnergyPolicy {
     static func adjustedSemanticColor(
         base: CoachSemanticColor,
         energy: CoachConversationEnergy,
-        scenario: CoachScenarioKey
+        scenario: CoachScenarioKey,
+        sessionIsLive: Bool = false
     ) -> CoachSemanticColor {
         switch energy {
         case .low, .medium:
             // Live HR zone chrome must keep its own color during a session.
             if HeartRateZones.isLiveZoneColor(base) {
                 return base
+            }
+            // Keep live chrome for in-progress sessions (walks often lack BPM for ~1 min).
+            if base == .live, sessionIsLive || isDuring(scenario) {
+                return .live
             }
             if base == .live {
                 return .recovery

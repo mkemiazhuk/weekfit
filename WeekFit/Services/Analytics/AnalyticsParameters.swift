@@ -215,12 +215,15 @@ enum NotificationOpenCategory: String, Sendable {
 enum AppLanguageAnalyticsCode: String, Sendable {
     case en
     case ru
+    case zhHans = "zh-Hans"
     case other
 
     init(languageCode: String) {
         switch languageCode.lowercased() {
         case "en": self = .en
         case "ru": self = .ru
+        case "zh-hans", "zh_hans", "zh-cn", "zh_cn", "zh":
+            self = .zhHans
         default: self = .other
         }
     }

@@ -106,7 +106,35 @@ WeekFit не ставит медицинских диагнозов. По воп
 
 ---
 
-## What's New (1.3.6)
+## What's New (1.3.7)
+
+**EN:**
+```
+• Simplified Chinese language support across the app and Coach
+• Clearer live Coach cues during breathing and recovery sessions
+• FAQ and Guides fully localized
+• Stability and reliability polish
+```
+
+**RU:**
+```
+• Поддержка упрощённого китайского во всём приложении и в Коуче
+• Понятнее подсказки Коуча во время дыхания и восстановления
+• FAQ и Guides полностью локализованы
+• Полировка стабильности и надёжности
+```
+
+**ZH (Simplified):**
+```
+• 全面支持简体中文（应用与教练）
+• 呼吸与恢复训练中的教练提示更清晰
+• 常见问题与指南已完整本地化
+• 稳定性与可靠性优化
+```
+
+---
+
+## What's New (1.3.6) — archive
 
 **EN:**
 ```

@@ -87,7 +87,8 @@ enum CoachPresentationResolver {
         let baseSemanticColor = semanticColor(
             for: resolution.scenario,
             stableDayProfile: stableDayProfile,
-            liveHeartRateZone: context.liveHeartRateZone
+            liveHeartRateZone: context.liveHeartRateZone,
+            sessionIsLive: context.sessionPhase == .during
         )
         let energyInput = CoachConversationEnergyPolicy.Input.from(
             resolution: resolution,
@@ -101,7 +102,8 @@ enum CoachPresentationResolver {
             semanticColor: CoachConversationEnergyPolicy.adjustedSemanticColor(
                 base: baseSemanticColor,
                 energy: conversationEnergy,
-                scenario: resolution.scenario
+                scenario: resolution.scenario,
+                sessionIsLive: context.sessionPhase == .during
             ),
             alertSeverity: alertSeverity,
             safetyAlert: resolution.safetyAlert,
@@ -144,20 +146,28 @@ enum CoachPresentationResolver {
     static func semanticColor(
         for scenario: CoachScenarioKey,
         stableDayProfile: CoachStableDayProfile? = nil,
-        liveHeartRateZone: Int? = nil
+        liveHeartRateZone: Int? = nil,
+        sessionIsLive: Bool = false
     ) -> CoachSemanticColor {
         if scenario == .stableDay, let stableDayProfile {
             return CoachStableDayPresentation.semanticColor(for: stableDayProfile)
         }
         let base = baseSemanticColor(for: scenario)
-        // Walks keep walk* keys (not `.live`); still map chrome to the live HR zone.
-        guard let zone = liveHeartRateZone, appliesLiveHeartRateChrome(to: scenario) else {
+        guard appliesLiveHeartRateChrome(to: scenario) else {
             return base
         }
-        return HeartRateZones.semanticColor(for: zone)
+        // Prefer the live HR zone when available; otherwise keep live chrome for an
+        // in-progress session so Walk/recovery don't wait on the first BPM sample.
+        if let zone = liveHeartRateZone {
+            return HeartRateZones.semanticColor(for: zone)
+        }
+        if sessionIsLive {
+            return .live
+        }
+        return base
     }
 
-    private static func appliesLiveHeartRateChrome(to scenario: CoachScenarioKey) -> Bool {
+    static func appliesLiveHeartRateChrome(to scenario: CoachScenarioKey) -> Bool {
         switch scenario {
         case .duringEndurance, .duringRacket, .duringStrength, .duringRecovery, .saunaActive,
              .walkLightDay, .walkAfterHeavyLoad, .walkRecoveryAction, .walkEveningWindDown:

@@ -50,14 +50,24 @@ struct MealBuilderIngredient: Identifiable, Codable, Equatable, Hashable {
     let zIndex: Int
 
     var localizedTitle: String {
-        guard WeekFitUsesRussianLanguage() else { return title }
-
-        return russianTitle
+        switch WeekFitCurrentAppLanguage() {
+        case .russian:
+            return russianTitle
+        case .chineseSimplified:
+            return Self.chineseTitles[id] ?? title
+        case .english:
+            return title
+        }
     }
 
     /// Stable Russian label for catalog matching (independent of current UI language).
     var russianTitle: String {
         Self.russianTitles[id] ?? title
+    }
+
+    /// Stable Simplified Chinese label for catalog matching.
+    var chineseTitle: String {
+        Self.chineseTitles[id] ?? title
     }
 
     private static let russianTitles: [String: String] = [
@@ -171,6 +181,119 @@ struct MealBuilderIngredient: Identifiable, Codable, Equatable, Hashable {
         "extra_mixed_nuts": "Смесь орехов",
         "extra_pork_ham": "Ветчина свиная",
         "extra_chicken_ham": "Ветчина куриная"
+    ]
+
+    private static let chineseTitles: [String: String] = [
+        "base_rice": "米饭",
+        "base_pasta": "意面",
+        "base_buckwheat": "荞麦",
+        "base_potatoes": "土豆",
+        "base_oatmeal": "燕麦粥",
+        "base_muesli": "穆兹利",
+        "base_greek_yogurt": "希腊酸奶",
+        "base_toast": "吐司",
+        "base_quinoa": "藜麦",
+        "base_couscous": "库斯库斯",
+        "base_sweet_potato": "红薯",
+        "base_lentils": "扁豆",
+        "base_chickpeas": "鹰嘴豆",
+        "base_black_beans": "黑豆",
+        "base_soba_noodles": "荞麦面",
+        "base_corn_tortilla": "玉米饼",
+        "base_pita": "皮塔饼",
+        "base_brown_rice": "糙米",
+        "base_bulgur": "碾碎小麦",
+        "base_plantain": "大蕉",
+        "base_corn": "玉米",
+        "protein_chicken": "鸡肉",
+        "protein_turkey": "火鸡肉",
+        "protein_pork": "猪肉",
+        "protein_lamb": "羊肉",
+        "protein_veal": "小牛肉",
+        "protein_duck": "鸭肉",
+        "protein_beef": "牛肉",
+        "protein_salmon": "三文鱼",
+        "protein_white_fish": "白鱼",
+        "protein_shrimp": "虾",
+        "protein_eggs": "鸡蛋",
+        "protein_cottage_cheese": "奶酪干",
+        "protein_tofu": "豆腐",
+        "protein_tempeh": "天贝",
+        "protein_paneer": "潘尼尔奶酪",
+        "protein_tuna": "金枪鱼罐头",
+        "protein_edamame": "毛豆",
+        "protein_halloumi": "哈罗米奶酪",
+        "protein_scallops": "扇贝",
+        "protein_sardines": "沙丁鱼",
+        "protein_mussels": "贻贝",
+        "protein_quail_egg": "鹌鹑蛋",
+        "veg_broccoli": "西兰花",
+        "veg_spinach": "菠菜",
+        "veg_tomatoes": "番茄",
+        "veg_cucumber": "黄瓜",
+        "veg_bell_pepper": "甜椒",
+        "veg_lettuce": "生菜",
+        "veg_arugula": "芝麻菜",
+        "veg_celery": "芹菜",
+        "veg_carrot": "胡萝卜",
+        "veg_red_onion": "红洋葱",
+        "veg_mushrooms": "蘑菇",
+        "veg_asparagus": "芦笋",
+        "veg_zucchini": "西葫芦",
+        "veg_eggplant": "茄子",
+        "veg_cauliflower": "花椰菜",
+        "veg_cabbage": "卷心菜",
+        "veg_bok_choy": "小白菜",
+        "veg_kale": "羽衣甘蓝",
+        "veg_kimchi": "泡菜",
+        "veg_olives": "橄榄",
+        "veg_garlic": "大蒜",
+        "veg_green_beans": "四季豆",
+        "veg_peas": "豌豆",
+        "veg_beetroot": "甜菜",
+        "veg_pumpkin": "南瓜",
+        "veg_ginger": "生姜",
+        "veg_okra": "秋葵",
+        "veg_nori": "海苔",
+        "extra_olive_oil": "橄榄油",
+        "extra_butter": "黄油",
+        "extra_avocado": "牛油果",
+        "extra_banana": "香蕉",
+        "extra_blueberries": "蓝莓",
+        "extra_strawberries": "草莓",
+        "extra_apple": "苹果",
+        "extra_peanut_butter": "花生酱",
+        "extra_almonds": "杏仁",
+        "extra_walnuts": "核桃",
+        "extra_honey": "蜂蜜",
+        "extra_cheese": "奶酪",
+        "extra_chia_seeds": "奇亚籽",
+        "extra_sesame_oil": "香油",
+        "extra_soy_sauce": "酱油",
+        "extra_tahini": "芝麻酱",
+        "extra_coconut_milk": "椰奶",
+        "extra_feta": "菲达奶酪",
+        "extra_mozzarella": "马苏里拉",
+        "extra_hummus": "鹰嘴豆泥",
+        "extra_mango": "芒果",
+        "extra_dates": "椰枣",
+        "extra_pineapple": "菠萝",
+        "extra_sesame_seeds": "芝麻",
+        "extra_cashews": "腰果",
+        "extra_pistachios": "开心果",
+        "extra_maple_syrup": "枫糖浆",
+        "extra_lime": "青柠",
+        "extra_miso": "味噌",
+        "extra_sour_cream": "酸奶油",
+        "extra_pomegranate": "石榴",
+        "extra_coconut_oil": "椰子油",
+        "extra_orange": "橙子",
+        "extra_peach": "桃子",
+        "extra_nectarine": "油桃",
+        "extra_watermelon": "西瓜",
+        "extra_mixed_nuts": "混合坚果",
+        "extra_pork_ham": "猪肉火腿",
+        "extra_chicken_ham": "鸡肉火腿"
     ]
 }
 

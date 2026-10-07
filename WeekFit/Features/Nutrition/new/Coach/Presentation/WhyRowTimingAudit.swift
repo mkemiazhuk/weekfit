@@ -64,7 +64,7 @@ enum WhyRowTimingAudit {
         rows: [String],
         input: CoachCopyBuildInput
     ) -> Report {
-        let language = WeekFitUsesRussianLanguage() ? "ru" : "en"
+        let language = WeekFitCurrentLanguageCode()
         return audit(rows: rows.map { ($0, language) }, input: input)
     }
 

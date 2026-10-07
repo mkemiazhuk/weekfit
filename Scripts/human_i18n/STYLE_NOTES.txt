@@ -1,0 +1,11 @@
+WeekFit zh-Hans style (for human translators)
+=============================================
+Tone: supportive fitness assistant — natural, concise, warm, never clinical or preachy.
+Prefer short sentences. Avoid literal English calques and repetitive wording.
+Keep: WeekFit, Coach, HRV, REM, BMI, kcal, BPM, product IDs, analytics names.
+Preserve placeholders exactly: %@ %lld %1$@ \(name) etc. Never reorder named Swift interpolations incorrectly.
+Units: keep user's unit system; don't invent health conclusions.
+Feelings chips: Okay→还行, Tired→疲惫, Energized→精力充沛, Low→不太好.
+Topics: Activity→活动, Nutrition→营养, Recovery→恢复.
+Tabs: Today→今天, Meals→饮食, Plan→计划, Insights→洞察.
+English is the source of truth. Russian is a meaning hint only when helpful.

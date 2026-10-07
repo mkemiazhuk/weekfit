@@ -4,10 +4,19 @@
 # Xcode
 DerivedData/
 .derived-data/
+.derived-data-*/
 .derivedData-*/
 .local/
 .build/
 build/
+
+# Localization / translation scratch (regenerable)
+Scripts/.zh_hans_translation_cache.json
+Scripts/.coach_zh_hans_cache.json
+Scripts/.coach_en_unique.txt
+Scripts/.zh_hans_prose_pending.txt
+Scripts/__pycache__/
+**/__pycache__/
 
 *.xcresult
 

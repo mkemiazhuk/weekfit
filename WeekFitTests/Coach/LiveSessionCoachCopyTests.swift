@@ -142,6 +142,50 @@ final class LiveSessionCoachCopyTests: XCTestCase {
         XCTAssertTrue(english.contains("run") || english.contains("effort") || english.contains("aerobic"))
     }
 
+    func testBreathingNextActionResolvesChineseWithRemainingMinutes() throws {
+        let previous = WeekFitCurrentAppLanguage()
+        WeekFitSetCurrentLanguage(.chineseSimplified)
+        defer { WeekFitSetCurrentLanguage(previous) }
+
+        let input = makeInput(
+            scenario: .duringRecovery,
+            activityType: .breathing,
+            zone: 1,
+            sessionPhase: .during,
+            activityState: .active,
+            durationMinutes: 20,
+            elapsedMinutes: 10
+        )
+        let pack = try XCTUnwrap(CoachCopyRegistry.resolve(input))
+        let next = pack.nextAction.lines.map { $0.resolved(language: .chineseSimplified) }.joined(separator: " ")
+
+        XCTAssertTrue(next.contains("呼吸"), next)
+        XCTAssertTrue(next.contains("10"), next)
+        XCTAssertFalse(next.localizedCaseInsensitiveContains("Stay with the breath"), next)
+        XCTAssertFalse(next.contains("minutes"), next)
+    }
+
+    func testInterpolatedOverrideTemplateFillsChineseCaptures() {
+        let zh = CoachChineseOverrides.resolved(
+            english: "Stay with the breath for another 10 minutes."
+        )
+        XCTAssertEqual(zh, "再保持呼吸10分钟。")
+
+        let soft = CoachChineseOverrides.resolved(
+            english: "Another 8 soft minutes is enough."
+        )
+        XCTAssertEqual(soft, "再轻柔地练8分钟就够了。")
+
+        // Pure-interpolation override keys must not claim unrelated English.
+        let bike = CoachChineseOverrides.resolved(
+            english: "You're on the bike — settle into the ride before increasing your effort."
+        )
+        if let bike {
+            XCTAssertFalse(bike.contains("组合"), bike)
+            XCTAssertTrue(bike.contains("骑") || bike.contains("车"), bike)
+        }
+    }
+
     private func makeWalkInput(zone: Int?) -> CoachCopyBuildInput {
         makeInput(
             scenario: .walkRecoveryAction,
@@ -194,6 +238,7 @@ final class LiveSessionCoachCopyTests: XCTestCase {
         activityState: CoachActivityState,
         dayLoad: CoachDayLoadBand = .fresh,
         durationMinutes: Int = 45,
+        elapsedMinutes: Int = 0,
         recoveryBand: CoachRecoveryBand = .good,
         recoveryPercent: Int = 82,
         sleepHours: Double = 7.5,
@@ -232,6 +277,7 @@ final class LiveSessionCoachCopyTests: XCTestCase {
             sessionPhase: sessionPhase,
             activityState: activityState,
             focusDurationMinutes: durationMinutes,
+            focusSessionElapsedMinutes: elapsedMinutes,
             liveHeartRateZone: zone
         )
     }

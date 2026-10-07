@@ -240,7 +240,8 @@ enum LiveSessionCoachCopy {
             if isWalkLike(input), let cap {
                 return .en(
                     "Come back under \(cap) and walk at a comfortable pace.",
-                    "Вернитесь ниже \(cap) и идите комфортным шагом."
+                    "Вернитесь ниже \(cap) и идите комфортным шагом.",
+                    chinese: "把心率降回 \(cap) 以下，用舒适的步速走。"
                 )
             }
             return mindfulRecoveryEaseOffRecommendation(for: input)
@@ -248,7 +249,8 @@ enum LiveSessionCoachCopy {
             if isWalkLike(input), let cap {
                 return .en(
                     "Stay below \(cap) and walk at a comfortable pace.",
-                    "Держитесь ниже \(cap) и идите комфортным шагом."
+                    "Держитесь ниже \(cap) и идите комфортным шагом.",
+                    chinese: "保持在 \(cap) 以下，用舒适的步速走。"
                 )
             }
             if isWalkLike(input) {
@@ -467,7 +469,8 @@ enum LiveSessionCoachCopy {
         case .breathing:
             return .en(
                 "Breath work is live — quiet, soft, and unhurried.",
-                "Дыхание идёт — тихо, мягко и без спешки."
+                "Дыхание идёт — тихо, мягко и без спешки.",
+                chinese: "呼吸练习进行中——安静、柔和、不着急。"
             )
         default:
             return .en(
@@ -498,7 +501,8 @@ enum LiveSessionCoachCopy {
         case .breathing:
             return .en(
                 "This breath work is getting forced — slow it until it feels calm again.",
-                "Дыхание становится слишком напряжённым — замедлите, пока снова не станет спокойно."
+                "Дыхание становится слишком напряжённым — замедлите, пока снова не станет спокойно.",
+                chinese: "呼吸练得太用力了——放慢，直到重新感到平静。"
             )
         default:
             return .en(
@@ -511,7 +515,7 @@ enum LiveSessionCoachCopy {
     private static func recoveryEasyTeaser(for input: CoachCopyBuildInput) -> CoachBilingualText {
         switch input.activityType {
         case .breathing:
-            return .en("Keep the breath soft.", "Дышите мягко.")
+            return .en("Keep the breath soft.", "Дышите мягко.", chinese: "保持呼吸柔和。")
         case .yoga:
             return .en("Stay soft in the poses.", "Оставайтесь мягкими в позах.")
         case .stretching:
@@ -528,7 +532,8 @@ enum LiveSessionCoachCopy {
         case .breathing:
             return .en(
                 "Keep the breath soft and unforced.",
-                "Дышите мягко, без усилий."
+                "Дышите мягко, без усилий.",
+                chinese: "保持呼吸柔和、不勉强。"
             )
         case .yoga:
             return .en(
@@ -555,7 +560,8 @@ enum LiveSessionCoachCopy {
         case .breathing:
             return .en(
                 "Slow the breath until it feels calm again.",
-                "Замедлите дыхание, пока снова не станет спокойно."
+                "Замедлите дыхание, пока снова не станет спокойно.",
+                chinese: "放慢呼吸，直到重新感到平静。"
             )
         case .yoga:
             return .en(
@@ -582,7 +588,8 @@ enum LiveSessionCoachCopy {
         case .breathing:
             return .en(
                 "Don't force deep breaths or hold if it feels strained.",
-                "Не форсируйте глубокие вдохи и не задерживайте дыхание через силу."
+                "Не форсируйте глубокие вдохи и не задерживайте дыхание через силу.",
+                chinese: "别硬做深呼吸或憋气——如果觉得紧就放松。"
             )
         case .yoga:
             return .en(
@@ -609,7 +616,8 @@ enum LiveSessionCoachCopy {
         case .breathing:
             return .en(
                 "Don't push the pattern — return to an easy natural breath.",
-                "Не давите на паттерн — вернитесь к лёгкому естественному дыханию."
+                "Не давите на паттерн — вернитесь к лёгкому естественному дыханию.",
+                chinese: "别硬撑节奏——回到轻松自然的呼吸。"
             )
         case .yoga, .stretching:
             return .en(
@@ -632,36 +640,45 @@ enum LiveSessionCoachCopy {
         switch input.activityType {
         case .breathing:
             if remaining > 0 {
+                let minutes = minutesPhrase(remaining)
                 return .en(
-                    "Stay with the breath for another \(minutesPhrase(remaining)) minutes.",
-                    "Останьтесь с дыханием ещё \(remaining) мин."
+                    "Stay with the breath for another \(minutes) minutes.",
+                    "Останьтесь с дыханием ещё \(remaining) мин.",
+                    chinese: "再保持呼吸 \(minutes) 分钟。"
                 )
             }
             return .en(
                 "Stay with the breath until the planned time is done.",
-                "Останьтесь с дыханием до конца запланированного времени."
+                "Останьтесь с дыханием до конца запланированного времени.",
+                chinese: "保持呼吸，直到计划时间结束。"
             )
         case .yoga, .stretching:
             if remaining > 0 {
+                let minutes = minutesPhrase(remaining)
                 return .en(
-                    "Another \(minutesPhrase(remaining)) soft minutes is enough.",
-                    "Ещё \(remaining) мягких минут достаточно."
+                    "Another \(minutes) soft minutes is enough.",
+                    "Ещё \(remaining) мягких минут достаточно.",
+                    chinese: "再轻柔地练 \(minutes) 分钟就够了。"
                 )
             }
             return .en(
                 "Stay soft until the planned time is done.",
-                "Оставайтесь мягкими до конца запланированного времени."
+                "Оставайтесь мягкими до конца запланированного времени.",
+                chinese: "保持轻柔，直到计划时间结束。"
             )
         default:
             if remaining > 0 {
+                let minutes = minutesPhrase(remaining)
                 return .en(
-                    "Another \(minutesPhrase(remaining)) easy minutes is enough.",
-                    "Ещё \(remaining) лёгких минут достаточно."
+                    "Another \(minutes) easy minutes is enough.",
+                    "Ещё \(remaining) лёгких минут достаточно.",
+                    chinese: "再轻松地练 \(minutes) 分钟就够了。"
                 )
             }
             return .en(
                 "Stay easy until the planned time is done.",
-                "Держите легко до конца запланированного времени."
+                "Держите легко до конца запланированного времени.",
+                chinese: "保持轻松，直到计划时间结束。"
             )
         }
     }
@@ -736,17 +753,31 @@ enum LiveSessionCoachCopy {
     private static func enduranceSubject(
         _ input: CoachCopyBuildInput,
         en: String,
-        ru: String
+        ru: String,
+        chinese: String? = nil
     ) -> CoachBilingualText {
+        let zh = chinese ?? CoachChineseOverrides.resolved(english: en) ?? en
         switch input.activityType {
         case .cycling:
-            return .en("You're on the bike — \(lowercaseFirst(en))", "Вы на велосипеде — \(lowercaseFirst(ru))")
+            return .en(
+                "You're on the bike — \(lowercaseFirst(en))",
+                "Вы на велосипеде — \(lowercaseFirst(ru))",
+                chinese: "你在骑行中——\(lowercaseFirst(zh))"
+            )
         case .running:
-            return .en("You're in the run — \(lowercaseFirst(en))", "Вы в пробежке — \(lowercaseFirst(ru))")
+            return .en(
+                "You're in the run — \(lowercaseFirst(en))",
+                "Вы в пробежке — \(lowercaseFirst(ru))",
+                chinese: "你在跑步中——\(lowercaseFirst(zh))"
+            )
         case .swimming:
-            return .en("You're in the water — \(lowercaseFirst(en))", "Вы в бассейне — \(lowercaseFirst(ru))")
+            return .en(
+                "You're in the water — \(lowercaseFirst(en))",
+                "Вы в бассейне — \(lowercaseFirst(ru))",
+                chinese: "你在游泳中——\(lowercaseFirst(zh))"
+            )
         default:
-            return .en(en, ru)
+            return .en(en, ru, chinese: zh)
         }
     }
 

@@ -79,14 +79,52 @@ final class LiveHeartRateCoachTests: XCTestCase {
             ),
             .liveCritical
         )
+        // During scenarios must keep live chrome even when conversational energy is low.
         XCTAssertEqual(
             CoachConversationEnergyPolicy.adjustedSemanticColor(
                 base: .live,
                 energy: .low,
                 scenario: .duringRecovery
             ),
+            .live
+        )
+        // Walk keys are shared across pre/during — only demote when not live.
+        XCTAssertEqual(
+            CoachConversationEnergyPolicy.adjustedSemanticColor(
+                base: .live,
+                energy: .low,
+                scenario: .walkLightDay,
+                sessionIsLive: false
+            ),
             .recovery
         )
+        XCTAssertEqual(
+            CoachConversationEnergyPolicy.adjustedSemanticColor(
+                base: .live,
+                energy: .low,
+                scenario: .walkLightDay,
+                sessionIsLive: true
+            ),
+            .live
+        )
+    }
+
+    func testWalkDuringShowsLiveChromeBeforeFirstHeartRate() {
+        let live = CoachPresentationResolver.semanticColor(
+            for: .walkLightDay,
+            liveHeartRateZone: nil,
+            sessionIsLive: true
+        )
+        XCTAssertEqual(live, .live)
+        XCTAssertTrue(live.isLiveSessionChrome)
+
+        let pre = CoachPresentationResolver.semanticColor(
+            for: .walkLightDay,
+            liveHeartRateZone: nil,
+            sessionIsLive: false
+        )
+        XCTAssertEqual(pre, .recovery)
+        XCTAssertFalse(pre.isLiveSessionChrome)
     }
 
     func testMissingAgeFallsBackTo190MaxHeartRate() {

@@ -1,0 +1,616 @@
+english,russian_hint,chinese,status,notes
+ACTIVITY,АКТИВНОСТЬ,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+ACTIVITY LOAD,НАГРУЗКА АКТИВНОСТИ,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+ACTIVITY LOG,Журнал Активности,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+ACTIVITY SCORE,ОЦЕНКА АКТИВНОСТИ,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+ACTIVITY TIMELINE,ЛЕНТА АКТИВНОСТИ,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity Context,Контекст активности,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity Details,Детали активности,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity Reminders,Напоминания об активности,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity Rings,Кольца активности,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity base is building,База активности формируется,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity base is fading,База активности ослабевает,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Activity can go above 100% when your movement, workouts, exercise minutes, or daily activity go beyond your current activity goal.","Активность может превышать 100%, когда движение, тренировки, минуты упражнений или дневная активность превышают текущую цель активности.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity context,Контекст активности,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity data is shown from Apple Health when available.,"Данные активности показываются из Apple Health, когда они доступны.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity is rebuilding but needs consistency,"Активность восстанавливается, но нуждается в стабильности",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Activity is up, but efficiency is dropping","Активность выросла, но эффективность падает",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity load,Нагрузка активности,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity load increased versus the first half of the month,Нагрузка активности выросла относительно первой половины месяца,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Activity load is high and energy intake is behind. Add protein and easy carbs now, then keep intensity controlled.","Нагрузка высокая, а энергии не хватает. Добавьте белок и легкие углеводы, затем держите интенсивность под контролем.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity load stayed predictable,Нагрузка активности оставалась предсказуемой,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity load was lighter than earlier in the month,"Нагрузка активности была легче, чем раньше в этом месяце",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity log,Журнал активности,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity needs recovery overlap before sustainability is clear.,"Активности нужно пересечение с восстановлением, чтобы понять устойчивость.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity review is building,Обзор активности формируется,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity score,Оценка активности,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Activity shows how much you have moved compared to your current goal. Walks, workouts, exercise minutes, and Apple Watch activity can all move this number.","Активность показывает, сколько вы двигались относительно текущей цели. Прогулки, тренировки, минуты упражнений и активность Apple Watch могут менять это число.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity suggestions,Активность,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity timeline,Лента активности,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity totals are shown from Apple Health.,Итоги активности берутся из Apple Health.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Activity window closed. Let's review %@ when you are ready to adjust your macros.,"Окно активности закрыто. Вернемся к %@, когда будете готовы скорректировать макроэлементы.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Allow Workout Routes in Apple Health to see the map.,"Разрешите «Маршруты тренировок» в «Здоровье», чтобы видеть карту.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Allow workouts, sleep, heart data and steps to unlock smarter guidance.","Разрешите тренировки, сон, пульс и шаги, чтобы открыть более умные рекомендации.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+COACH,ТРЕНЕР,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Calories adjust after real activity.,Калории корректируются после реальной активности.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Calories aimed for balance,Калории под баланс,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Calories aimed for fat loss,Калории под снижение веса,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Calories aimed for muscle gain,Калории под набор,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Calories burned, workouts and how the day is stacking.","Сожжённые калории, тренировки и накопленная нагрузка.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Calories update.,Калории обновляются.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Calories → Adjusted,Калории → Скорректированы,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Cancelled,Отменена,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach Debug,Отладка тренера,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach Logging,Логи тренера,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Coach adapts throughout the day based on your activity, recovery, sleep, hydration, meals, and routines. Suggestions may change as your day changes.","Тренер адаптируется в течение дня на основе активности, восстановления, сна, гидратации, питания и рутин. Советы могут меняться по мере изменения дня.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach adapts with your day.,Тренер идёт за вашим днём.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach adjusted %lld item this morning,Тренер изменил %lld пункт этим утром,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach adjusted %lld items this morning,Тренер изменил %lld пунктов этим утром,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach adjusted your day,Тренер скорректировал ваш день,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach adjusts training and nutrition when your recovery changes.,"Тренер подстраивает тренировки и питание, когда меняется восстановление.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Coach considers your recovery, activity, nutrition, goals and plans to suggest the most useful next step.","Тренер учитывает восстановление, активность, питание, цели и планы — и предлагает самый полезный следующий шаг.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach explains the day.,Тренер объясняет день.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach explains what your signals mean — and how to respond.,"Тренер объясняет, что означают сигналы — и как на них ответить.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach guides today,Тренер ведёт сегодня,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach insight,Подсказка тренера,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach is ready with a first step.,Тренер готов с первым шагом.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach is typing,Coach печатает,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Coach looks at what is happening now and suggests what may help next — before training, during activity, after workouts, after sauna, or when recovery looks pressured.","Тренер смотрит на то, что происходит сейчас, и предлагает следующий полезный шаг — до тренировки, во время активности, после тренировки, после сауны или когда восстановление под давлением.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Coach looks at your activity, hydration, recovery, timing, and routines. After light movement or recovery activities, it may suggest simple actions like hydration or rest.","Тренер смотрит на активность, воду, восстановление, время и рутины. После легкого движения или восстановления он может предложить простые действия вроде воды или отдыха.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Coach reads recovery, activity, nutrition and plans — then gives a clear next step, not just more numbers.","Тренер учитывает восстановление, активность, питание и планы — и даёт ясный следующий шаг, а не ещё цифры.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Coach reads recovery, activity, nutrition, plans and goals — then recommends your best next step.","Тренер учитывает восстановление, активность, питание, планы и цели — и предлагает лучший следующий шаг.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach recommendation,рекомендация Тренера,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach recommendation: %@,Рекомендация тренера: %@,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach requires confirmation for **%@** to update your active metabolic and energy expenditure baseline.,"Тренеру нужно подтверждение для **%@**, чтобы обновить активную метаболическую базу и расход энергии.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach tells you what matters next.,"Тренер говорит, что важно сейчас.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach updates.,Тренер обновляется.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach will adapt around your plan.,Тренер подстроится под ваш план.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach will build your plan around it.,Тренер построит план вокруг неё.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach will keep adapting as new Health data arrives.,"Тренер будет подстраиваться, когда приходят новые данные Health.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach will keep adapting from your goal.,"Тренер будет подстраиваться, опираясь на вашу цель.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach will keep today balanced and steady.,Тренер будет держать сегодня сбалансированным.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach will keep today lean and clear.,Тренер будет держать сегодня лёгким и ясным.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach will protect fuel for training and recovery.,Тренер защитит топливо для тренировок и восстановления.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach will settle as Health syncs.,"Тренер уточнится, когда Health синхронизируется.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Coach writes above. Log drinks, food, or start activity below.","Тренер пишет сверху. Ниже — напитки, еда или старт активности.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach writes here.,Тренер пишет сюда.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach — next step when the day shifts,"Тренер — следующий шаг, когда день меняется",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coach-aware,С учётом Тренера,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Coaching,Коучинг,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Coaching insights, nutrition suggestions, recovery guidance, reminders, activity status, and metric summaries are not a substitute for advice from a doctor, dietitian, physiotherapist, or other qualified professional.","Коучинговые инсайты, рекомендации по питанию, советы по восстановлению, напоминания, статусы активности и сводки метрик не заменяют консультацию врача, диетолога, физиотерапевта или другого квалифицированного специалиста.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Continue calmly,Продолжайте спокойно,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Continue challenge,Продолжить челлендж,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Continue hydration and complete your planned meal before the session.,Продолжайте пить воду и завершите запланированный прием пищи перед тренировкой.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Continue in your normal rhythm.,Продолжайте в привычном ритме.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Continue into WeekFit without an email account.,Продолжить в WeekFit без входа по email.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Continue into your evening routine,Продолжайте вечерний режим,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Continue normal meals,Продолжайте обычные приемы пищи,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Continue with Apple,Продолжить с Apple,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Continue with Apple Health,Продолжить с Apple Health,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Continue with breathing,Продолжайте с дыханием,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Continue without account,Продолжить без аккаунта,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Continue your WeekFit journey.,Продолжайте свой путь с WeekFit.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+DONE,ГОТОВО,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Good afternoon, %@.","Добрый день, %@.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Good afternoon.,Добрый день.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Good evening, %@.","Добрый вечер, %@.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Good evening.,Добрый вечер.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Good morning anchor,Хороший утренний якорь,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Good morning, %@.","Доброе утро, %@.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Good morning.,Доброе утро.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+How are your Activity and Nutrition targets calculated?,Как рассчитываются цели Активности и Питания?,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Insights becomes useful once sleep, recovery, food, drink and activity have enough recent history.","Инсайты становятся полезными, когда у сна, восстановления, еды, напитков и активности накопится достаточно недавней истории.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Insights needs a cleaner 30-day pattern before naming a stronger driver.,"Инсайтам нужен более чёткий 30-дневный паттерн, прежде чем назвать более сильный фактор.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Insights needs a few real logged days before it can compare patterns.,"Инсайтам нужно несколько реальных записанных дней, прежде чем сравнивать паттерны.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Insights needs more overlapping sleep, recovery, training and nutrition data before ranking stories.","Инсайтам нужно больше пересекающихся данных о сне, восстановлении, тренировках и питании перед ранжированием историй.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Insights needs more recent recovery data before comparing the last 7 days with your baseline.,"Инсайтам нужно больше недавних данных о восстановлении, прежде чем сравнивать последние 7 дней с базой.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Loading,Загрузка,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Loading your library,Загружаем библиотеку,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Meals gives you a high-level view of calories, protein, carbs, and fats based on ingredients and portions. It helps you understand meal balance without making food tracking too complicated.","Блюда дает общий взгляд на калории, белки, углеводы и жиры по ингредиентам и порциям. Это помогает понимать баланс блюда без слишком сложного трекинга еды.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Meals lets you create your own dishes, combine ingredients, and plan nutrition around workouts, recovery, and daily routines. WeekFit gives estimates for calories, protein, carbs, and fats to help you stay aware of your nutrition without making tracking feel overwhelming.","Блюда позволяет создавать собственные блюда, комбинировать ингредиенты и планировать питание вокруг тренировок, восстановления и рутины. WeekFit дает оценки калорий и макроэлементов.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Meals • Snacks,Блюда • Перекусы,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+NUTRITION,ПИТАНИЕ,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+NUTRITION INSIGHT,ИНСАЙТ ПО ПИТАНИЮ,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+NUTRITION PATTERN,ПАТТЕРН ПИТАНИЯ,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+NUTRITION SCORE,ОЦЕНКА ПИТАНИЯ,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Next Meal Suggestion,Следующее предложение по еде,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Next meal suggestion,Идея для следующего приема пищи,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition Balance,Баланс питания,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition Data Needed,Нужны данные о питании,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition Details,Детали питания,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition Goal,Цель питания,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition Insight,Инсайт питания,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition Per,Питание за,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition Quality,Качество питания,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition Signal,Сигнал питания,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Nutrition appears after you log a meal or add it in Planner and confirm it as completed. If nothing was logged or confirmed, the values stay at zero.","Питание появляется после того, как вы записали еду или добавили ее в Планировщик и подтвердили выполнение. Если ничего не записано и не подтверждено, значения остаются нулевыми.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition basis,Основание питательности,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition became more reliable this month.,Питание стало надёжнее в этом месяце.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition consistency is improving,Стабильность питания улучшается,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition details,Детали питания,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition has too few logged days to explain recovery changes. It should stay supporting context until logging is steadier.,"Слишком мало записанных дней питания, чтобы объяснить изменения восстановления. Пока записи не станут стабильнее, это лишь контекст.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition imported. Review before saving.,Питательность импортирована. Проверьте перед сохранением.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition insight,Инсайт питания,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition insight unavailable,Инсайт по питанию недоступен,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition is becoming consistent,Питание становится стабильным,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition is behind for the current context.,Для текущего контекста питания маловато.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition is behind for this point of the day. Add protein and simple fuel to support recovery and stable energy.,"Для этого времени дня питания маловато. Добавьте белок и простую еду, чтобы телу было легче восстановиться.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition is behind the current day demand.,Питание отстает от требований дня.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition is behind.,Питание отстает.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition is improving but still limited,"Питание улучшается, но всё ещё ограничено",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition is in balance,Питание в балансе,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition is strong enough to support recovery and training.,Питание достаточно сильное для поддержки восстановления и тренировок.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition is strong enough to support training.,Питание достаточно сильное для поддержки тренировок.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition is supporting recovery insight,Питание поддерживает инсайты по восстановлению,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition label,Этикетка,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition patterns are not clear yet,Паттерны питания пока неясны,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition per serving,Питательность на порцию,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition quality held while inputs softened.,"Качество питания сохранилось, пока данные ослабли.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition review is building,Обзор питания формируется,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Nutrition shows your food progress for the day. It uses meals you log or complete and gives a high-level view of calories, protein, carbs, and fats.","Питание показывает прогресс питания за день. Оно использует записанные или выполненные приемы пищи и дает общий взгляд на калории, белки, углеводы и жиры.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition stayed strong despite softer inputs,Питание оставалось сильным несмотря на более слабые данные,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition still has a limiter before harder training.,Питание всё ещё имеет ограничитель перед более тяжёлыми тренировками.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition support,Поддержка питания,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition supports training,Питание поддерживает тренировки,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition values are estimates based on logged meals.,Показатели питания рассчитаны по записанным приемам пищи.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition values are per 100g,Пищевая ценность на 100 г,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition values are too high.,Значения питания слишком высокие.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Nutrition values cannot be negative.,Значения питания не могут быть отрицательными.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Open Meals Library,Открыть меню,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+PLAN CHECK,ПРОВЕРКА ПЛАНА,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan %@ at %@,Запланировать %@ в %@,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan & Meals,План и еда,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan & Meals — prepare the days ahead,План и еда — готовить дни вперёд,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan 30-60g carbs/hour if it runs long,"Если затянется, планируйте 30–60 г углеводов в час",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan Adjustment,Корректировка плана,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan Challenge,Пересмотр плана,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan Recovery,Запланировать восстановление,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan a realistic week,Планируйте реалистичную неделю,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan adjustment,Корректировка плана,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan ahead.,Планируйте вперёд.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan ahead. Build meals that fit.,Планируйте вперёд. Собирайте еду под цель.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan and Meals back up Coach.,План и Питание поддерживают Тренера.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan before the day begins.,Планируйте до начала дня.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Plan before, log after","Планируйте до, логируйте после",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan challenge,Пересмотр плана,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan execution,Выполнение плана,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Plan helps you organize things ahead of time. Logging is for things that already happened during the day — like meals, coffee, water, workouts, recovery, or sleep routines.","План помогает заранее организовать дела. Логирование — для того, что уже произошло в течение дня: еды, кофе, воды, тренировок, восстановления или рутин сна.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Plan helps you organize your upcoming week ahead. Today reacts to what is actually happening during the day. Coach then adapts suggestions based on your activity, recovery, meals, hydration, sleep, and timing.","План помогает заранее организовать неделю. Сегодня реагирует на то, что реально происходит в течение дня. Тренер адаптирует советы с учетом активности, восстановления, питания, воды, сна и времени.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Plan is for organizing your day or week ahead. Add workouts, meals, hydration, recovery, sleep, and routines before they happen.","План нужен, чтобы заранее организовать день или неделю. Добавляйте тренировки, приемы пищи, воду, восстановление, сон и рутины до того, как они произойдут.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan my day,Спланировать день,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan nutrition around workouts,Планируйте питание вокруг тренировок,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan or recovery data changed. Tap to refresh.,"План или данные восстановления изменились. Нажмите, чтобы обновить.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan protein after training,Запланируйте белок после тренировки,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Plan shows what is coming, what is happening now, and what was already completed, missed, or synced from Apple Health.","План показывает, что впереди, что происходит сейчас и что уже выполнено, пропущено или синхронизировано из Apple Health.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan the days ahead.,Планируйте дни вперёд.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Plan workouts and recovery. Build meals once, reuse them anytime.",Планируйте тренировки и восстановление. Соберите блюда один раз — используйте снова.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan your week,Спланируй неделю,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Plan your week before it happens, and build meals that fit your goals.",Планируйте неделю заранее и собирайте блюда под свои цели.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Plan your week. Use Coach for real-time guidance.,Планируйте неделю. Используйте Тренера для рекомендаций в реальном времени.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Planned,Запланировано,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Planned activity,Запланированная активность,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Planned activity is coming up.,Скоро запланирована активность.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Planned for %@,Запланировано на %@,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Planned load,Запланированная нагрузка,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Planning a time is optional. Completing a task means tapping “I did it”.,Назначить время можно по желанию. Завершение — это «Я сделал».,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Premium,Premium,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein Bar,Протеиновый батончик,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein Consistency,Стабильность белка,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein Support Needed,Нужен белок,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein at dinner supports overnight repair after yesterday’s effort.,Белок на ужин помогает восстановлению за ночь после вчерашней нагрузки.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein can help next.,Следующим шагом поможет белок.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein catch-up,Добор белка,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein consistency is below the level needed to support adaptation.,"Стабильность белка ниже уровня, необходимого для адаптации.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein consistency is limiting recovery insight,Стабильность белка ограничивает инсайты по восстановлению,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein consistency is still below demand.,Стабильность белка всё ещё ниже потребности.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein consistency is still the clearest nutrition opportunity.,Стабильность белка — всё ещё самая явная возможность в питании.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein consistency is the strongest nutrition signal in this trend.,Стабильность белка — самый сильный сигнал питания в этом тренде.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein consistency unlocks better recovery context.,Стабильность белка открывает лучший контекст восстановления.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein for recovery,Белок для восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein history is needed to judge recovery support.,"Нужна история белка, чтобы оценить поддержку восстановления.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Protein intake is progressing well.
+Fiber and healthy fats remain below overall nutrition progress.","Белок набирается хорошо.
+Клетчатка и полезные жиры пока ниже общего прогресса питания.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein intake is progressing well.\nFiber and healthy fats remain below overall nutrition progress.,"Белок идет хорошо.
+Клетчатка и полезные жиры пока ниже общего прогресса питания.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein intake looks strong. Fiber remains below target.,Белок выглядит сильным. Клетчатка остается ниже цели.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein is behind.,Белка не хватает.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein is behind. Add protein to support repair and stable energy.,"Белка маловато. Добавьте белок, чтобы телу было из чего восстанавливаться и держать энергию.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein is mainly based on body weight and your selected goal. Fats use a percentage of your calorie target. Carbs are calculated from the remaining calories after protein and fats.,Белок в основном зависит от веса тела и выбранной цели. Жиры берутся как доля от цели калорий. Углеводы рассчитываются из оставшихся калорий после белков и жиров.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein is progressing well. Healthy fats remain lower.,Белок идет хорошо. Полезные жиры остаются ниже.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein is reliable enough to support adaptation.,Белок достаточно стабилен для поддержки адаптации.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein is still below today's target.,Белок все еще ниже сегодняшней цели.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein is still well below today's target.,Белок все еще заметно ниже сегодняшней цели.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein prioritized,Белок в приоритете,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein remains the opportunity,Белок остаётся возможностью,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein signal missing,Сигнал белка отсутствует,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein target,Цель по белку,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein target is behind. Add clean protein sources to your next meal.,Белка пока не хватает. Добавьте простой источник белка в следующий прием пищи.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein target reached,Цель по белку достигнута,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein target was hit on %lld of the last 7 logged days.,Цель по белку достигнута %lld из последних 7 записанных дней.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein was on target %lld days this week.,Цель по белку достигнута %lld дней на этой неделе.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Protein-focused start,Белковый старт дня,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Proteins,Белки,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+RECOVERY,ВОССТАНОВЛЕНИЕ,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+RECOVERY BREAKDOWN,Разбор восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+RECOVERY CHALLENGE,RECOVERY CHALLENGE,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+RECOVERY CLUE,ПОДСКАЗКА ПО ВОССТАНОВЛЕНИЮ,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+RECOVERY RESPONSE,РЕАКЦИЯ ВОССТАНОВЛЕНИЯ,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+RECOVERY SCORE,ОЦЕНКА ВОССТАНОВЛЕНИЯ,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery %lld%%,Восстановление %lld%%,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery %lld%% • %@,Восстановление %lld%% • %@,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery %lld%% • %@ %@,Восстановление %lld%% • %@ %@,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery 61%,Восстановление 61%,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery Challenge summary,Итоги Recovery Challenge,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery Challenge · %1$lld of %2$lld,Recovery Challenge · %1$lld из %2$lld,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery Challenge · Day %1$lld of %2$lld,Recovery Challenge · День %1$lld из %2$lld,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery Challenge. %@. Done today.,Recovery Challenge. %@. Сегодня выполнено.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery Challenge. %@. View today’s step.,Recovery Challenge. %@. Смотреть шаг на сегодня.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery Challenge. 7 days. One action a day.,Recovery Challenge. 7 дней. Одно действие в день.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery Challenge. View your summary.,Recovery Challenge. Смотреть итоги.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery Consistency,Стабильность восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery Day,День восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery Details,Детали восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery Effect,Эффект восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery First,Сначала восстановление,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery Plateau,Плато восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery Score,Показатель восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery Suggestions,Советы по восстановлению,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery Support,Поддержка восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery Under Pressure,Восстановление под нагрузкой,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery Week,Неделя восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery activities should reinforce restraint, not create another recovery task.","Восстановительные активности должны помогать сдержанности, а не создавать еще одну задачу.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery and load look balanced enough to keep what you planned.,"Восстановление и нагрузка достаточно сбалансированы, чтобы оставить запланированное.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery and sleep are strong, and no limiter needs intervention.","Сон и восстановление выглядят сильными, срочного вмешательства не нужно.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery and sleep are strong.,Сон и восстановление выглядят сильными.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery and workout reminders,Напоминания о восстановлении и тренировках,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery asks for a lower ceiling today, and tomorrow gives room to absorb work. Keep the day restorative — you do not need a replacement session.","Сегодня телу нужен более спокойный темп, а завтра есть пространство усвоить нагрузку. Пусть день восстановления сделает своё дело — отдельная «замена» не нужна.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery became more predictable,Восстановление стало предсказуемее,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery block,Блок восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery block complete,Блок восстановления завершен,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery capacity is low. Reduce workout intensity and sleep earlier tonight.,Ресурс низкий. Снизьте интенсивность тренировки и ложитесь спать раньше.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery carbs included,Есть углеводы для восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery changes by %lld points based on hard-day hydration.,Восстановление меняется на %lld баллов в зависимости от гидратации в тяжёлые дни.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery comes first.,Сейчас важнее восстановиться.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery compares last night to your recent baseline. This is an estimate, not a medical diagnosis.","Оценка восстановления учитывает сон, ВСР и пульс в покое.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery complete,Восстановление завершено,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery consistency is the strongest signal in the 30-day pattern.,Стабильность восстановления — самый сильный сигнал в 30-дневном паттерне.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery context,Контекст восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery continues while you sleep,"Пока вы спите, тело продолжает восстанавливаться",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery day does not need target chasing.,В день восстановления не нужно гоняться за целями.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery day is on track,День восстановления идет по плану,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery day recommended,Завтра — день восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery decline is most strongly associated with reduced sleep duration.,Снижение восстановления сильнее всего связано с уменьшением длительности сна.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery decline is most strongly associated with training load.,Снижение восстановления сильнее всего связано с тренировочной нагрузкой.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery decreases.,Восстановление снижается.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery details,Детали восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery dropped since morning.,Восстановление снизилось с утра.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery drops most after short sleep,Восстановление сильнее всего падает после короткого сна,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery effect,Эффект восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery factors,Факторы восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery finished strong at %lld%%.,Восстановление завершилось сильным на %lld%%.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery fuel,Еда после нагрузки,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery has enough history and is holding steady, so changes in sleep or training can be interpreted more clearly.","Достаточно истории восстановления, и оно держится стабильно — изменения сна или тренировок можно интерпретировать яснее.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery has enough history to be useful, but it is not yet stable enough to ignore.","Истории восстановления достаточно для пользы, но оно ещё недостаточно стабильно, чтобы его игнорировать.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery has rebounded %lld points versus baseline.,Восстановление выросло на %lld баллов относительно базового уровня.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery held near baseline,Восстановление удержалось около базового уровня,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery helps you see whether your body may need an easier day. Sleep, recent workouts, daily load, HRV, resting heart rate, and recovery routines can all affect it.","Восстановление помогает понять, нужен ли телу более легкий день. На него влияют сон, последние тренировки, дневная нагрузка, HRV, пульс в покое и восстановительные рутины.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery history is needed before changing load.,"Нужна история восстановления, прежде чем менять нагрузку.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery history is still building,История восстановления ещё формируется,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery improved earlier, then flattened.","Восстановление улучшилось раньше, затем выровнялось.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery improved, then stopped progressing.","Восстановление улучшилось, затем перестало прогрессировать.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery in progress,Восстановление идет,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is absorbing a higher training load.,Восстановление поглощает более высокую тренировочную нагрузку.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is absorbing high load,Восстановление поглощает высокую нагрузку,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is absorbing your workload,Восстановление поглощает вашу нагрузку,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is already strong enough that the next useful lesson is which habit keeps it stable when training changes.,Восстановление уже достаточно сильное — следующий полезный урок: какая привычка держит его стабильным при изменении тренировок.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is at %lld%%.,Восстановление — %lld%%.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery is building.
+Don't skip protein tonight.","Восстановление набирает.
+Не пропускайте белок сегодня.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is down %lld points versus baseline.,Восстановление ниже на %lld баллов относительно базового уровня.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is down %lld points while sleep is below target.,"Восстановление ниже на %lld баллов, пока сон ниже цели.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery is excellent.
+Today is a great day to train.","Восстановление отличное.
+Сегодня отличный день для тренировки.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is excellent. Bank it for tomorrow.,Восстановление отличное. Сохраните его на завтра.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is excellent. You're ready for intensity.,Восстановление отличное. Можно интенсивность.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery is good, but the day is still stacking load.","Восстановление хорошее, но день уже накапливает нагрузку.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is high.,Восстановление высокое.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is holding despite short sleep,Восстановление держится несмотря на короткий сон,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery is holding, but the evening session still needs protection.","Восстановление в норме, но вечернюю сессию всё ещё стоит беречь.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery is holding, but tonight still needs care.","Восстановление в норме, но вечер всё ещё требует внимания.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is improving,Восстановление улучшается,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is improving but needs support,"Восстановление улучшается, но нуждается в поддержке",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is keeping up with training,Восстановление успевает за тренировками,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is limited at %@%% after %@h sleep.,Восстановление ограничено: %@%% после %@ ч сна.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is limited at %@%%.,Восстановление ограничено: %@%%.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is limited. Bias toward quality over volume.,Восстановление ограничено. Качество важнее объёма.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is limited. Prioritize sleep tonight.,Восстановление ограничено. Приоритет — сон сегодня.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is losing momentum,Восстановление теряет импульс,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is low and several physiological signals are outside baseline. Prioritize recovery today.,"Восстановление низкое, и несколько физиологических сигналов вне базового уровня. Сегодня лучше сделать приоритетом восстановление.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery is lower, so today’s load should be protected.",Восстановление ниже — сегодняшнюю нагрузку лучше защитить.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is missing a nutrition signal,Восстановлению не хватает сигнала питания,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is moderate at %@%% after %@h sleep.,Восстановление умеренное: %@%% после %@ ч сна.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is moderate at %@%%.,Восстановление умеренное: %@%%.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is moderate. Keep intensity controlled until signals improve.,"Восстановление умеренное. Держите интенсивность под контролем, пока сигналы не улучшатся.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is not keeping up with load,Восстановление не успевает за нагрузкой,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is rebounding,Восстановление отскакивает,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is soft while training load is elevated.,"Восстановление слабое, пока тренировочная нагрузка повышена.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is soft — begin with an easy protein-forward breakfast and keep portions gentle.,Восстановление мягкое — начните с лёгкого белкастого завтрака и не перегружайте порции.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is solid. Keep the session clean.,Восстановление уверенное. Держите сессию чистой.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is solid. Protect sleep tonight.,Восстановление уверенное. Защитите сон сегодня.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is stable but not high,"Восстановление стабильно, но не высокое",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is starting to lose support,Восстановление начинает терять поддержку,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is strong. Today is open.,Восстановление сильное. День открыт.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery is sufficient for today's %@. The biggest determinant of performance now is preparation, not readiness.","Ресурса достаточно для сегодняшнего %@. Теперь результат больше зависит от подготовки, а не от готовности.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is suppressed enough that the useful move is restraint: keep the next block easy and make the basics boringly consistent.,"Ресурс достаточно снижен, и самый полезный ход — сдержанность: следующий блок держите легким, а базу — скучно стабильной.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is the check on whether the current training rhythm is sustainable.,"Восстановление показывает, устойчив ли текущий ритм тренировок.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is the dominant limiter now.,Сейчас главный ограничитель — восстановление.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is the limiter today because tomorrow asks for more. I would make the rest of the day quieter instead of borrowing from tomorrow.,"Сегодня ограничитель — восстановление, потому что завтра потребует больше. Остаток дня я бы сделал тише, а не занимал силы у завтра.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is the limiter.,Восстановление ограничивает нагрузку.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is the priority,Сейчас важнее восстановиться,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is the priority now.,Сейчас важнее восстановиться.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is the priority tonight,Сегодня вечером главное — восстановиться,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is the signal to watch,"Восстановление — сигнал, за которым стоит следить",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery is your most stable signal,Восстановление — ваш самый стабильный сигнал,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery itself is the clearest changed signal.,Само восстановление — самый явный изменившийся сигнал.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery leads today,Сегодня главное — восстановление,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery looks ready for tomorrow.,Восстановление выглядит готовым к завтра.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery looks resilient,Восстановление выглядит устойчивым,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery looks solid, with one or two signals still holding the score back.","Восстановление выглядит хорошо, но один-два сигнала еще сдерживают оценку.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery looks strong for today.,Восстановление выглядит сильным на сегодня.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery looks strong this morning. Build the basics calmly so the first movement block stays comfortable.,"Утром восстановление выглядит сильным. Соберите базу спокойно, чтобы первый блок движения остался комфортным.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery looks strong this morning. Keep hydration steady and follow your normal meal timing.,Утром восстановление выглядит сильным. Пейте ровно и ешьте в обычное время.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery match unknown,Соответствие восстановлению неизвестно,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery matched demand,Восстановление соответствует нагрузке,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery matters as much as training. Try not to stack too many hard sessions without an easier day.,"Восстановление так же важно, как тренировки. Не ставьте слишком много тяжелых тренировок подряд без более легкого дня.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery matters most now,Сейчас важнее восстановиться,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery metrics are positive, however sleep duration was shorter than ideal for a %@ %@.","Показатели хорошие, но сна было меньше, чем хотелось бы перед %@ %@.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery mode is easier to maintain,Режим восстановления легче удерживать,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery movement is close, but the coaching need is restraint.","Скоро восстановительное движение, но главный совет — сдержанность.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery movement is planned, but there is no urgent coaching action.","Восстановительное движение запланировано, но срочного действия не нужно.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery movement is the main activity context.,Главный контекст активности — восстановительное движение.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery needs attention,Восстановлению нужно внимание,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery needs fuel.,Для восстановления нужна еда.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery needs more room before the next progression.,Восстановлению нужно больше запаса перед следующим прогрессом.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery needs support,Восстановлению нужна поддержка,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery needs support today. Keep activity controlled and focus on calm pacing.,Сегодня телу нужно чуть больше заботы. Держите активность под контролем и темп спокойным.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery nutrition,Еда для восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery pick,Для восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery plateau detected,Обнаружено плато восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery priority,Приоритет восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery protection,Дайте себе восстановиться,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery quality held while signals softened.,"Качество восстановления сохранилось, пока сигналы ослабли.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery quality tonight will influence tomorrow more than additional exercise.,"Качество восстановления этой ночью повлияет на завтра сильнее, чем дополнительная тренировка.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery reacts to sleep, workouts, stress, hydration, recovery activities, and overall daily load.","Восстановление реагирует на сон, тренировки, стресс, гидратацию, восстановительные активности и общую дневную нагрузку.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery reflects overall readiness. Stress Index highlights current physiological strain.,Восстановление отражает общую готовность. Индекс нагрузки показывает текущую физиологическую нагрузку.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery remains healthy but is declining,"Восстановление остаётся хорошим, но снижается",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery remains resilient,Восстановление остаётся устойчивым,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery remains stable,Восстановление остаётся стабильным,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery remains strong at %@%% after %@h sleep.,Восстановление остается сильным: %@%% после %@ ч сна.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery remains strong at %@%%.,Восстановление остается сильным: %@%%.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery resilience is improving,Устойчивость восстановления улучшается,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery response,Отклик восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery review is building,Обзор восстановления формируется,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery score,Оценка восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery session,Восстановительная тренировка,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery session finished?,Восстановление завершено?,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery sets the ceiling.,Восстановление задает темп.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery should be the priority today. Keep activity easy.,Сегодня приоритет — восстановление. Держите активность лёгкой.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery signal building,Сигнал восстановления формируется,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery signals are low. Prioritize easy movement, hydration and an earlier night.","Сигналы восстановления низкие. В приоритете легкое движение, вода и более ранний сон.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery signals need protection before adding more demand.,"Сначала восстановлению нужна защита, потом уже новая нагрузка.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery stabilized,Восстановление стабилизировалось,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery starts tonight.,Восстановление начинается сегодня ночью.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery stayed resilient,Восстановление осталось устойчивым,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery stayed resilient under current load.,Восстановление оставалось устойчивым при текущей нагрузке.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery stayed steady because your sleep timing and training load were more consistent this month.,"Восстановление оставалось стабильным, потому что сон и тренировочная нагрузка в этом месяце были ровнее.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery stayed strong despite softer signals,Восстановление оставалось сильным несмотря на более слабые сигналы,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery suggestion,Рекомендация по восстановлению,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery support,Поддержка восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery support is getting weaker,Поддержка восстановления ослабевает,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery supports the plan,Так план усвоится лучше,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery system active,Восстановление активно,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery trend,Тренд восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery unavailable,Восстановление недоступно,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery will show whether better fueling is changing how you adapt to training.,"Восстановление покажет, меняет ли питание то, как вы адаптируетесь к тренировкам.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery will show whether better sleep is just helpful or truly the missing piece.,"Восстановление покажет, помогает ли сон или он действительно был недостающим звеном.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery work helps the body settle after load. The goal is to reduce tension, support sleep and avoid adding more stress.","Восстановительная работа помогает телу успокоиться после нагрузки. Цель — снизить напряжение, поддержать сон и не добавлять стресс.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery work only works when it stays below training stress.,Восстановительная работа работает только если остается ниже тренировочного стресса.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery work only works when it stays easy enough to recover from.,Восстановительная работа работает только если остается достаточно легкой.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery • %@,Восстановление • %@,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery, activity and sleep","Восстановление, активность и сон",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery, activity, and sleep moved lower this month. WeekFit is watching whether this is a short dip or a pattern that needs more recovery support.","Восстановление, активность и сон снизились в этом месяце. WeekFit отслеживает, это краткий спад или паттерн, которому нужна поддержка восстановления.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery, activity, nutrition and plans — read as one clear day.","Восстановление, активность, питание и планы — как один ясный день.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery, movement and nutrition
+adapted to your day.","Восстановление, движение и питание
+подстроены под ваш день.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Recovery, sleep, activity and nutrition do not show a ranked change, risk, opportunity or anomaly.","Восстановление, сон, активность и питание не показывают ранжированного изменения, риска, возможности или аномалии.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery-friendly choice that keeps the day controlled,Подходит для восстановления и помогает держать день под контролем,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Recovery/readiness is low relative to the training demand today.,"Восстановление и готовность ниже, чем требует сегодняшняя тренировка.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Restore mobility,Восстановите подвижность,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Restore sleep before changing training load.,Восстановите сон перед изменением тренировочной нагрузки.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Restore sleep before increasing load,Восстановите сон перед увеличением нагрузки,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+SLEEP DETAILS,Детали сна,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+SLEEP QUALITY,Качество сна,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save %d%%,Экономия %d%%,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save capacity for the later session,Сохраните силы на следующую тренировку,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save changes,Сохранить изменения,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save energy for the finish,Сохраните энергию на финиш,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save energy for the second half,Сохраните энергию на вторую половину,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save energy for the session itself,Сохраните силы на саму тренировку,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save energy for tomorrow,Сохраните силы на завтра,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save energy for tomorrow’s load.,Бережём силы на завтрашнюю нагрузку.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save freshness for the ride,Сохраните свежесть для заезда,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save intensity for a better-fueled block.,"Сохраните интенсивность для блока, где энергии будет больше.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save intensity for later,Сохраните интенсивность на потом,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Save meals you eat often, then log them so your energy picture and guidance stay current.","Сохраняйте блюда, которые едите часто, и отмечайте их — чтобы картина энергии и подсказки оставались актуальными.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save meals you eat often. Log them in one tap.,"Сохраняйте блюда, которые едите часто. Добавляйте их в один тап.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save once. Reuse when Coach needs it.,"Сохраните один раз. Используйте, когда нужен Тренер.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save quality for training,Сохраните качество для тренировки,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save this for after heat exposure — rehydrate first,Оставьте это на после жары — сначала восполните жидкость,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save this habit,Сохранить привычку,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save time & complete day,Сохранить время и завершить день,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save workouts and meals once. Reuse them when Today asks you to act.,"Сохраните тренировки и еду один раз. Используйте снова, когда Today просит действовать.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Save your own recipe,Сохранить свой рецепт,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Saved,Сохраненное,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Saved meal,Сохранённое блюдо,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Saved meals,Сохранённые блюда,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Saved wind-down time: %@,Сохранённое время: %@,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep Consistency,Стабильность сна,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep Duration,Длительность сна,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep Routine,Рутина сна,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep Score,Показатель сна,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep Support,Поддержка сна,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep Wind-down,Подготовка ко сну,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep and overnight signals suggest recovery was not fully restored.,"Сон и ночные сигналы показывают, что восстановление было не полным.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep architecture,Архитектура сна,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep at least 7 hours on 5 of the next 7 nights.,Спите не менее 7 часов 5 из следующих 7 ночей.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep baseline is low. Restrict training volume today. Avoid high-stimulant caffeine after 14:00.,База сна низкая. Ограничьте тренировочный объем сегодня. Избегайте сильного кофеина после 14:00.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep baseline needed,Нужен базовый уровень сна,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep comes first,Сначала сон,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep continuity,Непрерывность сна,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep continuity had a visible impact on recovery quality.,Непрерывность сна заметно повлияла на качество восстановления.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep continuity was fair,Непрерывность сна была удовлетворительной,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep continuity was good,Непрерывность сна была хорошей,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep continuity was interrupted,Сон был прерывистым,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep continuity was strong, with only limited awake time overnight.","Непрерывность сна была высокой, с небольшим временем бодрствования ночью.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep data,Данные сна,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep data not appearing?,Данные сна не появляются?,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep duration,Длительность сна,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep duration and sleep structure supported recovery overnight.,Длительность и структура сна поддержали восстановление ночью.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep duration and sleep structure were supportive overnight.,Длительность и структура сна хорошо поддержали восстановление ночью.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep duration is below target,Длительность сна ниже цели,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep duration looks supportive relative to your usual target.,Длительность сна выглядит поддерживающей относительно обычной цели.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep duration was below target, so recovery may feel less stable today.","Длительность сна была ниже цели, поэтому восстановление сегодня может ощущаться менее стабильным.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep duration was below your target,Длительность сна была ниже вашей цели,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep duration was sufficient,Длительности сна было достаточно,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep duration, continuity and sleep structure were supportive overnight.","Длительность, непрерывность и структура сна поддержали восстановление ночью.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep has improved recently, which may give recovery more room to stay strong.",Сон недавно улучшился — это может дать восстановлению больше запаса.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep history is not complete enough to explain recovery yet.,"Истории сна пока недостаточно, чтобы объяснить восстановление.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep is %.1fh vs a 7h target, but recovery has not dropped.","Сон %.1f ч при цели 7 ч, но восстановление не упало.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep is at the level that supports recovery.,"Сон на уровне, который поддерживает восстановление.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep is becoming a stable base,Сон становится стабильной базой,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep is below the level needed to protect recovery.,"Сон ниже уровня, необходимого для защиты восстановления.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep is consistent enough to support recovery rather than explain current problems.,"Сон достаточно стабилен, чтобы поддерживать восстановление, а не объяснять текущие проблемы.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep is the clearest recovery lever,Сон — самый явный рычаг восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep is the limiter.,Сон ограничивает готовность.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep is the main opportunity to protect recovery.,Сон — главная возможность защитить восстановление.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep is the next bottleneck to test,Сон — следующее узкое место для проверки,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep is the priority. Nothing else competes.,Сон — приоритет. Ничто другое не конкурирует.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep is the useful intervention.,Самый полезный шаг — сон.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep is your workout now.,Сон — ваша тренировка сейчас.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep leads recovery,Сон сейчас решает больше всего,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep leads today,Сегодня главное — сон,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep looks supportive,Сон выглядит поддерживающим,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep or recovery is limiting the day. Keep %@ flexible and let the warm-up decide intensity.,Сон или восстановление ограничивают день. Оставьте %@ гибкой и пусть разминка решит интенсивность.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep preparation is the highest-value move now.,Сейчас самый ценный шаг — подготовиться ко сну.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep quality,Качество сна,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep ready,Подготовка ко сну,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep remains below target often enough that it is the clearest bottleneck to test next.,Сон часто ниже цели — это самое явное узкое место для проверки.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep schedule became more consistent,Расписание сна стало стабильнее,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep schedule was uneven, but the monthly pattern still held","Расписание сна было неровным, но месячный паттерн удержался",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep score %d,Оценка сна %d,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep setup help,Помощь с настройкой сна,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep shorter than usual,Сон короче обычного,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep stages and recovery insights may take a few valid nights before they appear consistently.,Стадии сна и выводы о восстановлении могут начать стабильно появляться после нескольких корректно записанных ночей.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep stayed inside a healthy range.,Сон оставался в здоровом диапазоне.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep structure was lighter than ideal, which may limit recovery today.","Структура сна была легче идеальной, что может ограничить восстановление сегодня.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep support,Поддержка сна,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep supports recovery,Сон поддерживает восстановление,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep supports the day.,Сон поддерживает день.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep timing stayed consistent,Время сна оставалось стабильным,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep usually appears only when Apple Health has sleep data available. On iPhone, Sleep Focus or another sleep tracker may be needed.","Сон обычно появляется только тогда, когда в Apple Health есть данные сна. На iPhone может понадобиться Фокус сна или другой трекер сна.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep variability is the main reason recovery looks less predictable.,"Изменчивость сна — главная причина, почему восстановление выглядит менее предсказуемым.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep was shorter than needed and recovery signals need support. Keep intensity lower and wind down earlier.,"Сна было меньше, чем нужно. Снизьте интенсивность и начните завершать день раньше.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep was shorter than needed.,"Сна было меньше, чем нужно.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep was shorter than needed. Keep meals steady and avoid pushing workout intensity today.,"Сна было меньше, чем нужно. Ешьте ровно и не давите интенсивность сегодня.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep was somewhat below target, with a modest effect on strain.",Сон был немного ниже цели и умеренно повлиял на нагрузку.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep was useful, but recovery signals were not fully optimal.","Сон был полезным, но сигналы восстановления не были полностью оптимальными.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep was very low, so this recovery block should stay easy and help you downshift for tonight.","Сна было очень мало, поэтому этот восстановительный блок должен остаться легким и помочь вам замедлиться к вечеру.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep was very short and your body carries extra load.,"Сон был очень коротким, и тело несет дополнительную нагрузку.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep • Mobility • Easy walk,Сон • мобилити • легкая прогулка,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep, HRV and resting heart rate stayed aligned enough to support your routine.","Сон, ВСР и пульс покоя оставались достаточно согласованными для поддержки вашего режима.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep, HRV, and resting heart rate were available with enough baseline history.","Доступны сон, ВСР и пульс в покое с достаточной историей базовых значений.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep, food, training","Сон, еда, тренировки",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep, meals, drinks and training are enough to start.","Сна, еды, напитков и тренировок достаточно для начала.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep, readiness and what recovery looks like today.","Сон, готовность и как выглядит восстановление сегодня.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep, recovery, and recent load line up well, and there is no planned session competing for energy.","Сон, самочувствие и недавняя нагрузка выглядят хорошо, и нет запланированной тренировки, которая забирает энергию.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep, recovery, heart signals, and activity help WeekFit match today to how your body is doing.","Сон, восстановление, сердечные сигналы и активность помогают WeekFit подстроить день под то, как себя чувствует тело.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep, recovery, nutrition, hydration and activity become smarter with consistent logs.","Сон, восстановление, питание, гидратация и активность становятся точнее при последовательных записях.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep, workouts and recovery are connected.","Сон, тренировки и восстановление подключены.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Sleep, workouts and recovery connected.","Сон, тренировки и восстановление подключены.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep: %.1f h,Сон: %.1f ч,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleep: —,Сон: —,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Sleepiness,Сонливость,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+TODAY'S MATCH,СЕГОДНЯШНЕЕ СОВПАДЕНИЕ,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Today brings recovery, movement, nutrition, and what’s next into one clear picture.","Сегодня собирает восстановление, движение, питание и то, что дальше, в одну ясную картину.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today can absorb training,Сегодня день выдержит тренировку,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Today focuses on your current day, metrics, and live activity. Plan is where you organize workouts, meals, recovery, sleep, and routines ahead of time.","Сегодня показывает текущий день, метрики и живую активность. План нужен, чтобы заранее организовать тренировки, питание, восстановление, сон и рутины.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Today has already taken a lot. If nothing changes tonight, %@ is likely to cost more than it gives.","Сегодня уже многое забрало силы. Если вечером ничего не изменить, %@ скорее даст больше цены, чем пользы.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Today is a recovery day, so movement should support recovery instead of performance.","Сегодня день восстановления, поэтому движение должно помогать восстановиться, а не работать на результат.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today is already a loaded day.,Сегодня уже нагруженный день.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today is available,Сегодня есть ресурс,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Today is built to absorb training stress, not create a new one.","Сегодня день лучше подходит для усвоения нагрузки, а не для новой.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today is where you act.,"Today — место, где вы действуете.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Today is your live dashboard. Start there to see your current activity, nutrition, recovery, hydration, sleep, and coaching status.","Сегодня — ваш живой дашборд. Начните с него, чтобы увидеть текущую активность, питание, восстановление, воду, сон и статус Тренера.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today isn't the day to force it. Recover well so tomorrow counts.,Сегодня не день форсировать. Восстановитесь — завтра будет важнее.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today isn't the day to grind empty. Fuel up so tomorrow's sets count.,Сегодня не день пустой нагрузки. Заправьтесь — завтрашние подходы будут важнее.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today isn't the day to push harder. It's the day to recover well so tomorrow counts.,Сегодня не день для перегруза. Восстановитесь — завтра будет важнее.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today should be lighter.,Сегодня лучше сделать легче.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today should stay steady.,Сегодня лучше сохранить спокойный ритм.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Today — log food, drinks, start activities","Today — логировать еду, напитки, запускать активности",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today's %@ %@ already delivered the %@.,Сегодняшняя %@ %@ уже дала %@.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today's Coach,Тренер на сегодня,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today's choices should help tomorrow's load.,Сегодняшний выбор должен помочь завтрашней нагрузке.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today's guidance,Подсказка на сегодня,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Today's key work is done. Focus on recovery, hydration and setting yourself up for tomorrow.","Ключевая работа на сегодня сделана. Дальше — восстановление, вода и подготовка к завтра.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today's limiter is recovery. The body is not ready for productive intensity.,Сегодня ограничивает восстановление. Тело не готово к настоящей интенсивности.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today's load is already meaningful.,Сегодняшняя нагрузка уже значимая.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Today's main training load is already in the bank, so the rest of the day is about absorbing it.","Главная тренировочная нагрузка сегодня уже сделана, дальше день про то, чтобы ее усвоить.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today's movement,Движение сегодня,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today's primary training load is already covered. Additional work has little upside now.,Главная тренировочная нагрузка сегодня уже закрыта. Дополнительная работа сейчас почти ничего не даст.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today's priority changed.,Приоритет на сегодня изменился.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today's progress,Прогресс дня,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today's recommendation,Рекомендация на сегодня,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today's training load is already covered. The biggest gain left is making that work recoverable.%@,Главная тренировочная нагрузка сегодня уже закрыта. Самый большой выигрыш теперь — сделать эту работу восстановимой.%@,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today's workout looks good.,Сегодняшняя тренировка выглядит хорошо.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today’s action is already complete.,Сегодняшнее действие уже выполнено.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today’s action is done. The next task opens tomorrow.,Сегодняшнее действие выполнено. Следующее откроется завтра.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today’s plan,План на сегодня,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today’s plan already looks appropriate.,План на сегодня уже выглядит уместно.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today’s plan is stacked; reduce or redistribute load.,Сегодня план плотный — снизьте или перераспределите нагрузку.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today’s plan looks right,План на сегодня выглядит уместно,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Today’s task is still available separately.,Задача сегодняшнего дня доступна отдельно.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Water + electrolytes,Вода + электролиты,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Water Log,Запись воды,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Water Log (%@L),Запись воды (%@ л),,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Water and electrolytes over the next few hours,Вода и электролиты в ближайшие часы,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Water evidence,Данные по воде,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Water is already covered. Focus on minerals and recovery support.,Воды уже достаточно. Лучше подумать о минералах и восстановлении.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Water is already covered. Mineral support is a better next step than more plain water.,"Воды уже достаточно. Лучше добавить минералы, чем пить еще больше обычной воды.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Water is already high.,Воды уже много.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Water logs will show whether hydration supports recovery.,"Записи воды покажут, поддерживает ли гидратация восстановление.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Water now affects safety and quality for the next block.,Вода сейчас влияет на безопасность и качество следующего блока.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+Water target is already high.,Цель по воде уже высокая.,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Water target is based mainly on body weight, with extra hydration added when your activity and active calories are higher.","Цель воды в основном зависит от веса тела. Дополнительная гидратация добавляется, когда активность и активные калории выше.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"Water, tea, coffee, meals, stretching, sauna, breathing, and sleep routines all help Coach understand your day better.","Вода, чай, кофе, еда, растяжка, сауна, дыхание и рутины сна помогают Тренеру лучше понимать ваш день.",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+activity,активность,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+done,готово,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+nutrition,питание,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+nutrition=nil,питание=nil,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+planned,запланировано,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+protein consistent,белок стабилен,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+recovery,восстановление,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+recovery points,баллы восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+recovery work,восстановительная работа,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+recovery=%@:%@,восстановление=%@:%@,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+recovery=nil,восстановление=nil,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+restore recovery margin,восстановить запас восстановления,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+sleep,сон,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+sleep is %.1fh below target while recovery slipped %lld points,"сон на %.1f ч ниже цели, а восстановление упало на %lld баллов",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"sleep is %.1fh below target, but recovery stayed %@ baseline","сон на %.1f ч ниже цели, но восстановление осталось %@ базового уровня",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+"sleep is %.1fh below target, which reduces margin before load increases","сон на %.1f ч ниже цели, что сокращает запас перед увеличением нагрузки",,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+sleep looks supportive relative to your usual target,сон выглядит поддерживающим относительно обычной цели,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome
+sleep was shorter than normal,сон был короче обычного,,needs_human,PRIORITY UI — tabs/onboarding/paywall/coach chrome

@@ -74,15 +74,11 @@ enum WeekFitUnitPolicy {
     }
 
     static func accessibilityTemperatureUnitName(for system: WeekFitResolvedUnitSystem) -> String {
-        if WeekFitUsesRussianLanguage() {
-            switch system {
-            case .metric, .uk: return "Цельсия"
-            case .us: return "Фаренгейта"
-            }
-        }
         switch system {
-        case .metric, .uk: return "Celsius"
-        case .us: return "Fahrenheit"
+        case .metric, .uk:
+            return WeekFitTrilingual("Celsius", "Цельсия", "摄氏度")
+        case .us:
+            return WeekFitTrilingual("Fahrenheit", "Фаренгейта", "华氏度")
         }
     }
 

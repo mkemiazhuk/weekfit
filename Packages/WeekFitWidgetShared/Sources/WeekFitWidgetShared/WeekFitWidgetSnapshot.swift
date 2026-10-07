@@ -180,7 +180,12 @@ public struct WeekFitWidgetSnapshot: Codable, Equatable, Sendable {
             completedItems: 0,
             totalItems: 0,
             updatedAt: now,
-            languageCode: Locale.current.language.languageCode?.identifier == "ru" ? "ru" : "en"
+            languageCode: {
+                let code = Locale.current.language.languageCode?.identifier.lowercased() ?? "en"
+                if code.hasPrefix("ru") { return "ru" }
+                if code.hasPrefix("zh") { return "zh-Hans" }
+                return "en"
+            }()
         )
     }
 

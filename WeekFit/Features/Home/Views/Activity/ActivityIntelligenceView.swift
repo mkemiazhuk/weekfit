@@ -1138,7 +1138,10 @@ private struct WeeklyContextCard: View {
 
     private func shortCalories(_ value: Int) -> String {
         if value >= 1000 {
-            return String(format: "%.1fk", Double(value) / 1000.0)
+            return String(
+                format: WeekFitLocalizedString("activity.compactThousandsFormat"),
+                Double(value) / 1000.0
+            )
         }
 
         return "\(value)"
@@ -3609,7 +3612,14 @@ private enum DurationFormatter {
         let hours = minutes / 60
         let remainder = minutes % 60
 
-        return remainder == 0 ? "\(hours)h" : "\(hours)h \(remainder)m"
+        if remainder == 0 {
+            return String(format: WeekFitLocalizedString("common.duration.hoursShortFormat"), hours)
+        }
+        return String(
+            format: WeekFitLocalizedString("common.duration.hoursMinutesShortFormat"),
+            hours,
+            remainder
+        )
     }
 
     static func fullMinutes(_ minutes: Int) -> String {
@@ -3629,16 +3639,19 @@ private enum MetricFormatter {
     }
 
     private static var compactMinuteUnit: String {
-        WeekFitUsesRussianLanguage() ? "м" : "m"
+        WeekFitTrilingual("m", "м", "分")
     }
 
     private static var compactHourUnit: String {
-        WeekFitUsesRussianLanguage() ? "ч" : "h"
+        WeekFitTrilingual("h", "ч", "小时")
     }
 
     static func compactSteps(_ steps: Int) -> String {
         if steps >= 1_000 {
-            return String(format: "%.1fk", Double(steps) / 1000.0)
+            return String(
+                format: WeekFitLocalizedString("activity.compactThousandsFormat"),
+                Double(steps) / 1000.0
+            )
         }
 
         return "\(steps)"

@@ -208,7 +208,7 @@ enum CoachTabPresentationBridge {
     }
 
     private static func localizedText(_ line: CoachBilingualText) -> String {
-        WeekFitUsesRussianLanguage() ? line.russian : line.english
+        line.resolved()
     }
 
     private static func conciseLine(_ text: String, maxLength: Int) -> String {
@@ -248,10 +248,6 @@ enum CoachTabPresentationBridge {
             )
         )
         // Zone stays secondary chrome in the Coach card (Easy · Zone N), not the status badge.
-        return localized(english: labels.english, russian: labels.russian)
-    }
-
-    private static func localized(english: String, russian: String) -> String {
-        WeekFitUsesRussianLanguage() ? russian : english
+        return labels.resolved()
     }
 }

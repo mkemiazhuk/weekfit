@@ -25,6 +25,14 @@ enum CoachActivityClassification {
         WeekFitCoachCore.CoachActivityClassification.isSignificantWorkout(activity.coachDescriptor)
     }
 
+    nonisolated static func isNonTrainingLog(_ activity: CoachPlannedActivitySnapshot) -> Bool {
+        WeekFitCoachCore.CoachActivityClassification.isNonTrainingLog(activity.coachDescriptor)
+    }
+
+    nonisolated static func isLoggedMovement(_ activity: CoachPlannedActivitySnapshot) -> Bool {
+        WeekFitCoachCore.CoachActivityClassification.isLoggedMovement(activity.coachDescriptor)
+    }
+
     nonisolated static func isWalkLike(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         WeekFitCoachCore.CoachActivityClassification.isWalkLike(activity.coachDescriptor)
     }

@@ -245,8 +245,8 @@ struct CoachState: Identifiable {
         )
     }
 
-    static func localized(english: String, russian: String) -> String {
-        WeekFitUsesRussianLanguage() ? russian : english
+    static func localized(english: String, russian: String, chinese: String? = nil) -> String {
+        CoachBilingualText(english: english, russian: russian, chinese: chinese).resolved()
     }
 }
 
@@ -254,13 +254,18 @@ struct CoachState: Identifiable {
 
 extension CoachState {
     static var registryGapTitle: String {
-        localized(english: "Preparing recommendations", russian: "Готовлю рекомендации")
+        localized(
+            english: "Preparing recommendations",
+            russian: "Готовлю рекомендации",
+            chinese: "正在准备建议"
+        )
     }
 
     static var registryGapMessage: String {
         localized(
             english: "Putting together today's guidance.",
-            russian: "Собираю рекомендации на сегодня."
+            russian: "Собираю рекомендации на сегодня.",
+            chinese: "正在整理今天的指导。"
         )
     }
 

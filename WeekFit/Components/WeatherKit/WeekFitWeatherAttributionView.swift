@@ -111,7 +111,7 @@ struct WeekFitWeatherAttributionView: View {
     }
 
     private var legalLinkTitle: String {
-        WeekFitUsesRussianLanguage() ? "Источники погоды" : "Weather data sources"
+        WeekFitTrilingual("Weather data sources", "Источники погоды", "天气数据来源")
     }
 
     private func accessibilityTitle(for attribution: WeatherAttribution) -> String {
@@ -123,14 +123,18 @@ struct WeekFitWeatherAttributionView: View {
     }
 
     private var accessibilityHint: String {
-        WeekFitUsesRussianLanguage()
-            ? "Открывает страницу с источниками погодных данных."
-            : "Opens the weather data sources page."
+        WeekFitTrilingual(
+            "Opens the weather data sources page.",
+            "Открывает страницу с источниками погодных данных.",
+            "打开天气数据来源页面。"
+        )
     }
 
     private var failureText: String {
-        WeekFitUsesRussianLanguage()
-            ? "Источник погодных данных недоступен."
-            : "Weather data sources are unavailable."
+        WeekFitTrilingual(
+            "Weather data sources are unavailable.",
+            "Источник погодных данных недоступен.",
+            "天气数据来源暂不可用。"
+        )
     }
 }

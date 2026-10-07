@@ -32,6 +32,7 @@ public enum CoachActivityClassification {
     }
 
     public static func isRecoveryTier(_ activity: CoachActivityDescriptor) -> Bool {
+        if isNonTrainingLog(activity) { return false }
         if isWalkLike(activity) || isHikeLike(activity) { return true }
 
         let tokens = tokenText(for: activity)
@@ -60,6 +61,7 @@ public enum CoachActivityClassification {
     }
 
     public static func isSignificantWorkout(_ activity: CoachActivityDescriptor) -> Bool {
+        guard !isNonTrainingLog(activity) else { return false }
         guard !isRecoveryTier(activity) else { return false }
 
         let tokens = tokenText(for: activity)
@@ -75,5 +77,24 @@ public enum CoachActivityClassification {
             tokens.contains("core") ||
             tokens.contains("strength") ||
             tokens.contains("workout")
+    }
+
+    /// Meals, drinks, snacks — never treated as training / movement in Activity.
+    public static func isNonTrainingLog(_ activity: CoachActivityDescriptor) -> Bool {
+        let type = activity.type.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        if type == "meal" || type == "drink" || type == "snack" || type == "food" {
+            return true
+        }
+        let tokens = tokenText(for: activity)
+        return tokens.contains("meal")
+            || tokens.contains("snack")
+            || tokens.contains("food log")
+            || tokens.contains("приём пищи")
+            || tokens.contains("еда")
+    }
+
+    /// Logged movement or workout (includes walks); excludes meal/drink/snack.
+    public static func isLoggedMovement(_ activity: CoachActivityDescriptor) -> Bool {
+        !isNonTrainingLog(activity)
     }
 }

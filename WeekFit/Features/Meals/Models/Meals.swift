@@ -624,12 +624,13 @@ enum MealBuilderTitleComposer {
         compose(from: items, titleForIngredient: { $0.localizedTitle })
     }
 
-    /// English + Russian composed titles so logged Quick Log rows still match
+    /// English + Russian + Chinese composed titles so logged Quick Log rows still match
     /// catalog meals after localization (e.g. "Индейка Огурец" ↔ "Turkey Cucumber").
     static func matchingTitleCandidates(from items: [MealBuilderImageItem]?) -> [String] {
         [
             compose(from: items, titleForIngredient: { $0.title }),
             compose(from: items, titleForIngredient: { $0.russianTitle }),
+            compose(from: items, titleForIngredient: { $0.chineseTitle }),
         ]
         .compactMap { $0 }
     }
@@ -666,29 +667,52 @@ enum MealBuilderTitleComposer {
         return resolvedIngredients.first.map(titleForIngredient)
     }
 
-    /// Maps a stored English/Russian recipe title into the active UI language
+    /// Maps a stored English/Russian/Chinese recipe title into the active UI language
     /// by swapping known Meal Builder ingredient labels.
     static func localizedStoredTitle(_ title: String) -> String {
-        remapStoredTitle(title, toRussian: WeekFitUsesRussianLanguage())
+        switch WeekFitCurrentAppLanguage() {
+        case .russian:
+            return remapStoredTitle(title, targetLanguage: .russian)
+        case .chineseSimplified:
+            return remapStoredTitle(title, targetLanguage: .chineseSimplified)
+        case .english:
+            return remapStoredTitle(title, targetLanguage: .english)
+        }
     }
 
     static func remapStoredTitle(_ title: String, toRussian: Bool) -> String {
+        remapStoredTitle(title, targetLanguage: toRussian ? .russian : .english)
+    }
+
+    static func remapStoredTitle(_ title: String, targetLanguage: AppLanguage) -> String {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return title }
 
         // Longer names first so "Sweet Potato" wins over "Potato".
         let ingredients = MealBuilderDemoData.ingredients.sorted {
-            max($0.title.count, $0.russianTitle.count) > max($1.title.count, $1.russianTitle.count)
+            max($0.title.count, $0.russianTitle.count, $0.chineseTitle.count)
+                > max($1.title.count, $1.russianTitle.count, $1.chineseTitle.count)
+        }
+
+        func label(for ingredient: MealBuilderIngredient, language: AppLanguage) -> String {
+            switch language {
+            case .russian: return ingredient.russianTitle
+            case .chineseSimplified: return ingredient.chineseTitle
+            case .english: return ingredient.title
+            }
         }
 
         var result = trimmed
         for ingredient in ingredients {
-            let source = toRussian ? ingredient.title : ingredient.russianTitle
-            let target = toRussian ? ingredient.russianTitle : ingredient.title
-            guard source.compare(target, options: [.caseInsensitive, .diacriticInsensitive]) != .orderedSame else {
-                continue
+            let target = label(for: ingredient, language: targetLanguage)
+            // Try replacing from any known source language into the target.
+            for sourceLanguage in AppLanguage.allCases where sourceLanguage != targetLanguage {
+                let source = label(for: ingredient, language: sourceLanguage)
+                guard source.compare(target, options: [.caseInsensitive, .diacriticInsensitive]) != .orderedSame else {
+                    continue
+                }
+                result = replaceWholePhrase(source, with: target, in: result)
             }
-            result = replaceWholePhrase(source, with: target, in: result)
         }
         return result
     }

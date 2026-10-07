@@ -111,10 +111,16 @@ private extension LanguageSettingsView {
             RoundedRectangle(cornerRadius: 13, style: .continuous)
                 .fill(WeekFitTheme.coachSoftSurface)
 
-            Text(language == .english ? "EN" : "RU")
-                .font(.system(size: 13, weight: .bold, design: .rounded))
+            Text(verbatim: {
+                switch language {
+                case .english: return "EN"
+                case .russian: return "RU"
+                case .chineseSimplified: return "中文"
+                }
+            }())
+                .font(.system(size: language == .chineseSimplified ? 12 : 13, weight: .bold, design: .rounded))
                 .foregroundStyle(accentGreen.opacity(0.95))
-                .tracking(0.4)
+                .tracking(language == .chineseSimplified ? 0 : 0.4)
         }
         .frame(width: 40, height: 40)
         .accessibilityHidden(true)

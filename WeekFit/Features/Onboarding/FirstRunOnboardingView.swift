@@ -352,17 +352,25 @@ private extension FirstRunOnboardingView {
     }
 
     private func optionA11yLabel(for system: WeekFitResolvedUnitSystem) -> String {
-        if WeekFitUsesRussianLanguage() {
-            switch system {
-            case .metric: return "Метрическая. Пример: 10 км, 75 кг, 23 цельсия."
-            case .uk: return "Великобритания. Пример: 6 миль, 11 стоунов 11 фунтов, 23 цельсия."
-            case .us: return "США. Пример: 6 миль, 165 фунтов, 73 фаренгейта."
-            }
-        }
         switch system {
-        case .metric: return "Metric. Example: 10 kilometers, 75 kilograms, 23 Celsius."
-        case .uk: return "United Kingdom. Example: 6 miles, 11 stone 11 pounds, 23 Celsius."
-        case .us: return "United States. Example: 6 miles, 165 pounds, 73 Fahrenheit."
+        case .metric:
+            return WeekFitTrilingual(
+                "Metric. Example: 10 kilometers, 75 kilograms, 23 Celsius.",
+                "Метрическая. Пример: 10 км, 75 кг, 23 цельсия.",
+                "公制。示例：10 公里、75 公斤、23 摄氏度。"
+            )
+        case .uk:
+            return WeekFitTrilingual(
+                "United Kingdom. Example: 6 miles, 11 stone 11 pounds, 23 Celsius.",
+                "Великобритания. Пример: 6 миль, 11 стоунов 11 фунтов, 23 цельсия.",
+                "英国单位。示例：6 英里、11 英石 11 磅、23 摄氏度。"
+            )
+        case .us:
+            return WeekFitTrilingual(
+                "United States. Example: 6 miles, 165 pounds, 73 Fahrenheit.",
+                "США. Пример: 6 миль, 165 фунтов, 73 фаренгейта.",
+                "美国单位。示例：6 英里、165 磅、73 华氏度。"
+            )
         }
     }
 

@@ -2,12 +2,61 @@ import Foundation
 
 // MARK: - Bilingual copy primitives
 
-struct CoachBilingualText: Equatable, Sendable, Hashable {
+struct CoachBilingualText: Codable, Equatable, Sendable, Hashable {
     let english: String
     let russian: String
+    /// Simplified Chinese. Omitted in older persisted payloads — resolves to English.
+    let chinese: String
 
-    static func en(_ english: String, _ russian: String) -> CoachBilingualText {
-        CoachBilingualText(english: english, russian: russian)
+    enum CodingKeys: String, CodingKey {
+        case english
+        case russian
+        case chinese
+    }
+
+    init(english: String, russian: String, chinese: String? = nil) {
+        self.english = english
+        self.russian = russian
+        self.chinese = chinese ?? english
+    }
+
+    static func en(_ english: String, _ russian: String, chinese: String? = nil) -> CoachBilingualText {
+        CoachBilingualText(english: english, russian: russian, chinese: chinese)
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        english = try container.decode(String.self, forKey: .english)
+        russian = try container.decode(String.self, forKey: .russian)
+        chinese = try container.decodeIfPresent(String.self, forKey: .chinese) ?? english
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(english, forKey: .english)
+        try container.encode(russian, forKey: .russian)
+        if chinese != english {
+            try container.encode(chinese, forKey: .chinese)
+        }
+    }
+
+    func resolved(language: AppLanguage = WeekFitCurrentAppLanguage()) -> String {
+        switch language {
+        case .russian:
+            return russian
+        case .chineseSimplified:
+            // Prefer an explicit chinese: passed at construction (handles
+            // interpolated strings the override table can't key exactly).
+            if chinese != english, !chinese.isEmpty {
+                return chinese
+            }
+            if let override = CoachChineseOverrides.resolved(english: english), !override.isEmpty {
+                return override
+            }
+            return chinese
+        case .english:
+            return english
+        }
     }
 }
 

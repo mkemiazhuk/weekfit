@@ -6,6 +6,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
     case english = "en"
     case russian = "ru"
+    case chineseSimplified = "zh-Hans"
 
     var id: String { rawValue }
 
@@ -17,7 +18,21 @@ enum AppLanguage: String, CaseIterable, Identifiable {
             return AppText.Settings.Language.Option.english
         case .russian:
             return AppText.Settings.Language.Option.russian
+        case .chineseSimplified:
+            return AppText.Settings.Language.Option.chineseSimplified
         }
+    }
+
+    /// Detect preferred app language from the device locale.
+    static func detectedFromDevice(languageCode: String? = Locale.current.language.languageCode?.identifier) -> AppLanguage {
+        let code = (languageCode ?? "en").lowercased()
+        if code.hasPrefix("ru") { return .russian }
+        if code == "zh" || code.hasPrefix("zh-hans") || code.hasPrefix("zh_hans") || code.hasPrefix("zh-cn") {
+            return .chineseSimplified
+        }
+        // Traditional Chinese and other zh variants fall back to Simplified for now.
+        if code.hasPrefix("zh") { return .chineseSimplified }
+        return .english
     }
 }
 
@@ -46,8 +61,7 @@ final class AppLanguageManager: ObservableObject {
             return
         }
 
-        let deviceCode = Locale.current.language.languageCode?.identifier ?? "en"
-        let detected: AppLanguage = deviceCode.hasPrefix("ru") ? .russian : .english
+        let detected = AppLanguage.detectedFromDevice()
         self.selectedLanguage = detected
         WeekFitSetCurrentLanguage(detected)
         UserDefaults.standard.set(detected.rawValue, forKey: AppLanguage.storageKey)

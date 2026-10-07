@@ -1,4 +1,6 @@
 import SwiftUI
+import SwiftData
+import WeekFitPlanner
 
 struct ExpertCoachView: View {
 
@@ -11,6 +13,10 @@ struct ExpertCoachView: View {
     @Environment(\.tabIsActive) private var tabIsActive
     @Environment(\.weekFitPalette) private var palette
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @Environment(\.modelContext) private var modelContext
+
+    @Query(sort: \PlannedActivity.date, order: .forward)
+    private var plannedActivities: [PlannedActivity]
 
     @ObservedObject private var userSettings = WeekFitUserSettings.shared
     @ObservedObject private var pendingRecoveryChallengeOpen = PendingRecoveryChallengeOpen.shared
@@ -24,6 +30,11 @@ struct ExpertCoachView: View {
     @State private var recoveryChallengeHeaderEntry: RecoveryChallengePresenter.HeaderEntry = .hidden
     @State private var didHandleDebugOpenRecoveryChallenge = false
     @State private var isWhyExpanded = false
+    @State private var showCoachAssistant = false
+    @State private var coachAssistantLaunch: CoachAssistantViewModel.Launch = .fresh
+    @State private var todaysAssistantConversation: CoachAssistantConversation?
+    @State private var askCoachActiveFocus: AskCoachWeeklyFocus?
+    @State private var askCoachReviewableFocus: AskCoachWeeklyFocus?
     @AppStorage(OnboardingStore.Keys.introCoach) private var coachIntroDismissed = false
     #if DEBUG
     @State private var showBeliefDebug = false
@@ -68,14 +79,20 @@ struct ExpertCoachView: View {
         }
         .onAppear {
             keepCoachMounted = true
+            reconcileLiveWorkoutIfNeeded()
             refreshLiveCoachSession()
             refreshRecoveryChallengeEntry()
+            refreshAskCoachFocus()
+            refreshAssistantConversation()
             openPendingRecoveryChallengeIfNeeded()
         }
         .onChange(of: tabIsActive) { _, active in
             if active {
+                reconcileLiveWorkoutIfNeeded()
                 refreshLiveCoachSession()
                 refreshRecoveryChallengeEntry()
+                refreshAskCoachFocus()
+                refreshAssistantConversation()
                 openPendingRecoveryChallengeIfNeeded()
             }
         }
@@ -98,6 +115,21 @@ struct ExpertCoachView: View {
             .presentationDragIndicator(.visible)
             .interactiveDismissDisabled(false)
         }
+        .fullScreenCover(isPresented: $showCoachAssistant, onDismiss: {
+            coachAssistantLaunch = .fresh
+            refreshAskCoachFocus()
+            refreshAssistantConversation()
+        }) {
+            CoachAssistantSheetHost(
+                healthManager: healthManager,
+                plannedActivities: plannedActivities,
+                nutritionContext: nutritionViewModel.coachMetricsSnapshot?.nutritionContext,
+                launch: coachAssistantLaunch,
+                onAction: { action in
+                    handleAssistantAction(action)
+                }
+            )
+        }
         .onChange(of: activityCoordinator.liveHeartRateZone) { previous, zone in
             guard tabIsActive, previous != zone else { return }
             // Zone flips must rebuild live copy (assessment / recommendation / teaser), not just the badge.
@@ -106,6 +138,11 @@ struct ExpertCoachView: View {
                 bpm: activityCoordinator.liveHeartRateBPM,
                 zone: zone
             )
+        }
+        .onChange(of: activityCoordinator.liveWorkout?.id) { _, _ in
+            guard tabIsActive else { return }
+            reconcileLiveWorkoutIfNeeded()
+            refreshLiveCoachSession()
         }
         .task(id: liveCoachRefreshLoopID) {
             guard liveCoachRefreshLoopID != nil else { return }
@@ -119,8 +156,16 @@ struct ExpertCoachView: View {
     private var liveCoachRefreshLoopID: String? {
         guard tabIsActive else { return nil }
         guard coachState.hasValidGuidance else { return nil }
-        guard coachUIPresentation?.semanticColor.isLiveSessionChrome == true else { return nil }
+        guard isLiveWorkoutZoneChrome else { return nil }
         return coachState.fingerprint?.rawValue ?? "live"
+    }
+
+    private func reconcileLiveWorkoutIfNeeded() {
+        // Early-start walks only reconcile on Planner unless Coach also links the live Watch session.
+        activityCoordinator.reconcileLiveWorkout(
+            with: Array(plannedActivities),
+            modelContext: modelContext
+        )
     }
 
     private func refreshLiveCoachSession(recompute: Bool = true) {
@@ -171,7 +216,7 @@ struct ExpertCoachView: View {
         }
         #if DEBUG
         .overlay(alignment: .bottom) {
-            askCoachPill
+            beliefDebugPill
                 .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)
                 .padding(.bottom, WeekFitScreenLayout.tabBarClearance + 10)
         }
@@ -189,14 +234,14 @@ struct ExpertCoachView: View {
     }
 
     #if DEBUG
-    private var askCoachPill: some View {
+    private var beliefDebugPill: some View {
         Button {
             showBeliefDebug = true
         } label: {
             HStack(spacing: 6) {
                 Text("✦")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
-                Text(WeekFitLocalizedString("coach.askCoach"))
+                Text("Beliefs")
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
             }
             .foregroundStyle(textPrimary.opacity(0.88))
@@ -219,7 +264,7 @@ struct ExpertCoachView: View {
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity, alignment: .trailing)
         .accessibilityIdentifier("coach.beliefDebug")
-        .accessibilityLabel(WeekFitLocalizedString("coach.askCoach"))
+        .accessibilityLabel("Beliefs")
     }
     #endif
 
@@ -316,6 +361,10 @@ struct ExpertCoachView: View {
                                 }
                             )
                         }
+                        // Assistant entry temporarily hidden — restore via `showsAssistantEntry`.
+                        if showsAssistantEntry {
+                            assistantEntrySection
+                        }
                         discoverySpotlightSection
                     } else {
                         if recoveryChallengeHeaderEntry != .hidden {
@@ -327,15 +376,24 @@ struct ExpertCoachView: View {
                             )
                         }
                         coachCard
+                        if showsAssistantEntry {
+                            assistantEntrySection
+                        }
                         discoverySpotlightSection
                         // All card states own Why inline — no second Why card.
                     }
                 } else if isRegistryGap || shouldShowCoachPreparingState {
                     registryGapSection
                         .padding(.top, 12)
+                    if showsAssistantEntry {
+                        assistantEntrySection
+                    }
                 } else {
                     coachUnavailableSection
                         .padding(.top, 12)
+                    if showsAssistantEntry {
+                        assistantEntrySection
+                    }
                 }
             }
             .padding(.horizontal, coachContentHorizontalInset)
@@ -343,6 +401,55 @@ struct ExpertCoachView: View {
             .padding(.bottom, WeekFitScreenLayout.tabBarClearance)
         }
         .weekFitTransparentScrollBackground(fillsCanvas: false)
+    }
+
+    // MARK: - WeekFit Coach Assistant
+
+    /// Temporarily off on Coach — flip to `true` when Assistant entry is ready again.
+    private let showsAssistantEntry = false
+
+    private var assistantEntrySection: some View {
+        CoachAssistantInvitationSection(
+            activeConversation: todaysAssistantConversation,
+            onOpen: {
+                // Reuse today’s conversation even if it is still greeting-only.
+                if let id = todaysAssistantConversation?.id {
+                    coachAssistantLaunch = .continueConversation(id: id)
+                } else {
+                    coachAssistantLaunch = .fresh
+                }
+                showCoachAssistant = true
+            }
+        )
+        // Match Coach card spacing within the shared root VStack.
+        .padding(.top, 0)
+    }
+
+    private func refreshAskCoachFocus() {
+        askCoachActiveFocus = AskCoachFocusStore.activeFocus()
+        askCoachReviewableFocus = AskCoachFocusStore.reviewableFocus()
+    }
+
+    private func refreshAssistantConversation() {
+        todaysAssistantConversation = CoachAssistantConversationStore.latest()
+    }
+
+    private func handleAssistantAction(_ action: CoachAssistantChoiceAction) {
+        switch action {
+        case .openMealsTab, .openMealBuilder:
+            showCoachAssistant = false
+            appSession.requestRootTab(.meals)
+        case .openGoalSettings:
+            showCoachAssistant = false
+            showProfile = true
+        case .proposePlanEase:
+            showCoachAssistant = false
+            let dayKey = ProposalInputFingerprintBuilder.dayKey(for: Date())
+            PendingMorningProposalReview.shared.requestOpen(dayKey: dayKey)
+            appSession.requestRootTab(.today)
+        case .setWeeklyFocus, .startNewConversation, .skipCheckIn:
+            break
+        }
     }
 
     // MARK: - Recovery Challenge
@@ -629,9 +736,18 @@ struct ExpertCoachView: View {
         }
     }
 
-    /// Zone chrome only while Coach is in a live workout session — never during meals.
+    /// Zone chrome while Coach is in a live workout session — never during meals.
+    /// Walk scenarios use recovery chrome until HR arrives; also trust
+    /// `isCoachLiveSession` so the live layout opens before the first BPM sample.
     private var isLiveWorkoutZoneChrome: Bool {
-        coachUIPresentation?.semanticColor.isLiveSessionChrome == true
+        if coachUIPresentation?.semanticColor.isLiveSessionChrome == true {
+            return true
+        }
+        // Meals stay out: isCoachLiveSession requires family != .none.
+        guard let input = coachState.input else { return false }
+        return input.plannedActivities.contains {
+            CoachSessionPhaseStability.isCoachLiveSession($0, now: input.now)
+        }
     }
 
     private var isPostSessionGuidance: Bool {
