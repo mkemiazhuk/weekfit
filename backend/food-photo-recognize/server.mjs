@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { authenticate } from './auth.mjs';
 import { recognize, validateInput, ServiceError } from './recognition.mjs';
-import { createSummaryHandler } from './coach-summary.mjs';
+import { createSummaryHandler, SUMMARY_PROMPT_VERSION } from './coach-summary.mjs';
 
 export function configuration(env = process.env) {
   const integer = (key, fallback, min, max) => {
@@ -73,6 +73,7 @@ export function createServer(config, dependencies = {}) {
         allowDevAuth: config.allowDevAuth,
         coachSummaryConfigured: summaryConfigured(),
         coachSummaryOncePerDay: Boolean(config.summaryOncePerDay),
+        coachSummaryPromptVersion: SUMMARY_PROMPT_VERSION,
       });
     }
     if (req.method === 'GET' && req.url === '/readyz') {
