@@ -12,11 +12,11 @@ export function configuration(env = process.env) {
   };
   const allowDevAuth = env.ALLOW_DEV_AUTH === '1';
   if (allowDevAuth && (env.NODE_ENV === 'production' || !env.WEEKFIT_DEV_TOKEN || env.WEEKFIT_DEV_TOKEN.length < 16)) throw Error('Development auth requires a non-production environment and a token of at least 16 characters');
-  const effort = env.FOOD_PHOTO_REASONING_EFFORT ?? 'high';
+  const effort = env.FOOD_PHOTO_REASONING_EFFORT ?? 'low';
   if (!['low','medium','high','xhigh','max'].includes(effort)) throw Error('Invalid reasoning effort');
-  const model = env.FOOD_PHOTO_MODEL ?? 'gpt-6-astra';
-  if (!['gpt-6-astra','gpt-6.1-sol'].includes(model)) throw Error('Unsupported model; explicitly update the server allowlist after evaluation');
-  return { apiKey: env.OPENAI_API_KEY ?? '', model, effort, allowDevAuth, devToken: env.WEEKFIT_DEV_TOKEN ?? '', firebaseProject: env.FIREBASE_PROJECT_ID ?? '', port: integer('PORT',8080,1,65535), timeoutMs: integer('OPENAI_TIMEOUT_MS',90000,1000,180000), maxOutputTokens: integer('OPENAI_MAX_OUTPUT_TOKENS',16000,2000,32000), dailyLimit: integer('DAILY_SCAN_LIMIT',20,1,1000), maxConcurrency: integer('MAX_CONCURRENT_SCANS',4,1,100), globalDailyLimit: integer('GLOBAL_DAILY_SCAN_LIMIT',200,1,100000) };
+  const model = env.FOOD_PHOTO_MODEL ?? 'gpt-6-luna';
+  if (!['gpt-6-astra','gpt-6.1-sol','gpt-6-luna'].includes(model)) throw Error('Unsupported model; explicitly update the server allowlist after evaluation');
+  return { apiKey: env.OPENAI_API_KEY ?? '', model, effort, allowDevAuth, devToken: env.WEEKFIT_DEV_TOKEN ?? '', firebaseProject: env.FIREBASE_PROJECT_ID ?? '', port: integer('PORT',8080,1,65535), timeoutMs: integer('OPENAI_TIMEOUT_MS',90000,1000,180000), maxOutputTokens: integer('OPENAI_MAX_OUTPUT_TOKENS',4000,2000,32000), dailyLimit: integer('DAILY_SCAN_LIMIT',20,1,1000), maxConcurrency: integer('MAX_CONCURRENT_SCANS',4,1,100), globalDailyLimit: integer('GLOBAL_DAILY_SCAN_LIMIT',200,1,100000) };
 }
 export function createServer(config, dependencies = {}) {
   const auth = dependencies.authenticate ?? authenticate, analyze = dependencies.recognize ?? recognize;
@@ -52,12 +52,12 @@ export function createServer(config, dependencies = {}) {
       if ((limits.get(user)??0)>=config.dailyLimit || dailyCount>=config.globalDailyLimit) throw new ServiceError('daily_scan_limit',429);
       limits.set(user,(limits.get(user)??0)+1); dailyCount++;
       const {result,usage} = await analyze(input,config);
-      console.log(JSON.stringify({requestId,model:config.model,latencyMs:Date.now()-started,outcome:'success',inputTokens:usage?.input_tokens,outputTokens:usage?.output_tokens}));
+      console.log(JSON.stringify({requestId,model:config.model,latencyMs:Date.now()-started,outcome:'success',inputTokens:usage?.input_tokens,outputTokens:usage?.output_tokens,reasoningTokens:usage?.output_tokens_details?.reasoning_tokens,cachedInputTokens:usage?.input_tokens_details?.cached_tokens}));
       send(res,200,{...result,model:config.model,requestId});
     } catch(error) {
       const timeout = ['TimeoutError','AbortError'].includes(error.name);
       const code = timeout?'recognition_timeout':error instanceof ServiceError?error.code:'internal_error';
-      console.log(JSON.stringify({requestId,model:config.model,latencyMs:Date.now()-started,outcome:code}));
+      console.log(JSON.stringify({requestId,model:config.model,latencyMs:Date.now()-started,outcome:code,inputTokens:error.usage?.input_tokens,outputTokens:error.usage?.output_tokens,reasoningTokens:error.usage?.output_tokens_details?.reasoning_tokens}));
       if (!res.destroyed) send(res,timeout?504:error instanceof ServiceError?error.status:500,{error:code,requestId});
     } finally { if(acquired) active--; }
   });

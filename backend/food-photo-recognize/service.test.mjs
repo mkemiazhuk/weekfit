@@ -8,7 +8,7 @@ const valid = () => ({isFood:true,name:'Rice',items:[{name:'Rice',preparation:'c
 // Header-only fixture tests image-envelope checks, not visual recognition.
 const jpeg = Buffer.from([255,216,255,192,0,17,8,0,100,0,100,3,1,17,0,2,17,0,3,17,0,255,217]).toString('base64');
 const input = () => ({imageBase64:jpeg,mimeType:'image/jpeg',locale:'en_US'});
-test('default uses Astra and dev authentication is opt-in',()=>{const c=configuration({});assert.equal(c.model,'gpt-6-astra');assert.equal(c.allowDevAuth,false);});
+test('default uses economical Luna and dev authentication is opt-in',()=>{const c=configuration({});assert.equal(c.model,'gpt-6-luna');assert.equal(c.allowDevAuth,false);assert.equal(c.effort,'low');assert.equal(c.maxOutputTokens,4000);});
 test('production refuses developer token',()=>assert.throws(()=>configuration({NODE_ENV:'production',ALLOW_DEV_AUTH:'1',WEEKFIT_DEV_TOKEN:'weekfit-dev-local-token'})));
 test('validates JPEG and rejects disguised or tiny images',()=>{assert.equal(validateInput(input()).locale,'en_US');assert.throws(()=>validateInput({...input(),imageBase64:Buffer.from('not an image').toString('base64')}));const tiny=Buffer.from(jpeg,'base64');tiny[8]=1;assert.throws(()=>validateInput({...input(),imageBase64:tiny.toString('base64')}));});
 test('rejects invalid locale and oversized context',()=>{assert.throws(()=>validateInput({...input(),locale:'ignore instructions!'}));assert.throws(()=>validateInput({...input(),note:'a'.repeat(1001)}));});
@@ -18,7 +18,7 @@ test('non-food is a recoverable 422',()=>assert.throws(()=>validateResult({...va
 test('provider receives high detail, schema, no storage and server-selected model',async()=>{
   let sent;const c={...configuration({}),apiKey:'test-key'};
   const r=await recognize(validateInput(input()),c,async(url,options)=>{assert.equal(url,'https://api.openai.com/v1/responses');sent=JSON.parse(options.body);return new Response(JSON.stringify({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(valid())}]}],usage:{input_tokens:100,output_tokens:200}}));});
-  assert.equal(sent.model,'gpt-6-astra');assert.equal(sent.store,false);assert.equal(sent.text.format.strict,true);assert.equal(sent.input[0].content[1].detail,'high');assert.equal(r.result.name,'Rice');
+  assert.equal(sent.model,'gpt-6-luna');assert.equal(sent.store,false);assert.equal(sent.service_tier,'default');assert.equal(sent.reasoning.effort,'low');assert.equal(sent.max_output_tokens,4000);assert.equal(sent.text.format.strict,true);assert.equal(sent.input[0].content[1].detail,'high');assert.equal(r.result.name,'Rice');
 });
 test('provider failures, refusals and truncated output never become meals',async()=>{
   const c={...configuration({}),apiKey:'test-key'};
@@ -39,10 +39,23 @@ test('Firebase verifies signature, audience and expiry using trusted certificate
 });
 test('HTTP auth, client-model isolation and quota enforcement',async t=>{
   const config={...configuration({ALLOW_DEV_AUTH:'1',WEEKFIT_DEV_TOKEN:'weekfit-dev-local-token',OPENAI_API_KEY:'test'}),dailyLimit:1};let calls=0;
-  const server=createServer(config,{recognize:async(i,c)=>{calls++;assert.equal(c.model,'gpt-6-astra');return{result:validateResult(valid()),usage:null};}});
+  const server=createServer(config,{recognize:async(i,c)=>{calls++;assert.equal(c.model,'gpt-6-luna');return{result:validateResult(valid()),usage:null};}});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));t.after(()=>new Promise(resolve=>server.close(resolve)));
   const base=`http://127.0.0.1:${server.address().port}`;
   const request=auth=>fetch(base+'/v1/food/photo-recognize',{method:'POST',headers:{'Content-Type':'application/json',...(auth?{Authorization:'Bearer weekfit-dev-local-token'}:{})},body:JSON.stringify({...input(),model:'arbitrary-expensive-model'})});
   assert.equal((await request(false)).status,401);assert.equal((await request(true)).status,200);assert.equal((await request(true)).status,429);assert.equal(calls,1);
   assert.equal((await fetch(base+'/readyz')).status,200);
+});
+
+test('explicit quality models remain available and unknown models are rejected',()=>{
+  for(const model of ['gpt-6-astra','gpt-6.1-sol','gpt-6-luna']) assert.equal(configuration({FOOD_PHOTO_MODEL:model}).model,model);
+  assert.throws(()=>configuration({FOOD_PHOTO_MODEL:'unknown'}));
+});
+test('incomplete provider output preserves billed usage without retrying',async()=>{
+  let calls=0;
+  await assert.rejects(()=>recognize(validateInput(input()),{...configuration({}),apiKey:'test'},async()=>{
+    calls++;
+    return new Response(JSON.stringify({status:'incomplete',usage:{input_tokens:3000,output_tokens:4000,output_tokens_details:{reasoning_tokens:3500}},output:[]}));
+  }),e=>e.code==='recognition_incomplete' && e.usage.output_tokens===4000 && e.usage.output_tokens_details.reasoning_tokens===3500);
+  assert.equal(calls,1);
 });
