@@ -28,6 +28,13 @@ final class LocalDataResetService {
 
         var failures: [String] = []
 
+        NotificationCenter.default.post(name: .coachEveningSummaryWillReset, object: nil)
+        do {
+            try CoachEveningSummaryStore().eraseSummaryTextPreservingAttempts()
+        } catch {
+            failures.append("Evening Coach summaries: \(error.localizedDescription)")
+        }
+
         do {
             try clearSwiftData()
         } catch {

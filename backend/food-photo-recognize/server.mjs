@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { authenticate } from './auth.mjs';
 import { recognize, validateInput, ServiceError } from './recognition.mjs';
+import { createSummaryHandler } from './coach-summary.mjs';
 
 export function configuration(env = process.env) {
   const integer = (key, fallback, min, max) => {
@@ -20,6 +21,11 @@ export function configuration(env = process.env) {
 }
 export function createServer(config, dependencies = {}) {
   const auth = dependencies.authenticate ?? authenticate, analyze = dependencies.recognize ?? recognize;
+  const summary = createSummaryHandler({
+    ...config,
+    summaryModel: config.summaryModel ?? process.env.COACH_SUMMARY_MODEL ?? 'gpt-4.1-mini',
+    summaryStoreDir: config.summaryStoreDir ?? process.env.COACH_SUMMARY_STORE_DIR ?? ''
+  }, { ...dependencies, authenticate: auth });
   const limits = new Map(); let active = 0, day = '', dailyCount = 0;
   const send = (res, status, body) => {
     res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
@@ -27,6 +33,7 @@ export function createServer(config, dependencies = {}) {
   };
   const configured = () => Boolean(config.apiKey && (config.firebaseProject || config.allowDevAuth));
   const server = http.createServer(async (req, res) => {
+    if (req.method === 'POST' && req.url === '/v1/coach/day-summary') return summary(req,res);
     const requestId = randomUUID(), started = Date.now(); let acquired = false;
     if (req.method === 'GET' && req.url === '/healthz') return send(res,200,{ok:true,configured:configured(),model:config.model,allowDevAuth:config.allowDevAuth});
     if (req.method === 'GET' && req.url === '/readyz') return send(res,configured()?200:503,{ready:configured()});
