@@ -45,10 +45,13 @@ jobs:
           docker push "$IMAGE:${GITHUB_SHA}"
           docker push "$IMAGE:latest"
       - name: Trigger Render deploy
-        if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "RENDER_DEPLOY_HOOK secret not set; skip auto-redeploy"
+            exit 0
+          fi
           curl -fsS -X POST "$RENDER_DEPLOY_HOOK"
           echo "Render deploy hook triggered"
       - name: Summary
