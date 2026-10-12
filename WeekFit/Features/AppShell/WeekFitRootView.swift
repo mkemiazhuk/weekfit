@@ -40,6 +40,7 @@ struct WeekFitRootView: View {
 
     @StateObject private var planViewModel = PlanViewModel()
     @StateObject private var coachInputProvider = CoachInputProvider()
+    @StateObject private var eveningSummary = CoachEveningSummaryCoordinator()
     @State private var selectedTab: WeekFitTab = .today
     @State private var todaySelectedDate = Date()
     @State private var todayResetTrigger = UUID()
@@ -75,9 +76,48 @@ struct WeekFitRootView: View {
     private var plannedActivities: [PlannedActivity]
 
     var body: some View {
-        rootShellWithHealthHandlers
+        rootShellWithEveningSummaryHandlers
             .environmentObject(authViewModel)
+            .environmentObject(eveningSummary)
             .weekFitReviewPromptHost(manager: reviewManager)
+    }
+
+    private var rootShellWithEveningSummaryHandlers: some View {
+        rootShellWithHealthHandlers
+            .onAppear { evaluateEveningSummary() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { evaluateEveningSummary() }
+            }
+            .onChange(of: coachCoordinator.state.id) { _, _ in evaluateEveningSummary() }
+            .onChange(of: subscriptionManager.hasFullAccess) { _, _ in evaluateEveningSummary() }
+            .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
+                guard scenePhase == .active else { return }
+                evaluateEveningSummary(refreshIfNeeded: true)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .coachEveningSummaryWillReset)) { _ in
+                eveningSummary.cancelForWorkspaceReset()
+            }
+    }
+
+    private func evaluateEveningSummary(refreshIfNeeded: Bool = false) {
+        guard scenePhase == .active, AccountSessionController.shared.mode == .realUser,
+              let owner = WorkspaceOwnerStore.currentIdentityToken() else { return }
+        let now = Date()
+        eveningSummary.restore(owner: owner, now: now)
+        guard subscriptionManager.hasFullAccess,
+              CoachEveningSummaryPolicy.isEvening(now), eveningSummary.status == .idle,
+              hasSettledInitialHealthState else { return }
+        guard let input = coachInputProvider.lastInput,
+              let request = CoachEveningSummaryInputBuilder.build(
+                input: input, presentation: coachCoordinator.state.coachUIPresentation,
+                activities: Array(plannedActivities), locale: languageManager.selectedLanguage.rawValue, now: now
+              ) else {
+            if refreshIfNeeded {
+                Task { await refreshCoachInput(source: "eveningSummary.input") }
+            }
+            return
+        }
+        eveningSummary.startIfNeeded(input: request, owner: owner, now: now)
     }
 
     private var rootShellWithHealthHandlers: some View {
@@ -1087,6 +1127,7 @@ struct WeekFitRootView: View {
             coachCoordinator: coachCoordinator,
             plannedActivities: plannedActivities
         )
+        if !Task.isCancelled { evaluateEveningSummary() }
     }
 
     private var coachRefreshDate: Date {

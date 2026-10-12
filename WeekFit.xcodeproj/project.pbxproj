@@ -16,6 +16,7 @@
 		W10000012FB2403E006A4D40 /* WeekFitWidgetShared in Frameworks */ = {isa = PBXBuildFile; productRef = W100000A2FB2403E006A4D40 /* WeekFitWidgetShared */; };
 		W10000022FB2403E006A4D40 /* WeekFitWidgetShared in Frameworks */ = {isa = PBXBuildFile; productRef = W100000B2FB2403E006A4D40 /* WeekFitWidgetShared */; };
 		W10000032FB2403E006A4D40 /* WeekFitWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = W10000102FB2403E006A4D40 /* WeekFitWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E71000022FB2403E006A4D30 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = E71000012FB2403E006A4D30 /* FirebaseAuth */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -129,6 +130,7 @@
 				W10000012FB2403E006A4D40 /* WeekFitWidgetShared in Frameworks */,
 				F10000042FB2403E006A4D33 /* FirebaseAnalyticsCore in Frameworks */,
 				F10000052FB2403E006A4D34 /* FirebaseCrashlytics in Frameworks */,
+				E71000022FB2403E006A4D30 /* FirebaseAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -209,6 +211,7 @@
 				W100000A2FB2403E006A4D40 /* WeekFitWidgetShared */,
 				F10000022FB2403E006A4D31 /* FirebaseAnalyticsCore */,
 				F10000032FB2403E006A4D32 /* FirebaseCrashlytics */,
+				E71000012FB2403E006A4D30 /* FirebaseAuth */,
 			);
 			productName = WeekFit;
 			productReference = 55E7BBE52FB2403E006A4D20 /* WeekFit.app */;
@@ -950,6 +953,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = W10000092FB2403E006A4D40 /* XCLocalSwiftPackageReference "Packages/WeekFitWidgetShared" */;
 			productName = WeekFitWidgetShared;
+		};
+		E71000012FB2403E006A4D30 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F10000012FB2403E006A4D30 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

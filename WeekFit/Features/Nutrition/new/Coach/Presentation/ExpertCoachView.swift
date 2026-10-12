@@ -9,6 +9,7 @@ struct ExpertCoachView: View {
     @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @EnvironmentObject private var languageManager: AppLanguageManager
+    @EnvironmentObject private var eveningSummary: CoachEveningSummaryCoordinator
     @ObservedObject private var activityCoordinator = WeekFitActivityCoordinator.shared
     @Environment(\.tabIsActive) private var tabIsActive
     @Environment(\.weekFitPalette) private var palette
@@ -395,6 +396,7 @@ struct ExpertCoachView: View {
                         assistantEntrySection
                     }
                 }
+                CoachEveningSummarySection(coordinator: eveningSummary)
             }
             .padding(.horizontal, coachContentHorizontalInset)
             .frame(maxWidth: .infinity)
