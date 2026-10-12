@@ -1,0 +1,53 @@
+name: Food Photo API - Test and Publish
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['backend/food-photo-recognize/**', '.github/workflows/food-photo-service.yml']
+  pull_request:
+    paths: ['backend/food-photo-recognize/**', '.github/workflows/food-photo-service.yml']
+permissions:
+  contents: read
+concurrency:
+  group: food-photo-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: npm test
+        working-directory: backend/food-photo-recognize
+  publish:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build image
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/weekfit-food-photo
+        run: |
+          docker build --tag "$IMAGE:${GITHUB_SHA}" --tag "$IMAGE:latest" backend/food-photo-recognize
+      - name: Sign in and publish
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY_USER: ${{ github.actor }}
+          IMAGE: ghcr.io/${{ github.repository_owner }}/weekfit-food-photo
+        run: |
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$REGISTRY_USER" --password-stdin
+          docker push "$IMAGE:${GITHUB_SHA}"
+          docker push "$IMAGE:latest"
+      - name: Summary
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/weekfit-food-photo
+        run: |
+          echo "### Container published" >> "$GITHUB_STEP_SUMMARY"
+          echo "Image: $IMAGE:$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "A container host is still required for a live HTTPS API. GitHub Actions does not host this API." >> "$GITHUB_STEP_SUMMARY"
