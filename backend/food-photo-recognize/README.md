@@ -1,5 +1,26 @@
 # WeekFit Food Photo API
 
+Production host: `https://weekfit-food-photo.onrender.com`
+
+iOS app (`GoogleService-Info.plist`): `PROJECT_ID=weekfitai`. Render must set `FIREBASE_PROJECT_ID=weekfitai` and `ALLOW_DEV_AUTH=0`.
+
+**If the phone says recognition fails / “service doesn’t respond”:** Firebase Authentication is often not initialized. Identity Toolkit returns `CONFIGURATION_NOT_FOUND` until you open **Firebase Console → Authentication → Get started** and enable **Anonymous** for `weekfitai`. Analytics alone is not enough. Verify with `Scripts/verify_firebase_photo_auth.sh`.
+
+## Evening Coach summary
+
+`POST /v1/coach/day-summary` uses the same Firebase Bearer auth and OpenAI server key as photo recognition. iOS sends one day snapshot after **20:00 local**, saves the answer, and shows it on Coach. Reopening the app, switching tabs, editing meals, or changing language must **not** spend another AI call.
+
+**Deploy order (required before device QA):**
+
+1. Attach a **persistent disk** to the Render service (or equivalent volume).
+2. Set `COACH_SUMMARY_STORE_DIR` to an absolute path on that disk (example: `/var/data/coach-summary`). Empty → endpoint returns **503**; photo recognition keeps working.
+3. Keep `COACH_SUMMARY_MODEL=gpt-4.1-mini` (separate from the photo model — does not change photo cost/settings).
+4. For manual Coach testing leave `COACH_SUMMARY_ONCE_PER_DAY` unset/`0` (calls AI every time, before 20:00 allowed). Set to `1` for production once-per-day after 20:00.
+5. Redeploy the backend, then ship the iOS build that includes evening summary.
+5. One service instance + one volume is supported; multiple instances need a shared durable store.
+
+Client attempt markers are written **before** auth/network. Failure/timeout also consumes the day’s attempt (no retry button).
+
 Node 24, no runtime dependencies. Server-side OpenAI Responses API with strict structured output, `detail: high`, `store: false`. Default model: `gpt-6-astra`, reasoning effort `high`; configurable alternative `gpt-6.1-sol`. Model choice is controlled by the server, never by the phone. No silent fallback to a cheaper model.
 
 The flagship model is a quality-first choice, not a food-recognition accuracy guarantee. Portion sizes, hidden oil, sauces and macros are estimates. Results always require user confirmation. This service does **not** query a nutrition database; all returned nutrient values are labeled `ai_estimate`. Totals are computed from component estimates. Add verified food-database matching separately before claiming database-backed values.
