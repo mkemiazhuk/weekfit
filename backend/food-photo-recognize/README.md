@@ -1,8 +1,8 @@
 # WeekFit Food Photo API
 
-Node 24, no runtime dependencies. Server-side OpenAI Responses API with strict structured output, `detail: high`, `store: false`. Default model: `gpt-6-astra`, reasoning effort `high`; configurable alternative `gpt-6.1-sol`. Model choice is controlled by the server, never by the phone. No silent fallback to a cheaper model.
+Node 24, no runtime dependencies. Server-side OpenAI Responses API with strict structured output, `detail: high`, `store: false`. Default model: `gpt-6-luna`, reasoning effort `low`, Standard processing and a 4,000-output-token ceiling; configurable quality alternatives `gpt-6.1-sol` and `gpt-6-astra`. Model choice is controlled by the server, never by the phone. No silent fallback to a cheaper model.
 
-The flagship model is a quality-first choice, not a food-recognition accuracy guarantee. Portion sizes, hidden oil, sauces and macros are estimates. Results always require user confirmation. This service does **not** query a nutrition database; all returned nutrient values are labeled `ai_estimate`. Totals are computed from component estimates. Add verified food-database matching separately before claiming database-backed values.
+The economical model must be evaluated on real meals; contract tests do not guarantee food-recognition accuracy. Portion sizes, hidden oil, sauces and macros are estimates. Results always require user confirmation. This service does **not** query a nutrition database; all returned nutrient values are labeled `ai_estimate`. Totals are computed from component estimates. Add verified food-database matching separately before claiming database-backed values.
 
 ## Local start
 
@@ -45,7 +45,7 @@ Response fields:
   "clarificationQuestion": "Was oil or sauce added?",
   "totals": {"grams": 150, "calories": 195, "protein": 4, "carbs": 42, "fat": 0.5},
   "nutritionSource": "ai_estimate", "estimated": true,
-  "requiresConfirmation": true, "model": "gpt-6-astra", "requestId": "uuid"
+  "requiresConfirmation": true, "model": "gpt-6-luna", "requestId": "uuid"
 }
 ```
 
@@ -77,7 +77,7 @@ Default quotas: 20 attempts per user/day, 200 globally/day, 4 concurrent scans. 
 
 No images, names or raw model text are logged or persisted. Logs contain request ID, model, duration, outcome and successful-request token counts. `store:false` does not remove OpenAI's separate abuse-monitoring retention policy.
 
-The prior GPT-4.1 mini estimate of $2-3/1,000 photos does not apply to Astra. Current Astra Standard rates: $10/M input and $50/M output tokens. Reasoning tokens count towards output billing. Example assumption: 3,000 input and 2,000 total output tokens => $0.13/scan; this is not a measured benchmark. The 16,000-output-token cap is a safety ceiling, not expected usage, and may still produce incomplete results. Tune latency, cost and completeness using real photos and provider usage logs. Do not enable unlimited scanning at the existing subscription price without measuring economics.
+Standard rates checked 2026-10-12: Luna $0.10/M input and $0.50/M output; Sol $2/M input and $10/M output; Astra $10/M input and $50/M output. Source: https://developers.openai.com/api/docs/pricing . At an illustrative 3,264 input and 1,000 output tokens, Luna costs about $0.00083/scan (~$0.83/1,000 scans), excluding cache-write charges and hosting. This is a projection using an assumed token count, not a Luna benchmark. The 4,000-token ceiling includes reasoning and may still truncate complicated meals. No automatic retry or expensive-model fallback. Logs include cached input and reasoning tokens and preserve usage for incomplete provider responses. Validate live provider access and food accuracy on representative photos after selecting the model.
 
 ## Evaluation
 
