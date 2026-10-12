@@ -44,6 +44,13 @@ jobs:
           printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$REGISTRY_USER" --password-stdin
           docker push "$IMAGE:${GITHUB_SHA}"
           docker push "$IMAGE:latest"
+      - name: Trigger Render deploy
+        if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          curl -fsS -X POST "$RENDER_DEPLOY_HOOK"
+          echo "Render deploy hook triggered"
       - name: Summary
         env:
           IMAGE: ghcr.io/${{ github.repository_owner }}/weekfit-food-photo
