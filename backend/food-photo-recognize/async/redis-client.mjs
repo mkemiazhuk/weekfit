@@ -1,4 +1,5 @@
 import net from 'node:net';
+import tls from 'node:tls';
 import { EventEmitter } from 'node:events';
 
 /**
@@ -118,7 +119,8 @@ export function createRedisClient(url) {
     if (connecting) return connecting;
     connecting = new Promise((resolve, reject) => {
       let settled = false;
-      const s = net.createConnection({ host: cfg.host, port: cfg.port }, () => {
+      const dial = cfg.tls ? tls.connect : net.createConnection;
+      const s = dial({ host: cfg.host, port: cfg.port, ...(cfg.tls ? { servername: cfg.host } : {}) }, () => {
         // Mark connected before AUTH so nested call() does not re-enter connect().
         socket = s;
         connecting = null;
@@ -180,9 +182,11 @@ export function createRedisClient(url) {
     async rpop(key) { return call(['RPOP', key]); },
     /** @returns {Promise<[string, string] | null>} */
     async brpop(key, timeoutSec) {
-      const result = await call(['BRPOP', key, String(timeoutSec)]);
-      if (!result) return null;
-      return result;
+      // Redis blocks the whole connection during BRPOP. Never share that
+      // socket with lease renewals, slot releases or ordinary state reads.
+      const blocking = createRedisClient(url);
+      try { return await blocking.call(['BRPOP', key, String(timeoutSec)]); }
+      finally { await blocking.close(); }
     },
     async llen(key) { return call(['LLEN', key]); },
     async hset(key, objOrField, maybeValue) {

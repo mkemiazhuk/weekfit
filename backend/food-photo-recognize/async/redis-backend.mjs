@@ -124,6 +124,8 @@ export async function createRedisJobStore({ redis, redisUrl, jobTtlMs = 24 * 60 
 
   const enqueue = async (analysisId) => {
     await r.lpush(k.queue, analysisId);
+    // Wake is only a hint. A blocked worker never removes a durable queue item.
+    await r.lpush(`${k.queue}:wake`, '1');
     return analysisId;
   };
 
@@ -154,11 +156,21 @@ export async function createRedisJobStore({ redis, redisUrl, jobTtlMs = 24 * 60 
   };
 
   const claimNext = async ({ workerId, leaseMs, waitMs = 0 }) => {
-    // Pop then attach lease+fencing token. BRPOP wakes immediately on enqueue (no sleep poll).
-    let id = await r.rpop(k.queue);
+    const claim = async () => {
+      const leaseUntil = Date.now() + leaseMs;
+      const leaseJson = JSON.stringify({ workerId, leaseUntil, claimedAt: Date.now() });
+      // Pop and recovery-index reservation are one Redis transaction. A worker
+      // dying before attachClaim cannot make the popped job disappear forever.
+      return r.eval(CLAIM_SCRIPT, [k.queue, k.lease(''), k.leaseZ],
+        [workerId, String(leaseUntil), leaseJson, String(leaseMs)]);
+    };
+    let id = await claim();
     if (!id && waitMs > 0) {
-      const popped = await r.brpop(k.queue, Math.max(1, Math.ceil(waitMs / 1000)));
-      id = Array.isArray(popped) ? popped[1] : null;
+      const deadline = Date.now() + waitMs;
+      do {
+        await r.brpop(`${k.queue}:wake`, Math.max(1, Math.ceil((deadline - Date.now()) / 1000)));
+        id = await claim();
+      } while (!id && Date.now() < deadline);
     }
     return attachClaim(id, workerId, leaseMs);
   };

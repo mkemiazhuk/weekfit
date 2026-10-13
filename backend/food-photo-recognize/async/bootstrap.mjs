@@ -16,7 +16,7 @@ import {
   createRedisProviderBudget,
 } from './redis-backend.mjs';
 import { createHttpObjectStore, createS3ObjectStore } from './http-object-store.mjs';
-import { createProviderLimits } from './provider-limits.mjs';
+import { createProviderLimits, createRedisProviderLimits } from './provider-limits.mjs';
 
 export function asyncConfiguration(env = process.env) {
   const integer = (key, fallback, min, max) => {
@@ -50,6 +50,12 @@ export function asyncConfiguration(env = process.env) {
     }
     if (stateBackend === 'file' && !dataDir) {
       throw new Error('ALLOW_SINGLE_NODE_ASYNC=1 with file backend requires DATA_DIR on a persistent disk');
+    }
+  }
+
+  if (isProduction && asyncEnabled && stateBackend === 'redis') {
+    if (!(Number(env.PROVIDER_MAX_RPM) > 0) || !(Number(env.PROVIDER_MAX_TPM) > 0)) {
+      throw new Error('Production Redis mode requires confirmed positive PROVIDER_MAX_RPM and PROVIDER_MAX_TPM');
     }
   }
 
@@ -193,7 +199,8 @@ export async function createAsyncStack(config, dependencies = {}) {
     }).fetcher;
   }
 
-  const providerLimits = dependencies.providerLimits ?? createProviderLimits({
+  const providerLimits = dependencies.providerLimits ?? (asyncConfig.stateBackend === 'redis' ? createRedisProviderLimits : createProviderLimits)({
+    redis,
     maxRpm: asyncConfig.providerMaxRpm,
     maxTpm: asyncConfig.providerMaxTpm,
     tokensPerCallEstimate: asyncConfig.providerTokensPerCallEstimate,

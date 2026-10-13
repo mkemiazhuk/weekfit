@@ -18,6 +18,7 @@ import { makeJpegBytes } from './extended-load.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const QUICK = process.env.BURST100_QUICK === '1';
+const PORT_OFFSET = Number(process.env.BURST100_PORT_OFFSET || 0);
 const BURST_N = QUICK ? 20 : 100;
 const DELAYS = QUICK ? [1000, 2000] : [5000, 10_000, 20_000];
 const SLOTS = QUICK ? 20 : 100;
@@ -58,11 +59,13 @@ async function waitHealth(base, timeoutMs = 25_000) {
 }
 
 function spawnProc(script, env) {
-  const child = spawn(process.execPath, [script], {
+  const child = spawn(process.execPath, ['--import', './async/load-process-probe.mjs', script], {
     cwd: __dirname,
     env: { ...process.env, ...env },
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   });
+  child.samples = [];
+  child.on('message', m => { if (m.probe) child.samples.push(m); });
   child.log = [];
   const onData = (b) => child.log.push(b.toString());
   child.stdout.on('data', onData);
@@ -70,7 +73,7 @@ function spawnProc(script, env) {
   return child;
 }
 
-const jpegB64 = () => makeJpegBytes(256).toString('base64');
+const jpegB64 = () => makeJpegBytes(450_000).toString('base64');
 
 async function startFleet({ redisUrl, objectBaseUrl, objectToken, delayMs, basePort, workerLeaseMs = null }) {
   const leaseMs = workerLeaseMs ?? Math.max(60_000, delayMs * 2 + 30_000);
@@ -139,6 +142,7 @@ async function submit(base) {
   });
   const body = await res.json().catch(() => ({}));
   return {
+    startedAt: t0,
     status: res.status,
     acceptMs: performance.now() - t0,
     analysisId: body.analysisId || analysisId,
@@ -146,7 +150,7 @@ async function submit(base) {
   };
 }
 
-async function longPoll(base, analysisId, timeoutMs) {
+async function longPoll(base, analysisId, timeoutMs, startedAt = performance.now()) {
   const t0 = performance.now();
   while (performance.now() - t0 < timeoutMs) {
     const remaining = timeoutMs - (performance.now() - t0);
@@ -160,7 +164,7 @@ async function longPoll(base, analysisId, timeoutMs) {
       if (body.status === 'completed' || body.status === 'failed') {
         return {
           status: body.status,
-          clientE2eMs: performance.now() - t0,
+          clientE2eMs: performance.now() - startedAt,
           timings: body.timings || null,
           error: body.error,
         };
@@ -169,7 +173,7 @@ async function longPoll(base, analysisId, timeoutMs) {
       await new Promise((r) => setTimeout(r, 200));
     }
   }
-  return { status: 'poll_timeout', clientE2eMs: performance.now() - t0 };
+  return { status: 'poll_timeout', clientE2eMs: performance.now() - startedAt };
 }
 
 async function runBurst(fleet, { n, delayMs, label }) {
@@ -181,14 +185,14 @@ async function runBurst(fleet, { n, delayMs, label }) {
   const rejected = accepts.filter((a) => a.status === 503 || a.status >= 400);
   const pollTimeout = Math.max(90_000, delayMs * 3 + 60_000);
   const finals = await Promise.all(
-    accepted.map((a, i) => longPoll(fleet.apis[i % fleet.apis.length].base, a.analysisId, pollTimeout)),
+    accepted.map((a, i) => longPoll(fleet.apis[i % fleet.apis.length].base, a.analysisId, pollTimeout, a.startedAt)),
   );
   const completed = finals.filter((f) => f.status === 'completed');
   const failed = finals.filter((f) => f.status === 'failed');
   const lost = finals.filter((f) => f.status === 'poll_timeout');
   const queueWaits = completed.map((f) => f.timings?.queueWaitMs).filter((v) => v != null);
   const aiMs = completed.map((f) => f.timings?.aiMs).filter((v) => v != null);
-  const e2e = completed.map((f) => f.timings?.e2eMs ?? f.clientE2eMs);
+  const e2e = completed.map((f) => f.clientE2eMs);
   const row = {
     label,
     delayMs,
@@ -207,6 +211,12 @@ async function runBurst(fleet, { n, delayMs, label }) {
     e2eLatency: stats(e2e),
     deliveryClientMs: stats(completed.map((f) => f.clientE2eMs)),
     burstWallMs: Math.round(performance.now() - wallStart),
+    fixtureBytes: 450_000,
+    resources: [...fleet.apis, ...fleet.workers].map((x, index) => ({
+      role: index < fleet.apis.length ? 'api' : 'worker',
+      peakRssMB: Math.round(Math.max(0, ...x.child.samples.map(s => s.rssBytes)) / 1024 / 1024),
+      cpuPercentOneCore: stats(x.child.samples.map(s => s.cpuPercentOneCore)),
+    })),
     targets: {
       queueP95_le_1000ms: (percentile([...queueWaits].sort((a, b) => a - b), 95) ?? Infinity) <= 1000,
       e2eP95_le_30000ms: (percentile([...e2e].sort((a, b) => a - b), 95) ?? Infinity) <= 30_000,
@@ -218,7 +228,7 @@ async function runBurst(fleet, { n, delayMs, label }) {
 }
 
 async function runActiveUsers(fleet) {
-  // 1000 active users, ~0.05 analyses/user/min → ~0.83 RPS sustained for 60s (quick: 20s).
+  // Proxy for 1000 active users at 0.12 analyses/user/min = 2 RPS (quick: 1 RPS).
   const durationMs = QUICK ? 20_000 : 60_000;
   const rps = QUICK ? 1 : 2;
   const interval = 1000 / rps;
@@ -226,21 +236,26 @@ async function runActiveUsers(fleet) {
   const ids = [];
   while (performance.now() - started < durationMs) {
     const tick = performance.now();
-    ids.push(await submit(fleet.apis[ids.length % fleet.apis.length].base));
+    const a = await submit(fleet.apis[ids.length % fleet.apis.length].base);
+    a.final = (a.status === 202 || a.status === 200)
+      ? longPoll(fleet.apis[0].base, a.analysisId, 120_000, a.startedAt) : null;
+    ids.push(a);
     const sleep = interval - (performance.now() - tick);
     if (sleep > 0) await new Promise((r) => setTimeout(r, sleep));
   }
   const accepted = ids.filter((a) => a.status === 202 || a.status === 200);
   const finals = await Promise.all(
-    accepted.map((a) => longPoll(fleet.apis[0].base, a.analysisId, 120_000)),
+    accepted.map((a) => a.final),
   );
   const row = {
     label: 'active_users_1000_proxy',
-    note: 'Proxy: sustained RPS models concurrent actives analyzing infrequently (not 1000 simultaneous)',
+    note: 'Proxy: 1000 active users × 0.12 analyses/min = 2 RPS, not 1000 simultaneous users',
     durationMs,
     rps,
     submitted: ids.length,
     acceptOk: accepted.length,
+    rejected: ids.length - accepted.length,
+    failed: finals.filter((f) => f.status === 'failed').length,
     completed: finals.filter((f) => f.status === 'completed').length,
     lost: finals.filter((f) => f.status === 'poll_timeout').length,
     e2eLatency: stats(finals.filter((f) => f.status === 'completed').map((f) => f.clientE2eMs)),
@@ -263,7 +278,7 @@ async function runChaos(fleet) {
   });
   try {
     const finals = await Promise.all(
-      accepted.map((a) => longPoll(fleet.apis[0].base, a.analysisId, 180_000)),
+      accepted.map((a) => longPoll(fleet.apis[0].base, a.analysisId, 180_000, a.startedAt)),
     );
     const row = {
       label: 'chaos_worker_api_kill',
@@ -307,7 +322,7 @@ export async function runBurst100() {
         concurrent: '≥ GLOBAL_AI_SLOTS (e.g. 100 for mock burst target)',
         rpm: 'Set PROVIDER_MAX_RPM from OpenAI dashboard after staging canary',
         tpm: 'Set PROVIDER_MAX_TPM from OpenAI dashboard after staging canary',
-        unsetMeans: '0 disables local RPM/TPM admission (concurrency still capped by slots)',
+        unsetMeans: '0 disables shared RPM/TPM admission (concurrency still capped by slots)',
       },
     },
     notes: [
@@ -332,7 +347,7 @@ export async function runBurst100() {
         objectBaseUrl: objInfo.baseUrl,
         objectToken: objInfo.token,
         delayMs,
-        basePort: 25000 + Math.floor(delayMs / 1000),
+        basePort: PORT_OFFSET + 25000 + Math.floor(delayMs / 1000),
       });
       try {
         report.bursts.push(await runBurst(fleet, {
@@ -340,6 +355,11 @@ export async function runBurst100() {
           delayMs,
           label: `burst_${BURST_N}_delay_${delayMs}_slots_${SLOTS}`,
         }));
+        if (delayMs === DELAYS[0]) {
+          report.overCapacity = await runBurst(fleet, {
+            n: BURST_N * 2, delayMs, label: 'over_capacity_double_burst',
+          });
+        }
       } finally {
         await fleet.stop();
         await new Promise((r) => setTimeout(r, 500));
@@ -351,11 +371,11 @@ export async function runBurst100() {
       objectBaseUrl: objInfo.baseUrl,
       objectToken: objInfo.token,
       delayMs: QUICK ? 200 : 500,
-      basePort: 26000,
+      basePort: PORT_OFFSET + 26000,
       workerLeaseMs: 8000,
     });
     try {
-      report.activeUsers = await runActiveUsers(fleet);
+      if (process.env.BURST100_SKIP_ACTIVE !== '1') report.activeUsers = await runActiveUsers(fleet);
       report.chaos = await runChaos(fleet);
     } finally {
       await fleet.stop();
@@ -366,7 +386,7 @@ export async function runBurst100() {
   }
 
   writeFileSync(
-    path.join(__dirname, 'burst-100-results.json'),
+    path.join(__dirname, process.env.BURST100_RESULTS_FILE || 'burst-100-results.json'),
     `${JSON.stringify(report, null, 2)}\n`,
   );
   console.log('\n=== Burst-100 complete (OPENAI_MOCK=1, real OpenAI=0) ===');

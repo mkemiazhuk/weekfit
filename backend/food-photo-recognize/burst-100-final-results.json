@@ -1,0 +1,526 @@
+{
+  "generatedAt": "2026-10-13T19:49:29.564Z",
+  "openAIMock": true,
+  "realOpenAIFetchAttempts": 0,
+  "slots": 100,
+  "workers": 4,
+  "localConcurrency": 25,
+  "burstN": 100,
+  "bursts": [
+    {
+      "label": "burst_100_delay_5000_slots_100",
+      "delayMs": 5000,
+      "n": 100,
+      "slots": 100,
+      "workers": 4,
+      "localConcurrency": 25,
+      "acceptOk": 100,
+      "rejected": 0,
+      "completed": 100,
+      "failed": 0,
+      "lost": 0,
+      "acceptLatency": {
+        "n": 100,
+        "p50": 485,
+        "p95": 571,
+        "p99": 594,
+        "max": 618
+      },
+      "queueLatency": {
+        "n": 100,
+        "p50": 104,
+        "p95": 167,
+        "p99": 185,
+        "max": 203
+      },
+      "aiLatency": {
+        "n": 100,
+        "p50": 5157,
+        "p95": 5241,
+        "p99": 5253,
+        "max": 5281
+      },
+      "e2eLatency": {
+        "n": 100,
+        "p50": 5876,
+        "p95": 5923,
+        "p99": 5943,
+        "max": 5973
+      },
+      "deliveryClientMs": {
+        "n": 100,
+        "p50": 5876,
+        "p95": 5923,
+        "p99": 5943,
+        "max": 5973
+      },
+      "burstWallMs": 6169,
+      "fixtureBytes": 450000,
+      "resources": [
+        {
+          "role": "api",
+          "peakRssMB": 209,
+          "cpuPercentOneCore": {
+            "n": 12,
+            "p50": 3,
+            "p95": 56,
+            "p99": 56,
+            "max": 56
+          }
+        },
+        {
+          "role": "api",
+          "peakRssMB": 232,
+          "cpuPercentOneCore": {
+            "n": 12,
+            "p50": 3,
+            "p95": 66,
+            "p99": 66,
+            "max": 66
+          }
+        },
+        {
+          "role": "worker",
+          "peakRssMB": 144,
+          "cpuPercentOneCore": {
+            "n": 12,
+            "p50": 0,
+            "p95": 71,
+            "p99": 71,
+            "max": 71
+          }
+        },
+        {
+          "role": "worker",
+          "peakRssMB": 144,
+          "cpuPercentOneCore": {
+            "n": 12,
+            "p50": 0,
+            "p95": 64,
+            "p99": 64,
+            "max": 64
+          }
+        },
+        {
+          "role": "worker",
+          "peakRssMB": 140,
+          "cpuPercentOneCore": {
+            "n": 12,
+            "p50": 0,
+            "p95": 65,
+            "p99": 65,
+            "max": 65
+          }
+        },
+        {
+          "role": "worker",
+          "peakRssMB": 142,
+          "cpuPercentOneCore": {
+            "n": 12,
+            "p50": 0,
+            "p95": 67,
+            "p99": 67,
+            "max": 67
+          }
+        }
+      ],
+      "targets": {
+        "queueP95_le_1000ms": true,
+        "e2eP95_le_30000ms": true
+      }
+    },
+    {
+      "label": "burst_100_delay_10000_slots_100",
+      "delayMs": 10000,
+      "n": 100,
+      "slots": 100,
+      "workers": 4,
+      "localConcurrency": 25,
+      "acceptOk": 100,
+      "rejected": 0,
+      "completed": 100,
+      "failed": 0,
+      "lost": 0,
+      "acceptLatency": {
+        "n": 100,
+        "p50": 354,
+        "p95": 402,
+        "p99": 407,
+        "max": 415
+      },
+      "queueLatency": {
+        "n": 100,
+        "p50": 49,
+        "p95": 77,
+        "p99": 114,
+        "max": 123
+      },
+      "aiLatency": {
+        "n": 100,
+        "p50": 10093,
+        "p95": 10149,
+        "p99": 10172,
+        "max": 10175
+      },
+      "e2eLatency": {
+        "n": 100,
+        "p50": 10590,
+        "p95": 10754,
+        "p99": 10761,
+        "max": 10775
+      },
+      "deliveryClientMs": {
+        "n": 100,
+        "p50": 10590,
+        "p95": 10754,
+        "p99": 10761,
+        "max": 10775
+      },
+      "burstWallMs": 10954,
+      "fixtureBytes": 450000,
+      "resources": [
+        {
+          "role": "api",
+          "peakRssMB": 184,
+          "cpuPercentOneCore": {
+            "n": 22,
+            "p50": 2,
+            "p95": 26,
+            "p99": 76,
+            "max": 76
+          }
+        },
+        {
+          "role": "api",
+          "peakRssMB": 180,
+          "cpuPercentOneCore": {
+            "n": 22,
+            "p50": 2,
+            "p95": 19,
+            "p99": 79,
+            "max": 79
+          }
+        },
+        {
+          "role": "worker",
+          "peakRssMB": 131,
+          "cpuPercentOneCore": {
+            "n": 21,
+            "p50": 0,
+            "p95": 31,
+            "p99": 32,
+            "max": 32
+          }
+        },
+        {
+          "role": "worker",
+          "peakRssMB": 131,
+          "cpuPercentOneCore": {
+            "n": 21,
+            "p50": 0,
+            "p95": 14,
+            "p99": 45,
+            "max": 45
+          }
+        },
+        {
+          "role": "worker",
+          "peakRssMB": 133,
+          "cpuPercentOneCore": {
+            "n": 21,
+            "p50": 0,
+            "p95": 16,
+            "p99": 45,
+            "max": 45
+          }
+        },
+        {
+          "role": "worker",
+          "peakRssMB": 135,
+          "cpuPercentOneCore": {
+            "n": 21,
+            "p50": 0,
+            "p95": 8,
+            "p99": 55,
+            "max": 55
+          }
+        }
+      ],
+      "targets": {
+        "queueP95_le_1000ms": true,
+        "e2eP95_le_30000ms": true
+      }
+    },
+    {
+      "label": "burst_100_delay_20000_slots_100",
+      "delayMs": 20000,
+      "n": 100,
+      "slots": 100,
+      "workers": 4,
+      "localConcurrency": 25,
+      "acceptOk": 100,
+      "rejected": 0,
+      "completed": 100,
+      "failed": 0,
+      "lost": 0,
+      "acceptLatency": {
+        "n": 100,
+        "p50": 382,
+        "p95": 532,
+        "p99": 539,
+        "max": 543
+      },
+      "queueLatency": {
+        "n": 100,
+        "p50": 52,
+        "p95": 80,
+        "p99": 119,
+        "max": 128
+      },
+      "aiLatency": {
+        "n": 100,
+        "p50": 20082,
+        "p95": 20123,
+        "p99": 20145,
+        "max": 20188
+      },
+      "e2eLatency": {
+        "n": 100,
+        "p50": 20619,
+        "p95": 20869,
+        "p99": 20958,
+        "max": 20962
+      },
+      "deliveryClientMs": {
+        "n": 100,
+        "p50": 20619,
+        "p95": 20869,
+        "p99": 20958,
+        "max": 20962
+      },
+      "burstWallMs": 20969,
+      "fixtureBytes": 450000,
+      "resources": [
+        {
+          "role": "api",
+          "peakRssMB": 184,
+          "cpuPercentOneCore": {
+            "n": 42,
+            "p50": 2,
+            "p95": 7,
+            "p99": 71,
+            "max": 71
+          }
+        },
+        {
+          "role": "api",
+          "peakRssMB": 236,
+          "cpuPercentOneCore": {
+            "n": 42,
+            "p50": 2,
+            "p95": 11,
+            "p99": 66,
+            "max": 66
+          }
+        },
+        {
+          "role": "worker",
+          "peakRssMB": 129,
+          "cpuPercentOneCore": {
+            "n": 42,
+            "p50": 0,
+            "p95": 5,
+            "p99": 45,
+            "max": 45
+          }
+        },
+        {
+          "role": "worker",
+          "peakRssMB": 144,
+          "cpuPercentOneCore": {
+            "n": 41,
+            "p50": 0,
+            "p95": 2,
+            "p99": 53,
+            "max": 53
+          }
+        },
+        {
+          "role": "worker",
+          "peakRssMB": 134,
+          "cpuPercentOneCore": {
+            "n": 41,
+            "p50": 0,
+            "p95": 1,
+            "p99": 50,
+            "max": 50
+          }
+        },
+        {
+          "role": "worker",
+          "peakRssMB": 134,
+          "cpuPercentOneCore": {
+            "n": 41,
+            "p50": 0,
+            "p95": 1,
+            "p99": 45,
+            "max": 45
+          }
+        }
+      ],
+      "targets": {
+        "queueP95_le_1000ms": true,
+        "e2eP95_le_30000ms": true
+      }
+    }
+  ],
+  "activeUsers": null,
+  "chaos": {
+    "label": "chaos_worker_api_kill",
+    "accepted": 20,
+    "completed": 20,
+    "lost": 0
+  },
+  "capacityPlan": {
+    "burst100": {
+      "globalAiSlots": 100,
+      "workers": 4,
+      "workerLocalConcurrency": 25,
+      "apiInstances": 2,
+      "note": "Pre-warm this capacity; do not rely on cold autoscale for the instant burst."
+    },
+    "providerLimitsRequired": {
+      "concurrent": "≥ GLOBAL_AI_SLOTS (e.g. 100 for mock burst target)",
+      "rpm": "Set PROVIDER_MAX_RPM from OpenAI dashboard after staging canary",
+      "tpm": "Set PROVIDER_MAX_TPM from OpenAI dashboard after staging canary",
+      "unsetMeans": "0 disables shared RPM/TPM admission (concurrency still capped by slots)"
+    }
+  },
+  "notes": [
+    "202 accept ≠ result. Only completed status with result is success.",
+    "Mock AI delay is synthetic — do not claim real OpenAI speed.",
+    "Production GLOBAL_AI_SLOTS must not be set to 100 without confirmed provider+host limits."
+  ],
+  "overCapacity": {
+    "label": "over_capacity_double_burst",
+    "delayMs": 5000,
+    "n": 200,
+    "slots": 100,
+    "workers": 4,
+    "localConcurrency": 25,
+    "acceptOk": 200,
+    "rejected": 0,
+    "completed": 200,
+    "failed": 0,
+    "lost": 0,
+    "acceptLatency": {
+      "n": 200,
+      "p50": 683,
+      "p95": 814,
+      "p99": 838,
+      "max": 859
+    },
+    "queueLatency": {
+      "n": 200,
+      "p50": 133,
+      "p95": 5202,
+      "p99": 5216,
+      "max": 5241
+    },
+    "aiLatency": {
+      "n": 200,
+      "p50": 5046,
+      "p95": 5217,
+      "p99": 5230,
+      "max": 5240
+    },
+    "e2eLatency": {
+      "n": 200,
+      "p50": 6252,
+      "p95": 10967,
+      "p99": 11214,
+      "max": 11235
+    },
+    "deliveryClientMs": {
+      "n": 200,
+      "p50": 6252,
+      "p95": 10967,
+      "p99": 11214,
+      "max": 11235
+    },
+    "burstWallMs": 11351,
+    "fixtureBytes": 450000,
+    "resources": [
+      {
+        "role": "api",
+        "peakRssMB": 381,
+        "cpuPercentOneCore": {
+          "n": 35,
+          "p50": 2,
+          "p95": 56,
+          "p99": 101,
+          "max": 101
+        }
+      },
+      {
+        "role": "api",
+        "peakRssMB": 369,
+        "cpuPercentOneCore": {
+          "n": 35,
+          "p50": 2,
+          "p95": 66,
+          "p99": 114,
+          "max": 114
+        }
+      },
+      {
+        "role": "worker",
+        "peakRssMB": 203,
+        "cpuPercentOneCore": {
+          "n": 35,
+          "p50": 0,
+          "p95": 34,
+          "p99": 71,
+          "max": 71
+        }
+      },
+      {
+        "role": "worker",
+        "peakRssMB": 184,
+        "cpuPercentOneCore": {
+          "n": 35,
+          "p50": 0,
+          "p95": 36,
+          "p99": 64,
+          "max": 64
+        }
+      },
+      {
+        "role": "worker",
+        "peakRssMB": 205,
+        "cpuPercentOneCore": {
+          "n": 35,
+          "p50": 0,
+          "p95": 37,
+          "p99": 65,
+          "max": 65
+        }
+      },
+      {
+        "role": "worker",
+        "peakRssMB": 177,
+        "cpuPercentOneCore": {
+          "n": 35,
+          "p50": 0,
+          "p95": 44,
+          "p99": 67,
+          "max": 67
+        }
+      }
+    ],
+    "targets": {
+      "queueP95_le_1000ms": false,
+      "e2eP95_le_30000ms": true
+    }
+  }
+}
