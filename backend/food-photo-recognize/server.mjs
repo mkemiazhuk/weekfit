@@ -259,6 +259,7 @@ export function createServer(config, dependencies = {}) {
         allowDevAuth: config.allowDevAuth,
         openAIMock: Boolean(config.openAIMock),
         asyncAnalysis: Boolean(stack),
+        photoAnalyzeMode: stack ? 'async' : 'sync_compat',
         stateBackend: stack?.asyncConfig?.stateBackend ?? config.stateBackend ?? null,
         objectStore: stack?.objectStore?.kind ?? config.objectStoreKind ?? null,
         globalAiSlots: stack?.asyncConfig?.globalAiSlots ?? null,
@@ -328,7 +329,14 @@ export function createServer(config, dependencies = {}) {
       }
     }
 
-    if (req.method === 'POST' && req.url === '/v1/food/photo-analyze') {
+    // Compatibility for apps already using the new endpoint on sync-only hosts.
+    // Use the existing bounded, paid, idempotent recognition path, not an
+    // ephemeral async queue or a second provider request.
+    const syncAnalyze = req.method === 'POST'
+      && req.url === '/v1/food/photo-analyze'
+      && !config.asyncEnabled && !asyncStack;
+
+    if (req.method === 'POST' && req.url === '/v1/food/photo-analyze' && !syncAnalyze) {
       inFlightHttp += 1;
       peakInFlightHttp = Math.max(peakInFlightHttp, inFlightHttp);
       const clientAbort = new AbortController();
@@ -394,7 +402,7 @@ export function createServer(config, dependencies = {}) {
       }
     }
 
-    if (req.method !== 'POST' || req.url !== '/v1/food/photo-recognize') {
+    if (req.method !== 'POST' || (req.url !== '/v1/food/photo-recognize' && !syncAnalyze)) {
       return send(res, 404, { error: 'not_found', requestId });
     }
 
@@ -498,7 +506,19 @@ export function createServer(config, dependencies = {}) {
         outputTokens: value.usage?.output_tokens,
         openAIMock: Boolean(config.openAIMock),
       }));
-      send(res, 200, { ...value.result, model: config.model, requestId }, {
+      const result = { ...value.result, model: config.model, requestId };
+      const key = normalizeIdempotencyKey(req.headers['idempotency-key'] ?? req.headers['x-weekfit-analysis-id']);
+      const analysisId = key && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)
+        ? key.toLowerCase() : requestId;
+      send(res, 200, syncAnalyze ? {
+        ...result,
+        analysisId,
+        status: 'completed',
+        result,
+        inline: true,
+        delivery: 'sync_compat',
+        timings: { e2eMs, queueWaitMs, aiMs },
+      } : result, {
         'X-WeekFit-Queue-Wait-Ms': String(queueWaitMs),
         'X-WeekFit-AI-Ms': String(aiMs),
         'X-WeekFit-E2E-Ms': String(e2eMs),
