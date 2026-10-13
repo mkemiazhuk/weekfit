@@ -70,8 +70,20 @@ export function createWorkerRuntime({
         budget.assertWithinBudget(),
       ]);
 
+      slot = await aiSlots.tryAcquire(workerId);
+      if (!slot) {
+        await jobStore.failJob(job.analysisId, {
+          error: 'ai_slots_full',
+          providerOutcome: 'retryable',
+          requeue: true,
+          softRequeue: true,
+          leaseToken,
+        });
+        return { outcome: 'requeued_no_slot' };
+      }
+
       if (providerLimits) {
-        rateTicket = providerLimits.tryReserve();
+        rateTicket = await providerLimits.tryReserve();
         if (!rateTicket.ok) {
           await jobStore.failJob(job.analysisId, {
             error: rateTicket.code,
@@ -84,17 +96,6 @@ export function createWorkerRuntime({
         }
       }
 
-      slot = await aiSlots.tryAcquire(workerId);
-      if (!slot) {
-        await jobStore.failJob(job.analysisId, {
-          error: 'ai_slots_full',
-          providerOutcome: 'retryable',
-          requeue: true,
-          softRequeue: true,
-          leaseToken,
-        });
-        return { outcome: 'requeued_no_slot' };
-      }
 
       let jpeg;
       try {
@@ -174,8 +175,8 @@ export function createWorkerRuntime({
 
       const attempts = job.attempts ?? 1;
       const soft = !enteredProvider && isSoftRequeueError(error);
-      const retryable = soft
-        || (isRetryableProviderError(error) && attempts < (job.maxAttempts ?? config.workerMaxAttempts));
+      const retryable = !enteredProvider && (soft
+        || (isRetryableProviderError(error) && attempts < (job.maxAttempts ?? config.workerMaxAttempts)));
 
       if (retryable) {
         if (!soft) {
@@ -187,7 +188,7 @@ export function createWorkerRuntime({
         }
         await jobStore.failJob(job.analysisId, {
           error: code,
-          providerOutcome: enteredProvider ? 'uncertain_retry' : 'retryable',
+          providerOutcome: 'retryable',
           requeue: true,
           softRequeue: soft,
           leaseToken,
@@ -251,37 +252,29 @@ export function createWorkerRuntime({
       globalAiSlots: config.globalAiSlots,
       openAIMock: Boolean(config.openAIMock),
     });
-    /** @type {Set<Promise<unknown>>} */
-    const running = new Set();
-    while (!stopping) {
-      try {
-        await maybeRecoverLeases();
-        while (!stopping && running.size < localConcurrency) {
-          const waitMs = running.size === 0 ? claimWaitMs : 0;
+    // Each execution lane waits independently. A new arrival can start even
+    // while another lane is busy; one long analysis cannot stall spare capacity.
+    const lane = async () => {
+      while (!stopping) {
+        try {
+          await maybeRecoverLeases();
           const job = await jobStore.claimNext({
-            workerId,
-            leaseMs: config.workerLeaseMs,
-            waitMs,
+            workerId, leaseMs: config.workerLeaseMs, waitMs: claimWaitMs,
           });
-          if (!job) break;
-          const task = processOne(job).finally(() => running.delete(task));
-          running.add(task);
+          if (job) {
+            const result = await processOne(job);
+            // Back off only on capacity/provider denial, never on normal arrivals.
+            if (['rate_limited', 'requeued_no_slot', 'shed'].includes(result?.outcome)) {
+              await new Promise(r => setTimeout(r, 200 + Math.floor(Math.random() * 100)));
+            }
+          }
+        } catch (error) {
+          onLog({ workerId, outcome: 'worker_tick_error', error: error.code ?? error.message });
+          await new Promise((r) => setTimeout(r, 50));
         }
-        if (running.size === 0) {
-          // claimNext already blocked; brief yield only if wait returned empty.
-          continue;
-        }
-        await Promise.race(running);
-      } catch (error) {
-        onLog({
-          workerId,
-          outcome: 'worker_tick_error',
-          error: error.code ?? error.message,
-        });
-        await new Promise((r) => setTimeout(r, 50));
       }
-    }
-    await Promise.allSettled([...running]);
+    };
+    await Promise.all(Array.from({ length: localConcurrency }, lane));
     onLog({ workerId, outcome: 'worker_stop' });
   };
 

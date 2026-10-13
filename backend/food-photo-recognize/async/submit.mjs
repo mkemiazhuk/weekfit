@@ -175,12 +175,13 @@ export function createSubmitHandler({
             circuit.beforeCall(),
             budget.assertWithinBudget(),
           ]);
-          if (providerLimits) {
-            const rate = providerLimits.tryReserve();
+          slot = await aiSlots.tryAcquire(`api-inline-${process.pid}`);
+          if (slot && providerLimits) {
+            const rate = await providerLimits.tryReserve();
             if (!rate.ok) throw new Error(rate.code);
           }
-          slot = await aiSlots.tryAcquire(`api-inline-${process.pid}`);
         } catch {
+          await slot?.release?.().catch(() => {});
           slot = null;
         }
       }
@@ -338,13 +339,10 @@ export function createStatusHandler({ jobStore, longPollMaxMs = 25_000, pollHint
       && Date.now() < deadline
       && !abortSignal?.aborted
     ) {
-      const slice = Math.min(2000, deadline - Date.now());
+      const slice = Math.min(250, deadline - Date.now());
       if (slice <= 0) break;
       // In-process wake + short Redis/file re-read for multi-instance workers.
-      await Promise.race([
-        waitForJobUpdate(analysisId, slice, abortSignal),
-        new Promise((r) => setTimeout(r, Math.min(250, slice))),
-      ]);
+      await waitForJobUpdate(analysisId, slice, abortSignal);
       job = await jobStore.getJob(analysisId);
       if (!job) throw new ServiceError('not_found', 404);
     }

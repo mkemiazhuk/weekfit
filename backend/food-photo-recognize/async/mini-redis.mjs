@@ -114,6 +114,18 @@ export function createMiniRedisServer() {
   };
 
   const runEval = (script, keys, args) => {
+    // Protocol test double only; real Lua must also be verified against Redis.
+    if (script.includes('WEEKFIT_PROVIDER_RATE')) {
+      const key = keys[0];
+      let z = alive(key) ? store.get(key) : null;
+      if (!z || !z.__z) z = { __z: true, members: new Map() };
+      for (const [id, at] of z.members) if (at <= now() - 60000) z.members.delete(id);
+      if (Number(args[1]) > 0 && z.members.size >= Number(args[1])) return 'provider_rpm_limited';
+      if (Number(args[2]) > 0 && (z.members.size + 1) * Number(args[3]) > Number(args[2])) return 'provider_tpm_limited';
+      z.members.set(args[0], now()); store.set(key, z); touchExpire(key, 61000);
+      return 'OK';
+    }
+
     if (script.includes('RPOP') && script.includes('lease')) return scripts.claim(keys, args);
     if (script.includes('quota') || script.includes('userLimit')) return scripts.quota(keys, args);
     if (script.includes('ai-slot') || script.includes('slotZ')) return scripts.slot(keys, args);
