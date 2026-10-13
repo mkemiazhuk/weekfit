@@ -1,4 +1,4 @@
-import { X509Certificate, createPublicKey, verify } from 'node:crypto';
+import { X509Certificate, verify } from 'node:crypto';
 import { ServiceError } from './recognition.mjs';
 
 /** WeekFit auto-renewable product ids (must match iOS `WeekFitSubscriptionProductID`). */
@@ -41,18 +41,65 @@ function certFromX5C(entry) {
   return new X509Certificate(Buffer.from(entry, 'base64'));
 }
 
-function assertAppleAnchoredChain(x5c) {
-  if (!Array.isArray(x5c) || x5c.length < 1 || x5c.length > 3) {
-    throw Error('x5c');
+// Read extension OIDs from the certificate's DER extension container, not
+// arbitrary bytes in its subject/public key. No new runtime dependencies.
+function extensionOids(cert) {
+  const der = cert.raw;
+  const read = (at, end = der.length) => {
+    if (at + 2 > end) throw Error('der');
+    const tag = der[at++];
+    let length = der[at++];
+    if (length & 128) {
+      const n = length & 127;
+      if (!n || n > 4 || at + n > end) throw Error('der');
+      length = 0;
+      for (let i = 0; i < n; i++) length = length * 256 + der[at++];
+    }
+    if (at + length > end) throw Error('der');
+    return { tag, start: at, end: at + length };
+  };
+  const outer = read(0), tbs = read(outer.start, outer.end);
+  for (let at = tbs.start; at < tbs.end;) {
+    const field = read(at, tbs.end); at = field.end;
+    if (field.tag !== 0xa3) continue;
+    const extensions = read(field.start, field.end);
+    const oids = [];
+    for (let x = extensions.start; x < extensions.end;) {
+      const extension = read(x, extensions.end); x = extension.end;
+      const oid = read(extension.start, extension.end);
+      if (oid.tag !== 6) throw Error('der');
+      oids.push(der.subarray(oid.start, oid.end).toString('hex'));
+    }
+    return oids;
   }
-  const certs = x5c.map(certFromX5C);
-  for (let i = 0; i < certs.length - 1; i++) {
-    if (!certs[i].checkIssued(certs[i + 1])) throw Error('chain');
+  return [];
+}
+
+function assertAppleAnchoredChain(x5c, effectiveDate, root = appleRoot) {
+  if (!Array.isArray(x5c) || x5c.length !== 3) throw Error('x5c');
+  const [leaf, intermediate, suppliedRoot] = x5c.map(certFromX5C);
+  if (suppliedRoot.fingerprint256 !== root.fingerprint256) throw Error('root');
+  if (!intermediate.ca || !intermediate.checkIssued(root)
+    || !intermediate.verify(root.publicKey)
+    || !leaf.checkIssued(intermediate) || !leaf.verify(intermediate.publicKey)) throw Error('chain');
+  // App Store signing leaf/intermediate purpose, as required by Apple's verifier.
+  if (!extensionOids(leaf).includes('2a864886f76364060b01')
+    || !extensionOids(intermediate).includes('2a864886f76364060201')) throw Error('purpose');
+  for (const cert of [leaf, intermediate, root]) {
+    if (effectiveDate < Date.parse(cert.validFrom) - 60000
+      || effectiveDate > Date.parse(cert.validTo) + 60000) throw Error('certificate_date');
   }
-  const anchor = certs[certs.length - 1];
-  if (anchor.fingerprint256 === appleRoot.fingerprint256) return certs[0];
-  if (!anchor.checkIssued(appleRoot)) throw Error('root');
-  return certs[0];
+  return leaf;
+}
+
+export function verifyStoreKitSignature(parts, publicKey) {
+  try {
+    const signature = Buffer.from(parts[2], 'base64url');
+    if (signature.length !== 64 || publicKey.asymmetricKeyType !== 'ec'
+      || publicKey.asymmetricKeyDetails?.namedCurve !== 'prime256v1') return false;
+    return verify('sha256', Buffer.from(`${parts[0]}.${parts[1]}`),
+      { key: publicKey, dsaEncoding: 'ieee-p1363' }, signature);
+  } catch { return false; }
 }
 
 /**
@@ -89,17 +136,14 @@ export function requirePaidSubscriptionJWS(headerValue, options = {}) {
   if (header.alg !== 'ES256') throw new ServiceError('subscription_required', 402);
 
   if (!skipSignature) {
-    let leaf;
     try {
-      leaf = assertAppleAnchoredChain(header.x5c);
+      // Offline certificate validation uses the signed date, matching Apple's
+      // verifier; expiry of the subscription itself is checked against now below.
+      const effectiveDate = Number(payload.signedDate ?? nowMs);
+      if (!Number.isFinite(effectiveDate) || effectiveDate > nowMs + 60000) throw Error('signed_date');
+      const leaf = assertAppleAnchoredChain(header.x5c, effectiveDate, options.rootCertificate ?? appleRoot);
+      if (!verifyStoreKitSignature(parts, leaf.publicKey)) throw Error('signature');
     } catch {
-      throw new ServiceError('subscription_required', 402);
-    }
-    const key = createPublicKey(leaf.publicKey);
-    const signed = Buffer.from(`${parts[0]}.${parts[1]}`);
-    const signature = Buffer.from(parts[2], 'base64url');
-    // algorithm null → use key's default (ECDSA with SHA-256 for P-256).
-    if (!verify(null, signed, key, signature)) {
       throw new ServiceError('subscription_required', 402);
     }
   }
