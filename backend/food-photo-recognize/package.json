@@ -1,1 +1,26 @@
-{"name":"weekfit-food-photo-recognize","version":"1.0.0","private":true,"type":"module","engines":{"node":">=24"},"scripts":{"start":"node --env-file-if-exists=.env server.mjs","test":"node --test"}}
+{
+  "name": "weekfit-food-photo-recognize",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.mjs",
+    "start:mock": "OPENAI_MOCK=1 ALLOW_DEV_AUTH=1 WEEKFIT_DEV_TOKEN=weekfit-dev-local-token FOOD_PHOTO_MOCK_DELAY_MS=50 node server.mjs",
+    "start:async:mock": "OPENAI_MOCK=1 ASYNC_ANALYSIS=1 ALLOW_DEV_AUTH=1 WEEKFIT_DEV_TOKEN=weekfit-dev-local-token DATA_DIR=./.data FOOD_PHOTO_MOCK_DELAY_MS=50 GLOBAL_AI_SLOTS=4 node server.mjs",
+    "worker:mock": "OPENAI_MOCK=1 ASYNC_ANALYSIS=1 ALLOW_DEV_AUTH=1 WEEKFIT_DEV_TOKEN=weekfit-dev-local-token DATA_DIR=./.data FOOD_PHOTO_MOCK_DELAY_MS=50 GLOBAL_AI_SLOTS=4 node worker.mjs",
+    "test": "node --test",
+    "test:load": "node load-test.mjs",
+    "test:load:extended": "node extended-load.mjs",
+    "test:load:extended:quick": "EXTENDED_LOAD_QUICK=1 node extended-load.mjs",
+    "test:load:async": "node async-load.mjs",
+    "test:load:async:quick": "ASYNC_LOAD_QUICK=1 node async-load.mjs",
+    "test:load:redis": "node redis-load.mjs",
+    "test:load:redis:quick": "REDIS_LOAD_QUICK=1 node redis-load.mjs",
+    "test:latency:opt": "node latency-opt.mjs",
+    "test:burst100": "node burst-100.mjs",
+    "test:burst100:quick": "BURST100_QUICK=1 node burst-100.mjs"
+  }
+}

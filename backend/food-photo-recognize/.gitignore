@@ -1,4 +1,10 @@
 .env
-.env.*
-!.env.example
 node_modules/
+.data/
+extended-load-run.log
+extended-load-partial.log
+async-load-run.log
+
+*.log
+*-results.json
+*-partial*.json

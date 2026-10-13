@@ -40,11 +40,37 @@ Do not overwrite an existing .env; back it up before replacing local code. The b
 
 Point iOS Debug at `http://MAC_LAN_IP:8080` (without `/healthz`). Allow Local Network access. Match the dev bearer token. Existing iOS request fields `imageBase64`, `mimeType`, `locale` are accepted; `model` is ignored. `note` is optional. The iOS response decoder must use the contract below; do not assume the old fixture decoder matches it.
 
+## Async analysis (preferred)
+
+Production-oriented path: `POST /v1/food/photo-analyze` returns **202** after durable accept (photo in object store + job enqueued). Workers (`node worker.mjs`) run AI under `GLOBAL_AI_SLOTS`. Clients poll `GET /v1/food/photo-analyze/:analysisId` (`queued` | `processing` | `completed` | `failed`). See `docs/NutritionAsyncCapacityPlan.md` and `docs/NutritionNodeVsJavaADR.md`.
+
+**Production config (multi-instance):** `STATE_BACKEND=redis`, `REDIS_URL`, `OBJECT_STORE=s3|http`. Shared `DATA_DIR` / `OBJECT_STORE=local` are rejected when `NODE_ENV=production`.
+
+**Single Render instance (current `weekfit-food-photo`):** set `ALLOW_SINGLE_NODE_ASYNC=1`, `ASYNC_ANALYSIS=1`, `DATA_DIR=/var/data` (persistent disk), `OBJECT_STORE=local`, `STATE_BACKEND=file`, `GLOBAL_AI_SLOTS=16` (not 100 until provider confirmation). The image entrypoint runs API + worker in one container. Do not scale this service above 1 instance without Redis + object store.
+
+Distributed load (mini-Redis + HTTP object store, mock OpenAI, 0 real calls):
+
+```bash
+npm run test:load:redis:quick
+npm run test:load:redis
+node --test async/redis-adapters.test.mjs
+```
+
+Dev single-node file store (not for production):
+
+```bash
+npm run start:async:mock
+npm run worker:mock
+npm run test:load:async:quick
+```
+
 ## Endpoints
 
 - `GET /healthz`: liveness and configuration; does not prove provider credentials work.
 - `GET /readyz`: 200 only when provider and authentication are configured.
-- `POST /v1/food/photo-recognize`: authenticated JSON request.
+- `POST /v1/food/photo-analyze`: **async accept** (202). Paid JWS required before enqueue. Idempotency via `Idempotency-Key` / `X-WeekFit-Analysis-Id`.
+- `GET /v1/food/photo-analyze/:analysisId`: status/result for the owning user only.
+- `POST /v1/food/photo-recognize`: legacy synchronous path (kept for compatibility). Requires an active **paid** WeekFit subscription proof (`X-WeekFit-Subscription-JWS` StoreKit Transaction JWS). Trial, legacy, and free promo access are rejected with `402 subscription_required` before OpenAI is called. Local `ALLOW_DEV_AUTH` may send `weekfit-dev-local-subscription` instead.
 
 Request: `{ "imageBase64": "<JPEG base64>", "mimeType": "image/jpeg", "locale": "en_US", "note": "Optional food context" }`.
 
@@ -70,7 +96,25 @@ Response fields:
 }
 ```
 
-This example illustrates the contract, not a complete chicken meal. Errors: `{ "error": "machine_code", "requestId": "uuid" }`. 401 auth, 413 size, 422 no food/refusal, 429 local quota, 502 invalid/provider/incomplete result, 503 busy/provider quota, 504 timeout. Preserve the photo on recoverable errors; never silently substitute a fixture.
+This example illustrates the contract, not a complete chicken meal. Errors: `{ "error": "machine_code", "requestId": "uuid" }`. 401 auth, 402 paid subscription required, 413 size, 422 no food/refusal, 429 local quota, 502 invalid/provider/incomplete result, 503 busy/queue overload (may include `Retry-After`), 504 timeout. Preserve the photo on recoverable errors; never silently substitute a fixture.
+
+Optional headers: `Idempotency-Key` or `X-WeekFit-Analysis-Id` (same key, user-scoped) coalesce in-flight duplicates and cache a successful result briefly so retries do not double-call OpenAI.
+
+## Local mock / load testing (no OpenAI spend)
+
+```bash
+# Unit + concurrency tests (mocked)
+npm test
+
+# Full local load suite — OPENAI_MOCK forced, real OpenAI calls = 0
+npm run test:load
+
+# Manual mock server (never set OPENAI_MOCK in production)
+OPENAI_MOCK=1 ALLOW_DEV_AUTH=1 WEEKFIT_DEV_TOKEN=weekfit-dev-local-token \
+  FOOD_PHOTO_MOCK_DELAY_MS=50 npm run start:mock
+```
+
+`OPENAI_MOCK=1` is rejected when `NODE_ENV=production`. Mock mode never falls back to real `fetch` against api.openai.com.
 
 ## Production authentication
 
@@ -94,7 +138,7 @@ There is no live deployment URL until a host is selected and runtime secrets are
 
 ## Limits, privacy and cost
 
-Default quotas: 20 attempts per user/day, 200 globally/day, 4 concurrent scans. Provider attempts count even on failure. All quotas are in memory and reset on restart, per process. Run a single instance for initial testing; use Redis or gateway quotas for multiple replicas and a persistent budget cutoff before public rollout. No automatic provider retries. IDs are generated server-side. Retries can incur another provider charge; there is no request-id deduplication.
+Default quotas: 20 successful AI starts per user/day (idempotent retries of the same key do not re-charge), 200 globally/day, **4 concurrent AI scans** with a bounded wait queue (`MAX_AI_QUEUE`, default 16, wait `AI_QUEUE_WAIT_MS`). Overload returns **503** + **Retry-After**. All quotas / concurrency / idempotency are **in-memory per process** and reset on restart. Multiple Render instances do **not** share these limits — keep a single instance or put a shared gateway quota in front before multi-replica rollout. No automatic provider retries. Prefer client `Idempotency-Key` / `X-WeekFit-Analysis-Id` to avoid duplicate AI spend.
 
 No images, names or raw model text are logged or persisted. Logs contain request ID, model, duration, outcome and successful-request token counts. `store:false` does not remove OpenAI's separate abuse-monitoring retention policy.
 

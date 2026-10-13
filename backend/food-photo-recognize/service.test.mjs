@@ -4,10 +4,25 @@ import { generateKeyPairSync, sign } from 'node:crypto';
 import { configuration, createServer } from './server.mjs';
 import { validateInput, validateResult, recognize, ServiceError } from './recognition.mjs';
 import { authenticate } from './auth.mjs';
+import { requirePaidSubscriptionJWS } from './subscription-proof.mjs';
 const valid = () => ({isFood:true,name:'Rice',items:[{name:'Rice',preparation:'cooked',grams:100,minGrams:80,maxGrams:150,calories:130,protein:3,carbs:28,fat:0.3,assumptions:[]}],uncertainties:['Weight is estimated'],clarificationQuestion:null});
 // Header-only fixture tests image-envelope checks, not visual recognition.
 const jpeg = Buffer.from([255,216,255,192,0,17,8,0,100,0,100,3,1,17,0,2,17,0,3,17,0,255,217]).toString('base64');
 const input = () => ({imageBase64:jpeg,mimeType:'image/jpeg',locale:'en_US'});
+const paidPayload = (overrides = {}) => ({
+  productId: 'com.weekfit.subscription.monthly',
+  bundleId: 'com.weekfit.app',
+  type: 'Auto-Renewable Subscription',
+  expiresDate: Date.now() + 86_400_000,
+  environment: 'Sandbox',
+  ...overrides,
+});
+const unsignedPaidJWS = (overrides = {}) => {
+  const head = Buffer.from(JSON.stringify({ alg: 'ES256', x5c: ['AA'] })).toString('base64url');
+  const body = Buffer.from(JSON.stringify(paidPayload(overrides))).toString('base64url');
+  return `${head}.${body}.c2ln`;
+};
+const DEV_SUB = 'weekfit-dev-local-subscription';
 test('default uses Astra and dev authentication is opt-in',()=>{const c=configuration({});assert.equal(c.model,'gpt-6-astra');assert.equal(c.allowDevAuth,false);});
 test('production refuses developer token',()=>assert.throws(()=>configuration({NODE_ENV:'production',ALLOW_DEV_AUTH:'1',WEEKFIT_DEV_TOKEN:'weekfit-dev-local-token'})));
 test('validates JPEG and rejects disguised or tiny images',()=>{assert.equal(validateInput(input()).locale,'en_US');assert.throws(()=>validateInput({...input(),imageBase64:Buffer.from('not an image').toString('base64')}));const tiny=Buffer.from(jpeg,'base64');tiny[8]=1;assert.throws(()=>validateInput({...input(),imageBase64:tiny.toString('base64')}));});
@@ -15,10 +30,10 @@ test('rejects invalid locale and oversized context',()=>{assert.throws(()=>valid
 test('totals are recomputed and marked as estimates',()=>{const r=validateResult(valid());assert.equal(r.totals.calories,130);assert.equal(r.nutritionSource,'ai_estimate');assert.equal(r.requiresConfirmation,true);});
 test('rejects negative, impossible or inconsistent portions',()=>{for(const change of [{grams:-1},{minGrams:120},{maxGrams:90},{protein:300},{calories:Infinity}]){const v=valid();Object.assign(v.items[0],change);assert.throws(()=>validateResult(v));}});
 test('non-food is a recoverable 422',()=>assert.throws(()=>validateResult({...valid(),isFood:false,items:[]}),e=>e.status===422));
-test('provider receives high detail, schema, no storage and server-selected model',async()=>{
+test('provider receives compact prompt, schema, no storage and server-selected model',async()=>{
   let sent;const c={...configuration({}),apiKey:'test-key'};
   const r=await recognize(validateInput(input()),c,async(url,options)=>{assert.equal(url,'https://api.openai.com/v1/responses');sent=JSON.parse(options.body);return new Response(JSON.stringify({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(valid())}]}],usage:{input_tokens:100,output_tokens:200}}));});
-  assert.equal(sent.model,'gpt-6-astra');assert.equal(sent.store,false);assert.equal(sent.text.format.strict,true);assert.equal(sent.input[0].content[1].detail,'high');assert.equal(r.result.name,'Rice');
+  assert.equal(sent.model,'gpt-6-astra');assert.equal(sent.store,false);assert.equal(sent.text.format.strict,true);assert.equal(sent.input[0].content[1].detail,'auto');assert.equal(sent.reasoning.effort,'medium');assert.ok(sent.instructions.length < 500);assert.equal(r.result.name,'Rice');
 });
 test('provider failures, refusals and truncated output never become meals',async()=>{
   const c={...configuration({}),apiKey:'test-key'};
@@ -42,7 +57,38 @@ test('HTTP auth, client-model isolation and quota enforcement',async t=>{
   const server=createServer(config,{recognize:async(i,c)=>{calls++;assert.equal(c.model,'gpt-6-astra');return{result:validateResult(valid()),usage:null};}});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));t.after(()=>new Promise(resolve=>server.close(resolve)));
   const base=`http://127.0.0.1:${server.address().port}`;
-  const request=auth=>fetch(base+'/v1/food/photo-recognize',{method:'POST',headers:{'Content-Type':'application/json',...(auth?{Authorization:'Bearer weekfit-dev-local-token'}:{})},body:JSON.stringify({...input(),model:'arbitrary-expensive-model'})});
-  assert.equal((await request(false)).status,401);assert.equal((await request(true)).status,200);assert.equal((await request(true)).status,429);assert.equal(calls,1);
+  const request=(auth, sub=DEV_SUB)=>fetch(base+'/v1/food/photo-recognize',{method:'POST',headers:{'Content-Type':'application/json',...(auth?{Authorization:'Bearer weekfit-dev-local-token'}:{}),...(sub?{'X-WeekFit-Subscription-JWS':sub}:{})},body:JSON.stringify({...input(),model:'arbitrary-expensive-model'})});
+  assert.equal((await request(false)).status,401);
+  assert.equal((await request(true, null)).status,402);
+  assert.equal((await request(true)).status,200);
+  assert.equal((await request(true)).status,429);
+  assert.equal(calls,1);
   assert.equal((await fetch(base+'/readyz')).status,200);
+});
+test('paid subscription proof rejects trial and expired payloads',()=>{
+  assert.throws(()=>requirePaidSubscriptionJWS(undefined),e=>e.status===402);
+  assert.throws(()=>requirePaidSubscriptionJWS(unsignedPaidJWS({offerType:1}),{skipSignature:true}),e=>e.status===402);
+  assert.throws(()=>requirePaidSubscriptionJWS(unsignedPaidJWS({offerDiscountType:'FREE_TRIAL'}),{skipSignature:true}),e=>e.status===402);
+  assert.throws(()=>requirePaidSubscriptionJWS(unsignedPaidJWS({expiresDate:Date.now()-1000}),{skipSignature:true}),e=>e.status===402);
+  assert.throws(()=>requirePaidSubscriptionJWS(unsignedPaidJWS({productId:'com.other.sub'}),{skipSignature:true}),e=>e.status===402);
+  assert.equal(requirePaidSubscriptionJWS(unsignedPaidJWS(),{skipSignature:true}).productId,'com.weekfit.subscription.monthly');
+  assert.equal(requirePaidSubscriptionJWS(DEV_SUB,{allowDevAuth:true}).productId,'dev');
+  assert.throws(()=>requirePaidSubscriptionJWS(DEV_SUB,{allowDevAuth:false}),e=>e.status===402);
+});
+test('photo recognize blocks AI without paid JWS even when auth succeeds',async t=>{
+  let calls=0;
+  const server=createServer(
+    {...configuration({ALLOW_DEV_AUTH:'1',WEEKFIT_DEV_TOKEN:'weekfit-dev-local-token',OPENAI_API_KEY:'test'})},
+    {
+      recognize:async()=>{calls++;return{result:validateResult(valid()),usage:null};},
+      requirePaidSubscriptionJWS:(header,opts)=>requirePaidSubscriptionJWS(header,{...opts,skipSignature:true}),
+    },
+  );
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));t.after(()=>new Promise(resolve=>server.close(resolve)));
+  const base=`http://127.0.0.1:${server.address().port}`;
+  const post=(sub)=>fetch(base+'/v1/food/photo-recognize',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer weekfit-dev-local-token',...(sub?{'X-WeekFit-Subscription-JWS':sub}:{})},body:JSON.stringify(input())});
+  assert.equal((await post()).status,402);
+  assert.equal((await post(unsignedPaidJWS({offerType:1}))).status,402);
+  assert.equal((await post(unsignedPaidJWS())).status,200);
+  assert.equal(calls,1);
 });

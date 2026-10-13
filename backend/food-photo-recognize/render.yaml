@@ -1,0 +1,132 @@
+# Render Blueprint — Nutrition async photo analysis (NOT applied by this task).
+# Review and create resources manually in staging. Do not point at production
+# until Redis/S3/provider staging checks in docs/NutritionAsyncCapacityPlan.md pass.
+#
+# Services:
+#   - weekfit-food-photo-api (web, N instances)
+#   - weekfit-food-photo-worker (background worker, M instances)
+# Shared:
+#   - Redis (Key Value) for jobs/queue/leases/quota when API count > 1 without shared disk
+#   - Object storage (S3/R2) for JPEG bytes; queue holds object keys only
+#   - Optional single persistent disk DATA_DIR for single-instance or worker-colocated file store
+
+services:
+  - type: web
+    name: weekfit-food-photo-api
+    runtime: node
+    plan: standard
+    numInstances: 2
+    healthCheckPath: /healthz
+    buildCommand: "echo no-build"
+    startCommand: "node server.mjs"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ASYNC_ANALYSIS
+        value: "1"
+      - key: STATE_BACKEND
+        value: redis
+      - key: OBJECT_STORE
+        value: s3
+      - key: ALLOW_DEV_AUTH
+        value: "0"
+      - key: FOOD_PHOTO_MODEL
+        value: gpt-6-astra
+      # Do NOT set to 100 until OpenAI concurrency/RPM/TPM and host RAM are confirmed in staging.
+      - key: GLOBAL_AI_SLOTS
+        value: "16"
+      - key: TARGET_BURST_SLOTS
+        value: "100"
+      - key: WORKER_LOCAL_CONCURRENCY
+        value: "8"
+      - key: LONG_POLL_MAX_MS
+        value: "25000"
+      - key: PROVIDER_MAX_RPM
+        value: "0"
+      - key: PROVIDER_MAX_TPM
+        value: "0"
+      - key: MAX_ASYNC_QUEUE
+        value: "2000"
+      - key: DAILY_SCAN_LIMIT
+        value: "20"
+      - key: GLOBAL_DAILY_SCAN_LIMIT
+        value: "5000"
+      - key: MAX_CONCURRENT_UPLOADS
+        value: "64"
+      - key: MAX_PROVIDER_CALLS_PER_DAY
+        value: "5000"
+      - key: MAX_ESTIMATED_USD_PER_DAY
+        value: "400"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        value: weekfitai
+      - key: REDIS_URL
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: PHOTO_TTL_MS
+        value: "86400000"
+      - key: JOB_TTL_MS
+        value: "86400000"
+
+  - type: worker
+    name: weekfit-food-photo-worker
+    runtime: node
+    plan: standard
+    numInstances: 4
+    buildCommand: "echo no-build"
+    startCommand: "node worker.mjs"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ASYNC_ANALYSIS
+        value: "1"
+      - key: STATE_BACKEND
+        value: redis
+      - key: OBJECT_STORE
+        value: s3
+      - key: ALLOW_DEV_AUTH
+        value: "0"
+      - key: GLOBAL_AI_SLOTS
+        value: "16"
+      - key: TARGET_BURST_SLOTS
+        value: "100"
+      - key: WORKER_LOCAL_CONCURRENCY
+        value: "8"
+      - key: WORKER_CLAIM_WAIT_MS
+        value: "5000"
+      - key: PROVIDER_MAX_RPM
+        value: "0"
+      - key: PROVIDER_MAX_TPM
+        value: "0"
+      - key: WORKER_LEASE_MS
+        value: "120000"
+      # For mock-validated burst-100: numInstances≥4 with localConcurrency 25 and GLOBAL_AI_SLOTS=100
+      # only after provider confirmation. Prefer pre-warmed workers over cold autoscale for the burst.
+      - key: WORKER_MAX_ATTEMPTS
+        value: "3"
+      - key: OPENAI_TIMEOUT_MS
+        value: "90000"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: MAX_PROVIDER_CALLS_PER_DAY
+        value: "5000"
+      - key: MAX_ESTIMATED_USD_PER_DAY
+        value: "400"
+
+# Suggested metrics / alerts (configure in Render + OpenAI dashboard):
+# - api: request rate, 5xx, p95 accept latency, queue depth gauge
+# - worker: active leases, completions/min, retry rate, circuit open
+# - budget: estimated USD/day, provider 429 rate
+# Alerts: circuit open > 2m; queue depth > 1500 for 5m; accept p95 > 3s; 5xx > 2%; daily USD > 80% budget

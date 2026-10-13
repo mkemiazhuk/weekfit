@@ -3,3 +3,9 @@
 node_modules
 *.test.mjs
 .git
+*.log
+*-results.json
+*-partial*.json
+.data
+README.md
+render.yaml
