@@ -167,13 +167,20 @@ test('photo recognize allows one free trial then requires paid subscription',asy
   assert.equal(calls,1);
 });
 
-test('async_not_configured does not burn free trial so sync fallback still works',async t=>{
+test('async enabled but stack missing returns async_not_configured without burning free trial',async t=>{
   let calls=0;
   const freeTrialStore=createMemoryFreeTrialStore();
+  // ASYNC on + forced null stack → not sync_compat; client should sync-fall back.
   const server=createServer(
-    {...configuration({ALLOW_DEV_AUTH:'1',WEEKFIT_DEV_TOKEN:'weekfit-dev-local-token',OPENAI_API_KEY:'test'})},
+    {...configuration({
+      ALLOW_DEV_AUTH:'1',
+      WEEKFIT_DEV_TOKEN:'weekfit-dev-local-token',
+      OPENAI_API_KEY:'test',
+      ASYNC_ANALYSIS:'1',
+      ALLOW_SINGLE_NODE_ASYNC:'1',
+      DATA_DIR:'/tmp/weekfit-photo-free-trial-test',
+    })},
     {
-      // Force async stack absent — mirrors DATA_DIR/Redis init failure.
       asyncStack:null,
       recognize:async()=>{calls++;return{result:validateResult(valid()),usage:null};},
       requirePaidSubscriptionJWS:(header,opts)=>requirePaidSubscriptionJWS(header,{...opts,skipSignature:true}),
