@@ -175,7 +175,7 @@ export function createWorkerRuntime({
       const attempts = job.attempts ?? 1;
       const soft = !enteredProvider && isSoftRequeueError(error);
       const retryable = soft
-        || (isRetryableProviderError(error) && attempts < (job.maxAttempts ?? config.workerMaxAttempts));
+        || (!enteredProvider && isRetryableProviderError(error) && attempts < (job.maxAttempts ?? config.workerMaxAttempts));
 
       if (retryable) {
         if (!soft) {
@@ -271,7 +271,11 @@ export function createWorkerRuntime({
           // claimNext already blocked; brief yield only if wait returned empty.
           continue;
         }
-        await Promise.race(running);
+        // While a long AI call runs, continue filling unused slots as photos arrive.
+        // Waiting only for a completion serialized a burst behind its first photo.
+        await Promise.race(running.size < localConcurrency
+          ? [...running, new Promise(resolve => setTimeout(resolve, 20))]
+          : running);
       } catch (error) {
         onLog({
           workerId,

@@ -203,11 +203,9 @@ export async function createFileJobStore({ dataDir, jobTtlMs = 24 * 60 * 60_000 
     while (Date.now() < deadline) {
       const remaining = deadline - Date.now();
       await new Promise((resolve) => {
-        const timer = setTimeout(resolve, Math.min(remaining, 5000));
-        wake.once('ready', () => {
-          clearTimeout(timer);
-          resolve();
-        });
+        const done = () => { clearTimeout(timer); wake.off('ready', done); resolve(); };
+        const timer = setTimeout(done, Math.min(remaining, 5000));
+        wake.once('ready', done);
       });
       const job = await tryClaimOnce({ workerId, leaseMs });
       if (job) return job;
