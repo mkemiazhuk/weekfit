@@ -100,6 +100,37 @@ final class TodayCoachInsightResolverTests: XCTestCase {
         XCTAssertEqual(phase, .preparing)
     }
 
+    func testPresentationShownEvenWhenCanRenderIsFalse() {
+        let presentation = samplePresentation
+        let state = CoachState(
+            id: UUID(),
+            createdAt: Date(),
+            status: .unavailable(reason: "Settling"),
+            input: nil,
+            fingerprint: nil,
+            coachUIPresentation: presentation,
+            coachIntegrationDebug: nil,
+            reflectionOffer: nil,
+            discoveryOffer: nil
+        )
+
+        let phase = TodayCoachInsightResolver.resolve(
+            TodayCoachInsightResolver.Input(
+                coachState: state,
+                cachedPresentation: nil,
+                shouldShowHealthConnectPrompt: false,
+                hasRecoverySignals: true,
+                isHealthMetricsSettled: true
+            )
+        )
+
+        guard case .insight(let resolved, let isRefreshing) = phase else {
+            return XCTFail("Expected insight from live presentation even while settling")
+        }
+        XCTAssertEqual(resolved.todayTitle, presentation.todayTitle)
+        XCTAssertTrue(isRefreshing)
+    }
+
     private func makeReadyState(title: String) -> CoachState {
         var presentation = samplePresentation
         presentation = CoachUIPresentation(

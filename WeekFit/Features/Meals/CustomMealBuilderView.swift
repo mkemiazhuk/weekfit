@@ -511,7 +511,7 @@ struct CustomMealBuilderView: View {
             return WeekFitLocalizedString("meals.barcode.source.usda")
         case .nutritionLabelOCR:
             return WeekFitLocalizedString("meals.barcode.source.nutritionLabel")
-        case .manual, .none:
+        case .photoCatalog, .photoAIEstimate, .manual, .none:
             return WeekFitLocalizedString("meals.barcode.source.unknown")
         }
     }

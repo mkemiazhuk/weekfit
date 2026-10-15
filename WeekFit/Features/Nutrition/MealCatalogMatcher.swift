@@ -18,7 +18,7 @@ enum MealCatalogMatcher {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
         switch normalized {
-        case "today", "nutritionlog", "waterlog", "applereviewdemo":
+        case "today", "nutritionlog", "waterlog", "applereviewdemo", "photolog", "foodlog":
             return true
         default:
             return normalized.contains("reviewdemo")

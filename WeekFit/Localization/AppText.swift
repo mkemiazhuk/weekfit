@@ -152,6 +152,7 @@ enum AppText {
         static let recoveryUnavailable: LocalizedStringResource = "today.recovery.unavailable"
         static let connectHealthInsights: LocalizedStringResource = "today.coachInsight.connectHealth"
         static let coachSettlingTitle: LocalizedStringResource = "today.coach.settling.title"
+        static let coachSettlingTitleSyncing: LocalizedStringResource = "today.coach.settling.title.syncing"
         static let coachSettlingMessageSleep: LocalizedStringResource = "today.coach.settling.message.sleep"
         static let coachSettlingMessageHealth: LocalizedStringResource = "today.coach.settling.message.health"
         static let coachSettlingMessageSyncing: LocalizedStringResource = "today.coach.settling.message.syncing"

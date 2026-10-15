@@ -195,9 +195,14 @@ struct MealLibrarySurfaceModifier: ViewModifier {
             .background {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(MealLibraryCardMetrics.Chrome.surface(isLight: palette.isLight))
+                    // Short contact shadow — wide ambient reads as a rectangular slab on ivory.
                     .shadow(
-                        color: Color.black.opacity(palette.isLight ? 0.06 : 0.28),
-                        radius: palette.isLight ? 6 : 10,
+                        color: Color.black.opacity(
+                            palette.isLight
+                                ? WeekFitLightTokens.cardContactShadowOpacity
+                                : 0.28
+                        ),
+                        radius: palette.isLight ? 5 : 10,
                         y: palette.isLight ? 2 : 4
                     )
             }
@@ -205,7 +210,7 @@ struct MealLibrarySurfaceModifier: ViewModifier {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .strokeBorder(
                         MealLibraryCardMetrics.Chrome.border(isLight: palette.isLight),
-                        lineWidth: 1
+                        lineWidth: palette.isLight ? 0.75 : 1
                     )
             }
     }

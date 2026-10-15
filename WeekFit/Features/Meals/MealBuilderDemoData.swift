@@ -26,6 +26,13 @@ enum MealIngredientCategory: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// How the builder stepper counts this ingredient.
+/// Calories always resolve from edible grams (`gramsPerPiece × count` when `.pieces`).
+enum MealBuilderPortionKind: String, Codable, Equatable, Hashable {
+    case mass
+    case pieces
+}
+
 struct MealBuilderIngredient: Identifiable, Codable, Equatable, Hashable {
     let id: String
     let title: String
@@ -40,6 +47,54 @@ struct MealBuilderIngredient: Identifiable, Codable, Equatable, Hashable {
     let fatsPer100g: Double
     let fiberPer100g: Double
 
+    /// `.pieces` for eggs etc. Nutrition still uses grams under the hood.
+    let portionKind: MealBuilderPortionKind
+    /// Edible grams for one piece (large chicken egg ≈ 50 g).
+    let gramsPerPiece: Int?
+
+    // Defaults keep the large catalog `.init(...)` call sites unchanged.
+    init(
+        id: String,
+        title: String,
+        imageName: String,
+        category: MealIngredientCategory,
+        defaultGrams: Int,
+        caloriesPer100g: Double,
+        proteinPer100g: Double,
+        carbsPer100g: Double,
+        fatsPer100g: Double,
+        fiberPer100g: Double,
+        portionKind: MealBuilderPortionKind = .mass,
+        gramsPerPiece: Int? = nil,
+        visualSize: Int,
+        visualDensity: CGFloat,
+        supportsStandalonePresentation: Bool,
+        offsetX: Int,
+        offsetY: Int,
+        rotation: Int,
+        zIndex: Int
+    ) {
+        self.id = id
+        self.title = title
+        self.imageName = imageName
+        self.category = category
+        self.defaultGrams = defaultGrams
+        self.caloriesPer100g = caloriesPer100g
+        self.proteinPer100g = proteinPer100g
+        self.carbsPer100g = carbsPer100g
+        self.fatsPer100g = fatsPer100g
+        self.fiberPer100g = fiberPer100g
+        self.portionKind = portionKind
+        self.gramsPerPiece = gramsPerPiece
+        self.visualSize = visualSize
+        self.visualDensity = visualDensity
+        self.supportsStandalonePresentation = supportsStandalonePresentation
+        self.offsetX = offsetX
+        self.offsetY = offsetY
+        self.rotation = rotation
+        self.zIndex = zIndex
+    }
+
     let visualSize: Int
     let visualDensity: CGFloat
     let supportsStandalonePresentation: Bool
@@ -48,6 +103,23 @@ struct MealBuilderIngredient: Identifiable, Codable, Equatable, Hashable {
     let offsetY: Int
     let rotation: Int
     let zIndex: Int
+
+    var usesPiecePortions: Bool {
+        portionKind == .pieces && (gramsPerPiece ?? 0) > 0
+    }
+
+    var resolvedGramsPerPiece: Int {
+        max(gramsPerPiece ?? 1, 1)
+    }
+
+    var defaultPortionCount: Int {
+        guard usesPiecePortions else { return defaultGrams }
+        return max(1, Int((Double(defaultGrams) / Double(resolvedGramsPerPiece)).rounded()))
+    }
+
+    var gramStep: Int {
+        usesPiecePortions ? resolvedGramsPerPiece : 5
+    }
 
     var localizedTitle: String {
         switch WeekFitCurrentAppLanguage() {
@@ -102,7 +174,8 @@ struct MealBuilderIngredient: Identifiable, Codable, Equatable, Hashable {
         "protein_salmon": "Лосось",
         "protein_white_fish": "Белая рыба",
         "protein_shrimp": "Креветки",
-        "protein_eggs": "Яйца",
+        "protein_eggs": "Яйца варёные",
+        "protein_eggs_fried": "Яйца жареные",
         "protein_cottage_cheese": "Творог",
         "protein_tofu": "Тофу",
         "protein_tempeh": "Темпе",
@@ -215,7 +288,8 @@ struct MealBuilderIngredient: Identifiable, Codable, Equatable, Hashable {
         "protein_salmon": "三文鱼",
         "protein_white_fish": "白鱼",
         "protein_shrimp": "虾",
-        "protein_eggs": "鸡蛋",
+        "protein_eggs": "水煮蛋",
+        "protein_eggs_fried": "煎蛋",
         "protein_cottage_cheese": "奶酪干",
         "protein_tofu": "豆腐",
         "protein_tempeh": "天贝",
@@ -309,6 +383,8 @@ extension MealBuilderIngredient {
         case carbsPer100g
         case fatsPer100g
         case fiberPer100g
+        case portionKind
+        case gramsPerPiece
         case visualSize
         case visualDensity
         case supportsStandalonePresentation
@@ -330,6 +406,8 @@ extension MealBuilderIngredient {
         carbsPer100g = try container.decode(Double.self, forKey: .carbsPer100g)
         fatsPer100g = try container.decode(Double.self, forKey: .fatsPer100g)
         fiberPer100g = try container.decodeIfPresent(Double.self, forKey: .fiberPer100g) ?? 0
+        portionKind = try container.decodeIfPresent(MealBuilderPortionKind.self, forKey: .portionKind) ?? .mass
+        gramsPerPiece = try container.decodeIfPresent(Int.self, forKey: .gramsPerPiece)
         visualSize = try container.decode(Int.self, forKey: .visualSize)
         visualDensity = try container.decode(CGFloat.self, forKey: .visualDensity)
         supportsStandalonePresentation = try container.decode(Bool.self, forKey: .supportsStandalonePresentation)
@@ -351,6 +429,10 @@ extension MealBuilderIngredient {
         try container.encode(carbsPer100g, forKey: .carbsPer100g)
         try container.encode(fatsPer100g, forKey: .fatsPer100g)
         try container.encode(fiberPer100g, forKey: .fiberPer100g)
+        if portionKind != .mass {
+            try container.encode(portionKind, forKey: .portionKind)
+        }
+        try container.encodeIfPresent(gramsPerPiece, forKey: .gramsPerPiece)
         try container.encode(visualSize, forKey: .visualSize)
         try container.encode(visualDensity, forKey: .visualDensity)
         try container.encode(supportsStandalonePresentation, forKey: .supportsStandalonePresentation)
@@ -367,6 +449,12 @@ struct SelectedBuilderIngredient: Identifiable, Equatable {
 
     var id: String {
         ingredient.id
+    }
+
+    /// Piece count when `portionKind == .pieces`; otherwise same as grams.
+    var portionCount: Int {
+        guard ingredient.usesPiecePortions else { return grams }
+        return max(1, Int((Double(grams) / Double(ingredient.resolvedGramsPerPiece)).rounded()))
     }
 
     var caloriesValue: Double {
@@ -1039,23 +1127,50 @@ enum MealBuilderDemoData {
             zIndex: 4
         ),
 
+        // Boiled / fried use cooked USDA-style densities (not raw). Fried already
+        // includes typical pan oil absorption — no separate oil line item needed.
+        // Portion UI steps by whole eggs (≈50 g edible large egg).
         .init(
             id: "protein_eggs",
-            title: "Eggs",
-            imageName: "ingredient-eggs",
+            title: "Boiled Egg",
+            imageName: "ingredient-eggs-boiled",
             category: .protein,
-            defaultGrams: 120,
-            caloriesPer100g: 143,
+            defaultGrams: 100,
+            caloriesPer100g: 155,
             proteinPer100g: 12.6,
-            carbsPer100g: 0.7,
-            fatsPer100g: 9.5,
+            carbsPer100g: 1.1,
+            fatsPer100g: 10.6,
             fiberPer100g: 0,
+            portionKind: .pieces,
+            gramsPerPiece: 50,
             visualSize: 80,
             visualDensity: 0.20,
             supportsStandalonePresentation: true,
             offsetX: 34,
             offsetY: 10,
             rotation: 7,
+            zIndex: 3
+        ),
+
+        .init(
+            id: "protein_eggs_fried",
+            title: "Fried Egg",
+            imageName: "ingredient-eggs-fried",
+            category: .protein,
+            defaultGrams: 100,
+            caloriesPer100g: 196,
+            proteinPer100g: 13.6,
+            carbsPer100g: 0.8,
+            fatsPer100g: 14.8,
+            fiberPer100g: 0,
+            portionKind: .pieces,
+            gramsPerPiece: 50,
+            visualSize: 80,
+            visualDensity: 0.20,
+            supportsStandalonePresentation: true,
+            offsetX: 36,
+            offsetY: 12,
+            rotation: 9,
             zIndex: 3
         ),
 
@@ -1070,6 +1185,8 @@ enum MealBuilderDemoData {
             carbsPer100g: 0.4,
             fatsPer100g: 11.1,
             fiberPer100g: 0,
+            portionKind: .pieces,
+            gramsPerPiece: 12,
             visualSize: 55,
             visualDensity: 0.18,
             supportsStandalonePresentation: true,

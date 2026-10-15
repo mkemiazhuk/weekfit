@@ -53,6 +53,17 @@ public final class PlannedActivity {
 
     public var actualDurationMinutes: Int?
 
+    /// Optional JSON snapshot of photo/barcode diary components (immutable after log).
+    public var nutritionSnapshotJSON: String?
+    /// `database` | `estimated` | `mixed` — how macros were derived at log time.
+    public var nutritionEstimateKind: String?
+    /// breakfast | lunch | dinner | snack
+    public var mealSlotRaw: String?
+    /// Optional link to a library `Meals.id` when user chose Save to my meals.
+    public var libraryMealId: String?
+    /// Local MealPhotoStore filename for diary-only photo (optional).
+    public var diaryPhotoFilename: String?
+
     public init(
         id: String = UUID().uuidString,
         healthKitWorkoutUUID: String? = nil,
@@ -72,7 +83,12 @@ public final class PlannedActivity {
         fiber: Int = 0,
         isCompleted: Bool = false,
         isSkipped: Bool = false,
-        source: String = "planner"
+        source: String = "planner",
+        nutritionSnapshotJSON: String? = nil,
+        nutritionEstimateKind: String? = nil,
+        mealSlotRaw: String? = nil,
+        libraryMealId: String? = nil,
+        diaryPhotoFilename: String? = nil
     ) {
         self.id = id
         self.healthKitWorkoutUUID = healthKitWorkoutUUID
@@ -93,6 +109,11 @@ public final class PlannedActivity {
         self.isCompleted = isCompleted
         self.isSkipped = isSkipped
         self.source = source
+        self.nutritionSnapshotJSON = nutritionSnapshotJSON
+        self.nutritionEstimateKind = nutritionEstimateKind
+        self.mealSlotRaw = mealSlotRaw
+        self.libraryMealId = libraryMealId
+        self.diaryPhotoFilename = diaryPhotoFilename
     }
 }
 
@@ -278,5 +299,29 @@ public extension PlannedActivity {
             to: date
         ) ?? date
         return date <= now && now <= endDate
+    }
+
+    /// Quick Start / Today-started sessions — not plan slots whose window merely overlaps `now`.
+    var isUserStartedSessionSource: Bool {
+        let normalized = source.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch normalized {
+        case "today", "quickstart", "quick_start", "appreviewdemo":
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// A session the user actually started; remains live until completed/skipped.
+    func isUserStartedLiveSession(now: Date = Date()) -> Bool {
+        switch type.lowercased() {
+        case "workout", "recovery":
+            break
+        default:
+            return false
+        }
+        guard !isCompleted, !isSkipped else { return false }
+        guard isUserStartedSessionSource else { return false }
+        return date <= now
     }
 }

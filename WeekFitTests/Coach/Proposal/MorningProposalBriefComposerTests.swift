@@ -294,6 +294,57 @@ final class MorningProposalBriefComposerTests: XCTestCase {
         XCTAssertNotNil(MorningProposalBriefComposer.weatherMetaLine(from: summary))
     }
 
+    func testOutdoorAlert_windPostponesOutdoor() {
+        let summary = WeekFitWeatherSummary(
+            temperature: Measurement(value: 16, unit: .celsius),
+            feelsLike: Measurement(value: 12, unit: .celsius),
+            highTemperature: nil,
+            lowTemperature: nil,
+            symbolName: "wind",
+            condition: .windy,
+            humidityPercent: 45,
+            windSpeed: Measurement(value: 48, unit: .kilometersPerHour),
+            uvIndex: 3,
+            precipitationChance: 10
+        )
+        let alert = MorningProposalBriefComposer.outdoorAlert(from: summary)
+        XCTAssertEqual(alert?.risk, .wind)
+        XCTAssertEqual(
+            alert?.title,
+            WeekFitLocalizedString("coach.proposal.review.weather.wind.title")
+        )
+        XCTAssertTrue(
+            (alert?.body.lowercased().contains("postpone") ?? false)
+                || (alert?.body.lowercased().contains("отлож") ?? false)
+                || (alert?.body.contains("推迟") ?? false),
+            "Wind alert should tell the user to postpone outdoor plans: \(alert?.body ?? "nil")"
+        )
+    }
+
+    func testOutdoorAlert_usesFingerprintWhenLiveWeatherUnavailable() {
+        let alert = MorningProposalBriefComposer.outdoorAlert(
+            from: nil,
+            fingerprintRisk: .wind
+        )
+        XCTAssertEqual(alert?.risk, .wind)
+    }
+
+    func testOutdoorAlert_nilWhenCalm() {
+        let summary = WeekFitWeatherSummary(
+            temperature: Measurement(value: 22, unit: .celsius),
+            feelsLike: Measurement(value: 22, unit: .celsius),
+            highTemperature: nil,
+            lowTemperature: nil,
+            symbolName: "sun.max",
+            condition: .clear,
+            humidityPercent: 40,
+            windSpeed: Measurement(value: 8, unit: .kilometersPerHour),
+            uvIndex: 4,
+            precipitationChance: 5
+        )
+        XCTAssertNil(MorningProposalBriefComposer.outdoorAlert(from: summary))
+    }
+
     func testColdStartBrief_usesDedicatedHeadlineAndSurfacesTipsAsActions() {
         let tip = CoachProposedChange(
             id: "c1",

@@ -55,4 +55,35 @@ final class PlannedActivityTests: XCTestCase {
 
         XCTAssertEqual(activity.terminalState(now: mid), .active)
     }
+
+    func testUserStartedLiveSessionIgnoresPlanWindowOnly() {
+        let start = Date().addingTimeInterval(-90 * 60)
+        let plannedSlot = PlannedActivity(
+            date: start,
+            type: "recovery",
+            title: "Breath Work",
+            durationMinutes: 10,
+            icon: "wind",
+            colorRed: 0.4,
+            colorGreen: 0.7,
+            colorBlue: 0.9,
+            source: "planner"
+        )
+        let started = PlannedActivity(
+            date: start,
+            type: "recovery",
+            title: "Breath Work",
+            durationMinutes: 10,
+            icon: "wind",
+            colorRed: 0.4,
+            colorGreen: 0.7,
+            colorBlue: 0.9,
+            source: "today"
+        )
+        let now = Date()
+
+        XCTAssertFalse(plannedSlot.isUserStartedLiveSession(now: now))
+        XCTAssertEqual(plannedSlot.terminalState(now: now), .planned)
+        XCTAssertTrue(started.isUserStartedLiveSession(now: now))
+    }
 }

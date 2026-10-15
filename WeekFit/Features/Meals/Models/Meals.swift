@@ -614,6 +614,10 @@ enum MealBuilderTitleComposer {
     }
 
     static func amountText(for ingredient: MealBuilderIngredient, grams: Int) -> String {
+        if ingredient.usesPiecePortions {
+            let count = max(1, Int((Double(grams) / Double(ingredient.resolvedGramsPerPiece)).rounded()))
+            return String(format: WeekFitLocalizedString("common.unit.pieceValueFormat"), count)
+        }
         let key = ingredient.category == .drinks
             ? "common.unit.millilitersFormat"
             : "common.unit.gramValueFormat"
@@ -712,6 +716,17 @@ enum MealBuilderTitleComposer {
                     continue
                 }
                 result = replaceWholePhrase(source, with: target, in: result)
+            }
+        }
+
+        // Pre–boiled/fried split titles used a single "Eggs" / "Яйца" label.
+        if let boiled = ingredients.first(where: { $0.id == "protein_eggs" }) {
+            let target = label(for: boiled, language: targetLanguage)
+            for legacy in ["Eggs", "Яйца", "鸡蛋"] {
+                guard legacy.compare(target, options: [.caseInsensitive, .diacriticInsensitive]) != .orderedSame else {
+                    continue
+                }
+                result = replaceWholePhrase(legacy, with: target, in: result)
             }
         }
         return result

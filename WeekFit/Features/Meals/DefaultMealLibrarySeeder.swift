@@ -122,7 +122,7 @@ enum DefaultMealLibrarySeeder {
             mealsType: .recovery,
             selections: [
                 ("base_oatmeal", 80),
-                ("protein_eggs", 120),
+                ("protein_eggs", 100),
                 ("extra_blueberries", 60),
             ]
         ),
@@ -163,7 +163,7 @@ enum DefaultMealLibrarySeeder {
             suggestedTime: "08:30",
             mealsType: .highProtein,
             selections: [
-                ("protein_eggs", 120),
+                ("protein_eggs", 100),
                 ("veg_tomatoes", 150),
                 ("veg_bell_pepper", 80),
                 ("veg_red_onion", 40),
@@ -176,7 +176,7 @@ enum DefaultMealLibrarySeeder {
             mealsType: .preWorkout,
             selections: [
                 ("base_corn_tortilla", 60),
-                ("protein_eggs", 120),
+                ("protein_eggs", 100),
                 ("base_black_beans", 100),
                 ("veg_tomatoes", 80),
             ]
@@ -186,7 +186,7 @@ enum DefaultMealLibrarySeeder {
             suggestedTime: "08:30",
             mealsType: .highProtein,
             selections: [
-                ("protein_eggs", 120),
+                ("protein_eggs", 100),
                 ("base_toast", 70),
                 ("extra_pork_ham", 60),
                 ("veg_mushrooms", 80),

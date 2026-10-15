@@ -2,27 +2,29 @@ import SwiftUI
 
 enum WeekFitStyle {
 
+    /// Dense Plan / sheet tokens. Prefer `WeekFitType` for new UI (Dynamic Type roles).
     enum Font {
-        static let screenTitle = SwiftUI.Font.system(size: 22, weight: .bold)
-        static let sectionTitle = SwiftUI.Font.system(size: 20, weight: .bold)
-        static let cardTitle = SwiftUI.Font.system(size: 14, weight: .bold)
-        static let cardSubtitle = SwiftUI.Font.system(size: 11.5, weight: .semibold)
-        static let body = SwiftUI.Font.system(size: 12.8, weight: .semibold)
-        static let caption = SwiftUI.Font.system(size: 11, weight: .semibold)
-        static let tiny = SwiftUI.Font.system(size: 8.5, weight: .bold)
-        static let button = SwiftUI.Font.system(size: 15, weight: .bold)
-        static let icon = SwiftUI.Font.system(size: 13.5, weight: .bold)
-        static let dayNumber = SwiftUI.Font.system(size: 14, weight: .bold)
-        static let dayName = SwiftUI.Font.system(size: 11, weight: .semibold)
-        static let timelineTime = SwiftUI.Font.system(size: 12, weight: .medium)
-        static let timelineTimeActive = SwiftUI.Font.system(size: 12, weight: .bold)
-        static let sheetTitle = SwiftUI.Font.system(size: 20, weight: .bold)
-        static let sheetSubtitle = SwiftUI.Font.system(size: 12.5, weight: .semibold)
-        static let optionTitle = SwiftUI.Font.system(size: 12, weight: .semibold)
-        static let optionSubtitle = SwiftUI.Font.system(size: 11.5, weight: .regular)
-        static let iconSmall = SwiftUI.Font.system(size: 11, weight: .bold)
-        static let iconLarge = SwiftUI.Font.system(size: 17, weight: .semibold)
-        static let iconMedium = SwiftUI.Font.system(size: 15, weight: .bold)
+        static let screenTitle = WeekFitType.screenTitle
+        static let sectionTitle = WeekFitType.sectionTitle
+        static let cardTitle = WeekFitType.cardTitle
+        static let cardSubtitle = WeekFitType.secondary
+        static let body = WeekFitType.body
+        static let caption = WeekFitType.captionEmphasized
+        /// Dense timeline / chip exception — not a general body style.
+        static let tiny = SwiftUI.Font.caption2.weight(.bold)
+        static let button = WeekFitType.button
+        static let icon = SwiftUI.Font.subheadline.weight(.bold)
+        static let dayNumber = SwiftUI.Font.subheadline.weight(.bold)
+        static let dayName = SwiftUI.Font.caption.weight(.semibold)
+        static let timelineTime = WeekFitType.caption
+        static let timelineTimeActive = WeekFitType.captionEmphasized
+        static let sheetTitle = WeekFitType.cardTitle
+        static let sheetSubtitle = WeekFitType.secondary
+        static let optionTitle = WeekFitType.secondary.weight(.semibold)
+        static let optionSubtitle = WeekFitType.caption
+        static let iconSmall = SwiftUI.Font.caption.weight(.bold)
+        static let iconLarge = SwiftUI.Font.body.weight(.semibold)
+        static let iconMedium = SwiftUI.Font.subheadline.weight(.bold)
     }
 
     enum Size {

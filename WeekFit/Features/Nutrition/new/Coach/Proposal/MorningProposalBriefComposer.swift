@@ -20,6 +20,14 @@ struct MorningProposalBrief: Equatable, Sendable {
     let contextLine: String?
 }
 
+/// Review-surface outdoor risk callout — stronger than the quiet brief meta line.
+struct MorningProposalOutdoorAlert: Equatable, Sendable {
+    let title: String
+    let body: String
+    let systemImage: String
+    let risk: ProposalWeatherRiskToken
+}
+
 enum MorningProposalBriefComposer {
 
     static func compose(
@@ -181,8 +189,6 @@ enum MorningProposalBriefComposer {
         return trimmed
     }
 
-    /// Adverse / actionable weather line for the brief meta row (nil when calm).
-    
     private static func isMovementMutation(_ change: CoachProposedChange) -> Bool {
         switch change.kind {
         case .createRecoveryWalk, .createPlannedActivity, .modifyDuration, .moveActivity, .skipActivity:
@@ -192,6 +198,7 @@ enum MorningProposalBriefComposer {
         }
     }
 
+    /// Adverse / actionable weather line for the brief meta row (nil when calm).
     static func weatherMetaLine(from summary: WeekFitWeatherSummary?) -> String? {
         switch ProposalWeatherRisk.resolve(from: summary) {
         case .precip, .storm:
@@ -203,6 +210,38 @@ enum MorningProposalBriefComposer {
         case .cold:
             return WeekFitLocalizedString("coach.proposal.brief.weather.cold")
         case .calm, .unavailable:
+            return nil
+        }
+    }
+
+    /// Prominent outdoor risk callout for review (stronger than the quiet meta line).
+    static func outdoorAlert(
+        from summary: WeekFitWeatherSummary?,
+        fingerprintRisk: ProposalWeatherRiskToken = .unavailable
+    ) -> MorningProposalOutdoorAlert? {
+        let live = ProposalWeatherRisk.resolve(from: summary)
+        let risk: ProposalWeatherRiskToken = {
+            if live.isAdverse { return live }
+            if fingerprintRisk.isAdverse { return fingerprintRisk }
+            return live
+        }()
+
+        switch risk {
+        case .wind:
+            return MorningProposalOutdoorAlert(
+                title: WeekFitLocalizedString("coach.proposal.review.weather.wind.title"),
+                body: WeekFitLocalizedString("coach.proposal.review.weather.wind.body"),
+                systemImage: "wind",
+                risk: .wind
+            )
+        case .precip, .storm:
+            return MorningProposalOutdoorAlert(
+                title: WeekFitLocalizedString("coach.proposal.review.weather.precip.title"),
+                body: WeekFitLocalizedString("coach.proposal.review.weather.precip.body"),
+                systemImage: "cloud.rain.fill",
+                risk: risk
+            )
+        case .heat, .cold, .calm, .unavailable:
             return nil
         }
     }

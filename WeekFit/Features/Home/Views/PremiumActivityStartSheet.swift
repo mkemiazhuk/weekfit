@@ -33,13 +33,14 @@ struct PremiumActivityStartSheet: View {
         let now = Date()
         let calendar = Calendar.current
 
-        return allPlannedActivities.first { activity in
-            guard calendar.isDate(activity.date, inSameDayAs: now),
-                  isTrackableLiveActivity(activity)
-            else { return false }
-
-            return activity.terminalState(now: now) == .active
-        }
+        // Match Today: only user-started sessions stay live past a plan window.
+        return allPlannedActivities
+            .filter { activity in
+                calendar.isDate(activity.date, inSameDayAs: now)
+                    && activity.isUserStartedLiveSession(now: now)
+            }
+            .sorted { $0.date < $1.date }
+            .first
     }
 
     private var selectedPlannerType: PlannerType {
@@ -487,11 +488,6 @@ struct PremiumActivityStartSheet: View {
 
         isPresented = false
         refreshID = UUID()
-    }
-
-    private func isTrackableLiveActivity(_ activity: PlannedActivity) -> Bool {
-        let type = activity.type.lowercased()
-        return type == "workout" || type == "recovery"
     }
 
     private func defaultDuration(for option: PlannerOption, type: PlannerType) -> Int {

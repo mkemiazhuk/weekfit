@@ -1,3 +1,4 @@
+internal import Combine
 import SwiftUI
 import SwiftData
 import WeekFitPlanner
@@ -40,6 +41,7 @@ struct WeekFitRootView: View {
 
     @StateObject private var planViewModel = PlanViewModel()
     @StateObject private var coachInputProvider = CoachInputProvider()
+    @StateObject private var eveningSummary = CoachEveningSummaryCoordinator()
     @State private var selectedTab: WeekFitTab = .today
     @State private var todaySelectedDate = Date()
     @State private var todayResetTrigger = UUID()
@@ -75,9 +77,52 @@ struct WeekFitRootView: View {
     private var plannedActivities: [PlannedActivity]
 
     var body: some View {
-        rootShellWithHealthHandlers
+        rootShellWithEveningSummaryHandlers
             .environmentObject(authViewModel)
+            .environmentObject(eveningSummary)
             .weekFitReviewPromptHost(manager: reviewManager)
+    }
+
+    private var rootShellWithEveningSummaryHandlers: some View {
+        rootShellWithHealthHandlers
+            .onAppear { restoreEveningSummaryCache() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { restoreEveningSummaryCache() }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .coachEveningSummaryWillReset)) { _ in
+                eveningSummary.cancelForWorkspaceReset()
+            }
+    }
+
+    /// Restore lasting cache only. Manual refresh is owned by Coach; production auto path is behind the policy flag.
+    /// Cache restore does not depend on HealthKit, coach snapshot, evening window, or daily claims.
+    private func restoreEveningSummaryCache() {
+        guard CoachEveningSummaryPolicy.isCoachSurfaceEnabled else { return }
+        CoachEveningSummaryDiagnostics.event(
+            "root.restore",
+            detail: "scene=\(String(describing: scenePhase)) hadSummary=\(eveningSummary.summary != nil)"
+        )
+        guard AccountSessionController.shared.mode == .realUser,
+              let owner = WorkspaceOwnerStore.currentIdentityToken() else {
+            CoachEveningSummaryDiagnostics.event("cache.skipped", detail: "source=root reason=noOwnerOrSession")
+            return
+        }
+        eveningSummary.restore(owner: owner)
+        guard CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow,
+              scenePhase == .active,
+              subscriptionManager.hasFullAccess,
+              hasSettledInitialHealthState else { return }
+        let now = Date()
+        guard CoachEveningSummaryPolicy.allowsGeneration(at: now),
+              let input = coachInputProvider.lastInput,
+              let request = CoachEveningSummaryInputBuilder.build(
+                input: input,
+                presentation: coachCoordinator.state.coachUIPresentation,
+                activities: Array(plannedActivities),
+                locale: languageManager.selectedLanguage.rawValue,
+                now: now
+              ) else { return }
+        eveningSummary.startIfNeeded(input: request, owner: owner, now: now)
     }
 
     private var rootShellWithHealthHandlers: some View {
@@ -460,27 +505,12 @@ struct WeekFitRootView: View {
 
             WeekFitBottomBar(selectedTab: gatedSelectedTab)
                 .padding(.horizontal, 1)
-                .background(alignment: .top) {
-                    Rectangle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    WeekFitTheme.whiteOpacity(0.02),
-                                    Color.clear
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .frame(height: 1)
-                        .offset(y: -7)
-                }
                 .shadow(
                     color: palette.isLight
-                        ? Color.clear
+                        ? Color.black.opacity(0.10)
                         : Color.black.opacity(0.4),
-                    radius: palette.isLight ? 0 : 25,
-                    y: palette.isLight ? 0 : -10
+                    radius: palette.isLight ? 14 : 25,
+                    y: palette.isLight ? -6 : -10
                 )
                 .id(palette.appearanceInvalidationToken)
                 .opacity(showContent ? 1 : 0)
@@ -596,7 +626,7 @@ struct WeekFitRootView: View {
             TodayAtmosphereBackground(
                 snapshot: sharedAtmosphereSnapshot,
                 ambientOpacity: palette.ambientOpacity,
-                showsStarField: selectedTab != .meals
+                showsStarField: selectedTab != .meals && selectedTab != .today
             )
         } else {
             ZStack {
@@ -1087,6 +1117,9 @@ struct WeekFitRootView: View {
             coachCoordinator: coachCoordinator,
             plannedActivities: plannedActivities
         )
+        if !Task.isCancelled {
+            restoreEveningSummaryCache()
+        }
     }
 
     private var coachRefreshDate: Date {

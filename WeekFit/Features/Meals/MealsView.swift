@@ -1278,24 +1278,18 @@ struct MealsView: View {
     }
 
     private var bottomFadeGradient: some View {
-        Group {
-            if palette.isLight {
-                // Light canvas needs no dark veil — a Dark-stale fade was compositing
-                // as a black slab over ivory when EquatableView skipped appearance updates.
-                Color.clear
-            } else {
-                LinearGradient(
-                    colors: [
-                        canvasBackground.opacity(0),
-                        canvasBackground.opacity(0.58),
-                        canvasBackground.opacity(0.94),
-                        canvasBackground
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            }
-        }
+        // Always fade with the live canvas color (ivory on light, OLED on dark) so
+        // scrolling cards dissolve under the floating tab bar instead of reading through.
+        LinearGradient(
+            colors: [
+                canvasBackground.opacity(0),
+                canvasBackground.opacity(palette.isLight ? 0.62 : 0.58),
+                canvasBackground.opacity(palette.isLight ? 0.96 : 0.94),
+                canvasBackground
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
         .ignoresSafeArea()
         .id(palette.appearanceInvalidationToken)
     }
@@ -2289,8 +2283,8 @@ private struct RecommendedTodayMealCard: View {
     private var textSecondary: Color { WeekFitTheme.secondaryText }
     private var accent: Color { WeekFitTheme.brandGold }
 
-    private let thumbSize: CGFloat = MealLibraryCardMetrics.thumbSize
-    private let cornerRadius: CGFloat = MealLibraryCardMetrics.cornerRadius
+    private let thumbSize: CGFloat = 88
+    private let cornerRadius: CGFloat = 22
 
     private var nutritionLine: String {
         String(
@@ -2301,45 +2295,60 @@ private struct RecommendedTodayMealCard: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 5) {
+        HStack(alignment: .center, spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(recommendation.heroEyebrow)
-                    .font(.system(size: 10.5, weight: .semibold))
-                    .tracking(0.7)
+                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                    .tracking(1.0)
                     .textCase(.uppercase)
-                    .foregroundStyle(accent.opacity(0.92))
+                    .foregroundStyle(accent)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background {
+                        Capsule(style: .continuous)
+                            .fill(
+                                palette.isLight
+                                    ? WeekFitLightTokens.brandGoldSoft.opacity(0.72)
+                                    : accent.opacity(0.16)
+                            )
+                    }
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .strokeBorder(accent.opacity(palette.isLight ? 0.28 : 0.22), lineWidth: 0.8)
+                    }
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
 
                 Text(recommendation.meal.localizedDisplayTitle)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundStyle(textPrimary)
-                    .tracking(-0.22)
+                    .tracking(-0.28)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text(nutritionLine)
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundStyle(textSecondary)
+                    .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                    .foregroundStyle(textSecondary.opacity(0.88))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
 
                 Text(recommendation.heroSummary)
-                    .font(.system(size: 12.5, weight: .regular))
-                    .foregroundStyle(textSecondary)
+                    .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                    .foregroundStyle(textSecondary.opacity(0.78))
+                    .lineSpacing(1)
                     .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Button(action: openDetails) {
-                    HStack(spacing: 3) {
+                    HStack(spacing: 4) {
                         Text(WeekFitLocalizedString("meals.library.hero.viewMeal"))
-                            .font(.system(size: 13.5, weight: .semibold))
+                            .font(.system(size: 13.5, weight: .semibold, design: .rounded))
                         Image(systemName: "chevron.right")
                             .font(.system(size: 10, weight: .bold))
                     }
-                    .foregroundStyle(accent)
-                    .frame(minHeight: 44, alignment: .leading)
+                    .foregroundStyle(palette.isLight ? WeekFitLightTokens.brandGoldDark : accent)
+                    .frame(minHeight: 40, alignment: .leading)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -2350,15 +2359,31 @@ private struct RecommendedTodayMealCard: View {
 
             Button(action: openDetails) {
                 MealLibraryPlateView(meal: recommendation.meal, diameter: thumbSize)
+                    .shadow(
+                        color: accent.opacity(palette.isLight ? 0.18 : 0.22),
+                        radius: 10,
+                        y: 4
+                    )
             }
             .buttonStyle(.plain)
             .accessibilityHidden(true)
         }
-        .padding(.leading, 14)
-        .padding(.trailing, 12)
-        .padding(.vertical, 8)
+        .padding(.leading, 16)
+        .padding(.trailing, 14)
+        .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .mealLibrarySurface(cornerRadius: cornerRadius)
+        .background {
+            recommendedCardChrome
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .strokeBorder(
+                    palette.isLight
+                        ? accent.opacity(0.18)
+                        : accent.opacity(0.22),
+                    lineWidth: 0.85
+                )
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
             String(
@@ -2366,6 +2391,42 @@ private struct RecommendedTodayMealCard: View {
                 recommendation.meal.localizedDisplayTitle
             )
         )
+    }
+
+    private var recommendedCardChrome: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
+        // Short contact shadow only — wide ambient shadows cast a rectangular slab on ivory.
+        return shape
+            .fill(MealLibraryCardMetrics.Chrome.surface(isLight: palette.isLight))
+            .overlay {
+                shape.fill(
+                    LinearGradient(
+                        colors: palette.isLight
+                            ? [
+                                accent.opacity(0.10),
+                                accent.opacity(0.03),
+                                Color.clear
+                            ]
+                            : [
+                                accent.opacity(0.14),
+                                accent.opacity(0.05),
+                                Color.clear
+                            ],
+                        startPoint: .topLeading,
+                        endPoint: UnitPoint(x: 0.92, y: 0.88)
+                    )
+                )
+            }
+            .shadow(
+                color: Color.black.opacity(
+                    palette.isLight
+                        ? WeekFitLightTokens.cardContactShadowOpacity
+                        : 0.28
+                ),
+                radius: palette.isLight ? 5 : 10,
+                y: palette.isLight ? 2 : 4
+            )
     }
 
     private func openDetails() {

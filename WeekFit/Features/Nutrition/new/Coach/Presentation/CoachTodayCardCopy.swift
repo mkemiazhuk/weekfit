@@ -1,6 +1,8 @@
 import Foundation
 
-/// Today Coach card should explain *why this plan*, not restating Up Next.
+/// Today’s Focus teaser — must stay consistent with the Coach tab hero.
+/// Title mirrors `coachTitle`; message mirrors the Coach lead (`assessment`),
+/// with light fallbacks. Still avoids restating the Up Next activity name.
 enum CoachTodayCardCopy {
 
     struct Display: Equatable {
@@ -13,19 +15,10 @@ enum CoachTodayCardCopy {
         nextActivityTitle: String?
     ) -> Display {
         let next = nextActivityTitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let rawMessage = presentation.showsLimitedConfidenceBadge
-            ? presentation.recommendation
-            : presentation.todayMessage
-
-        let title = resolvedTitle(
-            raw: presentation.todayTitle,
-            presentation: presentation,
-            nextActivityTitle: next
-        )
+        let title = resolvedTitle(presentation: presentation, nextActivityTitle: next)
         let message = resolvedMessage(
-            raw: rawMessage,
-            title: title,
             presentation: presentation,
+            title: title,
             nextActivityTitle: next
         )
         return Display(title: title, message: message)
@@ -48,15 +41,25 @@ enum CoachTodayCardCopy {
     // MARK: - Resolve
 
     private static func resolvedTitle(
-        raw: String,
         presentation: CoachUIPresentation,
         nextActivityTitle: String
     ) -> String {
-        if nextActivityTitle.isEmpty || !echoesActivity(raw, activityTitle: nextActivityTitle) {
-            return raw
+        // Prefer the same headline the Coach tab shows.
+        let coachTitle = presentation.coachTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let todayTitle = presentation.todayTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let preferred = !coachTitle.isEmpty ? coachTitle : todayTitle
+
+        if preferred.isEmpty {
+            return whyTitle(for: presentation.scenario)
         }
 
+        if nextActivityTitle.isEmpty || !echoesActivity(preferred, activityTitle: nextActivityTitle) {
+            return concise(preferred, maxLength: 28)
+        }
+
+        // Title would just restate Up Next — fall back to a why stance, then assessment clause.
         let candidates = [
+            presentation.todayTitle.trimmingCharacters(in: .whitespacesAndNewlines),
             whyClause(from: presentation.assessment, nextActivityTitle: nextActivityTitle),
             presentation.whyRows
                 .map(\.title)
@@ -65,30 +68,29 @@ enum CoachTodayCardCopy {
         ]
 
         let picked = candidates
-            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .first { candidate in
-                !candidate.isEmpty && candidate.count <= 26
-            } ?? whyTitle(for: presentation.scenario)
+            .compactMap { value -> String? in
+                guard let value else { return nil }
+                let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { return nil }
+                guard !echoesActivity(trimmed, activityTitle: nextActivityTitle) else { return nil }
+                return trimmed
+            }
+            .first { $0.count <= 28 } ?? whyTitle(for: presentation.scenario)
 
-        return concise(picked, maxLength: 26)
+        return concise(picked, maxLength: 28)
     }
 
     private static func resolvedMessage(
-        raw: String,
-        title: String,
         presentation: CoachUIPresentation,
+        title: String,
         nextActivityTitle: String
     ) -> String {
-        let duplicatesTitle = CoachUIPresentationDedup.isNearDuplicate(raw, title)
-        let echoesNext = !nextActivityTitle.isEmpty && echoesActivity(raw, activityTitle: nextActivityTitle)
-        if !raw.isEmpty, !duplicatesTitle, !echoesNext {
-            return raw
-        }
-
+        // Same lead line the Coach tab shows under the headline.
         let candidates = [
-            presentation.recommendation,
             presentation.assessment,
-            presentation.avoid
+            presentation.todayMessage,
+            presentation.recommendation,
+            presentation.nextAction
         ]
 
         if let picked = candidates.first(where: { candidate in
@@ -100,10 +102,10 @@ enum CoachTodayCardCopy {
             }
             return true
         }) {
-            return concise(picked, maxLength: 72)
+            return concise(picked, maxLength: 90)
         }
 
-        return raw
+        return ""
     }
 
     /// Prefer the clause after a dash — usually the reason, not the event name.

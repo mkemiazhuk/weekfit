@@ -18,14 +18,18 @@ enum TodayCoachInsightResolver {
     }
 
     static func resolve(_ input: Input) -> TodayCoachInsightPhase {
+        // Prefer live Coach presentation whenever it has Today copy — even if
+        // `canRenderTodayCoachInsight` is still false — so Focus matches Coach
+        // instead of showing a stale “Assessing your recovery” settling card.
         if let presentation = input.coachState.coachUIPresentation,
-           input.coachState.canRenderTodayCoachInsight {
-            let isRefreshing = input.coachState.status == .refreshingPrevious
+           hasTodayCopy(presentation) {
+            let isRefreshing = !input.coachState.canRenderTodayCoachInsight
+                || input.coachState.status == .refreshingPrevious
                 || !input.isHealthMetricsSettled
             return .insight(presentation, isRefreshing: isRefreshing)
         }
 
-        if let cached = input.cachedPresentation {
+        if let cached = input.cachedPresentation, hasTodayCopy(cached) {
             return .insight(cached, isRefreshing: true)
         }
 
@@ -38,5 +42,12 @@ enum TodayCoachInsightResolver {
         }
 
         return .preparing
+    }
+
+    private static func hasTodayCopy(_ presentation: CoachUIPresentation) -> Bool {
+        let todayTitle = presentation.todayTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !todayTitle.isEmpty { return true }
+        // Fall back to Coach headline so Focus can mirror the Coach tab card.
+        return !presentation.coachTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }

@@ -91,19 +91,19 @@ struct TodayAtmosphereBackground: View {
     private var darkSkyCanvas: some View {
         ZStack {
             skyGradient
-            lunarGlow
-            // Stars stay static so they never fight text or thrash during scroll.
+            // Quiet sky only — decorative stars / strong glows stay off on Today & Meals.
             if showsStarField {
+                lunarGlow
                 TodayAtmosphereStarField(
                     intensity: skyIntensity,
                     ambientOpacity: ambientOpacity
                 )
+                TodayAtmosphereCloudVeil(
+                    intensity: skyIntensity,
+                    ambientOpacity: ambientOpacity,
+                    reduceMotion: reduceMotion
+                )
             }
-            TodayAtmosphereCloudVeil(
-                intensity: skyIntensity,
-                ambientOpacity: ambientOpacity,
-                reduceMotion: reduceMotion
-            )
         }
     }
 

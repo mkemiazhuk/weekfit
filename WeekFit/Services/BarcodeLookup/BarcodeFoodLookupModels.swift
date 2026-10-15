@@ -6,6 +6,10 @@ enum NutritionDataSource: String, Codable, Sendable, Equatable {
     case usda
     case nutritionLabelOCR
     case manual
+    /// Plate recognition matched to WeekFit ingredient catalog (deterministic macros).
+    case photoCatalog
+    /// Component macros estimated by the vision model — never shown as DB-backed.
+    case photoAIEstimate
 }
 
 enum BarcodeNutritionBasis: String, Codable, Sendable, Equatable {

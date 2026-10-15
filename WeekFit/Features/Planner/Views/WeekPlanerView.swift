@@ -136,7 +136,8 @@ private struct WeekPlannerLiveQueryView: View {
                     subtitle: WeekFitLocalizedString("planner.week.subtitle"),
                     initials: userSettings.profileInitials,
                     hasProfileName: userSettings.hasProfileName,
-                    showAvatar: true
+                    showAvatar: true,
+                    avatarProminence: .subdued
                 ) {
                     showProfile = true
                 }

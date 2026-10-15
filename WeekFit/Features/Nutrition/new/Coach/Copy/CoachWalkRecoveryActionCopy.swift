@@ -77,8 +77,9 @@ enum CoachWalkRecoveryActionPresentation {
             if isHike { return russian ? "На хайкинге" : "On the hike" }
             return russian ? "На прогулке" : "On the walk"
         case .completed:
-            if isHike { return russian ? "Хайкинг завершён" : "Hike done" }
-            return russian ? "Прогулка завершена" : "Walk completed"
+            // Badge already says “Session complete” — keep the title about the activity.
+            if isHike { return russian ? "Хайкинг" : "Hike logged" }
+            return russian ? "Прогулка" : "Walk logged"
         }
     }
 
@@ -95,8 +96,8 @@ enum CoachWalkRecoveryActionPresentation {
             if isHike { return russian ? "На хайкинге" : "On the hike" }
             return russian ? "На прогулке" : "On the walk"
         case .completed:
-            if isHike { return russian ? "Хайкинг завершён" : "Hike done" }
-            return russian ? "Прогулка завершена" : "Walk completed"
+            if isHike { return russian ? "Хайкинг" : "Hike logged" }
+            return russian ? "Прогулка" : "Walk logged"
         }
     }
 
@@ -193,7 +194,7 @@ private extension CoachWalkRecoveryActionCopy {
     static func completedClosureDraft(input: CoachCopyBuildInput) -> CoachCopyRegistryScenarios.Draft {
         CoachCopyRegistryScenarios.Draft(
             assessment: .en(
-                "The walk has already helped the body ease out of load.",
+                "That walk already helped you ease off today's load.",
                 "Прогулка уже помогла мягко сбросить нагрузку."
             ),
             recommendation: .en(
@@ -211,7 +212,7 @@ private extension CoachWalkRecoveryActionCopy {
     static func completedEveningDraft(input: CoachCopyBuildInput) -> CoachCopyRegistryScenarios.Draft {
         CoachCopyRegistryScenarios.Draft(
             assessment: .en(
-                "The walk has already helped the body ease out of load.",
+                "That walk already helped you ease off today's load.",
                 "Прогулка уже помогла мягко сбросить нагрузку."
             ),
             recommendation: .en(
@@ -229,11 +230,11 @@ private extension CoachWalkRecoveryActionCopy {
     static func completedDaytimeDraft(input: CoachCopyBuildInput) -> CoachCopyRegistryScenarios.Draft {
         CoachCopyRegistryScenarios.Draft(
             assessment: .en(
-                "The walk has already helped the body ease out of load.",
+                "That walk already helped you ease off today's load.",
                 "Прогулка уже помогла мягко сбросить нагрузку."
             ),
             recommendation: .en(
-                "Walk is already in — keep a calm ordinary rhythm from here.",
+                "Walk is logged — keep an easy pace from here.",
                 "Прогулка уже была — дальше держите обычный спокойный ритм."
             ),
             avoid: .en(

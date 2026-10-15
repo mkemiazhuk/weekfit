@@ -10,8 +10,9 @@ enum WeekFitScreenLayout {
     static let rootSpacing: CGFloat = 12
     /// Gap under the screen header before first content.
     static let headerBottomSpacing: CGFloat = 22
-    /// Floating tab bar height plus breathing room for scroll content.
-    static let tabBarClearance: CGFloat = 88
+    /// Floating tab bar occupied height + breathing room for scroll content.
+    /// Bar 52 + bottom pad 10 + gap so the last card clears the pill fully.
+    static let tabBarClearance: CGFloat = 104
 
     static var topPadding: CGFloat {
         UIScreen.main.bounds.height > 800 ? topPaddingLarge : topPaddingSmall
@@ -34,15 +35,46 @@ enum WeekFitSurface {
 }
 
 // MARK: - Typography
-
+//
+/// Canonical semantic type roles (Dynamic Type). Approximate default sizes:
+/// screenTitle ~34, cardTitle ~20, compactCardTitle ~17–18, body ~17, primaryMetric ~22,
+/// activeTimer ~28–32, secondary ~15, sectionLabel ~13–14, button ~17.
+/// Prefer these over fixed `system(size:)` call sites. Dense Plan-timeline tokens in
+/// `WeekFitStyle.Font` remain layout exceptions until those surfaces migrate.
 enum WeekFitType {
-    static let screenTitle = Font.system(size: 32, weight: .bold)
-    static let screenSubtitle = Font.system(size: 16, weight: .regular)
-    static let sectionTitle = Font.system(size: 24, weight: .bold)
-    static let cardTitle = Font.system(size: 20, weight: .semibold, design: .rounded)
-    static let body = Font.system(size: 16, weight: .regular)
-    static let secondary = Font.system(size: 15, weight: .regular)
-    static let eyebrow = Font.system(size: 13, weight: .semibold)
+    /// Screen title — largeTitle / ~34 bold.
+    static let screenTitle = Font.largeTitle.weight(.bold)
+    /// Supporting line under a screen title.
+    static let screenSubtitle = Font.body
+    /// Legacy alias for mid-level section heads (Coach etc.).
+    static let sectionTitle = Font.title2.weight(.bold)
+    /// Card / activity name — title3 / ~20 semibold.
+    static let cardTitle = Font.title3.weight(.semibold)
+    /// Quieter card title for Today supporting cards (Up Next / Focus) — body / ~17–18 semibold.
+    /// Keeps overview metrics as the stronger numeric anchors without shrinking global `cardTitle`.
+    static let compactCardTitle = Font.body.weight(.semibold)
+    /// Primary body — ~17 regular.
+    static let body = Font.body
+    /// Primary metric (rings, scores) — title2 / ~22 semibold.
+    static let primaryMetric = Font.title2.weight(.semibold)
+    /// Live session timer — title / ~28 semibold, monospaced digits.
+    static let activeTimer = Font.title.weight(.semibold)
+    /// Secondary / supporting — subheadline / ~15.
+    static let secondary = Font.subheadline
+    /// Section label / eyebrow — footnote / ~13 medium (sentence case at call sites).
+    static let sectionLabel = Font.footnote.weight(.medium)
+    /// Alias for sectionLabel (existing call sites).
+    static let eyebrow = sectionLabel
+    /// Quick-action primary label — callout / ~16 medium.
+    static let quickActionLabel = Font.callout.weight(.medium)
+    /// Quick-action supporting label — subheadline / ~15 regular.
+    static let quickActionSupport = Font.subheadline
+    /// Button label — body / ~17 semibold.
+    static let button = Font.body.weight(.semibold)
+    /// Compact meta (time pills, captions) — caption / ~12.
+    static let caption = Font.caption.weight(.medium)
+    /// Emphasized caption meta.
+    static let captionEmphasized = Font.caption.weight(.semibold)
 }
 
 extension View {

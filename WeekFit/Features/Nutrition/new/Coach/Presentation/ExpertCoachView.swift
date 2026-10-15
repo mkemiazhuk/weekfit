@@ -9,6 +9,8 @@ struct ExpertCoachView: View {
     @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var coachCoordinator: CoachCoordinator
     @EnvironmentObject private var languageManager: AppLanguageManager
+    @EnvironmentObject private var eveningSummary: CoachEveningSummaryCoordinator
+    @EnvironmentObject private var coachInputProvider: CoachInputProvider
     @ObservedObject private var activityCoordinator = WeekFitActivityCoordinator.shared
     @Environment(\.tabIsActive) private var tabIsActive
     @Environment(\.weekFitPalette) private var palette
@@ -88,6 +90,9 @@ struct ExpertCoachView: View {
         }
         .onChange(of: tabIsActive) { _, active in
             if active {
+                if CoachEveningSummaryPolicy.isCoachSurfaceEnabled {
+                    restoreEveningSummaryIfNeeded(source: "coachTab.tabActive")
+                }
                 reconcileLiveWorkoutIfNeeded()
                 refreshLiveCoachSession()
                 refreshRecoveryChallengeEntry()
@@ -395,12 +400,98 @@ struct ExpertCoachView: View {
                         assistantEntrySection
                     }
                 }
+                if CoachEveningSummaryPolicy.isCoachSurfaceEnabled {
+                    CoachEveningSummarySection(
+                        coordinator: eveningSummary,
+                        onRequestSummary: requestEveningSummary
+                    )
+                }
             }
             .padding(.horizontal, coachContentHorizontalInset)
             .frame(maxWidth: .infinity)
             .padding(.bottom, WeekFitScreenLayout.tabBarClearance)
         }
         .weekFitTransparentScrollBackground(fillsCanvas: false)
+        .onAppear {
+            if CoachEveningSummaryPolicy.isCoachSurfaceEnabled {
+                restoreEveningSummaryIfNeeded(source: "coachContent.onAppear")
+            }
+        }
+        .onChange(of: tabIsActive) { _, active in
+            if active, CoachEveningSummaryPolicy.isCoachSurfaceEnabled {
+                restoreEveningSummaryIfNeeded(source: "coachContent.tabActive")
+            }
+        }
+    }
+
+    private func restoreEveningSummaryIfNeeded(source: String) {
+        CoachEveningSummaryDiagnostics.event(
+            "coach.enter",
+            detail: "source=\(source) tabActive=\(tabIsActive) hadSummary=\(eveningSummary.summary != nil) isRefreshing=\(eveningSummary.isRefreshing)"
+        )
+        guard AccountSessionController.shared.mode == .realUser else {
+            CoachEveningSummaryDiagnostics.event(
+                "cache.skipped",
+                detail: "source=\(source) reason=notRealUser"
+            )
+            return
+        }
+        guard let owner = WorkspaceOwnerStore.currentIdentityToken() else {
+            CoachEveningSummaryDiagnostics.event(
+                "cache.skipped",
+                detail: "source=\(source) reason=noOwner"
+            )
+            return
+        }
+        eveningSummary.restore(owner: owner)
+    }
+
+    private func requestEveningSummary() {
+        let action = eveningSummary.summary == nil ? "get" : "refresh"
+        CoachEveningSummaryDiagnostics.event(
+            "button.tap",
+            detail: "action=\(action) hadSummary=\(eveningSummary.summary != nil) isRefreshing=\(eveningSummary.isRefreshing)"
+        )
+        guard !eveningSummary.isRefreshing else {
+            CoachEveningSummaryDiagnostics.event("button.ignored", detail: "reason=alreadyRefreshing")
+            return
+        }
+        guard AccountSessionController.shared.mode == .realUser,
+              let owner = WorkspaceOwnerStore.currentIdentityToken() else {
+            CoachEveningSummaryDiagnostics.error("button.blocked", detail: "reason=noOwnerOrSession")
+            return
+        }
+        Task { @MainActor in
+            CoachEveningSummaryDiagnostics.event("input.prepare.start", detail: "action=\(action)")
+            coachInputProvider.invalidateCompletedRefreshCache()
+            await coachInputProvider.refresh(
+                selectedDate: Date(),
+                plannedActivities: plannedActivities,
+                healthManager: healthManager,
+                nutritionViewModel: nutritionViewModel,
+                coachCoordinator: coachCoordinator,
+                source: "eveningSummary.manual",
+                refreshHealth: false
+            )
+            let now = Date()
+            let snapshot = coachInputProvider.lastInput
+            if let block = CoachEveningSummaryInputBuilder.buildBlockReason(input: snapshot, now: now) {
+                eveningSummary.noteInputUnavailable(owner: owner, reason: block.rawValue)
+                return
+            }
+            guard let input = snapshot,
+                  let request = CoachEveningSummaryInputBuilder.build(
+                    input: input,
+                    presentation: coachCoordinator.state.coachUIPresentation,
+                    activities: Array(plannedActivities),
+                    locale: languageManager.selectedLanguage.rawValue,
+                    now: now
+                  ) else {
+                eveningSummary.noteInputUnavailable(owner: owner, reason: "buildReturnedNil")
+                return
+            }
+            eveningSummary.refresh(input: request, owner: owner, now: now)
+        }
     }
 
     // MARK: - WeekFit Coach Assistant
@@ -796,7 +887,10 @@ struct ExpertCoachView: View {
         let lowered = title.lowercased()
         return lowered.contains("complete")
             || lowered.contains("done")
+            || lowered.contains("logged")
             || lowered.contains("завершен")
+            || lowered == "прогулка"
+            || lowered == "хайкинг"
     }
 
     /// Same live zone color as the zone outline — drives the card outline only.

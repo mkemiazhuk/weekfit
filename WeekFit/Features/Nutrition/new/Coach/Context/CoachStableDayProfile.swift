@@ -96,7 +96,7 @@ enum CoachStableDayPresentation {
                CoachCopyClosureTiming.allowsRestOfDayPhrasing(timeOfDay) {
                 return russian
                     ? "Прогулка уже была — вечер можно провести спокойно."
-                    : "Walk is already in — keep the evening calm."
+                    : "Walk is logged — keep the evening calm."
             }
             return russian
                 ? "Небольшие шаги сегодня лучше, чем копить нагрузку позже."
@@ -107,7 +107,7 @@ enum CoachStableDayPresentation {
                !CoachCopyClosureTiming.allowsRestOfDayPhrasing(timeOfDay) {
                 return russian
                     ? "Прогулка уже была — дальше спокойный ритм."
-                    : "Walk is already in — keep a calm rhythm from here."
+                    : "Walk is logged — keep a calm rhythm from here."
             }
             if hadHeavyYesterday, !CoachCopyClosureTiming.allowsRestOfDayPhrasing(timeOfDay) {
                 return russian
@@ -259,7 +259,7 @@ enum CoachStableDayCopy {
         let recommendation: CoachBilingualText
         if hasWalk {
             recommendation = .en(
-                "Walk is already in — keep a calm ordinary rhythm from here.",
+                "Walk is logged — keep an easy pace from here.",
                 "Прогулка уже была — дальше держите обычный спокойный ритм."
             )
         } else if CoachCopyClosureTiming.allowsRestOfDayPhrasing(input.timeOfDay) {

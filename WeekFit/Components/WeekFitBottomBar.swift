@@ -98,40 +98,45 @@ struct WeekFitBottomBar: View {
     @ViewBuilder
     private var barChrome: some View {
         if palette.isLight {
+            // Frosted glass — regularMaterial + near-opaque ivory so scrolling cards
+            // blur out under the bar the way dark’s solid chrome hides them.
             Capsule(style: .continuous)
-                .fill(.ultraThinMaterial)
+                .fill(.regularMaterial)
                 .background {
                     Capsule(style: .continuous)
-                        .fill(Color.white.opacity(0.78))
+                        .fill(WeekFitLightTokens.backgroundPrimary.opacity(0.88))
                 }
                 .overlay {
                     Capsule(style: .continuous)
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.92),
-                                    Color.white.opacity(0.45)
+                                    Color.white.opacity(0.78),
+                                    Color.white.opacity(0.28)
                                 ],
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
                         )
                         .blendMode(.softLight)
-                        .opacity(0.65)
+                        .opacity(0.72)
                 }
                 .overlay {
                     Capsule(style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.65), lineWidth: 0.75)
+                        .strokeBorder(
+                            WeekFitLightTokens.cardBorder.opacity(0.10),
+                            lineWidth: 0.75
+                        )
                 }
                 .shadow(color: Color.black.opacity(0.05), radius: 3, y: 1)
-                .shadow(color: Color.black.opacity(0.10), radius: 22, y: 10)
+                .shadow(color: Color.black.opacity(0.10), radius: 16, y: 8)
         } else {
             Capsule(style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(red: 0.14, green: 0.15, blue: 0.17),
-                            Color(red: 0.09, green: 0.10, blue: 0.12)
+                            Color(red: 0.12, green: 0.14, blue: 0.20),
+                            Color(red: 0.08, green: 0.10, blue: 0.15)
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -139,21 +144,10 @@ struct WeekFitBottomBar: View {
                 )
                 .overlay {
                     Capsule(style: .continuous)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    WeekFitTheme.whiteOpacity(0.08),
-                                    WeekFitTheme.whiteOpacity(0.03),
-                                    Color.black.opacity(0.25)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
-                            lineWidth: 1
-                        )
+                        .strokeBorder(Color.white.opacity(0.07), lineWidth: 1)
                 }
                 .shadow(
-                    color: Color.black.opacity(0.30),
+                    color: Color.black.opacity(0.34),
                     radius: 18,
                     x: 0,
                     y: 10

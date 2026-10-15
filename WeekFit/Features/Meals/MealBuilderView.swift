@@ -461,10 +461,36 @@ struct MealBuilderView: View {
     }
 
     private func amountText(_ selected: SelectedBuilderIngredient) -> String {
+        if selected.ingredient.usesPiecePortions {
+            return String(
+                format: WeekFitLocalizedString("common.unit.pieceValueFormat"),
+                selected.portionCount
+            )
+        }
         let key = selected.ingredient.category == .drinks
             ? "common.unit.millilitersFormat"
             : "common.unit.gramValueFormat"
         return String(format: WeekFitLocalizedString(key), selected.grams)
+    }
+
+    private func catalogAmountLabel(for ingredient: MealBuilderIngredient) -> String {
+        if ingredient.usesPiecePortions {
+            return String(
+                format: WeekFitLocalizedString("common.unit.pieceValueFormat"),
+                ingredient.defaultPortionCount
+            )
+        }
+        let key = ingredient.category == .drinks
+            ? "common.unit.millilitersFormat"
+            : "common.unit.gramValueFormat"
+        return String(format: WeekFitLocalizedString(key), ingredient.defaultGrams)
+    }
+
+    private func stepperAmountLabel(for selected: SelectedBuilderIngredient) -> String {
+        if selected.ingredient.usesPiecePortions {
+            return "\(selected.portionCount)"
+        }
+        return "\(selected.grams)"
     }
 
     private var emptyDrinkOrPlateState: some View {
@@ -681,7 +707,7 @@ struct MealBuilderView: View {
                     }
                     .buttonStyle(.borderless)
 
-                    Text("\(selected.grams)")
+                    Text(stepperAmountLabel(for: selected))
                         .font(.system(size: 9.5, weight: .bold, design: .rounded))
                         .foregroundStyle(textPrimary)
                         .frame(width: 26)
@@ -708,7 +734,7 @@ struct MealBuilderView: View {
                 }
                 .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity))
             } else {
-                Text(String(format: WeekFitLocalizedString(ingredient.category == .drinks ? "common.unit.millilitersFormat" : "common.unit.gramValueFormat"), ingredient.defaultGrams))
+                Text(catalogAmountLabel(for: ingredient))
                     .font(.system(size: 9.5, weight: .semibold, design: .rounded))
                     .foregroundStyle(textSecondary.opacity(palette.isLight ? 0.72 : 0.5))
                     .frame(maxWidth: .infinity)
@@ -850,11 +876,14 @@ struct MealBuilderView: View {
         guard let index = selectedIngredients.firstIndex(where: { $0.ingredient.id == ingredient.id }) else { return }
 
         let currentGrams = selectedIngredients[index].grams
-        let step = 5
+        let step = ingredient.gramStep
+        let maxGrams = ingredient.usesPiecePortions
+            ? ingredient.resolvedGramsPerPiece * 12
+            : 1000
 
         withAnimation(.spring(response: 0.24, dampingFraction: 0.82)) {
             if increment {
-                selectedIngredients[index].grams = min(currentGrams + step, 1000)
+                selectedIngredients[index].grams = min(currentGrams + step, maxGrams)
             } else {
                 let targetGrams = currentGrams - step
                 if targetGrams <= 0 {

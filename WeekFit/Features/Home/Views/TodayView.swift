@@ -39,10 +39,14 @@ struct TodayView: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     
     @State private var showProfile = false
-    @State private var livePulse = false
     @AppStorage(OnboardingStore.Keys.introToday) private var todayIntroDismissed = false
     @State private var drinksQuickLogToast: String?
     @State private var foodQuickLogToast: String?
+    /// Brief confirmation after Finish succeeds — not a permanent completion section.
+    @State private var sessionSavedToast: String?
+    @State private var sessionFinishErrorToast: String?
+    @State private var isFinishingSession = false
+    @State private var sessionSavedToastHideTask: Task<Void, Never>?
     
     @State private var activityToConfirm: PlannedActivity? = nil
     @State private var queuedActivityToConfirm: PlannedActivity? = nil
@@ -54,24 +58,24 @@ struct TodayView: View {
     private var textSecondary: Color { palette.textSecondary }
     private var textTertiary: Color { palette.textTertiary }
 
-    /// Dark secondary labels on the night sky — readable without competing with primary.
+    /// Secondary labels — cool gray on midnight navy.
     private var todaySecondaryReadable: Color {
-        guard !palette.isLight else { return textSecondary }
-        let opacity: CGFloat = colorSchemeContrast == .increased ? 0.92 : 0.84
-        return textSecondary.opacity(opacity)
+        let base = TodayChrome.secondaryText(isLight: palette.isLight)
+        guard !palette.isLight else { return base }
+        return colorSchemeContrast == .increased ? base : base.opacity(0.94)
     }
 
-    /// Section headings / meta (Goal, Left, Need Rest) on dark atmosphere.
+    /// Meta under rings (goal / remaining / sleep).
     private var todayMetaReadable: Color {
-        guard !palette.isLight else { return textSecondary }
-        let opacity: CGFloat = colorSchemeContrast == .increased ? 0.86 : 0.76
-        return textSecondary.opacity(opacity)
+        let base = TodayChrome.secondaryText(isLight: palette.isLight)
+        guard !palette.isLight else { return base.opacity(0.92) }
+        return colorSchemeContrast == .increased ? base.opacity(0.92) : base.opacity(0.86)
     }
 
     private var todaySectionTitleColor: Color {
-        if palette.isLight { return WeekFitTheme.secondaryText }
-        let opacity: CGFloat = colorSchemeContrast == .increased ? 0.88 : 0.78
-        return palette.textTertiary.opacity(opacity)
+        let base = TodayChrome.secondaryText(isLight: palette.isLight)
+        if palette.isLight { return base }
+        return colorSchemeContrast == .increased ? base.opacity(0.90) : base.opacity(0.82)
     }
 
     private let todayRingSize: CGFloat = 72
@@ -83,23 +87,40 @@ struct TodayView: View {
     private var todayNutritionColor: Color { WeekFitProgressRingColor.nutrition }
     private var todayRecoveryColor: Color { WeekFitProgressRingColor.recovery }
 
+    /// Finish/stop control — muted rose so it reads as stop without competing with live green.
+    private var sessionStopFill: Color {
+        WeekFitLightTokens.critical.opacity(palette.isLight ? 0.14 : 0.22)
+    }
+    private var sessionStopForeground: Color {
+        palette.isLight
+            ? Color(red: 0.62, green: 0.28, blue: 0.26)
+            : Color(red: 0.92, green: 0.68, blue: 0.66)
+    }
+
     private enum TodayLayout {
-        static let cardRadius: CGFloat = WeekFitSurface.primaryRadius
+        static let cardRadius: CGFloat = TodayChrome.cardRadius
         /// Header spacing now lives in `WeekFitScreenLayout.headerBottomSpacing`.
         static let contentTopInset: CGFloat = 0
-        static let gapBetweenCards: CGFloat = 22
-        static let gapAfterOverview: CGFloat = gapBetweenCards
-        static let gapAfterUpNext: CGFloat = gapBetweenCards
-        static let gapBeforeQuickActions: CGFloat = gapBetweenCards
-        static let ringGroupSpacing: CGFloat = 4
+        static let gapBetweenCards: CGFloat = TodayChrome.gapBetweenCards
+        static let ringGroupSpacing: CGFloat = 6
         static let cardTitleBottomGap: CGFloat = 8
-        static let overviewContentTopPadding: CGFloat = 10
-        static let overviewContentBottomPadding: CGFloat = 10
-        static let overviewHorizontalPadding: CGFloat = 14
-        static let coachCardVerticalPadding: CGFloat = 19
-        static let cardInteriorVerticalPadding: CGFloat = 14
+        static let overviewContentTopPadding: CGFloat = 14
+        static let overviewContentBottomPadding: CGFloat = 14
+        static let overviewHorizontalPadding: CGFloat = TodayChrome.cardPadding
+        static let coachCardVerticalPadding: CGFloat = TodayChrome.cardPadding
+        static let cardInteriorVerticalPadding: CGFloat = TodayChrome.cardPadding
         static let quickTileRadius: CGFloat = 18
         static let quickTileSpacing: CGFloat = 10
+        /// Recent completion window for compact summary (does not permanently pin).
+        static let recentCompletionWindow: TimeInterval = 45 * 60
+    }
+
+    /// Layout modes for Today stack — derived from session/plan state, not health refresh.
+    /// After finish, restore normal (upcoming/idle) — no dedicated completion layout.
+    private enum TodayStackMode: Equatable {
+        case activeSession
+        case upcoming
+        case idle
     }
 
     private var shouldStackRings: Bool {
@@ -175,7 +196,7 @@ struct TodayView: View {
     @State private var morningWeatherSummary: WeekFitWeatherSummary?
 
     @State private var showRecoveryDetails = false
-    
+
     private var quickItemUsage: [String: Int] {
         QuickItemUsageStore.counts(from: quickItemUsageEntries)
     }
@@ -383,20 +404,29 @@ struct TodayView: View {
                    )
                    todayViewModel.now = Date()
                    reconcileTodayDayBoundary()
+                   #if DEBUG
+                   TodayHierarchyScreenshotFixtures.prepareIfNeeded(modelContext: modelContext)
+                   #endif
+                   refreshMorningProposal()
+                   openPendingMorningProposalReviewIfNeeded()
                    StartupDiagnostics.step(
                        19,
                        "quick-log catalog preload begin",
                        detail: "loads Today quick-add snacks/drinks JSON + customMealsCatalog into memory — does NOT create meal library records"
                    )
-                   preloadQuickFoodLogDataIfNeeded()
-                   preloadQuickDrinkLogDataIfNeeded()
-                   StartupDiagnostics.step(
-                       20,
-                       "quick-log catalog preload complete",
-                       detail: "quickFoodCatalogLoaded=\(didPreloadQuickFood) quickDrinkCatalogLoaded=\(didPreloadQuickDrinks) customMealsCatalogCount=\(userSettings.customMealsCatalog.count) quickLogMealsInMemory=\(quickLogMeals.count) quickLogDrinksInMemory=\(quickLogDrinks.count)"
-                   )
-                   if !healthManager.isHealthAccessRequested {
-                       updateNutrition()
+                   // Defer catalog preload off the first paint — sync JSON work competed
+                   // with SwiftUI type specialization on the same main-thread stack.
+                   DispatchQueue.main.async {
+                       preloadQuickFoodLogDataIfNeeded()
+                       preloadQuickDrinkLogDataIfNeeded()
+                       StartupDiagnostics.step(
+                           20,
+                           "quick-log catalog preload complete",
+                           detail: "quickFoodCatalogLoaded=\(didPreloadQuickFood) quickDrinkCatalogLoaded=\(didPreloadQuickDrinks) customMealsCatalogCount=\(userSettings.customMealsCatalog.count) quickLogMealsInMemory=\(quickLogMeals.count) quickLogDrinksInMemory=\(quickLogDrinks.count)"
+                       )
+                       if !healthManager.isHealthAccessRequested {
+                           updateNutrition()
+                       }
                    }
                    TodayStartupDiagnostics.markFirstFrameStableIfNeeded(
                        detail: "TodayView.onAppear"
@@ -417,7 +447,8 @@ struct TodayView: View {
         let root = Group {
             if tabIsActive {
                 let _ = TodayStartupDiagnostics.step(4, "body root created", detail: "todayActiveBody branch")
-                todayActiveBody
+                // Erase TodayActiveBody's enormous opaque type before attaching sheets/tasks.
+                AnyView(todayActiveBody)
             } else {
                 let _ = TodayStartupDiagnostics.step(4, "body root created", detail: "inactive clear branch")
                 Color.clear
@@ -629,6 +660,46 @@ struct TodayView: View {
             }
             TodayStartupDiagnostics.taskSuccess(taskName)
         }
+        // Sheets/observers stay on root (not under Coach card) — stack-safe, no staged UI.
+        .sheet(item: $activityToConfirm) { activity in
+            missedConfirmationSheet(activity)
+                .presentationDetents([.fraction(0.40)])
+                .presentationDragIndicator(.visible)
+                .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
+        }
+        .sheet(isPresented: $showProposalReview) {
+            ProposalReviewView(
+                dayKey: ProposalInputFingerprintBuilder.dayKey(for: Date()),
+                onApplied: { _ in
+                    morningProposalChromeHidden = true
+                    refreshMorningProposal()
+                    appSession.triggerCoachRefresh(source: "morningProposal.applied")
+                },
+                onDismissPlan: {
+                    morningProposalChromeHidden = true
+                    refreshMorningProposal()
+                }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.hidden)
+        }
+        .onChange(of: coachCoordinator.state.id) { _, _ in
+            scheduleMorningProposalRefresh()
+        }
+        .onChange(of: healthManager.settledMetricsDayStart) { _, _ in
+            scheduleMorningProposalRefresh()
+        }
+        .onChange(of: hasTodayRecoverySignals) { _, hasSignals in
+            guard hasSignals else { return }
+            scheduleMorningProposalRefresh()
+        }
+        .onChange(of: morningProposal?.id) { _, _ in
+            morningProposalChromeHidden = false
+        }
+        .onChange(of: PendingMorningProposalReview.shared.shouldOpenReview) { _, shouldOpen in
+            guard shouldOpen else { return }
+            openPendingMorningProposalReviewIfNeeded()
+        }
         .weekFitSettingsSheet(isPresented: $showProfile)
         .sheet(
             isPresented: $showDirectWorkoutLogSheet,
@@ -673,6 +744,8 @@ struct TodayView: View {
                     frequentSnackRows: quickLogFrequentSnackRows,
                     recentSnackRows: quickLogRecentSnackRows,
                     session: quickLogSession,
+                    logDate: selectedDate,
+                    existingMeals: quickLogMealRows.map(\.meal),
                     onClose: { showDirectMealLogSheet = false },
                     onOpenMealsTab: {
                         showDirectMealLogSheet = false
@@ -698,6 +771,13 @@ struct TodayView: View {
                     },
                     onSnackDecrement: { item in
                         handleQuickDecrement(profile: QuickLogNutritionProfile.from(item: item))
+                    },
+                    onSaveLibraryMeal: { meal in
+                        savePhotoLoggedMealToLibrary(meal)
+                    },
+                    onPhotoFoodLogged: {
+                        showDirectMealLogSheet = false
+                        refreshQuickLogMealsFromCatalog()
                     }
                 )
             }
@@ -875,6 +955,12 @@ struct TodayView: View {
 
     private func refreshQuickLogMealsFromCatalog() {
         setQuickLogMeals(userSettings.customMealsCatalog)
+    }
+
+    private func savePhotoLoggedMealToLibrary(_ meal: Meals) {
+        let updated = CustomMealStore.upsert(meal, into: userSettings.customMealsCatalog)
+        userSettings.replaceCustomMealsCatalog(updated)
+        refreshQuickLogMealsFromCatalog()
     }
 
     private func preloadQuickFoodLogDataIfNeeded() {
@@ -1288,7 +1374,7 @@ struct TodayView: View {
 
     private var todayScreen: some View {
         let _ = TodayStartupDiagnostics.child("todayScreen begin")
-        return WeekFitScreenContainer {
+        return WeekFitScreenContainer(headerBottomSpacing: 14) {
 
             let _ = TodayStartupDiagnostics.child("header WeekFitTodayWeatherHeader")
             WeekFitTodayWeatherHeader(
@@ -1304,16 +1390,25 @@ struct TodayView: View {
         } content: {
 
             ScrollView(.vertical, showsIndicators: false) {
-                summaryContent()
+                todayScrollContent
                     .padding(.top, TodayLayout.contentTopInset)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, 12)
             }
             // Transparent — same atmosphere plane as the weather header.
             // Opaque canvas fill here painted a black/white slab over the glows.
             .weekFitTransparentScrollBackground(fillsCanvas: false)
         }
-        // Same tab-bar clearance as Plan / Coach content.
-        .padding(.bottom, WeekFitScreenLayout.tabBarClearance)
+        // Reserve the floating tab bar footprint so the last card can scroll fully clear.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            Color.clear
+                .frame(height: TodayChrome.tabBarReservedHeight)
+                .accessibilityHidden(true)
+        }
+    }
+
+    /// Full Today stack at once — AnyView only for stack-safe type erasure, no staged reveal.
+    private var todayScrollContent: some View {
+        AnyView(summaryContent())
     }
 
     @ViewBuilder
@@ -1339,79 +1434,187 @@ struct TodayView: View {
     }
     
 
-    private func summaryContent() -> some View {
+    private func summaryContent() -> AnyView {
         let _ = TodayStartupDiagnostics.step(5, "first section created", detail: "summaryContent begin")
-        return VStack(alignment: .leading, spacing: 0) {
-            if !todayIntroDismissed {
-                let _ = TodayStartupDiagnostics.child("OnboardingContextualIntroCard")
-                OnboardingContextualIntroCard(
-                    title: WeekFitLocalizedString("onboarding.intro.today.title"),
-                    message: WeekFitLocalizedString("onboarding.intro.today.body"),
-                    accent: WeekFitTheme.workout
-                ) {
-                    todayIntroDismissed = true
+        let now = todayViewModel.now
+        let activeSession = currentStartedSession(now: now)
+        let upcoming = activeSession == nil ? nextUpcomingPlannedActivity(now: now) : nil
+        let mode = todayStackMode(activeSession: activeSession, upcoming: upcoming)
+
+        return AnyView(
+            VStack(alignment: .leading, spacing: TodayLayout.gapBetweenCards) {
+                if let sessionSavedToast {
+                    todayTransientBanner(
+                        text: sessionSavedToast,
+                        accessibilityID: "today.sessionSavedToast"
+                    )
+                } else if let sessionFinishErrorToast {
+                    Button {
+                        retryFinishIfNeeded()
+                    } label: {
+                        todayTransientBanner(
+                            text: sessionFinishErrorToast,
+                            accessibilityID: "today.sessionFinishErrorToast",
+                            isError: true
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(WeekFitLocalizedString("today.session.saveFailedRetryHint"))
                 }
-                .padding(.bottom, 16)
+
+                if !todayIntroDismissed {
+                    let _ = TodayStartupDiagnostics.child("OnboardingContextualIntroCard")
+                    OnboardingContextualIntroCard(
+                        title: WeekFitLocalizedString("onboarding.intro.today.title"),
+                        message: WeekFitLocalizedString("onboarding.intro.today.body"),
+                        accent: WeekFitTheme.workout
+                    ) {
+                        todayIntroDismissed = true
+                    }
+                }
+
+                let _ = TodayStartupDiagnostics.child("dailyStatusSection begin")
+                AnyView(dailyStatusSection)
+                let _ = TodayStartupDiagnostics.child("dailyStatusSection complete")
+
+                switch mode {
+                case .activeSession:
+                    // Your Day → In Progress → Quick Log → (pending | Up Next). Focus hidden while live.
+                    if let activeSession {
+                        AnyView(activeSessionCard(activeSession))
+                    }
+                    AnyView(quickActionsSection)
+                    if let planSlot = erasedPlanAttentionSlot(
+                        now: now,
+                        upcoming: nextUpcomingPlannedActivity(
+                            now: now,
+                            excludingActivityID: activeSession?.id
+                        ),
+                        excludingActivityID: activeSession?.id
+                    ) {
+                        planSlot
+                    }
+
+                case .upcoming:
+                    // Your Day → (pending confirms | Up Next) → Today’s Focus → Quick Log.
+                    if let planSlot = erasedPlanAttentionSlot(now: now, upcoming: upcoming) {
+                        planSlot
+                    }
+                    erasedCoachEntryPoint()
+                    AnyView(quickActionsSection)
+
+                case .idle:
+                    // Your Day → (pending confirms | empty plan) → Today’s Focus → Quick Log.
+                    if let planSlot = erasedPlanAttentionSlot(now: now, upcoming: nil) {
+                        planSlot
+                    } else {
+                        AnyView(emptyPlanningRow(now: now))
+                    }
+                    erasedCoachEntryPoint()
+                    AnyView(quickActionsSection)
+                }
             }
+        )
+    }
 
-            let _ = TodayStartupDiagnostics.child("dailyStatusSection begin")
-            dailyStatusSection
-            let _ = TodayStartupDiagnostics.child("dailyStatusSection complete")
+    /// Type-erasure only — Coach paints with the rest of Today, no delayed reveal.
+    private func erasedCoachEntryPoint() -> AnyView {
+        let _ = TodayStartupDiagnostics.child(
+            "coachEntryPointSection",
+            detail: "phase=\(String(describing: todayCoachInsightPhase)) status=\(coachCoordinator.state.statusLogLabel)"
+        )
+        return AnyView(coachInsightWithOptionalProposalOverlay)
+    }
 
-            let _ = TodayStartupDiagnostics.step(6, "timeline created", detail: "upNextSection")
-            upNextSection
-                .padding(.top, TodayLayout.gapAfterOverview)
-            let _ = TodayStartupDiagnostics.child("upNextSection complete")
-
-            let _ = TodayStartupDiagnostics.child("coachEntryPointSection begin")
-            coachEntryPointSection
-                .padding(.top, TodayLayout.gapAfterUpNext)
-            let _ = TodayStartupDiagnostics.child("coachEntryPointSection complete")
-
-            let _ = TodayStartupDiagnostics.child("quickActionsSection begin")
-            quickActionsSection
-                .padding(.top, TodayLayout.gapBeforeQuickActions)
-            let _ = TodayStartupDiagnostics.child("quickActionsSection complete")
+    /// Pending confirmations take the Up Next slot; Coach stays visible separately.
+    private func erasedPlanAttentionSlot(
+        now: Date,
+        upcoming: PlannedActivity?,
+        excludingActivityID: String? = nil
+    ) -> AnyView? {
+        let pending = pendingConfirmationActivities(
+            now: now,
+            excludingActivityID: excludingActivityID
+        )
+        if !pending.isEmpty {
+            return AnyView(pendingConfirmationStack(pending))
         }
+        if let upcoming {
+            return AnyView(upcomingActivityCard(upcoming, now: now))
+        }
+        return nil
+    }
+
+    private func todayStackMode(
+        activeSession: PlannedActivity?,
+        upcoming: PlannedActivity?
+    ) -> TodayStackMode {
+        if activeSession != nil { return .activeSession }
+        if upcoming != nil { return .upcoming }
+        return .idle
+    }
+
+    private func todayTransientBanner(
+        text: String,
+        accessibilityID: String,
+        isError: Bool = false
+    ) -> some View {
+        Text(text)
+            .font(WeekFitType.secondary.weight(.semibold))
+            .fontDesign(.rounded)
+            .foregroundStyle(isError ? Color.red.opacity(0.92) : textPrimary)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, TodayLayout.cardInteriorVerticalPadding)
+            .padding(.vertical, 12)
+            .todaySurface(elevated: true, cornerRadius: TodayLayout.cardRadius)
+            .accessibilityIdentifier(accessibilityID)
+            .accessibilityAddTraits(.isStaticText)
+            .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
     private func todayCardSectionTitle(_ title: String) -> some View {
-        Text(title.uppercased())
-            .font(.caption2.weight(.bold))
+        Text(title)
+            .font(WeekFitType.sectionLabel)
             .fontDesign(.rounded)
-            .tracking(palette.isLight ? 1.2 : 1.15)
             .foregroundStyle(todaySectionTitleColor)
-            .offset(y: 0.5)
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func todaySupportingCardChevron(color: Color) -> some View {
+        Image(systemName: "chevron.right")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(color.opacity(0.72))
+            .accessibilityHidden(true)
     }
 
     private func todayPremiumCard<Content: View>(
         accent: Color?,
         cornerRadius: CGFloat = TodayLayout.cardRadius,
         featured: Bool = true,
+        coachEmphasis: Bool = false,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        content()
-            .weekFitPremiumCard(
-                emphasis: featured ? .elevated : .standard,
-                accent: accent,
+        let _ = accent
+        return content()
+            .todaySurface(
+                elevated: featured,
+                coachEmphasis: coachEmphasis,
                 cornerRadius: cornerRadius
             )
     }
 
-    /// Premium action surface — same card family as Coach/Up Next, tuned as the execution layer after Coach.
+    /// Quick-log surface — same quiet navy family as Overview / Plan.
     private func todayActionSurfaceCard<Content: View>(
         accent: Color,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        content()
-            .padding(.horizontal, 16)
+        let _ = accent
+        return content()
+            .padding(.horizontal, TodayLayout.cardInteriorVerticalPadding)
             .padding(.vertical, TodayLayout.cardInteriorVerticalPadding)
-            .weekFitPremiumCard(
-                emphasis: .accent,
-                accent: accent,
-                cornerRadius: TodayLayout.cardRadius
-            )
+            .todaySurface(elevated: false, cornerRadius: TodayLayout.cardRadius)
     }
 
     private var todayQuickActionsAccent: Color {
@@ -1433,11 +1636,7 @@ struct TodayView: View {
             .padding(.top, TodayLayout.overviewContentTopPadding)
             .padding(.bottom, TodayLayout.overviewContentBottomPadding)
             .frame(maxWidth: .infinity)
-            .weekFitPremiumCard(
-                emphasis: .elevated,
-                accent: nil,
-                cornerRadius: TodayLayout.cardRadius
-            )
+            .todaySurface(elevated: true, cornerRadius: TodayLayout.cardRadius)
     }
 
     private var todayCoachInsightPhase: TodayCoachInsightPhase {
@@ -1459,49 +1658,32 @@ struct TodayView: View {
         languageManager.selectedLanguage.rawValue
     }
 
-    private func coachSettlingCard(needsHealthConnect: Bool) -> some View {
-        todayPremiumCard(accent: todayCoachCardAccent, featured: true) {
-            HStack(alignment: .top, spacing: 14) {
-                coachSettlingGlyph
-                    .padding(.top, 2)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(AppText.Today.coachInsightLabel)
-                        .font(.caption2.weight(.bold))
-                        .fontDesign(.rounded)
-                        .tracking(1.45)
-                        .foregroundStyle(todayCoachCardAccent.opacity(0.78))
-
-                    Text(AppText.Today.coachSettlingTitle)
-                        .font(.callout.weight(.bold))
-                        .fontDesign(.rounded)
-                        .foregroundStyle(textPrimary)
-                        .padding(.top, 2)
-                        .lineSpacing(1)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(
-                        needsHealthConnect
-                            ? AppText.Today.coachSettlingMessageHealth
-                            : AppText.Today.coachSettlingMessageSleep
-                    )
-                        .font(.footnote)
-                        .fontDesign(.rounded)
-                        .foregroundStyle(todaySecondaryReadable)
-                        .lineSpacing(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, TodayLayout.coachCardVerticalPadding)
+    private func coachSettlingCard(
+        needsHealthConnect: Bool,
+        useSyncingCopy: Bool = false
+    ) -> some View {
+        // Shallow extracted body — no nested Button / forever animations on @State
+        // (repeatForever livePulse was invalidating Today body continuously).
+        TodayCoachSettlingCardBody(
+            focusHeading: todayCoachFocusHeading(),
+            needsHealthConnect: needsHealthConnect,
+            useSyncingCopy: useSyncingCopy,
+            accent: todayCoachCardAccent,
+            textPrimary: textPrimary,
+            textSecondary: todaySecondaryReadable,
+            meta: todayMetaReadable
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            ProductAnalytics.todayPrimaryActionTapped(.coach)
+            onSelectTab(.coach)
         }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint(WeekFitLocalizedString("today.coachInsight.opensCoach"))
+        .todaySurface(elevated: true, coachEmphasis: true, cornerRadius: TodayLayout.cardRadius)
         .onAppear {
             logTodayCoachInsightHiddenIfNeeded()
-            guard !livePulse else { return }
-            withAnimation(.easeInOut(duration: 1.35).repeatForever(autoreverses: true)) {
-                livePulse = true
-            }
         }
     }
 
@@ -1520,12 +1702,6 @@ struct TodayView: View {
                 Capsule()
                     .stroke(WeekFitTheme.whiteOpacity(0.08), lineWidth: 1)
             )
-    }
-
-    /// Compact secondary cue for Recovery Challenge inside the Today Coach card.
-    private struct TodayRecoveryChallengeCue: Equatable {
-        var label: String
-        var showsCheckmark: Bool
     }
 
     private var todayRecoveryChallengeCue: TodayRecoveryChallengeCue? {
@@ -1588,48 +1764,57 @@ struct TodayView: View {
         .accessibilityHidden(true)
     }
 
-    private var coachSettlingGlyph: some View {
-        ZStack {
-            Circle()
-                .fill(todayCoachCardAccent.opacity(livePulse ? 0.16 : 0.09))
-                .frame(width: 40, height: 40)
-                .blur(radius: livePulse ? 1 : 0)
-
-            Circle()
-                .fill(todayCoachCardAccent.opacity(0.11))
-                .frame(width: 40, height: 40)
-                .overlay {
-                    Circle()
-                        .stroke(todayCoachCardAccent.opacity(0.20), lineWidth: 1)
-                }
-
-            Image(systemName: "brain.head.profile")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(todayCoachCardAccent.opacity(0.90))
-                .offset(y: 0.5)
-                .scaleEffect(livePulse ? 1.03 : 0.97)
-        }
-        .frame(width: 40, height: 40)
-        .accessibilityHidden(true)
-    }
-    
     private var plannedActivitiesForSelectedDate: [PlannedActivity] {
         plannedActivities.filter {
             Calendar.current.isDate($0.date, inSameDayAs: selectedDate)
         }
     }
     
-    private var coachEntryPointSection: some View {
-        let _ = TodayStartupDiagnostics.child(
-            "coachEntryPointSection",
-            detail: "phase=\(String(describing: todayCoachInsightPhase)) status=\(coachCoordinator.state.statusLogLabel)"
-        )
-        return Group {
-//            if shouldShowEveningReview {
-//                eveningReviewEntryPoint
-//            } else {
-                coachInsightSection
-//            }
+    private func pendingConfirmationStack(_ activities: [PlannedActivity]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(activities, id: \.id) { activity in
+                pendingConfirmationCard(activity)
+            }
+        }
+    }
+
+    private func pendingConfirmationCard(_ activity: PlannedActivity) -> some View {
+        let title = activityDisplayTitle(activity)
+        return TodayPendingActivityConfirmCard(
+            title: title,
+            message: String(
+                format: WeekFitLocalizedString("today.pending.messageFormat"),
+                title
+            ),
+            pendingTitle: String(localized: AppText.Today.pendingActionTitle),
+            textPrimary: textPrimary,
+            cardBackground: cardBackground
+        ) {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            presentActivityConfirmation(activity)
+        }
+        .accessibilityIdentifier("today.pendingConfirmation.\(activity.id)")
+    }
+
+    /// Overdue unfinished day activities that still need confirm/skip — same rule as before
+    /// the type allowlist (habits and other planner slots included; matches Plan `.pending`).
+    private func pendingConfirmationActivities(
+        now: Date,
+        excludingActivityID: String? = nil
+    ) -> [PlannedActivity] {
+        selectedDayActivities.filter { activity in
+            if let excludingActivityID, activity.id == excludingActivityID {
+                return false
+            }
+            let eventEndDate = Calendar.current.date(
+                byAdding: .minute,
+                value: activity.effectiveDurationMinutes,
+                to: activity.date
+            ) ?? activity.date
+
+            return activity.terminalState(now: now) == .planned
+                && now > eventEndDate
+                && !isCoveredByActiveSession(activity)
         }
     }
 
@@ -1733,6 +1918,80 @@ struct TodayView: View {
         )
     }
 
+    /// Active Energy progress label: percent below goal, concise multiple at/above.
+    private func activityRingCenterText(progress: Double, percent: Int) -> String {
+        if progress >= 1.0 {
+            let multiple = progress
+            if multiple >= 9.95 {
+                return String(
+                    format: WeekFitLocalizedString("today.status.activity.multipleWholeFormat"),
+                    Int(multiple.rounded())
+                )
+            }
+            let nearestWhole = multiple.rounded()
+            if abs(multiple - nearestWhole) < 0.05 {
+                return String(
+                    format: WeekFitLocalizedString("today.status.activity.multipleWholeFormat"),
+                    Int(nearestWhole)
+                )
+            }
+            return String(
+                format: WeekFitLocalizedString("today.status.activity.multipleTenthsFormat"),
+                multiple
+            )
+        }
+        if healthManager.activeCalories > 0 && progress > 0 && progress < 0.01 {
+            return "<1%"
+        }
+        return "\(percent)%"
+    }
+
+    private func sleepDurationDisplayText(minutes: Int) -> String {
+        guard minutes > 0 else {
+            return WeekFitLocalizedString("today.sleep.empty")
+        }
+        let hours = minutes / 60
+        let mins = minutes % 60
+        return String(
+            format: WeekFitLocalizedString("today.sleep.hoursMinutesFormat"),
+            hours,
+            mins
+        )
+    }
+
+    private var isEveningCoachFocusWindow: Bool {
+        let hour = Calendar.current.component(.hour, from: todayViewModel.now)
+        return hour >= 18
+    }
+
+    private func todayCoachFocusHeading() -> String {
+        WeekFitLocalizedString(
+            isEveningCoachFocusWindow
+                ? "today.coachInsight.focusTonight"
+                : "today.coachInsight.focusToday"
+        )
+    }
+
+    private func todayCoachDisplayIcon(for presentation: CoachUIPresentation) -> String {
+        switch presentation.scenario {
+        case .tomorrowProtection,
+             .protectTomorrowFresh,
+             .walkEveningWindDown,
+             .eveningAfterEndurance,
+             .eveningAfterRacket,
+             .eveningAfterStrength,
+             .eveningAfterRecovery:
+            return "moon.fill"
+        default:
+            break
+        }
+        if isEveningCoachFocusWindow,
+           presentation.icon.hasPrefix("figure.") || presentation.icon.contains("bicycle") {
+            return "moon.fill"
+        }
+        return presentation.icon
+    }
+
     private var dailyStatusSection: some View {
         let _ = TodayStartupDiagnostics.child(
             "dailyStatusSection compute",
@@ -1741,10 +2000,12 @@ struct TodayView: View {
         let baseGoal = automatedActivityGoal
         let _ = TodayStartupDiagnostics.child("dailyStatusSection activityGoal=\(baseGoal)")
         let activityProgress = baseGoal > 0 ? healthManager.activeCalories / baseGoal : 0
-        let activityPercent = Int(activityProgress * 100)
-        let activityDisplayText = healthManager.activeCalories > 0 && activityProgress > 0 && activityProgress < 0.01
-            ? "<1%"
-            : "\(activityPercent)%"
+        let activityPercent = Int((activityProgress * 100).rounded())
+        let activityDisplayText = activityRingCenterText(progress: activityProgress, percent: activityPercent)
+        let activityAccessibilityProgress = String(
+            format: WeekFitLocalizedString("today.status.activity.accessibilityProgressFormat"),
+            activityPercent
+        )
 
         let budget = todayNutritionBudget
         let eatenCalories = TodayNutritionDisplayMetrics.consumedCalories(from: budget)
@@ -1770,26 +2031,16 @@ struct TodayView: View {
         let activityColor = todayActivityColor
         let nutritionColor = todayNutritionColor
         let recoveryColor = recoveryRingMode == .sleepNotRecorded
-            ? textSecondary.opacity(0.58)
+            ? todaySecondaryReadable.opacity(0.58)
             : todayRecoveryColor
 
         let activityGoalText = String(format: WeekFitLocalizedString("today.status.activity.goalFormat"), Int(baseGoal))
         let activityValueText = String(format: WeekFitLocalizedString("common.unit.caloriesFormat"), Int(healthManager.activeCalories))
 
-        let sleepValueInfoText = healthManager.sleepMinutes > 0
-            ? String(format: WeekFitLocalizedString("today.sleep.valueFormat"), Double(healthManager.sleepMinutes) / 60.0)
-            : WeekFitLocalizedString("today.sleep.empty")
+        let sleepValueInfoText = sleepDurationDisplayText(minutes: healthManager.sleepMinutes)
 
-        let recoverySleepRingText: String = {
-            switch recoveryRingMode {
-            case .sleepNotRecorded:
-                return WeekFitLocalizedString("today.recovery.sleepNotRecorded")
-            case .awaitingMorningSync, .hasData:
-                return sleepValueInfoText
-            }
-        }()
-
-        let recoveryInfoRingText: String = {
+        // Mockup order: status (accent) then sleep (meta).
+        let recoveryStatusRingText: String = {
             switch recoveryRingMode {
             case .hasData:
                 return recoveryStatusLabel(for: recoveryPercent)
@@ -1800,11 +2051,20 @@ struct TodayView: View {
             }
         }()
 
+        let recoverySleepRingText: String = {
+            switch recoveryRingMode {
+            case .sleepNotRecorded:
+                return WeekFitLocalizedString("today.recovery.sleepNotRecorded")
+            case .awaitingMorningSync, .hasData:
+                return sleepValueInfoText
+            }
+        }()
+
         return Group {
             if shouldShowHealthConnectPrompt {
-                todayPremiumCard(accent: todayActivityColor, cornerRadius: 22) {
-                    VStack(spacing: 16) {
-                        HStack(spacing: 14) {
+                todayPremiumCard(accent: nil, cornerRadius: TodayLayout.cardRadius, featured: true) {
+                    VStack(spacing: 14) {
+                        HStack(spacing: 12) {
                             ZStack {
                                 Circle()
                                     .fill(Color.red.opacity(0.12))
@@ -1812,55 +2072,45 @@ struct TodayView: View {
 
                                 Image(systemName: "heart.text.square.fill")
                                     .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(.red)
+                                    .foregroundStyle(.red)
                             }
 
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(AppText.Today.connectAppleHealth)
-                                    .font(.system(size: 14, weight: .bold))
+                                    .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(textPrimary)
 
                                 Text(AppText.Today.healthDescription)
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(textSecondary)
+                                    .font(.footnote.weight(.medium))
+                                    .foregroundStyle(todaySecondaryReadable)
                                     .lineSpacing(2)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                         }
-                        .padding(.top, 4)
 
                         Button {
                             handleConnectAppleHealthTap()
                         } label: {
-                            HStack {
+                            HStack(spacing: 8) {
                                 Image(systemName: healthManager.isHealthAuthorizationInFlight ? "hourglass" : "arrow.triangle.2.circlepath")
                                     .font(.system(size: 13, weight: .bold))
 
                                 Text(AppText.Today.connectAppleHealth)
                             }
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.black)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.black.opacity(0.88))
                             .frame(maxWidth: .infinity)
-                            .frame(height: 40)
+                            .frame(minHeight: 44)
                             .background {
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [
-                                                todayActivityColor,
-                                                todayActivityColor.opacity(0.82)
-                                            ],
-                                            startPoint: .top,
-                                            endPoint: .bottom
-                                        )
-                                    )
+                                Capsule(style: .continuous)
+                                    .fill(todayActivityColor)
                             }
-                            .shadow(color: todayActivityColor.opacity(0.22), radius: 8, y: 3)
                         }
                         .buttonStyle(.plain)
                         .disabled(healthManager.isHealthAuthorizationInFlight)
                         .accessibilityIdentifier("today.connectAppleHealth")
                     }
-                    .padding(16)
+                    .padding(TodayLayout.cardInteriorVerticalPadding)
                 }
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
 
@@ -1878,7 +2128,9 @@ struct TodayView: View {
                                         activityValueText: activityValueText,
                                         activityPercent: activityPercent,
                                         activityDisplayText: activityDisplayText,
-                                        activityColor: activityColor
+                                        activityAccessibilityProgress: activityAccessibilityProgress,
+                                        activityColor: activityColor,
+                                        activityProgress: activityProgress
                                     )
 
                                     dailyStatusNutritionRingButton(
@@ -1890,18 +2142,20 @@ struct TodayView: View {
                                     dailyStatusRecoveryRingButton(
                                         recoveryDisplayValue: recoveryDisplayValue,
                                         recoverySleepRingText: recoverySleepRingText,
-                                        recoveryInfoRingText: recoveryInfoRingText,
+                                        recoveryStatusRingText: recoveryStatusRingText,
                                         recoveryColor: recoveryColor
                                     )
                                 }
                             } else {
-                                HStack(alignment: .center, spacing: TodayLayout.ringGroupSpacing) {
+                                HStack(alignment: .top, spacing: TodayLayout.ringGroupSpacing) {
                                     dailyStatusActivityRingButton(
                                         activityGoalText: activityGoalText,
                                         activityValueText: activityValueText,
                                         activityPercent: activityPercent,
                                         activityDisplayText: activityDisplayText,
-                                        activityColor: activityColor
+                                        activityAccessibilityProgress: activityAccessibilityProgress,
+                                        activityColor: activityColor,
+                                        activityProgress: activityProgress
                                     )
 
                                     dailyStatusNutritionRingButton(
@@ -1913,7 +2167,7 @@ struct TodayView: View {
                                     dailyStatusRecoveryRingButton(
                                         recoveryDisplayValue: recoveryDisplayValue,
                                         recoverySleepRingText: recoverySleepRingText,
-                                        recoveryInfoRingText: recoveryInfoRingText,
+                                        recoveryStatusRingText: recoveryStatusRingText,
                                         recoveryColor: recoveryColor
                                     )
                                 }
@@ -1933,9 +2187,12 @@ struct TodayView: View {
         activityValueText: String,
         activityPercent: Int,
         activityDisplayText: String,
-        activityColor: Color
+        activityAccessibilityProgress: String,
+        activityColor: Color,
+        activityProgress: Double
     ) -> some View {
-        Button {
+        let ringFillPercent = min(100, max(0, activityPercent))
+        return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             openActivityIntelligence()
         } label: {
@@ -1943,14 +2200,26 @@ struct TodayView: View {
                 title: WeekFitLocalizedString("today.status.activity"),
                 infoText: activityGoalText,
                 valueText: activityValueText,
-                value: activityPercent,
+                value: ringFillPercent,
                 centerText: activityDisplayText,
-                color: activityColor
+                color: activityColor,
+                ringProgressOverride: CGFloat(min(1, max(0, activityProgress >= 1 ? 1 : activityProgress)))
             )
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(TodayScaleButtonStyle())
+        .accessibilityLabel(
+            Text(
+                [
+                    WeekFitLocalizedString("today.status.activity"),
+                    activityDisplayText,
+                    activityAccessibilityProgress,
+                    activityValueText,
+                    activityGoalText
+                ].joined(separator: ", ")
+            )
+        )
         .accessibilityHint(Text(String(localized: AppText.Today.statusRingAccessibilityHint)))
     }
 
@@ -2010,7 +2279,7 @@ struct TodayView: View {
     private func dailyStatusRecoveryRingButton(
         recoveryDisplayValue: Int?,
         recoverySleepRingText: String,
-        recoveryInfoRingText: String,
+        recoveryStatusRingText: String,
         recoveryColor: Color
     ) -> some View {
         Button {
@@ -2021,8 +2290,8 @@ struct TodayView: View {
         } label: {
             statusRingWidget(
                 title: WeekFitLocalizedString("today.status.recovery"),
-                infoText: recoveryInfoRingText,
-                valueText: recoverySleepRingText,
+                infoText: recoverySleepRingText,
+                valueText: recoveryStatusRingText,
                 value: recoveryDisplayValue,
                 color: recoveryColor
             )
@@ -2039,30 +2308,32 @@ struct TodayView: View {
         valueText: String,
         value: Int?,
         centerText: String? = nil,
-        color: Color
+        color: Color,
+        ringProgressOverride: CGFloat? = nil
     ) -> some View {
         let displayValue = value ?? 0
-        let progress = CGFloat(displayValue) / 100.0
+        let progress = ringProgressOverride ?? (CGFloat(displayValue) / 100.0)
         let ringSize = todayEffectiveRingSize
         let ringStroke = max(3, todayRingStroke * (ringSize / todayRingSize))
+        let centerLabel = value == nil ? "—" : (centerText ?? "\(displayValue)%")
 
-        return VStack(spacing: 5) {
+        return VStack(spacing: 7) {
             WeekFitProgressRing(
                 progress: value == nil ? 0 : progress,
                 color: color,
                 size: ringSize,
                 strokeWidth: ringStroke
             ) {
-                Text(value == nil ? "—" : (centerText ?? "\(displayValue)%"))
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                Text(centerLabel)
+                    .font(.system(size: centerLabel.count > 3 ? 15 : 17, weight: .bold, design: .rounded))
                     .foregroundStyle(textPrimary)
                     .monospacedDigit()
-                    .minimumScaleFactor(0.75)
+                    .minimumScaleFactor(0.72)
                     .lineLimit(1)
                     .offset(y: value == nil ? 1 : 0.5)
             }
 
-            VStack(spacing: 1) {
+            VStack(spacing: 2) {
                 Text(title)
                     .font(.caption.weight(.semibold))
                     .fontDesign(.rounded)
@@ -2079,12 +2350,9 @@ struct TodayView: View {
 
                 if !infoText.isEmpty {
                     Text(infoText)
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
-                        .foregroundStyle(
-                            palette.isLight
-                                ? WeekFitTheme.secondaryText
-                                : todayMetaReadable
-                        )
+                        .font(.caption2.weight(.medium))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(todayMetaReadable)
                         .lineLimit(ringCaptionLineLimit)
                         .minimumScaleFactor(0.82)
                 }
@@ -2095,214 +2363,401 @@ struct TodayView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private var upNextSection: some View {
-        let _ = TodayStartupDiagnostics.child("upNextSection compute", detail: "plannedSelectedDay=\(plannedActivitiesForSelectedDate.count)")
-        let now = Date()
+    // MARK: - Session / plan cards
 
-        let activeSession = currentLiveUpNextActivity(now: now)
-        let nextActivity = activeSession == nil
-            ? nextUpcomingPlannedActivity(now: now)
-            : nil
-        let _ = TodayStartupDiagnostics.child(
-            "upNextSection resolved",
-            detail: "active=\(activeSession?.id ?? "nil") next=\(nextActivity?.id ?? "nil")"
+    private func activeSessionCard(_ activity: PlannedActivity) -> some View {
+        let accent = todayActivityColor
+        let title = shortDisplayTitle(activityDisplayTitle(activity))
+        let startLabel = String(
+            format: WeekFitLocalizedString("today.session.startedFormat"),
+            activity.date.formatted(.dateTime.hour().minute())
         )
 
-        return Group {
-            if let activeSession {
-                todayPremiumCard(accent: palette.isLight ? nil : todayPremiumBronze, featured: false) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        todayCardSectionTitle(WeekFitLocalizedString("today.upNext.title"))
-                            .padding(.bottom, TodayLayout.cardTitleBottomGap)
+        return todayPremiumCard(accent: nil, featured: true) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(WeekFitLocalizedString("today.session.inProgress"))
+                    .font(WeekFitType.sectionLabel)
+                    .fontDesign(.rounded)
+                    .foregroundStyle(todaySecondaryReadable)
 
-                        VStack(alignment: .leading, spacing: shouldRelocateUpNextTime ? 8 : 0) {
-                            HStack(alignment: .top, spacing: 12) {
-                                upNextIconBadge(
-                                    systemName: upNextIcon(for: activeSession, isLive: true),
-                                    accent: todayPremiumBronze
-                                )
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(AppText.Today.currentSession)
-                                        .font(.subheadline.weight(.bold))
-                                        .fontDesign(.rounded)
-                                        .foregroundStyle(textPrimary.opacity(0.94))
-
-                                    Text(String(format: WeekFitLocalizedString("today.upNext.inProgressFormat"), shortDisplayTitle(activityDisplayTitle(activeSession))))
-                                        .font(.caption.weight(.medium))
-                                        .fontDesign(.rounded)
-                                        .foregroundStyle(textTertiary)
-                                        .lineLimit(shouldRelocateUpNextTime ? 3 : 2)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-
-                                if !shouldRelocateUpNextTime {
-                                    Spacer(minLength: 8)
-
-                                    Text(AppText.Today.live)
-                                        .font(.caption2.weight(.bold))
-                                        .fontDesign(.rounded)
-                                        .foregroundStyle(.black)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(
-                                            Capsule()
-                                                .fill(
-                                                    LinearGradient(
-                                                        colors: [
-                                                            todayPremiumBronze.opacity(0.96),
-                                                            todayPremiumBronzeSoft.opacity(0.88)
-                                                        ],
-                                                        startPoint: .top,
-                                                        endPoint: .bottom
-                                                    )
-                                                )
-                                        )
-                                        .offset(y: 0.5)
-                                }
-                            }
-
-                            if shouldRelocateUpNextTime {
-                                HStack {
-                                    Spacer(minLength: 0)
-                                    Text(AppText.Today.live)
-                                        .font(.caption2.weight(.bold))
-                                        .fontDesign(.rounded)
-                                        .foregroundStyle(.black)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(
-                                            Capsule()
-                                                .fill(
-                                                    LinearGradient(
-                                                        colors: [
-                                                            todayPremiumBronze.opacity(0.96),
-                                                            todayPremiumBronzeSoft.opacity(0.88)
-                                                        ],
-                                                        startPoint: .top,
-                                                        endPoint: .bottom
-                                                    )
-                                                )
-                                        )
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, TodayLayout.cardInteriorVerticalPadding)
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(
-                    String(
-                        format: WeekFitLocalizedString("today.upNext.liveAccessibilityFormat"),
-                        shortDisplayTitle(activityDisplayTitle(activeSession))
+                HStack(alignment: .center, spacing: 12) {
+                    upNextIconBadge(
+                        systemName: upNextIcon(for: activity, isLive: true),
+                        accent: accent
                     )
-                )
-            } else if let activity = nextActivity {
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    onSelectTab(.calendar)
-                } label: {
-                    todayPremiumCard(accent: palette.isLight ? nil : todayPremiumBronze.opacity(0.75), featured: false) {
-                        VStack(alignment: .leading, spacing: 0) {
-                            todayCardSectionTitle(WeekFitLocalizedString("today.upNext.title"))
-                                .padding(.bottom, TodayLayout.cardTitleBottomGap)
 
-                            VStack(alignment: .leading, spacing: shouldRelocateUpNextTime ? 8 : 0) {
-                                HStack(alignment: .top, spacing: 12) {
-                                    upNextIconBadge(
-                                        systemName: upNextIcon(for: activity),
-                                        accent: upNextAccent(for: activity)
-                                    )
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(title)
+                            .font(WeekFitType.compactCardTitle)
+                            .fontDesign(.rounded)
+                            .foregroundStyle(textPrimary)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(shortDisplayTitle(activityDisplayTitle(activity)))
-                                            .font(.subheadline.weight(.bold))
-                                            .fontDesign(.rounded)
-                                            .foregroundStyle(textPrimary.opacity(0.94))
-
-                                        Text(upNextSubtitle(for: activity))
-                                            .font(.caption.weight(.medium))
-                                            .fontDesign(.rounded)
-                                            .foregroundStyle(textTertiary)
-                                            .lineLimit(shouldRelocateUpNextTime ? 3 : 2)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                    }
-                                    .layoutPriority(1)
-
-                                    if !shouldRelocateUpNextTime {
-                                        Spacer(minLength: 8)
-
-                                        upNextTrailingMeta(
-                                            timeText: upNextTimeText(for: activity, selectedDate: selectedDate),
-                                            provenance: coachProvenanceKind(for: activity)
-                                        )
-                                    }
-                                }
-
-                                if shouldRelocateUpNextTime {
-                                    HStack(spacing: 8) {
-                                        if let kind = coachProvenanceKind(for: activity) {
-                                            CoachProvenanceBadge(kind: kind, showsLabel: true, compact: true)
-                                        }
-                                        Spacer(minLength: 0)
-                                        upNextTimePill(
-                                            text: upNextTimeText(for: activity, selectedDate: selectedDate)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, TodayLayout.cardInteriorVerticalPadding)
+                        Text(startLabel)
+                            .font(WeekFitType.secondary)
+                            .fontDesign(.rounded)
+                            .foregroundStyle(todaySecondaryReadable)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    // Isolated timer view — avoids re-specializing the whole Today tree every second.
+                    TodayElapsedClockLabel(start: activity.date, foreground: textPrimary)
+                }
+
+                Button {
+                    finishStartedSession(activity)
+                } label: {
+                    Text(WeekFitLocalizedString("today.session.finishActivity"))
+                        .font(WeekFitType.button)
+                        .foregroundStyle(sessionStopForeground)
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 44)
+                        .background {
+                            Capsule(style: .continuous)
+                                .fill(sessionStopFill)
+                        }
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(
-                    String(
-                        format: WeekFitLocalizedString("today.upNext.upcomingAccessibilityFormat"),
-                        shortDisplayTitle(activityDisplayTitle(activity)),
-                        upNextSubtitle(for: activity)
-                    )
-                )
+                .disabled(isFinishingSession)
+                .accessibilityIdentifier("today.finishActivity")
+            }
+            .padding(.horizontal, TodayLayout.cardInteriorVerticalPadding)
+            .padding(.vertical, TodayLayout.cardInteriorVerticalPadding)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("today.activeSession")
+        .accessibilityLabel(
+            String(
+                format: WeekFitLocalizedString("today.session.liveAccessibilityFormat"),
+                title
+            )
+        )
+    }
 
-            } else {
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    onSelectTab(.calendar)
-                } label: {
-                    todayPremiumCard(accent: nil, featured: false) {
-                        VStack(alignment: .leading, spacing: 0) {
-                            todayCardSectionTitle(WeekFitLocalizedString("today.upNext.title"))
-                                .padding(.bottom, TodayLayout.cardTitleBottomGap)
+    private func upcomingActivityCard(_ activity: PlannedActivity, now: Date) -> some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onSelectTab(.calendar)
+        } label: {
+            todayPremiumCard(accent: nil, featured: false) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(upNextSectionTitle(for: activity, now: now))
+                        .font(WeekFitType.sectionLabel)
+                        .fontDesign(.rounded)
+                        .foregroundStyle(todaySecondaryReadable)
 
-                            HStack(alignment: .center, spacing: 12) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundColor(todayActivityColor)
-                                    .offset(y: -0.5)
+                    HStack(alignment: .center, spacing: 12) {
+                        upNextIconBadge(
+                            systemName: upNextIcon(for: activity),
+                            accent: upNextAccent(for: activity)
+                        )
 
-                                Text(AppText.Today.noActivitiesPlanned)
-                                    .font(.footnote.weight(.medium))
-                                    .fontDesign(.rounded)
-                                    .foregroundStyle(textSecondary)
-                                    .lineLimit(2)
-                                    .minimumScaleFactor(0.85)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(shortDisplayTitle(activityDisplayTitle(activity)))
+                                .font(WeekFitType.compactCardTitle)
+                                .fontDesign(.rounded)
+                                .foregroundStyle(textPrimary)
+                                .lineLimit(3)
+                                .fixedSize(horizontal: false, vertical: true)
 
-                                Spacer()
-
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundStyle(textTertiary)
-                            }
+                            Text(upNextSubtitle(for: activity))
+                                .font(WeekFitType.secondary)
+                                .fontDesign(.rounded)
+                                .foregroundStyle(todaySecondaryReadable)
+                                .lineLimit(4)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, TodayLayout.cardInteriorVerticalPadding)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        // Avoid “Today at 19:00” + trailing “19:00” saying the same thing.
+                        if shouldShowUpNextTrailingTime(for: activity) {
+                            Text(upNextTimeText(for: activity, selectedDate: selectedDate))
+                                .font(WeekFitType.captionEmphasized)
+                                .monospacedDigit()
+                                .foregroundStyle(todaySecondaryReadable)
+                                .fixedSize(horizontal: true, vertical: false)
+                        }
+
+                        todaySupportingCardChevron(color: todayMetaReadable)
                     }
                 }
-                .buttonStyle(.plain)
+                .padding(.horizontal, TodayLayout.cardInteriorVerticalPadding)
+                .padding(.vertical, TodayLayout.cardInteriorVerticalPadding)
             }
         }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            String(
+                format: WeekFitLocalizedString("today.upNext.upcomingAccessibilityFormat"),
+                shortDisplayTitle(activityDisplayTitle(activity)),
+                upNextSubtitle(for: activity)
+            )
+        )
+    }
+
+    /// Trailing clock is useful with short countdowns; hide it when the subtitle
+    /// already carries an absolute “Today at …” / day+time phrase.
+    private func shouldShowUpNextTrailingTime(for activity: PlannedActivity) -> Bool {
+        guard Calendar.current.isDateInToday(activity.date) else { return true }
+        let seconds = activity.date.timeIntervalSinceNow
+        guard seconds > 0 else { return true }
+        let minutes = Int(ceil(seconds / 60.0))
+        return minutes < 120
+    }
+
+    private func recentCompletionCard(_ activity: PlannedActivity) -> some View {
+        let title = shortDisplayTitle(activityDisplayTitle(activity))
+        let minutes = max(activity.actualDurationMinutes ?? 0, activity.effectiveDurationMinutes, 1)
+        let duration = String(
+            format: WeekFitLocalizedString("common.duration.minutesFormat"),
+            Int64(minutes)
+        )
+
+        return Button {
+            openCompletedSession(activity)
+        } label: {
+            todayPremiumCard(accent: nil, featured: false) {
+                HStack(alignment: .center, spacing: 12) {
+                    upNextIconBadge(
+                        systemName: upNextIcon(for: activity),
+                        accent: todayActivityColor
+                    )
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(WeekFitLocalizedString("today.session.completed"))
+                            .font(.caption2.weight(.bold))
+                            .fontDesign(.rounded)
+                            .tracking(1.0)
+                            .foregroundStyle(todaySecondaryReadable)
+                            .textCase(.uppercase)
+
+                        Text(title)
+                            .font(.subheadline.weight(.semibold))
+                            .fontDesign(.rounded)
+                            .foregroundStyle(textPrimary)
+                            .lineLimit(2)
+
+                        Text(duration)
+                            .font(.caption.weight(.medium))
+                            .fontDesign(.rounded)
+                            .foregroundStyle(todaySecondaryReadable)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Text(WeekFitLocalizedString("today.session.viewActivity"))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(todayActivityColor)
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(todayMetaReadable)
+                }
+                .padding(.horizontal, TodayLayout.cardInteriorVerticalPadding)
+                .padding(.vertical, 14)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func emptyPlanningRow(now: Date) -> some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onSelectTab(.calendar)
+        } label: {
+            todayPremiumCard(accent: nil, featured: false) {
+                HStack(alignment: .center, spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(todaySecondaryReadable.opacity(palette.isLight ? 0.10 : 0.08))
+                            .frame(width: 40, height: 40)
+                        Image(systemName: "calendar")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(todaySecondaryReadable)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(upNextSectionTitle(for: nil, now: now))
+                            .font(WeekFitType.compactCardTitle)
+                            .fontDesign(.rounded)
+                            .foregroundStyle(textPrimary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Text(AppText.Today.noActivitiesPlanned)
+                            .font(WeekFitType.secondary)
+                            .fontDesign(.rounded)
+                            .foregroundStyle(todaySecondaryReadable)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    // Empty plan: plus only. With activities the row shows chevron instead.
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(todaySecondaryReadable)
+                        .frame(minWidth: 44, minHeight: 44)
+                }
+                .padding(.horizontal, TodayLayout.cardInteriorVerticalPadding)
+                .padding(.vertical, TodayLayout.cardInteriorVerticalPadding)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            [
+                upNextSectionTitle(for: nil, now: now),
+                String(localized: AppText.Today.noActivitiesPlanned)
+            ].joined(separator: ". ")
+        )
+    }
+
+    /// Prefer “Tomorrow’s plan” only when the next (or empty) destination is tomorrow.
+    private func upNextSectionTitle(for activity: PlannedActivity?, now: Date) -> String {
+        let calendar = Calendar.current
+        guard calendar.isDate(selectedDate, inSameDayAs: now) else {
+            return WeekFitLocalizedString("today.upNext.title")
+        }
+        if let activity {
+            if calendar.isDate(activity.date, inSameDayAs: now) {
+                return WeekFitLocalizedString("today.upNext.title")
+            }
+            if let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)),
+               calendar.isDate(activity.date, inSameDayAs: tomorrow) {
+                return WeekFitLocalizedString("today.upNext.tomorrowsPlan")
+            }
+            return WeekFitLocalizedString("today.upNext.yourPlan")
+        }
+        // Empty planning row — no upcoming activity identity to call “tomorrow.”
+        return WeekFitLocalizedString("today.upNext.yourPlan")
+    }
+
+    private func elapsedClockText(from start: Date, now: Date) -> String {
+        let elapsed = max(0, Int(now.timeIntervalSince(start)))
+        let hours = elapsed / 3600
+        let minutes = (elapsed % 3600) / 60
+        let seconds = elapsed % 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        }
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+
+    private func finishStartedSession(_ activity: PlannedActivity) {
+        guard !isFinishingSession, !activity.isCompleted, !activity.isSkipped else { return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        isFinishingSession = true
+        sessionFinishErrorToast = nil
+
+        let title = shortDisplayTitle(activityDisplayTitle(activity))
+        let previousDuration = activity.actualDurationMinutes
+        let passedMinutes = max(1, Int(Date().timeIntervalSince(activity.date) / 60))
+        activity.actualDurationMinutes = passedMinutes
+        activity.isCompleted = true
+
+        do {
+            try modelContext.save()
+        } catch {
+            activity.isCompleted = false
+            activity.actualDurationMinutes = previousDuration
+            isFinishingSession = false
+            let message = WeekFitLocalizedString("today.session.saveFailed")
+            sessionFinishErrorToast = message
+            UIAccessibility.post(notification: .announcement, argument: message)
+            return
+        }
+
+        let savedMessage = String(
+            format: WeekFitLocalizedString("today.session.savedFormat"),
+            title
+        )
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+            sessionSavedToast = savedMessage
+            todayViewModel.triggerHealthRefresh()
+        }
+        UIAccessibility.post(notification: .announcement, argument: savedMessage)
+        scheduleSessionSavedToastHide()
+
+        ReviewEngagement.record(.activityLoggedOrCompleted)
+        ProductAnalytics.activityCompleted(source: .today)
+
+        CoachSnapshotInvalidator.invalidate(
+            coordinator: coachCoordinator,
+            nutritionViewModel: nutritionViewModel,
+            inputProvider: coachInputProvider,
+            reason: "today.activeSession.finish"
+        )
+        _ = coachCoordinator.forceRecompute(reason: "today.activeSession.finish")
+        updateTodayCoachInsightIfNeeded(source: "today.activeSession.finish")
+        activityCoordinator.refresh()
+        appSession.triggerHealthRefresh(source: "today.activeSession.finish")
+        appSession.triggerCoachRefresh(source: "today.activeSession.finish")
+        isFinishingSession = false
+    }
+
+    private func scheduleSessionSavedToastHide() {
+        sessionSavedToastHideTask?.cancel()
+        sessionSavedToastHideTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_400_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.25)) {
+                sessionSavedToast = nil
+            }
+        }
+    }
+
+    private func retryFinishIfNeeded() {
+        guard let active = currentStartedSession() else {
+            sessionFinishErrorToast = nil
+            return
+        }
+        finishStartedSession(active)
+    }
+
+    private func openActiveSession(_ activity: PlannedActivity) {
+        let _ = activity
+        ProductAnalytics.todayPrimaryActionTapped(.activity)
+        presentExclusiveTodayActionSheet {
+            showDirectWorkoutLogSheet = true
+        }
+    }
+
+    private func openCompletedSession(_ activity: PlannedActivity) {
+        let _ = activity
+        openActivityIntelligence()
+    }
+
+    private func shouldShowCoachCard(alongsideActive active: PlannedActivity?) -> Bool {
+        guard let active else { return true }
+        switch todayCoachInsightPhase {
+        case .insight(let presentation, _):
+            return !coachRecommendationConflictsWithActiveSession(presentation, active: active)
+        case .awaitingHealthConnect, .awaitingMorningSync, .preparing:
+            return true
+        }
+    }
+
+    private func coachRecommendationConflictsWithActiveSession(
+        _ presentation: CoachUIPresentation,
+        active: PlannedActivity
+    ) -> Bool {
+        // Keep live HR guidance — it is support, not a duplicate start prompt.
+        if presentation.semanticColor.isLiveSessionChrome {
+            return false
+        }
+        let runningSnapshot = CoachPlannedActivitySnapshot(from: active)
+        let runningFamily = CoachActivityClassifier.family(for: runningSnapshot)
+        if runningFamily != .none,
+           let family = presentation.scenario.activityFamily,
+           family == runningFamily {
+            return true
+        }
+        let runningIcon = upNextIcon(for: active, isLive: true)
+        if presentation.icon == runningIcon || (!active.icon.isEmpty && presentation.icon == active.icon) {
+            return true
+        }
+        return false
     }
 
     private func upNextTimePill(text: String) -> some View {
@@ -2337,11 +2792,12 @@ struct TodayView: View {
     private func upNextAccent(for activity: PlannedActivity) -> Color {
         switch activity.type.lowercased() {
         case "meal", "drink", "hydration":
-            return WeekFitTheme.meal
+            // Nutrition family (apricot) — not activity green.
+            return todayNutritionColor
         case "workout":
             return todayActivityColor
-        case "recovery":
-            return palette.isLight ? WeekFitLightTokens.coachPurple : WeekFitTheme.recovery
+        case "recovery", "sauna":
+            return todayRecoveryColor
         case "habit":
             return WeekFitTheme.habit
         default:
@@ -2353,16 +2809,16 @@ struct TodayView: View {
         WeekFitIconBadge(
             systemName: systemName,
             color: accent,
-            size: .lg,
+            size: .md,
             shape: .circle,
-            backgroundOpacity: palette.isLight ? 0.16 : 0.14,
+            backgroundOpacity: palette.isLight ? 0.14 : 0.14,
             strokeOpacity: 1,
             strokeWidth: 1,
             fillColor: palette.isLight
-                ? accent.opacity(0.14)
+                ? accent.opacity(0.12)
                 : WeekFitTheme.whiteOpacity(0.07),
             strokeColor: palette.isLight
-                ? accent.opacity(0.32)
+                ? accent.opacity(0.26)
                 : accent.opacity(0.22),
             iconColor: palette.isLight ? accent : accent.opacity(0.92)
         )
@@ -2370,12 +2826,13 @@ struct TodayView: View {
     
     private func nextUpcomingPlannedActivity(
         now: Date,
-        excludingActivityID: PersistentIdentifier? = nil
+        excludingActivityID: String? = nil
     ) -> PlannedActivity? {
         let calendar = Calendar.current
 
         func isCandidate(_ activity: PlannedActivity) -> Bool {
             guard !activity.isCompleted, !activity.isSkipped else { return false }
+            // Future-scheduled only — never treat an overdue plan slot as “running”.
             guard activity.date > now else { return false }
             if let excludingActivityID, activity.id == excludingActivityID {
                 return false
@@ -2424,24 +2881,20 @@ struct TodayView: View {
     }
 
     private func currentLiveUpNextActivity(now: Date = Date()) -> PlannedActivity? {
-        // Meals/drinks/snacks can fall in an "active" time window, but they are never a live session.
-        selectedDayActivities
-            .filter { isLiveSessionActivity($0) && $0.terminalState(now: now) == .active }
-            .sorted { $0.date < $1.date }
-            .first
+        currentStartedSession(now: now)
     }
 
     private func currentActiveSession(now: Date = Date()) -> PlannedActivity? {
-        currentLiveUpNextActivity(now: now)
+        currentStartedSession(now: now)
     }
 
-    private func isLiveSessionActivity(_ activity: PlannedActivity) -> Bool {
-        switch activity.type.lowercased() {
-        case "workout", "recovery":
-            return true
-        default:
-            return false
-        }
+    /// A session the user actually started (Quick Start / Today), not a plan slot
+    /// whose scheduled window merely overlaps `now`.
+    private func currentStartedSession(now: Date = Date()) -> PlannedActivity? {
+        selectedDayActivities
+            .filter { $0.isUserStartedLiveSession(now: now) }
+            .sorted { $0.date < $1.date }
+            .first
     }
     
     private func activityContext(_ activity: PlannedActivity) -> String {
@@ -2474,114 +2927,45 @@ struct TodayView: View {
         )
         let insightColor = presentation.accentColor
         let insightTitle = display.title
-        let insightIcon = presentation.icon
+        let insightIcon = todayCoachDisplayIcon(for: presentation)
         let insightMessage = display.message
         let challengeCue = todayRecoveryChallengeCue
+        let focusHeading = todayCoachFocusHeading()
 
-        // Card chrome stays neutral (Overview / Up Next / Meals language).
-        // Semantic color lives only on the Coach glyph + eyebrow — not a gold slab border
-        // that made the nested Recovery Challenge row look "premium".
-        return todayPremiumCard(accent: nil, featured: false) {
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                ProductAnalytics.todayPrimaryActionTapped(.coach)
-                onSelectTab(.coach)
-            } label: {
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack(alignment: .top, spacing: 14) {
-                        ZStack {
-                            Circle()
-                                .fill(insightColor.opacity(0.11))
-                                .frame(width: 40, height: 40)
-                                .overlay {
-                                    Circle()
-                                        .stroke(insightColor.opacity(0.18), lineWidth: 1)
-                                }
-
-                            Image(systemName: insightIcon)
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(insightColor.opacity(0.92))
-                                .offset(y: coachIconOpticalYOffset(insightIcon))
-                        }
-                        .padding(.top, 2)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(AppText.Today.coachInsightLabel)
-                                .font(.caption2.weight(.bold))
-                                .fontDesign(.rounded)
-                                .tracking(1.45)
-                                .foregroundStyle(todaySecondaryReadable)
-
-                            Text(insightTitle)
-                                .font(.callout.weight(.bold))
-                                .fontDesign(.rounded)
-                                .foregroundStyle(textPrimary)
-                                .padding(.top, 2)
-                                .multilineTextAlignment(.leading)
-                                .lineLimit(3)
-                                .lineSpacing(1)
-                                .minimumScaleFactor(0.92)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .layoutPriority(1)
-
-                            if !insightMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                Text(insightMessage)
-                                    .font(.footnote)
-                                    .fontDesign(.rounded)
-                                    .foregroundStyle(todaySecondaryReadable)
-                                    .lineSpacing(2)
-                                    .multilineTextAlignment(.leading)
-                                    .lineLimit(3)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-
-                            if presentation.showsLimitedConfidenceBadge {
-                                todayLimitedRecoveryChip
-                                    .padding(.top, 4)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .layoutPriority(1)
-
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(textTertiary.opacity(0.75))
-                            .padding(.top, 10)
-                            .accessibilityHidden(true)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, TodayLayout.coachCardVerticalPadding)
-                    .padding(.bottom, challengeCue == nil ? TodayLayout.coachCardVerticalPadding : 10)
-
-                    if let challengeCue {
-                        Rectangle()
-                            .fill(WeekFitTheme.divider.opacity(0.55))
-                            .frame(height: 1)
-                            .padding(.horizontal, 16)
-
-                        todayRecoveryChallengeStatusRow(challengeCue)
-                            .padding(.horizontal, 16)
-                            .padding(.top, 10)
-                            .padding(.bottom, TodayLayout.coachCardVerticalPadding)
-                            .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
-                    }
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(
-                [
-                    String(localized: AppText.Today.coachInsightLabel),
-                    insightTitle,
-                    insightMessage,
-                    challengeCue?.label ?? ""
-                ]
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
-                .joined(separator: ". ")
-            )
-            .accessibilityHint(WeekFitLocalizedString("today.coachInsight.opensCoach"))
+        // Fully extracted body (no ViewBuilder closures capturing TodayView).
+        return TodayCoachInsightCardBody(
+            focusHeading: focusHeading,
+            insightTitle: insightTitle,
+            insightMessage: insightMessage,
+            insightIcon: insightIcon,
+            insightColor: insightColor,
+            iconYOffset: coachIconOpticalYOffset(insightIcon),
+            showsLimitedConfidenceBadge: presentation.showsLimitedConfidenceBadge,
+            challengeCue: challengeCue,
+            textPrimary: textPrimary,
+            textSecondary: todaySecondaryReadable,
+            meta: todayMetaReadable
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            ProductAnalytics.todayPrimaryActionTapped(.coach)
+            onSelectTab(.coach)
         }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(
+            [
+                focusHeading,
+                insightTitle,
+                insightMessage,
+                challengeCue?.label ?? ""
+            ]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: ". ")
+        )
+        .accessibilityHint(WeekFitLocalizedString("today.coachInsight.opensCoach"))
+        .todaySurface(elevated: true, coachEmphasis: true, cornerRadius: TodayLayout.cardRadius)
         .transition(.identity)
         .onAppear {
             guard presentation.planAdjustmentMode == .appliedExecuting else { return }
@@ -2589,148 +2973,24 @@ struct TodayView: View {
             guard MorningProposalPresenter.shouldShowAppliedAcknowledgment(dayKey: dayKey) else { return }
             MorningProposalPresenter.markAppliedAcknowledgmentShown(dayKey: dayKey)
             MorningProposalAnalytics.coachAcknowledgmentViewed(dayKey: dayKey)
-            // Defer recompute off the appear stack — sync forceRecompute during
-            // body/appear deepened the same main-thread overflow path.
             Task { @MainActor in
                 coachCoordinator.forceRecompute(reason: "appliedAcknowledgmentViewed.todayInsight")
             }
         }
     }
 
-    private var coachInsightSection: some View {
-        let now = todayViewModel.now
+    // Coach sheets / morning-proposal observers live on `body` — attaching them
+    // here recreated the September "Thread stack size exceeded" SIGSEGV when the
+    // deferred Coach slot mounted ~1s after first paint.
 
-        // 1. Поиск пропущенных активностей, требующих подтверждения
-        let pendingActivity = selectedDayActivities.first { activity in
-            let eventEndDate = Calendar.current.date(
-                byAdding: .minute,
-                value: activity.effectiveDurationMinutes,
-                to: activity.date
-            ) ?? activity.date
-
-            return activity.terminalState(now: now) == .planned
-                && now > eventEndDate
-                && !isCoveredByActiveSession(activity)
-        }
-
-        return Group {
-            if let pending = pendingActivity {
-                let attentionColor = Color(red: 0.95, green: 0.60, blue: 0.15)
-
-                Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    presentActivityConfirmation(pending)
-                } label: {
-                    HStack(alignment: .top, spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .fill(attentionColor.opacity(0.10))
-                                .frame(width: 36, height: 36)
-
-                            Image(systemName: "exclamationmark.circle.fill")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(attentionColor)
-                        }
-
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(AppText.Today.pendingActionTitle)
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(attentionColor)
-
-                            Text(String(format: WeekFitLocalizedString("today.pending.messageFormat"), activityDisplayTitle(pending)))
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(textPrimary.opacity(0.92))
-                                .lineSpacing(2)
-                                .multilineTextAlignment(.leading)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-
-                        Spacer()
-
-                        Image(systemName: "chevron.up.circle.fill")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(attentionColor.opacity(0.45))
-                            .padding(.top, 11)
-                    }
-                    .padding(14)
-                    .background(
-                        LinearGradient(
-                            colors: [
-                                attentionColor.opacity(0.05),
-                                cardBackground.opacity(0.90)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(attentionColor.opacity(0.22), lineWidth: 1)
-                    )
-                }
-                .buttonStyle(.plain)
-
-            } else {
-                coachInsightWithOptionalProposalOverlay
-            }
-        }
-        .sheet(item: $activityToConfirm) { activity in
-            missedConfirmationSheet(activity)
-                .presentationDetents([.fraction(0.40)])
-                .presentationDragIndicator(.visible)
-                .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
-        }
-        .sheet(isPresented: $showProposalReview) {
-            ProposalReviewView(
-                dayKey: ProposalInputFingerprintBuilder.dayKey(for: Date()),
-                onApplied: { _ in
-                    morningProposalChromeHidden = true
-                    refreshMorningProposal()
-                    appSession.triggerCoachRefresh(source: "morningProposal.applied")
-                },
-                onDismissPlan: {
-                    morningProposalChromeHidden = true
-                    refreshMorningProposal()
-                }
-            )
-            .presentationDetents([.large])
-            .presentationDragIndicator(.hidden)
-        }
-        .onAppear {
-            refreshMorningProposal()
-            openPendingMorningProposalReviewIfNeeded()
-        }
-        .onChange(of: coachCoordinator.state.id) { _, _ in
-            refreshMorningProposal()
-        }
-        .onChange(of: healthManager.settledMetricsDayStart) { _, _ in
-            refreshMorningProposal()
-        }
-        .onChange(of: hasTodayRecoverySignals) { _, hasSignals in
-            guard hasSignals else { return }
-            refreshMorningProposal()
-        }
-        .onChange(of: morningProposal?.id) { _, _ in
-            morningProposalChromeHidden = false
-        }
-        .onChange(of: PendingMorningProposalReview.shared.shouldOpenReview) { _, shouldOpen in
-            guard shouldOpen else { return }
-            openPendingMorningProposalReviewIfNeeded()
-        }
-    }
-
-    @ViewBuilder
-    private var coachInsightWithOptionalProposalOverlay: some View {
+    private var coachInsightWithOptionalProposalOverlay: AnyView {
         // Compact teaser floats above the usual Coach card when Morning Adjustments
         // chrome is available; otherwise show the Coach insight phase content.
         let showMorningProposal = !morningProposalChromeHidden && hasMorningProposalChrome
-
         if showMorningProposal {
-            morningAdjustmentsOverlayStack
-        } else {
-            coachInsightPhaseContent
+            return AnyView(morningAdjustmentsOverlayStack)
         }
+        return AnyView(coachInsightPhaseContent)
     }
 
     /// Whether Morning Adjustments chrome exists — without building the card view.
@@ -2816,17 +3076,23 @@ struct TodayView: View {
             .accessibilityHidden(true)
     }
 
-    @ViewBuilder
-    private var coachInsightPhaseContent: some View {
+    private var coachInsightPhaseContent: AnyView {
+        // Always erase — insight/settling branches have different opaque depths and
+        // swapping them after Health settles was a delayed SIGSEGV trigger.
+        // Never omit the Coach entry with EmptyView — users expect Today’s Focus
+        // between Up Next and Quick Log whenever a session is not running.
+        // When insight exists, show it as-is so Focus matches the Coach tab hero.
         switch todayCoachInsightPhase {
         case .insight(let presentation, _):
-            coachInsightCard(presentation: presentation)
+            return AnyView(coachInsightCard(presentation: presentation))
         case .awaitingHealthConnect:
-            coachSettlingCard(needsHealthConnect: true)
+            return AnyView(coachSettlingCard(needsHealthConnect: true))
         case .awaitingMorningSync:
-            coachSettlingCard(needsHealthConnect: false)
+            return AnyView(coachSettlingCard(needsHealthConnect: false))
         case .preparing:
-            EmptyView()
+            // Recovery rings are often already settled here — don't claim we're
+            // still “pulling in sleep”. Use the broader syncing teaser instead.
+            return AnyView(coachSettlingCard(needsHealthConnect: false, useSyncingCopy: true))
         }
     }
 
@@ -3338,7 +3604,7 @@ struct TodayView: View {
                     to: activity.date
                 ) ?? activity.date
                 let elapsed = now.timeIntervalSince(endDate)
-                return elapsed >= 0 && elapsed <= 45 * 60
+                return elapsed >= 0 && elapsed <= TodayLayout.recentCompletionWindow
             }
             .max(by: { $0.date < $1.date })
     }
@@ -3361,47 +3627,19 @@ struct TodayView: View {
     }
 
     private func quickActionFoodSubtitle(now: Date) -> String {
-        let hour = Calendar.current.component(.hour, from: now)
-        switch hour {
-        case 5..<12:
-            return WeekFitLocalizedString("today.quickActions.firstMeal")
-        case 12..<17:
-            return WeekFitLocalizedString("today.quickActions.lunch")
-        case 17..<22:
-            return WeekFitLocalizedString("today.quickActions.dinner")
-        default:
-            return WeekFitLocalizedString("today.quickActions.mealsSnacks")
-        }
+        let _ = now
+        return WeekFitLocalizedString("today.quickActions.logFoodSubtitle")
     }
 
     private func quickActionDrinksSubtitle() -> String {
-        let drinks = loggedDrinksForSelectedDay
-
-        switch drinks.count {
-        case 0:
-            return WeekFitLocalizedString("today.quickActions.firstDrink")
-        case 1:
-            return activityDisplayTitle(drinks[0])
-        default:
-            return WeekFitCountPluralization.drinksTodaySubtitle(count: drinks.count)
-        }
+        WeekFitLocalizedString("today.quickActions.logDrink")
     }
 
     private func quickActionActivitySubtitle(now: Date) -> String {
         if currentActiveSession(now: now) != nil {
-            return WeekFitLocalizedString("today.quickActions.open")
+            return WeekFitLocalizedString("today.quickActions.viewSession")
         }
-        if recentlyCompletedExerciseActivity(now: now) != nil {
-            return WeekFitLocalizedString("today.quickActions.logged")
-        }
-        if let upcoming = nextUpcomingExerciseActivity(now: now) {
-            let calendar = Calendar.current
-            if calendar.isDate(upcoming.date, inSameDayAs: now) {
-                return WeekFitLocalizedString("today.quickActions.prepare")
-            }
-            return WeekFitLocalizedString("today.quickActions.upNext")
-        }
-        return WeekFitLocalizedString("today.quickActions.workoutRecovery")
+        return WeekFitLocalizedString("today.quickActions.start")
     }
 
     @ViewBuilder
@@ -3410,9 +3648,10 @@ struct TodayView: View {
         let drinksSubtitle = quickActionDrinksSubtitle()
         let foodSubtitle = quickActionFoodSubtitle(now: now)
         let activitySubtitle = quickActionActivitySubtitle(now: now)
+        let activityIcon = activeSession.map { upNextIcon(for: $0, isLive: true) } ?? "play.fill"
 
         quickActionItem(
-            icon: "takeoutbag.and.cup.and.straw.fill",
+            icon: "cup.and.saucer.fill",
             label: WeekFitLocalizedString("today.quickActions.logDrinks"),
             subLabel: drinksSubtitle,
             color: WeekFitTheme.workout,
@@ -3447,17 +3686,21 @@ struct TodayView: View {
         }
 
         quickActionItem(
-            icon: activeSession == nil ? "play.circle.fill" : "stop.circle.fill",
+            icon: activityIcon,
             label: WeekFitLocalizedString("today.quickActions.startActivity"),
             subLabel: activitySubtitle,
-            color: activeSession == nil ? todayActivityColor : todayPremiumBronzeSoft,
+            color: activeSession == nil ? todayActivityColor : todayActivityColor,
             isEmphasized: priority == .activity,
-            liveIndicatorColor: activeSession == nil ? nil : todayPremiumBronze
+            liveIndicatorColor: activeSession == nil ? nil : todayActivityColor
         ) {
-            ProductAnalytics.todayPrimaryActionTapped(.activity)
-            presentExclusiveTodayActionSheet {
-                ProductAnalytics.activityLoggingStarted(source: .today)
-                showDirectWorkoutLogSheet = true
+            if let activeSession {
+                openActiveSession(activeSession)
+            } else {
+                ProductAnalytics.todayPrimaryActionTapped(.activity)
+                presentExclusiveTodayActionSheet {
+                    ProductAnalytics.activityLoggingStarted(source: .today)
+                    showDirectWorkoutLogSheet = true
+                }
             }
         }
     }
@@ -3471,7 +3714,6 @@ struct TodayView: View {
         todayActionSurfaceCard(accent: accent) {
             VStack(alignment: .leading, spacing: 0) {
                 todayCardSectionTitle(WeekFitLocalizedString("today.quickActions.title"))
-                    .foregroundStyle(WeekFitTheme.tertiaryText.opacity(0.74))
                     .padding(.bottom, TodayLayout.cardTitleBottomGap)
 
                 Group {
@@ -3501,7 +3743,6 @@ struct TodayView: View {
     ) -> some View {
         let iconFillOpacity = isEmphasized ? (palette.isLight ? 0.18 : 0.17) : (palette.isLight ? 0.14 : 0.11)
         let iconStrokeOpacity = isEmphasized ? (palette.isLight ? 0.32 : 0.22) : (palette.isLight ? 0.24 : 0.15)
-        let iconGlowOpacity = isEmphasized ? (palette.isLight ? 0.18 : 0.24) : (palette.isLight ? 0.10 : 0.15)
         let subtitleOpacity = isEmphasized ? 0.88 : 0.78
         let iconForeground = palette.isLight
             ? color
@@ -3511,35 +3752,21 @@ struct TodayView: View {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             action()
         } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: 6) {
                 ZStack(alignment: .top) {
                     Circle()
                         .fill(color.opacity(iconFillOpacity))
-                        .overlay {
-                            Circle()
-                                .fill(
-                                    RadialGradient(
-                                        colors: [
-                                            color.opacity(iconGlowOpacity),
-                                            color.opacity(0.02)
-                                        ],
-                                        center: .center,
-                                        startRadius: 0,
-                                        endRadius: 22
-                                    )
-                                )
-                        }
                         .overlay(
                             Circle()
-                                .stroke(color.opacity(iconStrokeOpacity), lineWidth: isEmphasized ? 1.25 : 1)
+                                .stroke(color.opacity(iconStrokeOpacity), lineWidth: isEmphasized ? 1.1 : 1)
                         )
-                        .frame(width: 40, height: 40)
+                        .frame(width: 44, height: 44)
 
                     Image(systemName: icon)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(iconForeground)
                         .offset(y: quickActionIconOpticalYOffset(icon))
-                        .frame(width: 40, height: 40)
+                        .frame(width: 44, height: 44)
 
                     if let liveIndicatorColor {
                         Circle()
@@ -3566,7 +3793,7 @@ struct TodayView: View {
 
                 VStack(spacing: 1) {
                     Text(verbatim: label)
-                        .font(.caption.weight(.semibold))
+                        .font(WeekFitType.quickActionLabel)
                         .fontDesign(.rounded)
                         .foregroundStyle(
                             palette.isLight
@@ -3577,7 +3804,7 @@ struct TodayView: View {
                         .minimumScaleFactor(0.85)
                         .multilineTextAlignment(.center)
                     Text(verbatim: subLabel)
-                        .font(.caption2.weight(.semibold))
+                        .font(WeekFitType.quickActionSupport)
                         .fontDesign(.rounded)
                         .foregroundStyle(textSecondary.opacity(subtitleOpacity))
                         .lineLimit(quickActionCaptionLineLimit)
@@ -3676,16 +3903,42 @@ struct TodayView: View {
         return "\(subtitle) · \(context)"
     }
 
-    /// Prefer compact “Starts in N min” when the activity is upcoming later today.
+    /// Compact countdown near start; clock time when several hours away.
     private func upNextStartsInText(for activity: PlannedActivity) -> String? {
-        guard Calendar.current.isDateInToday(activity.date) else { return nil }
+        let calendar = Calendar.current
+        guard calendar.isDateInToday(activity.date) else { return nil }
         let seconds = activity.date.timeIntervalSinceNow
         guard seconds > 0 else { return nil }
         let minutes = Int(ceil(seconds / 60.0))
         guard minutes > 0, minutes < 24 * 60 else { return nil }
+
+        // Several hours away → “Today at 11:30” (not “Starts in 141 min”).
+        if minutes >= 120 {
+            return String(
+                format: WeekFitLocalizedString("today.upNext.todayAtFormat"),
+                activity.date.formatted(.dateTime.hour().minute())
+            )
+        }
+
+        if minutes >= 60 {
+            let hours = minutes / 60
+            let remainder = minutes % 60
+            if remainder > 0 {
+                return String(
+                    format: WeekFitLocalizedString("today.upNext.startsInHoursMinutesFormat"),
+                    Int64(hours),
+                    Int64(remainder)
+                )
+            }
+            return String(
+                format: WeekFitLocalizedString("today.upNext.startsInHoursFormat"),
+                Int64(hours)
+            )
+        }
+
         return String(
             format: WeekFitLocalizedString("today.upNext.startsInMinutesFormat"),
-            minutes
+            Int64(minutes)
         )
     }
 
@@ -3862,5 +4115,299 @@ private extension View {
             cornerRadius: cornerRadius
         )
         .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Today Coach card bodies (shallow types — launch stack safety)
+
+/// Compact secondary cue for Recovery Challenge inside the Today Coach card.
+private struct TodayRecoveryChallengeCue: Equatable {
+    var label: String
+    var showsCheckmark: Bool
+}
+
+private struct TodayElapsedClockLabel: View {
+    let start: Date
+    let foreground: Color
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let text = Self.clockText(from: start, now: context.date)
+            Text(text)
+                .font(WeekFitType.activeTimer)
+                .fontDesign(.rounded)
+                .monospacedDigit()
+                .foregroundStyle(foreground)
+                .accessibilityLabel(
+                    String(
+                        format: WeekFitLocalizedString("today.session.elapsedAccessibilityFormat"),
+                        text
+                    )
+                )
+        }
+    }
+
+    private static func clockText(from start: Date, now: Date) -> String {
+        let elapsed = max(0, Int(now.timeIntervalSince(start)))
+        let hours = elapsed / 3600
+        let minutes = (elapsed % 3600) / 60
+        let seconds = elapsed % 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        }
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+}
+
+/// Shallow pending-confirm card — kept out of TodayView's opaque Coach tree.
+private struct TodayPendingActivityConfirmCard: View {
+    let title: String
+    let message: String
+    let pendingTitle: String
+    let textPrimary: Color
+    let cardBackground: Color
+    let onConfirm: () -> Void
+
+    private let attentionColor = Color(red: 0.95, green: 0.60, blue: 0.15)
+
+    var body: some View {
+        Button(action: onConfirm) {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(attentionColor.opacity(0.10))
+                        .frame(width: 36, height: 36)
+
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(attentionColor)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(pendingTitle)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(attentionColor)
+
+                    Text(message)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(textPrimary.opacity(0.92))
+                        .lineSpacing(2)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.up.circle.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(attentionColor.opacity(0.45))
+                    .padding(.top, 11)
+                    .accessibilityHidden(true)
+            }
+            .padding(14)
+            .background(
+                LinearGradient(
+                    colors: [
+                        attentionColor.opacity(0.05),
+                        cardBackground.opacity(0.90)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(attentionColor.opacity(0.22), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(pendingTitle). \(title)")
+    }
+}
+
+private struct TodayCoachSettlingCardBody: View {
+    let focusHeading: String
+    let needsHealthConnect: Bool
+    var useSyncingCopy: Bool = false
+    let accent: Color
+    let textPrimary: Color
+    let textSecondary: Color
+    let meta: Color
+
+    private var settlingTitle: LocalizedStringResource {
+        if useSyncingCopy {
+            return AppText.Today.coachSettlingTitleSyncing
+        }
+        return AppText.Today.coachSettlingTitle
+    }
+
+    private var settlingMessage: LocalizedStringResource {
+        if needsHealthConnect {
+            return AppText.Today.coachSettlingMessageHealth
+        }
+        if useSyncingCopy {
+            return AppText.Today.coachSettlingMessageSyncing
+        }
+        return AppText.Today.coachSettlingMessageSleep
+    }
+
+    var body: some View {
+        // Match Up Next / Log Quickly: section label on its own top row.
+        VStack(alignment: .leading, spacing: 8) {
+            Text(focusHeading)
+                .font(WeekFitType.sectionLabel)
+                .fontDesign(.rounded)
+                .foregroundStyle(textSecondary)
+
+            HStack(alignment: .center, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(accent.opacity(0.12))
+                        .frame(width: 40, height: 40)
+                    Circle()
+                        .stroke(accent.opacity(0.20), lineWidth: 1)
+                        .frame(width: 40, height: 40)
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(accent.opacity(0.90))
+                        .offset(y: 0.5)
+                }
+                .frame(width: 40, height: 40)
+                .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(settlingTitle)
+                        .font(WeekFitType.compactCardTitle)
+                        .fontDesign(.rounded)
+                        .foregroundStyle(textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(settlingMessage)
+                        .font(WeekFitType.secondary)
+                        .fontDesign(.rounded)
+                        .foregroundStyle(textSecondary)
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(meta.opacity(0.72))
+                    .accessibilityHidden(true)
+            }
+        }
+        .padding(.horizontal, TodayChrome.cardPadding)
+        .padding(.vertical, TodayChrome.cardPadding)
+    }
+}
+
+private struct TodayCoachInsightCardBody: View {
+    let focusHeading: String
+    let insightTitle: String
+    let insightMessage: String
+    let insightIcon: String
+    let insightColor: Color
+    let iconYOffset: CGFloat
+    let showsLimitedConfidenceBadge: Bool
+    let challengeCue: TodayRecoveryChallengeCue?
+    let textPrimary: Color
+    let textSecondary: Color
+    let meta: Color
+
+    var body: some View {
+        // Same card anatomy as Up Next: section label → content row → optional footer.
+        VStack(alignment: .leading, spacing: 8) {
+            Text(focusHeading)
+                .font(WeekFitType.sectionLabel)
+                .fontDesign(.rounded)
+                .foregroundStyle(textSecondary)
+
+            HStack(alignment: .center, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(insightColor.opacity(0.14))
+                        .frame(width: 40, height: 40)
+
+                    Image(systemName: insightIcon)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(insightColor.opacity(0.95))
+                        .offset(y: iconYOffset)
+                }
+                .frame(width: 40, height: 40)
+                .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(insightTitle)
+                        .font(WeekFitType.compactCardTitle)
+                        .fontDesign(.rounded)
+                        .foregroundStyle(textPrimary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(4)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if !insightMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text(insightMessage)
+                            .font(WeekFitType.secondary)
+                            .fontDesign(.rounded)
+                            .foregroundStyle(textSecondary)
+                            .lineSpacing(1)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(5)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if showsLimitedConfidenceBadge {
+                        Text(AppText.Today.coachChipLimitedRecovery)
+                            .font(WeekFitType.captionEmphasized)
+                            .fontDesign(.rounded)
+                            .foregroundStyle(textSecondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Capsule().fill(WeekFitTheme.whiteOpacity(0.05)))
+                            .overlay(Capsule().stroke(WeekFitTheme.whiteOpacity(0.08), lineWidth: 1))
+                            .padding(.top, 2)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(meta.opacity(0.72))
+                    .accessibilityHidden(true)
+            }
+
+            if let challengeCue {
+                Rectangle()
+                    .fill(WeekFitTheme.divider.opacity(0.45))
+                    .frame(height: 1)
+
+                HStack(spacing: 8) {
+                    Image(systemName: "moon.stars.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(textSecondary)
+                        .frame(width: 40, alignment: .center)
+                        .accessibilityHidden(true)
+
+                    Text(challengeCue.label)
+                        .font(WeekFitType.captionEmphasized)
+                        .fontDesign(.rounded)
+                        .foregroundStyle(textSecondary)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if challengeCue.showsCheckmark {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(WeekFitTheme.workout.opacity(0.85))
+                            .accessibilityHidden(true)
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+            }
+        }
+        .padding(.horizontal, TodayChrome.cardPadding)
+        .padding(.vertical, TodayChrome.cardPadding)
     }
 }

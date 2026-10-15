@@ -74,24 +74,26 @@ struct ProposalReviewView: View {
                         : Color.white.opacity(0.14)
                 )
                 .frame(width: 42, height: 4)
-                .padding(.top, 10)
-                .padding(.bottom, 14)
+                .padding(.top, 12)
+                .padding(.bottom, 18)
 
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 5) {
                     Text(WeekFitLocalizedString("coach.proposal.brief.eyebrow"))
                         .font(.caption2.weight(.bold))
                         .fontDesign(.rounded)
                         .tracking(1.15)
                         .foregroundStyle(accent.opacity(palette.isLight ? 0.92 : 0.78))
+                        .textCase(.uppercase)
 
                     Text(WeekFitLocalizedString("coach.proposal.review.title"))
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
                         .foregroundStyle(WeekFitTheme.primaryText)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 2)
 
                 WeekFitCloseButton(size: .large, playsHaptic: false) {
                     dismiss()
@@ -99,9 +101,10 @@ struct ProposalReviewView: View {
                 .disabled(isApplying)
                 .opacity(isApplying ? 0.45 : 1)
                 .accessibilityLabel(WeekFitLocalizedString("common.action.close"))
+                .padding(.top, 2)
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, 8)
+            .padding(.bottom, 12)
         }
     }
 
@@ -119,9 +122,22 @@ struct ProposalReviewView: View {
         let tips = orderedChanges(proposal.changes.filter { $0.kind == .guidanceOnly })
         let selectedMutationCount = proposal.mutatingSelectedChanges.count
 
+        let outdoorAlert = MorningProposalBriefComposer.outdoorAlert(
+            from: weatherSummary,
+            fingerprintRisk: proposal.fingerprint.weatherRiskToken
+        )
+
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
-                heroBrief(brief: brief, hasMutations: !dayChanges.isEmpty)
+                heroBrief(
+                    brief: brief,
+                    hasMutations: !dayChanges.isEmpty,
+                    hidesWeatherMeta: outdoorAlert != nil
+                )
+
+                if let outdoorAlert {
+                    outdoorWeatherCallout(outdoorAlert)
+                }
 
                 if proposal.status == .stale {
                     Text(WeekFitLocalizedString("coach.proposal.review.staleBanner"))
@@ -155,7 +171,7 @@ struct ProposalReviewView: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, 8)
+            .padding(.top, 4)
             .padding(.bottom, 20)
         }
     }
@@ -199,7 +215,11 @@ struct ProposalReviewView: View {
         }
     }
 
-    private func heroBrief(brief: MorningProposalBrief, hasMutations: Bool) -> some View {
+    private func heroBrief(
+        brief: MorningProposalBrief,
+        hasMutations: Bool,
+        hidesWeatherMeta: Bool
+    ) -> some View {
         let support: String = {
             if let first = brief.actionLines.first?
                 .trimmingCharacters(in: .whitespacesAndNewlines),
@@ -257,7 +277,7 @@ struct ProposalReviewView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            if let meta = brief.metaLine {
+            if !hidesWeatherMeta, let meta = brief.metaLine {
                 Text(meta)
                     .font(.caption.weight(.medium))
                     .fontDesign(.rounded)
@@ -304,8 +324,50 @@ struct ProposalReviewView: View {
         .accessibilityElement(children: .contain)
     }
 
+    private func outdoorWeatherCallout(_ alert: MorningProposalOutdoorAlert) -> some View {
+        let warning = palette.isLight ? WeekFitLightTokens.warning : WeekFitStyle.amber
+
+        return HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(warning.opacity(palette.isLight ? 0.16 : 0.22))
+                    .frame(width: 40, height: 40)
+                Image(systemName: alert.systemImage)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(warning)
+            }
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(alert.title)
+                    .font(.subheadline.weight(.semibold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(palette.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(alert.body)
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(palette.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .lineSpacing(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .weekFitPremiumCard(emphasis: .accent, accent: warning, cornerRadius: 18)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(alert.title). \(alert.body)")
+    }
+
     /// Only when weather-derived copy or weather-backed recommendations are on screen.
     private var showsWeatherAttribution: Bool {
+        if MorningProposalBriefComposer.outdoorAlert(
+            from: weatherSummary,
+            fingerprintRisk: proposal?.fingerprint.weatherRiskToken ?? .unavailable
+        ) != nil {
+            return true
+        }
         if MorningProposalBriefComposer.weatherMetaLine(from: weatherSummary) != nil {
             return true
         }
@@ -376,37 +438,16 @@ struct ProposalReviewView: View {
                                 .fixedSize(horizontal: false, vertical: true)
                                 .multilineTextAlignment(.leading)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                        Spacer(minLength: 0)
-
-                        ZStack {
-                            Circle()
-                                .strokeBorder(
-                                    change.isSelected
-                                        ? accent
-                                        : WeekFitTheme.secondaryText.opacity(0.55),
-                                    lineWidth: change.isSelected ? 0 : 1.5
-                                )
-                                .background {
-                                    Circle()
-                                        .fill(change.isSelected ? accent : Color.clear)
-                                }
-                                .frame(width: 24, height: 24)
-
-                            if change.isSelected {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundStyle(WeekFitTheme.primaryCTAForeground)
-                            }
-                        }
-                        .padding(.top, 2)
-                        .accessibilityHidden(true)
+                        selectionGlyph(isSelected: change.isSelected)
                     }
                     .padding(.horizontal, 12)
                     .padding(.top, 12)
                     .padding(.bottom, 6)
+                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
                 .disabled(isApplying)
                 .accessibilityLabel(
                     change.isSelected
@@ -414,6 +455,7 @@ struct ProposalReviewView: View {
                         : WeekFitLocalizedString("coach.proposal.review.a11y.notSelected")
                 )
                 .accessibilityHint(WeekFitLocalizedString("coach.proposal.review.a11y.toggleHint"))
+                .accessibilityAddTraits(.isButton)
 
                 if expandedReasonIds.contains(change.id) {
                     Text(CoachProposalReasonCopy.localizedReason(change.reasonCode))
@@ -436,11 +478,12 @@ struct ProposalReviewView: View {
                     .fontDesign(.rounded)
                     .foregroundStyle(accent.opacity(0.72))
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                     .padding(.horizontal, 12)
                     .padding(.bottom, 10)
-                    .frame(minHeight: 24, alignment: .leading)
+                    .frame(minHeight: 28, alignment: .leading)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
                 .disabled(isApplying)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -450,6 +493,33 @@ struct ProposalReviewView: View {
             )
             .padding(.bottom, isLast ? 0 : 8)
         }
+    }
+
+    private func selectionGlyph(isSelected: Bool) -> some View {
+        ZStack {
+            Circle()
+                .strokeBorder(
+                    isSelected
+                        ? accent
+                        : WeekFitTheme.secondaryText.opacity(0.55),
+                    lineWidth: isSelected ? 0 : 1.5
+                )
+                .background {
+                    Circle()
+                        .fill(isSelected ? accent : Color.clear)
+                }
+                .frame(width: 24, height: 24)
+
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(WeekFitTheme.primaryCTAForeground)
+            }
+        }
+        // Expand the tap target without stretching the card chrome.
+        .frame(width: 44, height: 32, alignment: .top)
+        .contentShape(Rectangle())
+        .accessibilityHidden(true)
     }
 
     private func tipRow(_ change: CoachProposedChange) -> some View {
@@ -555,13 +625,31 @@ struct ProposalReviewView: View {
 
     private func toggle(_ change: CoachProposedChange) {
         guard change.kind != .guidanceOnly else { return }
-        let next = !change.isSelected
+        guard var current = proposal,
+              let index = current.changes.firstIndex(where: { $0.id == change.id }) else {
+            return
+        }
+
+        let next = !current.changes[index].isSelected
+        current.changes[index].isSelected = next
+        if current.status == .proposalReady {
+            current.status = .reviewing
+        }
+
+        // Paint selection immediately — store round-trip must not gate the first tap.
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.16)) {
+            proposal = current
+        }
+
         MorningProposalService.setSelection(
             dayKey: dayKey,
             changeId: change.id,
             isSelected: next
         )
-        proposal = MorningProposalStore.proposal(for: dayKey)
+        if let stored = MorningProposalStore.proposal(for: dayKey) {
+            proposal = stored
+        }
+
         if next {
             MorningProposalAnalytics.recommendationSelected(kind: change.kind)
         } else {

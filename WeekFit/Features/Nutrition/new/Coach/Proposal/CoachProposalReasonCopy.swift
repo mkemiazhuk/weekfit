@@ -153,7 +153,7 @@ enum CoachProposalReasonCopy {
         case .easeOutdoorHeat:
             return "It’s hot outside — ease outdoor load and hydrate well."
         case .shelteredRoutesWind:
-            return "Strong wind today — choose sheltered routes if you stay outdoors."
+            return "Strong wind today — postpone outdoor plans, or move them indoors / to a calmer day."
         case .warmUpInCold:
             return "Cold conditions — warm up thoroughly and dress in layers."
         }

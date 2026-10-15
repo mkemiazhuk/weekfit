@@ -49,7 +49,8 @@ struct WeekFitSemanticPalette: Equatable, Sendable {
         case .light:
             return WeekFitLightTokens.backgroundPrimary
         case .dark:
-            return Color(red: 0.014, green: 0.016, blue: 0.022)
+            // Midnight navy ≈ #0B1020 — shared canvas for Today / Meals / Coach.
+            return TodayChrome.canvasDark
         }
     }
 
@@ -305,10 +306,11 @@ struct WeekFitSemanticPalette: Equatable, Sendable {
         case .light:
             return WeekFitLightTokens.surfaceCard
         case .dark:
+            // ≈ #171D2A with a quiet Night Comfort blend toward deeper navy.
             return Color(
-                red: Self.lerp(0.050, 0.038, blendFactor),
-                green: Self.lerp(0.053, 0.041, blendFactor),
-                blue: Self.lerp(0.062, 0.050, blendFactor)
+                red: Self.lerp(0.090, 0.070, blendFactor),
+                green: Self.lerp(0.114, 0.088, blendFactor),
+                blue: Self.lerp(0.165, 0.130, blendFactor)
             )
         }
     }
@@ -319,9 +321,9 @@ struct WeekFitSemanticPalette: Equatable, Sendable {
             return WeekFitLightTokens.surfacePrimary
         case .dark:
             return Color(
-                red: Self.lerp(0.068, 0.050, blendFactor),
-                green: Self.lerp(0.072, 0.054, blendFactor),
-                blue: Self.lerp(0.084, 0.064, blendFactor)
+                red: Self.lerp(0.110, 0.085, blendFactor),
+                green: Self.lerp(0.132, 0.102, blendFactor),
+                blue: Self.lerp(0.196, 0.155, blendFactor)
             )
         }
     }

@@ -54,6 +54,7 @@ struct WeekFitTodayWeatherHeader: View {
                     WeekFitAvatarButton(
                         initials: initials,
                         hasProfileName: hasProfileName,
+                        prominence: .subdued,
                         action: onAvatarTap
                     )
                     .accessibilityIdentifier("settings.open")
@@ -137,16 +138,19 @@ struct WeekFitTodayWeatherHeader: View {
                     .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
             }
-            .padding(.horizontal, 12)
-            .frame(height: 34)
+            .padding(.horizontal, 10)
+            .frame(height: 32)
             .background {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(WeekFitTheme.cardTertiary.opacity(0.35))
+                Capsule(style: .continuous)
+                    .fill(
+                        palette.isLight
+                            ? WeekFitLightTokens.surfaceSecondary.opacity(0.92)
+                            : TodayChrome.cardDark.opacity(0.92)
+                    )
                     .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(WeekFitTheme.borderSoft.opacity(0.9), lineWidth: 1)
+                        Capsule(style: .continuous)
+                            .strokeBorder(TodayChrome.border(isLight: palette.isLight), lineWidth: 1)
                     }
-                    .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
             }
             .accessibilityLabel(
                 Text(WeekFitTrilingual("Enable Local Weather", "Включить местную погоду", "开启本地天气"))
