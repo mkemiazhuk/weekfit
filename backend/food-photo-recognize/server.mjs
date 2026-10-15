@@ -13,6 +13,12 @@ import {
 } from './idempotency.mjs';
 import { createMockOpenAIAdapter, forbidRealOpenAIFetch } from './openai-mock.mjs';
 import { asyncConfiguration, createAsyncStack } from './async/bootstrap.mjs';
+import {
+  createFileFreeTrialStore,
+  createMemoryFreeTrialStore,
+  isFreeTrialHeader,
+  requirePaidOrFreeTrial,
+} from './async/free-trial.mjs';
 
 export function configuration(env = process.env) {
   const integer = (key, fallback, min, max) => {
@@ -121,6 +127,33 @@ export function createServer(config, dependencies = {}) {
     asyncStack = await createAsyncStack(config, dependencies);
     return asyncStack;
   })();
+
+  const freeTrialReady = (async () => {
+    if (dependencies.freeTrialStore) return dependencies.freeTrialStore;
+    const stack = await asyncReady.catch(() => null);
+    if (stack?.freeTrialStore) return stack.freeTrialStore;
+    // Durable when DATA_DIR is mounted (Render disk); otherwise process-local.
+    const dataDir = process.env.DATA_DIR?.trim();
+    if (dataDir) {
+      try {
+        return await createFileFreeTrialStore({ dataDir });
+      } catch {
+        // Fall through to memory.
+      }
+    }
+    return createMemoryFreeTrialStore();
+  })();
+
+  const enforceSubscriptionAccess = async (userId, headers) => {
+    const freeTrialStore = await freeTrialReady;
+    return requirePaidOrFreeTrial(headers['x-weekfit-subscription-jws'], {
+      requirePaid: (headerValue, opts) => requirePaid(headerValue, opts),
+      freeTrialStore,
+      freeTrialRequested: isFreeTrialHeader(headers['x-weekfit-photo-free-trial']),
+      userId,
+      allowDevAuth: config.allowDevAuth && userId === 'local-developer',
+    });
+  };
 
   const limits = new Map();
   /** Keys already charged against daily quota (user or user:idempotency). */
@@ -301,7 +334,9 @@ export function createServer(config, dependencies = {}) {
       req.on('aborted', onClose);
       req.on('close', onClose);
       try {
-        const stack = await asyncReady;
+        // Stack init failure (Redis down, bad DATA_DIR, etc.) → same as disabled async.
+        // iOS falls back to sync on async_not_configured; do not surface a bare 500.
+        const stack = await asyncReady.catch(() => null);
         if (!stack) throw new ServiceError('async_not_configured', 503);
         if (!configured()) throw new ServiceError('service_not_configured', 503);
         const user = await auth(req.headers.authorization, config);
@@ -343,13 +378,11 @@ export function createServer(config, dependencies = {}) {
       const onClientClose = () => clientAbort.abort();
       req.on('aborted', onClientClose);
       try {
-        const stack = await asyncReady;
+        const stack = await asyncReady.catch(() => null);
         if (!stack) throw new ServiceError('async_not_configured', 503);
         if (!configured()) throw new ServiceError('service_not_configured', 503);
         const user = await auth(req.headers.authorization, config);
-        requirePaid(req.headers['x-weekfit-subscription-jws'], {
-          allowDevAuth: config.allowDevAuth && user === 'local-developer',
-        });
+        const access = await enforceSubscriptionAccess(user, req.headers);
         if (!req.headers['content-type']?.startsWith('application/json')) {
           throw new ServiceError('json_required', 415);
         }
@@ -367,6 +400,7 @@ export function createServer(config, dependencies = {}) {
           outcome: 'async_accepted',
           status: outcome.body.status,
           analysisId: outcome.body.analysisId,
+          access: access.access,
           latencyMs: Date.now() - started,
           openAIMock: Boolean(config.openAIMock),
         }));
@@ -423,11 +457,9 @@ export function createServer(config, dependencies = {}) {
     try {
       if (!configured()) throw new ServiceError('service_not_configured', 503);
 
-      // 1) Auth + paid proof before any expensive work / AI.
+      // 1) Auth + paid proof (or one complimentary free trial) before AI.
       const user = await auth(req.headers.authorization, config);
-      requirePaid(req.headers['x-weekfit-subscription-jws'], {
-        allowDevAuth: config.allowDevAuth && user === 'local-developer',
-      });
+      await enforceSubscriptionAccess(user, req.headers);
 
       if (!req.headers['content-type']?.startsWith('application/json')) {
         throw new ServiceError('json_required', 415);

@@ -68,9 +68,9 @@ npm run test:load:async:quick
 
 - `GET /healthz`: liveness and configuration; does not prove provider credentials work.
 - `GET /readyz`: 200 only when provider and authentication are configured.
-- `POST /v1/food/photo-analyze`: **async accept** (202). Paid JWS required before enqueue. Idempotency via `Idempotency-Key` / `X-WeekFit-Analysis-Id`.
+- `POST /v1/food/photo-analyze`: **async accept** (202). **Standard paid** JWS (no App Store offer) **or** one complimentary free trial per Firebase UID (`X-WeekFit-Photo-Free-Trial: 1`) before enqueue. Idempotency via `Idempotency-Key` / `X-WeekFit-Analysis-Id`.
 - `GET /v1/food/photo-analyze/:analysisId`: status/result for the owning user only.
-- `POST /v1/food/photo-recognize`: legacy synchronous path (kept for compatibility). Requires an active **paid** WeekFit subscription proof (`X-WeekFit-Subscription-JWS` StoreKit Transaction JWS). Trial, legacy, and free promo access are rejected with `402 subscription_required` before OpenAI is called. Local `ALLOW_DEV_AUTH` may send `weekfit-dev-local-subscription` instead.
+- `POST /v1/food/photo-recognize`: legacy synchronous path (kept for compatibility). Requires a **standard paid** WeekFit subscription proof (`X-WeekFit-Subscription-JWS` — active auto-renewable, **no** `offerType` / offer identifier / offer discount, **not** `$0` price), **or** one complimentary free trial per authenticated user when the client sends `X-WeekFit-Photo-Free-Trial: 1`. Introductory trial, promotional offer, offer code, win-back, and free promo paths are rejected with `402 subscription_required` before OpenAI is called. After the free trial is claimed for that UID, further unpaid calls return `402`. Local `ALLOW_DEV_AUTH` may send `weekfit-dev-local-subscription` instead. Free-trial claims persist under `DATA_DIR/photo-free-trial` (or Redis when async uses Redis).
 
 Request: `{ "imageBase64": "<JPEG base64>", "mimeType": "image/jpeg", "locale": "en_US", "note": "Optional food context" }`.
 

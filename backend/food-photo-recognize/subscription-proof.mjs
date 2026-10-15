@@ -103,8 +103,17 @@ export function verifyStoreKitSignature(parts, publicKey) {
 }
 
 /**
- * Verify StoreKit Transaction JWS proves an active **paid** WeekFit subscription.
- * Rejects missing/invalid JWS, wrong product/bundle, expired/revoked, and introductory free trial.
+ * Apple JWS `offerType` — any of these means the period is not standard paid list price.
+ * 1 introductory · 2 promotional · 3 offer code · 4 win-back
+ * @see https://developer.apple.com/documentation/appstoreserverapi/offertype
+ */
+export const NON_STANDARD_PAID_OFFER_TYPES = new Set([1, 2, 3, 4]);
+
+/**
+ * Verify StoreKit Transaction JWS proves an active **standard paid** WeekFit subscription.
+ * Rejects missing/invalid JWS, wrong product/bundle, expired/revoked, free trial,
+ * and any App Store offer (introductory / promotional / offer code / win-back).
+ * Zero-price transactions are also rejected when `price` is present.
  */
 export function requirePaidSubscriptionJWS(headerValue, options = {}) {
   const nowMs = options.nowMs ?? Date.now();
@@ -160,9 +169,19 @@ export function requirePaidSubscriptionJWS(headerValue, options = {}) {
     throw new ServiceError('subscription_required', 402);
   }
 
-  // Apple: offerType 1 = introductory (includes free trial).
-  if (payload.offerType === 1) throw new ServiceError('subscription_required', 402);
-  if (payload.offerDiscountType === 'FREE_TRIAL') {
+  // Reject every App Store offer period — only ordinary paid renewals unlock AI.
+  // offerType: 1 intro · 2 promo · 3 offer code · 4 win-back (and any future value).
+  if (payload.offerType != null && payload.offerType !== '') {
+    throw new ServiceError('subscription_required', 402);
+  }
+  if (typeof payload.offerIdentifier === 'string' && payload.offerIdentifier.length > 0) {
+    throw new ServiceError('subscription_required', 402);
+  }
+  if (typeof payload.offerDiscountType === 'string' && payload.offerDiscountType.length > 0) {
+    throw new ServiceError('subscription_required', 402);
+  }
+  // price is milliunits when present; free / $0 must not unlock paid AI.
+  if (payload.price === 0 || payload.price === '0') {
     throw new ServiceError('subscription_required', 402);
   }
 

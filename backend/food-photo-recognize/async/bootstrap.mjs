@@ -17,6 +17,7 @@ import {
 } from './redis-backend.mjs';
 import { createHttpObjectStore, createS3ObjectStore } from './http-object-store.mjs';
 import { createProviderLimits } from './provider-limits.mjs';
+import { createFileFreeTrialStore, createRedisFreeTrialStore } from './free-trial.mjs';
 
 export function asyncConfiguration(env = process.env) {
   const integer = (key, fallback, min, max) => {
@@ -112,6 +113,7 @@ export async function createAsyncStack(config, dependencies = {}) {
   let budget = dependencies.budget;
   let aiSlots = dependencies.aiSlots;
   let objectStore = dependencies.objectStore;
+  let freeTrialStore = dependencies.freeTrialStore;
 
   if (asyncConfig.stateBackend === 'redis') {
     jobStore = jobStore ?? await createRedisJobStore({
@@ -134,6 +136,7 @@ export async function createAsyncStack(config, dependencies = {}) {
       maxConcurrent: asyncConfig.globalAiSlots,
       leaseMs: asyncConfig.workerLeaseMs,
     });
+    freeTrialStore = freeTrialStore ?? createRedisFreeTrialStore({ redis });
   } else {
     // Dev/single-node only — forbidden in production by asyncConfiguration().
     const dataDir = asyncConfig.dataDir;
@@ -154,6 +157,7 @@ export async function createAsyncStack(config, dependencies = {}) {
       maxConcurrent: asyncConfig.globalAiSlots,
       leaseMs: asyncConfig.workerLeaseMs,
     });
+    freeTrialStore = freeTrialStore ?? await createFileFreeTrialStore({ dataDir });
   }
 
   if (!objectStore) {
@@ -226,6 +230,7 @@ export async function createAsyncStack(config, dependencies = {}) {
     circuit,
     budget,
     aiSlots,
+    freeTrialStore,
     providerLimits,
     uploadGate,
     openaiFetcher,

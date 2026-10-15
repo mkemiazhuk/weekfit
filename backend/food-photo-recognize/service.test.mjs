@@ -5,6 +5,10 @@ import { configuration, createServer } from './server.mjs';
 import { validateInput, validateResult, recognize, ServiceError } from './recognition.mjs';
 import { authenticate } from './auth.mjs';
 import { requirePaidSubscriptionJWS } from './subscription-proof.mjs';
+import {
+  createMemoryFreeTrialStore,
+  requirePaidOrFreeTrial,
+} from './async/free-trial.mjs';
 const valid = () => ({isFood:true,name:'Rice',items:[{name:'Rice',preparation:'cooked',grams:100,minGrams:80,maxGrams:150,calories:130,protein:3,carbs:28,fat:0.3,assumptions:[]}],uncertainties:['Weight is estimated'],clarificationQuestion:null});
 // Header-only fixture tests image-envelope checks, not visual recognition.
 const jpeg = Buffer.from([255,216,255,192,0,17,8,0,100,0,100,3,1,17,0,2,17,0,3,17,0,255,217]).toString('base64');
@@ -65,15 +69,55 @@ test('HTTP auth, client-model isolation and quota enforcement',async t=>{
   assert.equal(calls,1);
   assert.equal((await fetch(base+'/readyz')).status,200);
 });
-test('paid subscription proof rejects trial and expired payloads',()=>{
+test('paid subscription proof rejects trial, promo, offer code, win-back and expired',()=>{
   assert.throws(()=>requirePaidSubscriptionJWS(undefined),e=>e.status===402);
-  assert.throws(()=>requirePaidSubscriptionJWS(unsignedPaidJWS({offerType:1}),{skipSignature:true}),e=>e.status===402);
+  // 1 intro · 2 promo · 3 offer code · 4 win-back — none unlock paid AI.
+  for (const offerType of [1, 2, 3, 4]) {
+    assert.throws(()=>requirePaidSubscriptionJWS(unsignedPaidJWS({offerType}),{skipSignature:true}),e=>e.status===402);
+  }
+  assert.throws(()=>requirePaidSubscriptionJWS(unsignedPaidJWS({offerIdentifier:'PROMO2026'}),{skipSignature:true}),e=>e.status===402);
   assert.throws(()=>requirePaidSubscriptionJWS(unsignedPaidJWS({offerDiscountType:'FREE_TRIAL'}),{skipSignature:true}),e=>e.status===402);
+  assert.throws(()=>requirePaidSubscriptionJWS(unsignedPaidJWS({offerDiscountType:'PAY_AS_YOU_GO'}),{skipSignature:true}),e=>e.status===402);
+  assert.throws(()=>requirePaidSubscriptionJWS(unsignedPaidJWS({price:0}),{skipSignature:true}),e=>e.status===402);
   assert.throws(()=>requirePaidSubscriptionJWS(unsignedPaidJWS({expiresDate:Date.now()-1000}),{skipSignature:true}),e=>e.status===402);
   assert.throws(()=>requirePaidSubscriptionJWS(unsignedPaidJWS({productId:'com.other.sub'}),{skipSignature:true}),e=>e.status===402);
   assert.equal(requirePaidSubscriptionJWS(unsignedPaidJWS(),{skipSignature:true}).productId,'com.weekfit.subscription.monthly');
+  assert.equal(requirePaidSubscriptionJWS(unsignedPaidJWS({price:9990}),{skipSignature:true}).productId,'com.weekfit.subscription.monthly');
   assert.equal(requirePaidSubscriptionJWS(DEV_SUB,{allowDevAuth:true}).productId,'dev');
   assert.throws(()=>requirePaidSubscriptionJWS(DEV_SUB,{allowDevAuth:false}),e=>e.status===402);
+});
+
+test('one free photo trial per user then subscription required',async()=>{
+  const store=createMemoryFreeTrialStore();
+  const paid=await requirePaidOrFreeTrial(unsignedPaidJWS(),{
+    requirePaid:(h,o)=>requirePaidSubscriptionJWS(h,{...o,skipSignature:true}),
+    freeTrialStore:store,
+    freeTrialRequested:false,
+    userId:'uid-a',
+  });
+  assert.equal(paid.access,'paid');
+
+  const first=await requirePaidOrFreeTrial(undefined,{
+    requirePaid:(h,o)=>requirePaidSubscriptionJWS(h,{...o,skipSignature:true}),
+    freeTrialStore:store,
+    freeTrialRequested:true,
+    userId:'uid-b',
+  });
+  assert.equal(first.access,'free_trial');
+
+  await assert.rejects(()=>requirePaidOrFreeTrial(undefined,{
+    requirePaid:(h,o)=>requirePaidSubscriptionJWS(h,{...o,skipSignature:true}),
+    freeTrialStore:store,
+    freeTrialRequested:true,
+    userId:'uid-b',
+  }),e=>e.status===402);
+
+  await assert.rejects(()=>requirePaidOrFreeTrial(undefined,{
+    requirePaid:(h,o)=>requirePaidSubscriptionJWS(h,{...o,skipSignature:true}),
+    freeTrialStore:store,
+    freeTrialRequested:false,
+    userId:'uid-c',
+  }),e=>e.status===402);
 });
 test('photo recognize blocks AI without paid JWS even when auth succeeds',async t=>{
   let calls=0;
@@ -89,6 +133,66 @@ test('photo recognize blocks AI without paid JWS even when auth succeeds',async 
   const post=(sub)=>fetch(base+'/v1/food/photo-recognize',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer weekfit-dev-local-token',...(sub?{'X-WeekFit-Subscription-JWS':sub}:{})},body:JSON.stringify(input())});
   assert.equal((await post()).status,402);
   assert.equal((await post(unsignedPaidJWS({offerType:1}))).status,402);
+  assert.equal((await post(unsignedPaidJWS({offerType:2}))).status,402);
+  assert.equal((await post(unsignedPaidJWS({offerType:3}))).status,402);
+  assert.equal((await post(unsignedPaidJWS({offerType:4}))).status,402);
   assert.equal((await post(unsignedPaidJWS())).status,200);
+  assert.equal(calls,1);
+});
+
+test('photo recognize allows one free trial then requires paid subscription',async t=>{
+  let calls=0;
+  const freeTrialStore=createMemoryFreeTrialStore();
+  const server=createServer(
+    {...configuration({ALLOW_DEV_AUTH:'1',WEEKFIT_DEV_TOKEN:'weekfit-dev-local-token',OPENAI_API_KEY:'test'})},
+    {
+      recognize:async()=>{calls++;return{result:validateResult(valid()),usage:null};},
+      requirePaidSubscriptionJWS:(header,opts)=>requirePaidSubscriptionJWS(header,{...opts,skipSignature:true}),
+      freeTrialStore,
+    },
+  );
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));t.after(()=>new Promise(resolve=>server.close(resolve)));
+  const base=`http://127.0.0.1:${server.address().port}`;
+  const free=()=>fetch(base+'/v1/food/photo-recognize',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      Authorization:'Bearer weekfit-dev-local-token',
+      'X-WeekFit-Photo-Free-Trial':'1',
+    },
+    body:JSON.stringify(input()),
+  });
+  assert.equal((await free()).status,200);
+  assert.equal((await free()).status,402);
+  assert.equal(calls,1);
+});
+
+test('async_not_configured does not burn free trial so sync fallback still works',async t=>{
+  let calls=0;
+  const freeTrialStore=createMemoryFreeTrialStore();
+  const server=createServer(
+    {...configuration({ALLOW_DEV_AUTH:'1',WEEKFIT_DEV_TOKEN:'weekfit-dev-local-token',OPENAI_API_KEY:'test'})},
+    {
+      // Force async stack absent — mirrors DATA_DIR/Redis init failure.
+      asyncStack:null,
+      recognize:async()=>{calls++;return{result:validateResult(valid()),usage:null};},
+      requirePaidSubscriptionJWS:(header,opts)=>requirePaidSubscriptionJWS(header,{...opts,skipSignature:true}),
+      freeTrialStore,
+    },
+  );
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));t.after(()=>new Promise(resolve=>server.close(resolve)));
+  const base=`http://127.0.0.1:${server.address().port}`;
+  const headers={
+    'Content-Type':'application/json',
+    Authorization:'Bearer weekfit-dev-local-token',
+    'X-WeekFit-Photo-Free-Trial':'1',
+  };
+  const analyze=await fetch(base+'/v1/food/photo-analyze',{method:'POST',headers,body:JSON.stringify(input())});
+  assert.equal(analyze.status,503);
+  const analyzeBody=await analyze.json();
+  assert.equal(analyzeBody.error,'async_not_configured');
+  // Free trial must still be claimable on sync path after async fallback signal.
+  const sync=await fetch(base+'/v1/food/photo-recognize',{method:'POST',headers,body:JSON.stringify(input())});
+  assert.equal(sync.status,200);
   assert.equal(calls,1);
 });
