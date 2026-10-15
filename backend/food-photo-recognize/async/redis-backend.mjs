@@ -154,13 +154,21 @@ export async function createRedisJobStore({ redis, redisUrl, jobTtlMs = 24 * 60 
   };
 
   const claimNext = async ({ workerId, leaseMs, waitMs = 0 }) => {
-    // Pop then attach lease+fencing token. BRPOP wakes immediately on enqueue (no sleep poll).
-    let id = await r.rpop(k.queue);
-    if (!id && waitMs > 0) {
-      const popped = await r.brpop(k.queue, Math.max(1, Math.ceil(waitMs / 1000)));
-      id = Array.isArray(popped) ? popped[1] : null;
-    }
-    return attachClaim(id, workerId, leaseMs);
+    // Pop and register recovery lease atomically. A crash between RPOP and
+    // writing a lease must never make an accepted job disappear permanently.
+    const deadline = Date.now() + waitMs;
+    do {
+      const leaseUntil = Date.now() + leaseMs;
+      const id = await r.eval(CLAIM_SCRIPT, [k.queue, k.lease(''), k.leaseZ], [
+        workerId, String(leaseUntil),
+        JSON.stringify({ workerId, leaseUntil, claimedAt: Date.now() }), String(leaseMs),
+      ]);
+      if (id) return attachClaim(id, workerId, leaseMs);
+      if (Date.now() >= deadline) return null;
+      // Never block the shared command connection with BRPOP.
+      await new Promise(resolve => setTimeout(resolve, Math.min(20, deadline - Date.now())));
+    } while (Date.now() < deadline);
+    return null;
   };
 
   const recoverExpiredLeases = async (nowMs = Date.now()) => {

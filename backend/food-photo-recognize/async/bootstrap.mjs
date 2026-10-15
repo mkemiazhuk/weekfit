@@ -35,7 +35,8 @@ export function asyncConfiguration(env = process.env) {
     allowSingleNode ? 'local' : (isProduction ? 's3' : 'local')
   )).toLowerCase();
   const dataDir = env.DATA_DIR || env.WEEKFIT_DATA_DIR || '';
-  const asyncEnabled = env.ASYNC_ANALYSIS === '1' || Boolean(dataDir) || stateBackend === 'redis';
+  const asyncEnabled = env.ASYNC_ANALYSIS === '1'
+    || (env.ASYNC_ANALYSIS !== '0' && (Boolean(dataDir) || stateBackend === 'redis'));
 
   if (isProduction && asyncEnabled && !allowSingleNode) {
     if (stateBackend === 'file' || (!redisUrl && stateBackend !== 'redis')) {

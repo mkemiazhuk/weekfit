@@ -187,20 +187,22 @@ test('multi API+worker via redis+http object store: accept survives restart, no 
     });
 
     try {
-      const analysisId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+      const idempotencyKey = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
       const res = await fetch(`${base}/v1/food/photo-analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: AUTH,
           'X-WeekFit-Subscription-JWS': DEV_SUB,
-          'Idempotency-Key': analysisId,
+          'Idempotency-Key': idempotencyKey,
         },
         body: JSON.stringify({ imageBase64: jpegB64, mimeType: 'image/jpeg', locale: 'en_US' }),
       });
       assert.equal(res.status, 202);
       const accepted = await res.json();
-      assert.equal(accepted.analysisId, analysisId);
+      const analysisId = accepted.analysisId;
+      assert.match(analysisId, /^[0-9a-f-]{36}$/);
+      assert.notEqual(analysisId, idempotencyKey);
 
       // Simulate API process restart: new server, same Redis + object store.
       await new Promise((r) => server.close(r));
@@ -236,7 +238,7 @@ test('multi API+worker via redis+http object store: accept survives restart, no 
           'Content-Type': 'application/json',
           Authorization: AUTH,
           'X-WeekFit-Subscription-JWS': DEV_SUB,
-          'Idempotency-Key': analysisId,
+          'Idempotency-Key': idempotencyKey,
         },
         body: JSON.stringify({ imageBase64: jpegB64, mimeType: 'image/jpeg', locale: 'en_US' }),
       });
@@ -247,6 +249,7 @@ test('multi API+worker via redis+http object store: accept survives restart, no 
 
       await new Promise((r) => server2.close(r));
     } finally {
+      await new Promise(r => server.close(r));
       await objInfo.close();
     }
   });
@@ -282,4 +285,33 @@ test('production single-node escape hatch allows file DATA_DIR', () => {
   assert.equal(c.asyncEnabled, true);
   assert.equal(c.stateBackend, 'file');
   assert.equal(c.objectStoreKind, 'local');
+});
+
+test('idle blocking queue wait never stalls lease/quota/health commands', async () => {
+  await withRedis(async ({ redis }) => {
+    const store = await createRedisJobStore({ redis });
+    const waiting = store.claimNext({ workerId: 'idle-worker', leaseMs: 10000, waitMs: 1000 });
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const start = Date.now();
+    assert.equal(await redis.ping(), 'PONG');
+    assert.ok(Date.now() - start < 500, 'PING must not wait behind BRPOP');
+    await waiting;
+  });
+});
+
+test('worker crash immediately after queue pop leaves a recoverable lease', async () => {
+  await withRedis(async ({ redis }) => {
+    const store = await createRedisJobStore({ redis });
+    const id = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+    await store.createQueuedJob({ analysisId: id, userId: 'alice' });
+    await store.enqueue(id);
+    const broken = Object.create(redis);
+    broken.eval = async (...args) => { await redis.eval(...args); throw Error('simulated crash after pop'); };
+    const crashingWorker = await createRedisJobStore({ redis: broken });
+    await assert.rejects(() => crashingWorker.claimNext({ workerId: 'crashed', leaseMs: 1000 }));
+    assert.equal(await store.queueDepth(), 0);
+    await store.recoverExpiredLeases(Date.now() + 2000);
+    assert.equal(await store.queueDepth(), 1);
+    assert.equal((await store.claimNext({ workerId: 'replacement', leaseMs: 1000 })).analysisId, id);
+  });
 });

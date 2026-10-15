@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { createHash, randomUUID } from 'node:crypto';
 import { createServer as createNetServer } from 'node:net';
 
@@ -135,49 +136,58 @@ export function createHttpObjectStore({
   };
 }
 
-/**
- * S3-compatible config adapter. Uses AWS SigV4 via fetch when credentials exist.
- * Not exercised without credentials (no paid buckets in this task).
- */
+/** S3/R2 storage. Bucket lifecycle must expire the private food-photos/ prefix. */
 export function createS3ObjectStore(env = process.env) {
   const bucket = env.S3_BUCKET;
-  const endpoint = env.S3_ENDPOINT || '';
+  const endpoint = env.S3_ENDPOINT || undefined;
   const region = env.S3_REGION || 'auto';
-  const accessKey = env.AWS_ACCESS_KEY_ID || env.S3_ACCESS_KEY_ID || '';
-  const secretKey = env.AWS_SECRET_ACCESS_KEY || env.S3_SECRET_ACCESS_KEY || '';
+  const accessKeyId = env.AWS_ACCESS_KEY_ID || env.S3_ACCESS_KEY_ID || '';
+  const secretAccessKey = env.AWS_SECRET_ACCESS_KEY || env.S3_SECRET_ACCESS_KEY || '';
   const prefix = env.S3_PREFIX || 'food-photos/';
-
-  if (!bucket || !accessKey || !secretKey) {
-    const err = new Error('S3 object store requires S3_BUCKET and credentials');
-    err.code = 's3_not_configured';
-    throw err;
+  const ttlMs = Number(env.PHOTO_TTL_MS || 86_400_000);
+  if (!bucket || !accessKeyId || !secretAccessKey) throw Object.assign(new Error('S3 credentials required'), { code: 's3_not_configured' });
+  if (env.NODE_ENV === 'production' && endpoint && new URL(endpoint).protocol !== 'https:') {
+    throw new Error('Production S3 endpoint must use HTTPS');
   }
-
-  const keyFor = (userId, analysisId) => {
-    const userHash = createHash('sha256').update(userId).digest('hex').slice(0, 16);
-    return `${prefix}${userHash}/${analysisId}.jpg`;
+  const client = new S3Client({ region, endpoint, forcePathStyle: Boolean(endpoint), maxAttempts: 1,
+    credentials: { accessKeyId, secretAccessKey, ...(env.AWS_SESSION_TOKEN ? { sessionToken: env.AWS_SESSION_TOKEN } : {}) } });
+  const keyFor = (userId, analysisId) => `${prefix}${createHash('sha256').update(userId).digest('hex').slice(0, 16)}/${analysisId}.jpg`;
+  const checkedKey = key => {
+    if (typeof key !== 'string' || !key.startsWith(prefix) || key.includes('..')) throw new Error('invalid_object_key');
+    return key;
   };
-
-  // Placeholder: wire aws4-fetch or @aws-sdk/client-s3 in staging.
-  // For now throw clearly if invoked without implementation hook.
+  const send = async command => {
+    try { return await client.send(command, { abortSignal: AbortSignal.timeout(15_000) }); }
+    catch (cause) { throw Object.assign(new Error('object_store_unavailable', { cause }), { code: 'object_store_unavailable' }); }
+  };
   return {
-    kind: 's3',
-    keyFor,
-    bucket,
-    endpoint,
-    region,
-    async putJpeg() {
-      const err = new Error('S3 put not wired in this build — use OBJECT_STORE=http for local/staging mock');
-      err.code = 's3_not_implemented';
-      throw err;
+    kind: 's3', bucket, endpoint, region, keyFor,
+    async putJpeg(userId, analysisId, bytes) {
+      const key = keyFor(userId, analysisId);
+      await send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: bytes,
+        ContentType: 'image/jpeg', ContentLength: bytes.length,
+        Metadata: { 'expires-at': String(Date.now() + ttlMs) } }));
+      return { key, bytes: bytes.length };
     },
-    async getJpeg() {
-      const err = new Error('S3 get not wired in this build');
-      err.code = 's3_not_implemented';
-      throw err;
+    async getJpeg(key) {
+      const response = await send(new GetObjectCommand({ Bucket: bucket, Key: checkedKey(key) }));
+      if (Number(response.Metadata?.['expires-at']) <= Date.now()) {
+        response.Body?.destroy();
+        throw Object.assign(new Error('photo_expired'), { code: 'photo_expired' });
+      }
+      const chunks = []; let size = 0;
+      try {
+        for await (const chunk of response.Body) {
+          size += chunk.length;
+          if (size > 8 * 1024 * 1024) throw new Error('stored_photo_too_large');
+          chunks.push(chunk);
+        }
+      } finally { response.Body?.destroy(); }
+      return Buffer.concat(chunks);
     },
-    async delete() {},
-    async cleanupExpired() { return { removed: 0 }; },
+    async delete(key) { await send(new DeleteObjectCommand({ Bucket: bucket, Key: checkedKey(key) })); },
+    async cleanupExpired() { return { removed: 0, managedBy: 'bucket_lifecycle', ttlMs }; },
+    close() { client.destroy(); },
   };
 }
 
