@@ -11,13 +11,18 @@ final class WeekFitAppearanceController: ObservableObject {
     @Published private(set) var preference: WeekFitAppearancePreference
 
     init(preference: WeekFitAppearancePreference = .stored) {
-        self.preference = preference
+        #if DEBUG
+        let resolved = WeekFitUITestSupport.appearanceOverridePreference() ?? preference
+        #else
+        let resolved = preference
+        #endif
+        self.preference = resolved
         // Seed static tokens before first frame so cold launch never flashes the wrong theme.
         // `.system` uses the current trait; EnvironmentSync re-aligns once ColorScheme is available.
         WeekFitAppearanceSync.apply(
-            preference: preference,
+            preference: resolved,
             system: Self.bootstrapSystemColorScheme(),
-            nightBlend: preference == .light ? 0 : WeekFitPaletteStore.current.blendFactor
+            nightBlend: resolved == .light ? 0 : WeekFitPaletteStore.current.blendFactor
         )
     }
 

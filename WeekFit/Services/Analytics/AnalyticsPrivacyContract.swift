@@ -35,7 +35,13 @@ enum AnalyticsPrivacyContract {
         "email",
         "name",
         "workspace_id",
-        "account_id"
+        "account_id",
+        "transaction_id",
+        "original_transaction_id",
+        "apple_id",
+        "expiration_date",
+        "expires_date",
+        "purchase_date"
     ]
 
     /// Substrings that must not appear in parameter **values** (case-insensitive).

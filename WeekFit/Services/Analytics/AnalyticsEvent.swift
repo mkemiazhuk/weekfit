@@ -73,6 +73,13 @@ enum AnalyticsEvent: String, Sendable {
     case barcodeScanFailed = "barcode_scan_failed"
     case barcodeScanCancelled = "barcode_scan_cancelled"
 
+    // Photo food recognition (Today Log Food).
+    case foodPhotoScanStarted = "food_photo_scan_started"
+    case foodPhotoScanCompleted = "food_photo_scan_completed"
+    case foodPhotoScanFailed = "food_photo_scan_failed"
+    case foodPhotoConfirmationShown = "food_photo_confirmation_shown"
+    case foodPhotoLogged = "food_photo_logged"
+
     // Hydration.
     case hydrationLoggingStarted = "hydration_logging_started"
     case hydrationLoggingCompleted = "hydration_logging_completed"
@@ -136,4 +143,10 @@ enum AnalyticsEvent: String, Sendable {
     /// Neutral restore terminal: `no_purchases` or `cancelled` (not access success, not technical failure).
     case subscriptionRestoreCompleted = "subscription_restore_completed"
     case subscriptionRestoreFailed = "subscription_restore_failed"
+    /// Verified renewal flipped on→off (access may still be active). App-observed, not ASN time.
+    case subscriptionAutoRenewDisabled = "subscription_auto_renew_disabled"
+    /// Verified renewal flipped off→on. App-observed, not ASN time.
+    case subscriptionAutoRenewEnabled = "subscription_auto_renew_enabled"
+    /// Previously entitled subscription reached ordinary StoreKit `.expired` (not grace/retry/refund).
+    case subscriptionExpired = "subscription_expired"
 }

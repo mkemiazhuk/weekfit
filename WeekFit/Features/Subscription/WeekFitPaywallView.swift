@@ -8,6 +8,11 @@ struct WeekFitPaywallView: View {
     /// Stable for one presentation — must be minted by the presenter, not here.
     var paywallInstanceID: String
     var allowsDismiss: Bool = false
+    /// When true, auto-dismiss only after an active **paid** subscription (not trial/legacy).
+    var requiresPaidSubscription: Bool = false
+    /// Optional hero copy override (e.g. AI photo nutrition paywall).
+    var heroTitleKey: String? = nil
+    var heroSubtitleKey: String? = nil
 
     @EnvironmentObject private var subscriptionManager: SubscriptionManager
     @Environment(\.dismiss) private var dismiss
@@ -47,9 +52,16 @@ struct WeekFitPaywallView: View {
             )
         }
         .onChange(of: subscriptionManager.hasFullAccess) { _, hasAccess in
+            guard requiresPaidSubscription == false else { return }
             // Force Paywall diagnostics must keep the real paywall open for
             // legacy/subscribed testers; only auto-dismiss when override is off.
             if hasAccess, allowsDismiss, WeekFitForcePaywallStore.shared.isForcePaywallActive == false {
+                dismiss()
+            }
+        }
+        .onChange(of: subscriptionManager.canUseCloudPhotoNutritionAnalysis) { _, canUse in
+            guard requiresPaidSubscription else { return }
+            if canUse, allowsDismiss, WeekFitForcePaywallStore.shared.isForcePaywallActive == false {
                 dismiss()
             }
         }
@@ -80,8 +92,8 @@ struct WeekFitPaywallView: View {
         VStack(spacing: 0) {
             navBar
             VStack(alignment: .leading, spacing: 0) {
-                OnboardingTitle(text: WeekFitLocalizedString("paywall.title"))
-                OnboardingSubtitle(text: WeekFitLocalizedString("paywall.subtitle"))
+                OnboardingTitle(text: WeekFitLocalizedString(heroTitleKey ?? "paywall.title"))
+                OnboardingSubtitle(text: WeekFitLocalizedString(heroSubtitleKey ?? "paywall.subtitle"))
                     .padding(.top, Layout.heroTitleToSubtitle)
                 valueList
                     .padding(.top, Layout.heroToBenefits)

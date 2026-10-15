@@ -28,6 +28,14 @@ final class LocalDataResetService {
 
         var failures: [String] = []
 
+        NotificationCenter.default.post(name: .coachEveningSummaryWillReset, object: nil)
+        do {
+            try CoachEveningSummaryStore().eraseSummaryTextPreservingAttempts()
+        } catch {
+            failures.append("Evening Coach summaries: \(error.localizedDescription)")
+            Self.logger.error("Evening summary reset failed: \(error.localizedDescription, privacy: .public)")
+        }
+
         do {
             try clearSwiftData()
         } catch {
@@ -153,7 +161,8 @@ final class LocalDataResetService {
                 "healthkit.workout.syncStartDate",
                 "weekfit.debug.auth.email",
                 "weekfit.debug.auth.password",
-                "weekfit.auth.localSessionActive"
+                "weekfit.auth.localSessionActive",
+                PhotoFoodFreeTrialStore.defaultsKey
             ]
 
             knownKeys.forEach(defaults.removeObject(forKey:))

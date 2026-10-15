@@ -5,8 +5,6 @@ internal import Combine
 /// instead of checking products or identity themselves.
 @MainActor
 final class SubscriptionManager: ObservableObject {
-    nonisolated deinit {}
-
     @Published private(set) var accessState: WeekFitAccessState = .loading
     @Published private(set) var products: [WeekFitProductSnapshot] = []
     @Published private(set) var selectedProductID: String = WeekFitSubscriptionProductID.annual.rawValue
@@ -21,12 +19,18 @@ final class SubscriptionManager: ObservableObject {
     @Published private(set) var storefrontCountryCode: String?
     @Published private(set) var storefrontID: String?
     @Published private(set) var lastStoreProductsReturnedCount: Int = 0
+    /// Bumps when the one-time AI photo free trial is consumed so SwiftUI re-reads the gate.
+    @Published private(set) var photoAIFreeTrialRevision: Int = 0
+    /// True when StoreKit has a **standard paid** JWS (no intro/promo/offer code/win-back).
+    @Published private(set) var hasVerifiedPaidSubscriptionProof = false
 
     private let store: WeekFitStoreKitServicing
     private let bypassProvider: (() -> WeekFitEntitlementBypass)?
     private var fallbackStore: WeekFitEntitlementFallbackStore
     private var updatesTask: Task<Void, Never>?
     private var storefrontUpdatesTask: Task<Void, Never>?
+    /// Long-lived observer; manager outlives the process UI session.
+    private nonisolated(unsafe) var freeTrialObserver: NSObjectProtocol?
     private var hasStarted = false
     /// Prevent indefinite fail-open when StoreKit never becomes available.
     private var failOpenTimeoutTask: Task<Void, Never>?
@@ -40,6 +44,25 @@ final class SubscriptionManager: ObservableObject {
 
     var hasFullAccess: Bool {
         WeekFitEntitlementPolicy.hasFullAccess(for: accessState)
+    }
+
+    /// Cloud AI photo nutrition: **standard paid** StoreKit proof, or one complimentary free try.
+    /// Promo / intro / offer code / win-back do **not** unlock AI (server enforces the same).
+    var canUseCloudPhotoNutritionAnalysis: Bool {
+        _ = photoAIFreeTrialRevision
+        return hasVerifiedPaidSubscriptionProof || hasPhotoAIFreeTrialRemaining
+    }
+
+    /// True when the user still has the one-time free AI photo scan (and is not already paid).
+    var hasPhotoAIFreeTrialRemaining: Bool {
+        _ = photoAIFreeTrialRevision
+        return !hasVerifiedPaidSubscriptionProof && PhotoFoodFreeTrialStore.hasRemaining
+    }
+
+    /// Mark the complimentary AI photo scan used (client UX). Server also claims once per UID.
+    func consumePhotoAIFreeTrialIfNeeded() {
+        guard !hasVerifiedPaidSubscriptionProof else { return }
+        PhotoFoodFreeTrialStore.markConsumed()
     }
 
     /// True when Premium features (Coach / Meals / Plan) are gated.
@@ -94,6 +117,22 @@ final class SubscriptionManager: ObservableObject {
         self.fallbackStore = fallbackStore
         self.failOpenTimeout = failOpenTimeout
         self.restoreTimeout = restoreTimeout
+        freeTrialObserver = NotificationCenter.default.addObserver(
+            forName: .weekFitPhotoAIFreeTrialConsumed,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in
+                self.photoAIFreeTrialRevision += 1
+            }
+        }
+    }
+
+    nonisolated deinit {
+        if let freeTrialObserver {
+            NotificationCenter.default.removeObserver(freeTrialObserver)
+        }
     }
 
     private func currentBypass() -> WeekFitEntitlementBypass {
@@ -517,11 +556,19 @@ final class SubscriptionManager: ObservableObject {
         activeSubscription = currentSubscription.flatMap {
             WeekFitEntitlementPolicy.isActiveSubscription($0) ? $0 : nil
         }
+        // Lifecycle analytics from verified StoreKit snapshots (auto-renew / ordinary expiry).
+        // Does not emit revenue; purchase-sheet cancel remains `subscription_purchase_cancelled`.
+        SubscriptionLifecycleAnalytics.observe(
+            subscription: currentSubscription,
+            refreshSource: source
+        )
 
         if didApplyEntitlementOverride, let overrideState {
             cancelFailOpenTimeout()
             didApplyLoadingFailOpenGate = false
             accessState = overrideState
+            // UI tests: `.subscribed` override counts as paid proof so AI photo flows can run.
+            hasVerifiedPaidSubscriptionProof = (overrideState == .subscribed)
             #if DEBUG
             print(
                 """
@@ -552,6 +599,10 @@ final class SubscriptionManager: ObservableObject {
         } else {
             accessState = decision.state
         }
+
+        // AI photo: only a StoreKit JWS with no offer (not intro/promo/code/win-back).
+        hasVerifiedPaidSubscriptionProof =
+            await WeekFitPaidSubscriptionProof.currentPaidSubscriptionJWS() != nil
 
         cancelFailOpenTimeoutIfNotLoading()
         scheduleFailOpenTimeoutIfNeeded()

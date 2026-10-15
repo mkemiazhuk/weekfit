@@ -81,6 +81,10 @@ final class WeekFitEntitlementPolicyTests: XCTestCase {
         )
         XCTAssertEqual(decision.state, .trial)
         XCTAssertTrue(WeekFitEntitlementPolicy.hasFullAccess(for: decision.state))
+        XCTAssertFalse(
+            WeekFitEntitlementPolicy.canUseCloudPhotoNutritionAnalysis(for: decision.state),
+            "Trial must not unlock cloud AI photo nutrition"
+        )
     }
 
     func testActiveMonthlySubscriptionGrantsAccess() {
@@ -98,6 +102,17 @@ final class WeekFitEntitlementPolicyTests: XCTestCase {
         )
         XCTAssertEqual(decision.state, .subscribed)
         XCTAssertTrue(WeekFitEntitlementPolicy.hasFullAccess(for: decision.state))
+        XCTAssertTrue(WeekFitEntitlementPolicy.canUseCloudPhotoNutritionAnalysis(for: decision.state))
+    }
+
+    func testCloudPhotoNutritionRequiresPaidSubscriptionOnly() {
+        // Policy gate is paid-only; one complimentary client/server free scan is separate.
+        XCTAssertTrue(WeekFitEntitlementPolicy.canUseCloudPhotoNutritionAnalysis(for: .subscribed))
+        XCTAssertFalse(WeekFitEntitlementPolicy.canUseCloudPhotoNutritionAnalysis(for: .trial))
+        XCTAssertFalse(WeekFitEntitlementPolicy.canUseCloudPhotoNutritionAnalysis(for: .legacy))
+        XCTAssertFalse(WeekFitEntitlementPolicy.canUseCloudPhotoNutritionAnalysis(for: .loading))
+        XCTAssertFalse(WeekFitEntitlementPolicy.canUseCloudPhotoNutritionAnalysis(for: .expired))
+        XCTAssertFalse(WeekFitEntitlementPolicy.canUseCloudPhotoNutritionAnalysis(for: .unsubscribed))
     }
 
     func testExpiredSubscriptionIsGatedAndDoesNotWipeEligibility() {

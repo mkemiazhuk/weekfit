@@ -40,6 +40,13 @@ enum WeekFitEntitlementPolicy {
         }
     }
 
+    /// Coarse access-state hint for cloud AI photo nutrition.
+    /// Runtime gate uses `WeekFitPaidSubscriptionProof` (standard paid JWS only —
+    /// no intro / promo / offer code / win-back) plus the one complimentary free scan.
+    static func canUseCloudPhotoNutritionAnalysis(for state: WeekFitAccessState) -> Bool {
+        state == .subscribed
+    }
+
     static func isLegacy(
         originalPurchaseDate: Date?,
         cutoff: Date = WeekFitMonetizationCutoff.date

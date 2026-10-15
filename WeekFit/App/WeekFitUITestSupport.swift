@@ -30,6 +30,8 @@ enum WeekFitUITestSupport {
     /// - expired
     /// - loading / unavailable
     static let entitlementStateOverrideArgument = "-weekfit-entitlement-test-state="
+    /// Debug-only: force WeekFit appearance preference for UI tests (`light` / `dark` / `system`).
+    static let appearanceOverrideArgument = "-weekfit-appearance="
 
     static var isActive: Bool {
         #if DEBUG
@@ -90,7 +92,28 @@ enum WeekFitUITestSupport {
         default: return nil
         }
     }
+    static func appearanceOverridePreference() -> WeekFitAppearancePreference? {
+        parseAppearanceOverride(
+            from: ProcessInfo.processInfo.arguments,
+            isUITesting: isActive
+        )
+    }
+
+    static func parseAppearanceOverride(
+        from arguments: [String],
+        isUITesting: Bool
+    ) -> WeekFitAppearancePreference? {
+        guard isUITesting else { return nil }
+        guard let raw = arguments.first(where: { $0.hasPrefix(appearanceOverrideArgument) }) else {
+            return nil
+        }
+        let value = raw.dropFirst(appearanceOverrideArgument.count)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        return WeekFitAppearancePreference(rawValue: value)
+    }
     #else
     static func entitlementOverrideState() -> WeekFitAccessState? { nil }
+    static func appearanceOverridePreference() -> WeekFitAppearancePreference? { nil }
     #endif
 }

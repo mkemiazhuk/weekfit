@@ -227,6 +227,21 @@ Never send barcode digits or product names.
 
 ---
 
+## Photo food log (Today → Log Food)
+
+| Event | Trigger | Parameters |
+|-------|---------|------------|
+| `food_photo_scan_started` | Camera / Photos / barcode capture begins analysis | `method`, `source` |
+| `food_photo_scan_completed` | Recognition or barcode/label path ready for confirm | `method`, `source` |
+| `food_photo_scan_failed` | Network / invalid / no food / not configured | `method`, `source`, `reason` |
+| `food_photo_confirmation_shown` | Confirm sheet presented | `method`, `source` |
+| `food_photo_logged` | Diary row saved (alongside `food_logging_completed`) | `method`, `source`, `saved_to_library`, `estimate_kind`, `duration_bucket` |
+
+`method`: `camera` \| `library` \| `barcode` for photo funnel; food logging method uses `photo` \| `barcode`.  
+Never send photos, meal names, ingredient text, or macros.
+
+---
+
 ## Hydration
 
 | Event | Trigger | Parameters |
@@ -332,19 +347,50 @@ Never send prices, trial length, HealthKit, nutrition, recovery, or account iden
 | `paywall_viewed` | Once per paywall presentation (deduped by `paywall_instance_id`) | `source` = `onboarding` \| `root` \| `settings` \| `tab` \| `other`; `requested_tab`; `current_tab`; `has_full_access`; `paywall_instance_id` |
 | `subscription_option_selected` | Monthly / annual selected | `product_id`; `requested_tab` |
 | `subscription_purchase_started` | Purchase CTA | `product_id`; `requested_tab` |
-| `subscription_purchase_success` | Verified entitlement after purchase (incl. deferred Ask-to-Buy unlock) | `product_id`; `requested_tab` |
+| `subscription_purchase_success` | Verified entitlement after purchase (incl. deferred Ask-to-Buy unlock). **May be free-trial signup**, not paid conversion — keep distinct from auto-renew / expiry lifecycle events | `product_id`; `requested_tab` |
 | `subscription_purchase_cancelled` | User cancelled StoreKit sheet | `product_id`; `requested_tab` |
 | `subscription_purchase_failed` | StoreKit / verification / products unavailable / pending / entitlement lag | `product_id`; `requested_tab`; `failure_reason` = `storekit_error` \| `verification_failed` \| `entitlement_not_propagated` \| `products_unavailable` \| `pending` |
 | `subscription_restore_started` | Explicit Restore Purchases tap only | `source`; `requested_tab`; optional `paywall_instance_id` |
 | `subscription_restore_success` | Access confirmed | `result` = `restored` \| `already_entitled`; `source`; `requested_tab`; `has_entitlement_before`; `has_entitlement_after`; `restored_product_id`; optional `paywall_instance_id` |
 | `subscription_restore_completed` | Finished without access grant and without StoreKit fault | `result` = `no_purchases` \| `cancelled`; `source`; `requested_tab`; `has_entitlement_before`; `has_entitlement_after`; optional `paywall_instance_id` |
 | `subscription_restore_failed` | Technical restore failure | `result` / `failure_reason` = `storekit_error` \| `timeout`; `error_code`; `error_domain`; `has_entitlement_after`; optional `paywall_instance_id` |
+| `subscription_auto_renew_disabled` | Verified `willAutoRenew` flipped **on → off** (same `product_id`; access may still be active / trial) | `product_id`; `source` = `app_start` \| `foreground` \| `transaction_updates` \| `purchase` \| `restore` \| `storefront` \| `external_change` \| `refresh` \| `other`; `subscription_phase` = `trial` \| `paid` \| `unknown` |
+| `subscription_auto_renew_enabled` | Verified `willAutoRenew` flipped **off → on** (same `product_id`) | `product_id`; `source`; `subscription_phase` |
+| `subscription_expired` | Previously entitled subscription observed as ordinary StoreKit **expired** (not grace, billing retry, revocation, or empty/unverified load) | `product_id`; `source`; `subscription_phase` |
+
+### Lifecycle semantics (client-observed)
+
+| Concern | Behavior |
+|---------|----------|
+| **Baseline** | First verified observation after install (or wipe) **persists only** — no lifecycle events. Existing installs quiet-baseline on first refresh after this ship. |
+| **Trial vs cancel** | `subscription_purchase_success` may be a free-trial signup. Auto-renew disable is a **separate** event; trial can remain active after disable. |
+| **Purchase sheet dismiss** | Still only `subscription_purchase_cancelled` — not auto-renew disabled / expired. |
+| **Duplicates** | Snapshot comparison + UserDefaults baseline survive refresh / foreground / relaunch / `Transaction.updates`. Genuine disable → enable → disable emits **three** events. |
+| **Product switch** | Same-product only for auto-renew flips; upgrading plans does not mark the old plan as churn. Expiry requires **loss of entitled access**. |
+| **Timestamps** | Event time = app observation time, **not** Apple Settings cancellation time. |
+| **PII** | Never send transaction IDs, original transaction IDs, Apple IDs, or exact expiration timestamps. Local baseline may store product / flags for dedupe only. |
+| **Revenue** | Lifecycle events never call `Analytics.logTransaction`. |
+
+### App Store Server Notifications V2 (not integrated)
+
+WeekFit has **no** backend receiving ASN V2 today. Client observation cannot guarantee Firebase sees a cancellation if the user disables renewal in Apple Settings and never reopens the app.
+
+For reliable coverage when the app is closed, a future server should handle at least:
+
+| ASN notification | Subtype / note | Maps toward |
+|------------------|----------------|-------------|
+| `DID_CHANGE_RENEWAL_STATUS` | `AUTO_RENEW_DISABLED` | `subscription_auto_renew_disabled` |
+| `DID_CHANGE_RENEWAL_STATUS` | `AUTO_RENEW_ENABLED` | `subscription_auto_renew_enabled` |
+| `EXPIRED` | inspect `expirationIntent` / reason — do not treat refunds/`REVOKE` as ordinary expiry | `subscription_expired` |
+
+Do not pretend ASN is live until that backend exists.
 
 ### Product funnel vs Firebase revenue
 
 | Layer | Events | Purpose |
 |-------|--------|---------|
 | **Product funnel** | `subscription_purchase_*`, `subscription_restore_*` | CTA → outcome UX analytics (no money) |
+| **Lifecycle (observed)** | `subscription_auto_renew_*`, `subscription_expired` | Renewal intent + ordinary expiry (no money) |
 | **Financial** | Firebase auto `in_app_purchase` via `Analytics.logTransaction` | Revenue / ROAS |
 
 **StoreKit 2 + Firebase iOS SDK 12.16 (`FirebaseAnalyticsCore`):**

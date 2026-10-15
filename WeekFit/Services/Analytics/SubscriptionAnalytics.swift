@@ -73,6 +73,8 @@ enum SubscriptionAnalytics {
         )
     }
 
+    /// Verified entitlement after a purchase attempt. May represent **free-trial signup**
+    /// (StoreKit intro), not paid conversion — see lifecycle events for renew / expiry.
     static func purchaseSuccess(
         productID: String,
         requestedTab: String? = nil,
@@ -323,6 +325,8 @@ enum SubscriptionAnalyticsSource: String, Sendable {
     case root
     case settings
     case tab
+    /// Cloud AI photo nutrition gate (paid subscription only).
+    case photoFood
     case other
 }
 

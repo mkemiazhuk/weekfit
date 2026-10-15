@@ -89,6 +89,9 @@ struct WeekFitSubscriptionSnapshot: Equatable, Sendable {
     var gracePeriodExpirationDate: Date? = nil
     /// False when the user cancelled auto-renewal but the current period is still active.
     var willAutoRenew: Bool = true
+    /// True only when `willAutoRenew` came from verified `Product.SubscriptionInfo.RenewalInfo`.
+    /// Unverified / entitlements-only snapshots must not drive auto-renew analytics transitions.
+    var isRenewalInfoVerified: Bool = false
 
     init(
         productID: String,
@@ -99,7 +102,8 @@ struct WeekFitSubscriptionSnapshot: Equatable, Sendable {
         inGraceOrRetry: Bool = false,
         billingState: WeekFitSubscriptionBillingState? = nil,
         gracePeriodExpirationDate: Date? = nil,
-        willAutoRenew: Bool = true
+        willAutoRenew: Bool = true,
+        isRenewalInfoVerified: Bool = false
     ) {
         self.productID = productID
         self.isIntroductoryTrial = isIntroductoryTrial
@@ -108,6 +112,7 @@ struct WeekFitSubscriptionSnapshot: Equatable, Sendable {
         self.isRevoked = isRevoked
         self.gracePeriodExpirationDate = gracePeriodExpirationDate
         self.willAutoRenew = willAutoRenew
+        self.isRenewalInfoVerified = isRenewalInfoVerified
         if let billingState {
             self.billingState = billingState
             self.inGraceOrRetry = billingState == .inGracePeriod

@@ -41,6 +41,14 @@ enum AnalyticsParameterKey {
     static let stage = "stage"
     /// Coarse diagnostic class: `expected` | `insufficient_input` | `failed`.
     static let outcomeClass = "outcome_class"
+    /// Subscription lifecycle phase: `trial` | `paid` | `unknown`.
+    static let subscriptionPhase = "subscription_phase"
+    /// Photo food: whether the log also saved a library meal (`true`/`false`).
+    static let savedToLibrary = "saved_to_library"
+    /// Photo food estimate kind: `database` | `estimated` | `mixed`.
+    static let estimateKind = "estimate_kind"
+    /// Coarse latency bucket from Log Food open → successful log.
+    static let durationBucket = "duration_bucket"
 }
 
 /// Stable onboarding step identifiers matching `FirstRunOnboardingView.Step`.
@@ -118,6 +126,7 @@ enum FoodLoggingMethod: String, Sendable {
     case barcode
     case mealBuilder = "meal_builder"
     case quickLog = "quick_log"
+    case photo
     case other
 }
 

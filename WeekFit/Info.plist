@@ -15,5 +15,12 @@
 	</array>
 	<key>FirebaseAutomaticScreenReportingEnabled</key>
 	<false/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>WeekFitCloudAPIBaseURL</key>
+	<string></string>
 </dict>
 </plist>

@@ -182,8 +182,16 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
             #endif
         }
 
+        // Prefer Product.SubscriptionInfo.status when available — it carries verified
+        // renewal (`willAutoRenew`) and grace / billing-retry state that entitlements omit.
         if let fromStatus = await subscriptionStatusSnapshot() {
-            snapshots.append(fromStatus)
+            #if DEBUG
+            WeekFitSubscriptionAccessDiagnostics.logLoad(
+                entitlementLines: entitlementDiagLines,
+                selected: fromStatus
+            )
+            #endif
+            return fromStatus
         }
 
         let selected = snapshots.first { WeekFitEntitlementPolicy.isActiveSubscription($0) }
@@ -386,6 +394,9 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
                 }()
                 guard let transaction else { continue }
                 let renewal = verifiedRenewalInfo(from: status)
+                let renewalVerified = renewal != nil
+                // Only trust willAutoRenew when RenewalInfo JWS verified; default true is
+                // display-safe but must not drive lifecycle analytics (`isRenewalInfoVerified`).
                 let willAutoRenew = renewal?.willAutoRenew ?? true
                 let graceEnd = renewal?.gracePeriodExpirationDate
                 let renewalStateLabel = String(describing: status.state)
@@ -404,7 +415,8 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
                         isRevoked: false,
                         billingState: billingState,
                         gracePeriodExpirationDate: graceEnd,
-                        willAutoRenew: willAutoRenew
+                        willAutoRenew: willAutoRenew,
+                        isRenewalInfoVerified: renewalVerified
                     )
                 case .inGracePeriod:
                     billingState = .inGracePeriod
@@ -418,7 +430,8 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
                         isRevoked: false,
                         billingState: billingState,
                         gracePeriodExpirationDate: graceEnd,
-                        willAutoRenew: willAutoRenew
+                        willAutoRenew: willAutoRenew,
+                        isRenewalInfoVerified: renewalVerified
                     )
                 case .inBillingRetryPeriod:
                     billingState = .inBillingRetry
@@ -431,7 +444,8 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
                         isRevoked: false,
                         billingState: billingState,
                         gracePeriodExpirationDate: graceEnd,
-                        willAutoRenew: willAutoRenew
+                        willAutoRenew: willAutoRenew,
+                        isRenewalInfoVerified: renewalVerified
                     )
                 case .expired, .revoked:
                     snapshot = WeekFitSubscriptionSnapshot(
@@ -441,7 +455,8 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
                         isExpired: true,
                         isRevoked: status.state == .revoked,
                         billingState: .none,
-                        willAutoRenew: willAutoRenew
+                        willAutoRenew: willAutoRenew,
+                        isRenewalInfoVerified: renewalVerified
                     )
                 default:
                     continue
