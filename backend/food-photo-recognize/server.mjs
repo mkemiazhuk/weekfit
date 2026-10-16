@@ -2,7 +2,7 @@ import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { authenticate } from './auth.mjs';
-import { recognize, validateInput, ServiceError } from './recognition.mjs';
+import { recognize, validateInput, ServiceError, FOOD_PROMPT_VERSION } from './recognition.mjs';
 import { createSummaryHandler, SUMMARY_PROMPT_VERSION } from './coach-summary.mjs';
 import { requirePaidSubscriptionJWS } from './subscription-proof.mjs';
 import { createConcurrencyGate } from './concurrency.mjs';
@@ -289,6 +289,7 @@ export function createServer(config, dependencies = {}) {
         ok: true,
         configured: configured(),
         model: config.model,
+        photoPromptVersion: FOOD_PROMPT_VERSION,
         allowDevAuth: config.allowDevAuth,
         openAIMock: Boolean(config.openAIMock),
         asyncAnalysis: Boolean(stack),

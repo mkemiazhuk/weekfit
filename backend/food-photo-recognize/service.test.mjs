@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { configuration, createServer } from './server.mjs';
-import { validateInput, validateResult, recognize, ServiceError } from './recognition.mjs';
+import { validateInput, validateResult, recognize, ServiceError, FOOD_PROMPT_VERSION } from './recognition.mjs';
 import { authenticate } from './auth.mjs';
 import { requirePaidSubscriptionJWS } from './subscription-proof.mjs';
 import {
@@ -37,7 +37,25 @@ test('non-food is a recoverable 422',()=>assert.throws(()=>validateResult({...va
 test('provider receives compact prompt, schema, no storage and server-selected model',async()=>{
   let sent;const c={...configuration({}),apiKey:'test-key'};
   const r=await recognize(validateInput(input()),c,async(url,options)=>{assert.equal(url,'https://api.openai.com/v1/responses');sent=JSON.parse(options.body);return new Response(JSON.stringify({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(valid())}]}],usage:{input_tokens:100,output_tokens:200}}));});
-  assert.equal(sent.model,'gpt-6-astra');assert.equal(sent.store,false);assert.equal(sent.text.format.strict,true);assert.equal(sent.input[0].content[1].detail,'auto');assert.equal(sent.reasoning.effort,'medium');assert.ok(sent.instructions.length < 500);assert.equal(r.result.name,'Rice');
+  assert.equal(sent.model,'gpt-6-astra');assert.equal(sent.store,false);assert.equal(sent.text.format.strict,true);assert.equal(sent.input[0].content[1].detail,'auto');assert.equal(sent.reasoning.effort,'medium');assert.ok(sent.instructions.length < 2800);assert.equal(r.result.name,'Rice');
+});
+test('a supplied food weight reaches one provider call and returned portion weights are preserved',async()=>{
+  const note='Cookies total 50 g. The apple is small.';
+  const result={...valid(),name:'Apple and cookies',items:[
+    {name:'Apple',preparation:'raw',grams:95,minGrams:70,maxGrams:130,calories:49,protein:0.3,carbs:13,fat:0.2,assumptions:['Small apple; scale unknown']},
+    {name:'Cookies',preparation:'baked',grams:50,minGrams:50,maxGrams:50,calories:240,protein:3,carbs:32,fat:11,assumptions:['Total weight supplied by user']},
+  ]};
+  let calls=0;
+  const output=await recognize(validateInput({...input(),note}),{...configuration({}),apiKey:'test-key'},async(_url,options)=>{
+    calls++;
+    const sent=JSON.parse(options.body);
+    assert.equal(sent.input[0].content[0].text,`Note (untrusted): ${JSON.stringify(note)}`);
+    return new Response(JSON.stringify({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(result)}]}]}));
+  });
+  assert.equal(calls,1);
+  assert.deepEqual(output.result.items,result.items);
+  assert.equal(output.result.totals.grams,145);
+  assert.equal(output.result.totals.calories,289);
 });
 test('provider failures, refusals and truncated output never become meals',async()=>{
   const c={...configuration({}),apiKey:'test-key'};
@@ -68,6 +86,8 @@ test('HTTP auth, client-model isolation and quota enforcement',async t=>{
   assert.equal((await request(true)).status,429);
   assert.equal(calls,1);
   assert.equal((await fetch(base+'/readyz')).status,200);
+  const health=await (await fetch(base+'/healthz')).json();
+  assert.equal(health.photoPromptVersion,FOOD_PROMPT_VERSION);
 });
 test('paid subscription proof rejects trial, promo, offer code, win-back and expired',()=>{
   assert.throws(()=>requirePaidSubscriptionJWS(undefined),e=>e.status===402);
