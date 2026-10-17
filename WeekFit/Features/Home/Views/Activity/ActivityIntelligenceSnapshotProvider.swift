@@ -127,6 +127,134 @@ final class ActivityIntelligenceSnapshotProvider {
         )
     }
 
+    /// Lightweight day bundle for evening Coach — skips hourly chart, sleep interval,
+    /// and 8-week historical weekday loads used only by Activity Intelligence.
+    func buildEveningRecapDayBundle(
+        for date: Date,
+        healthManager: HealthManager,
+        plannedActivities: [PlannedActivity]
+    ) async -> (steps: Int, distanceKm: Double, sessions: [ActivitySessionSnapshot]) {
+        async let workouts = healthManager.loadWorkoutSamples(for: date)
+        async let stepsAndDistance = healthManager.readStepsAndWalkingDistance(for: date)
+
+        let workoutSamples = await workouts
+        let dayMetrics = await stepsAndDistance
+
+        let sessions: [ActivitySessionSnapshot]
+        if healthManager.isAppReviewDemoActive {
+            sessions = demoPlannedActivitySessions(
+                for: date,
+                plannedActivities: plannedActivities
+            )
+        } else {
+            let healthKitSessions = workoutSamples.map { makeSnapshot(from: $0) }
+            let localQuickStartSessions = localQuickStartSessions(
+                for: date,
+                plannedActivities: plannedActivities,
+                now: Date()
+            )
+            sessions = (healthKitSessions + localQuickStartSessions)
+                .sorted { $0.startDate < $1.startDate }
+        }
+
+        return (dayMetrics.steps, dayMetrics.distanceKm, sessions)
+    }
+
+    /// Evening Coach recap: HK + local quick start, plus completed Plan recovery
+    /// (sauna / breath / yoga / stretch) that never landed in HealthKit.
+    func sessionsForEveningRecap(
+        snapshotSessions: [ActivitySessionSnapshot],
+        plannedActivities: [PlannedActivity],
+        day: Date,
+        now: Date = Date()
+    ) -> [ActivitySessionSnapshot] {
+        let base = snapshotSessions.filter { !$0.isLiveLocalQuickStart }
+        let extras = completedRecoveryPlanSessions(
+            for: day,
+            plannedActivities: plannedActivities,
+            existing: base,
+            now: now
+        )
+        guard !extras.isEmpty else { return base }
+        return CoachEveningRecapActivityAggregator.dedupe(base + extras)
+    }
+
+    private func completedRecoveryPlanSessions(
+        for day: Date,
+        plannedActivities: [PlannedActivity],
+        existing: [ActivitySessionSnapshot],
+        now: Date
+    ) -> [ActivitySessionSnapshot] {
+        let calendar = Calendar.current
+        let existingPlannedIDs = Set(existing.compactMap(\.plannedActivityId))
+        let existingWorkoutIDs = Set(existing.compactMap(\.workoutID))
+
+        return plannedActivities.compactMap { activity in
+            guard calendar.isDate(activity.date, inSameDayAs: day) else { return nil }
+            guard !activity.isSkipped else { return nil }
+            guard isFinishedRecoveryCandidate(activity, now: now) else { return nil }
+            guard isRecoveryPlanActivity(activity) else { return nil }
+            if existingPlannedIDs.contains(activity.id) { return nil }
+            if let uuid = activity.healthKitWorkoutUUID.flatMap(UUID.init(uuidString:)),
+               existingWorkoutIDs.contains(uuid) {
+                return nil
+            }
+            return makePlannedActivitySnapshot(activity)
+        }
+    }
+
+    private func isFinishedRecoveryCandidate(_ activity: PlannedActivity, now: Date) -> Bool {
+        if activity.isCompleted { return true }
+        // Linked to HealthKit (even if the workout query omitted mindfulness / sauna).
+        if activity.healthKitWorkoutUUID?.isEmpty == false { return true }
+        let source = activity.source.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        // Local Today quick-log recovery that already started.
+        if source == "today", activity.date <= now { return true }
+        return false
+    }
+
+    private func isRecoveryPlanActivity(_ activity: PlannedActivity) -> Bool {
+        switch activity.timelineEventKind {
+        case .recovery, .sauna:
+            return true
+        case .food, .drink, .workout, .calendar, .sleep, .bodyWeight, .mood, .coachNote:
+            return false
+        case .plannedActivity:
+            break
+        }
+
+        let type = activity.type.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if type == "recovery" { return true }
+
+        let haystack = [
+            activity.title,
+            activity.icon,
+            activity.imageName
+        ]
+        .joined(separator: " ")
+        .lowercased()
+
+        // Keep walks in the day-distance hero — not as recovery rows.
+        if haystack.contains("walk") || haystack.contains("ход") || haystack.contains("прогул")
+            || haystack.contains("hike") || haystack.contains("поход") {
+            return false
+        }
+
+        return haystack.contains("yoga")
+            || haystack.contains("йога")
+            || haystack.contains("stretch")
+            || haystack.contains("растяж")
+            || haystack.contains("breath")
+            || haystack.contains("дых")
+            || haystack.contains("sauna")
+            || haystack.contains("саун")
+            || haystack.contains("pilates")
+            || haystack.contains("пилатес")
+            || haystack.contains("mobility")
+            || haystack.contains("recovery-")
+            || activity.imageName.lowercased().hasPrefix("recovery-")
+    }
+
     func makeSnapshot(from workout: HKWorkout) -> ActivitySessionSnapshot {
         let title = workoutTitle(for: workout.workoutActivityType)
         let durations = WorkoutFitnessMetrics.durations(from: workout)

@@ -53,6 +53,7 @@ private struct WeekPlannerLiveQueryView: View {
 
     @State private var selectedMeal: Meals?
     @State private var selectedFood: Meals?
+    @State private var selectedLoggedActivity: PlannedActivity?
     @State private var showNutritionDetails = false
     @State private var nutritionDetailsDate = Date()
     @State private var selectedActivitySession: ActivitySessionSnapshot?
@@ -83,7 +84,6 @@ private struct WeekPlannerLiveQueryView: View {
     @State private var timelineItemPendingDelete: PlanTimelineItem?
     @State private var hasPerformedInitialScroll = false
 
-    @ScaledMetric(relativeTo: .title3) private var selectedDayTitleFontSize: CGFloat = 19
 
     var body: some View {
         activePlannerBodyFromLiveQuery()
@@ -190,6 +190,22 @@ private struct WeekPlannerLiveQueryView: View {
                 cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
                 background: QuickActionSheetDesign.Color.sheetBackground(for: .food)
             )
+        }
+        .sheet(item: $selectedLoggedActivity) { activity in
+            LoggedMealDetailView(
+                activity: activity,
+                existingMeals: customMeals,
+                onSavedToLibrary: { meal in
+                    let updated = CustomMealStore.upsert(meal, into: userSettings.customMealsCatalog)
+                    userSettings.replaceCustomMealsCatalog(updated)
+                    viewModel.syncCustomMeals(
+                        from: updated,
+                        revision: userSettings.customMealsCatalogRevision
+                    )
+                }
+            )
+            .environmentObject(languageManager)
+            .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
         }
         .fullScreenCover(isPresented: $showNutritionDetails) {
             NutritionDetailsView(
@@ -587,6 +603,13 @@ private struct WeekPlannerLiveQueryView: View {
 
     private func openTimelineActivity(_ activity: PlannedActivity) {
         if activity.timelineEventKind == .food {
+            if PlanTimelineRouter.shouldOpenLoggedMealDetail(
+                for: activity,
+                customMeals: customMeals
+            ) {
+                selectedLoggedActivity = activity
+                return
+            }
             openTimelineMeal(
                 PlanTimelineRouter.meal(
                     for: activity,
@@ -607,6 +630,14 @@ private struct WeekPlannerLiveQueryView: View {
                 let session = await sessionResolver.resolve(activity, healthManager: healthManager)
                 selectedActivitySession = session
             }
+            return
+        }
+
+        if PlanTimelineRouter.shouldOpenLoggedMealDetail(
+            for: activity,
+            customMeals: customMeals
+        ) {
+            selectedLoggedActivity = activity
             return
         }
 
@@ -689,7 +720,7 @@ private struct WeekOverviewLegend: View {
     ]
 
     @Environment(\.weekFitPalette) private var palette
-    @ScaledMetric(relativeTo: .caption2) private var fontSize: CGFloat = 10.5
+    @ScaledMetric(relativeTo: .caption) private var fontSize: CGFloat = 12.5
     @ScaledMetric(relativeTo: .caption2) private var dotSize: CGFloat = 5
 
     var body: some View {
@@ -747,7 +778,8 @@ private extension WeekPlannerLiveQueryView {
             HStack(alignment: .center, spacing: 10) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(selectedDayKind.legendLabel)
-                        .font(.system(size: selectedDayTitleFontSize, weight: .semibold, design: .rounded))
+                        .font(WeekFitType.sectionTitle.weight(.semibold))
+                        .fontDesign(.rounded)
                         // Environment palette — not WeekFitTheme store — so Light ink
                         // cannot stick as white after an appearance flip.
                         .foregroundStyle(palette.textPrimary)
@@ -757,7 +789,7 @@ private extension WeekPlannerLiveQueryView {
 
                     if selectedDayActivities.isEmpty {
                         Text(WeekFitLocalizedString("planner.daySubtitle.empty"))
-                            .font(.system(size: 12, weight: .medium))
+                            .font(WeekFitType.secondary.weight(.medium))
                             .foregroundStyle(palette.textSecondary)
                             .lineLimit(2)
                             .minimumScaleFactor(0.86)
@@ -776,7 +808,7 @@ private extension WeekPlannerLiveQueryView {
                         )
                     } label: {
                         Image(systemName: "plus")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(WeekFitType.button)
                             .accessibilityHidden(true)
                     }
                     .buttonStyle(PlanHeaderAddButtonStyle())
@@ -1032,16 +1064,17 @@ private extension WeekPlannerLiveQueryView {
                     ZStack {
                         Circle()
                             .fill(WeekFitTheme.primaryGreen.opacity(0.14))
-                            .frame(width: 40, height: 40)
+                            .frame(width: 44, height: 44)
 
                         Image(systemName: "calendar.badge.plus")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(WeekFitTheme.primaryGreen.opacity(0.95))
                     }
                     .accessibilityHidden(true)
 
                     Text(AppText.Planner.buildYourDay)
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(WeekFitType.cardTitle)
+                        .fontDesign(.rounded)
                         .foregroundStyle(palette.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
 
@@ -1050,9 +1083,10 @@ private extension WeekPlannerLiveQueryView {
 
                 HStack(spacing: 8) {
                     Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .bold))
+                        .font(WeekFitType.button.weight(.bold))
                     Text(WeekFitLocalizedString("planner.sheet.addTitle"))
-                        .font(.system(size: 14.5, weight: .semibold, design: .rounded))
+                        .font(WeekFitType.button)
+                        .fontDesign(.rounded)
                 }
                 .foregroundStyle(palette.isLight ? Color.white : WeekFitTheme.primaryText)
                 .frame(maxWidth: .infinity)
@@ -1189,7 +1223,23 @@ private extension WeekPlannerLiveQueryView {
     }
 
     private func matchingCustomMeal(for activity: PlannedActivity) -> Meals? {
-        guard activity.type.lowercased() == "meal" else { return nil }
+        let type = activity.type.lowercased()
+        guard type == "meal" || type == "snack" || activity.timelineEventKind == .food else {
+            return nil
+        }
+
+        if let libraryId = activity.libraryMealId?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !libraryId.isEmpty {
+            return customMeals.first { $0.id == libraryId }
+        }
+
+        let hasSnapshot = !(activity.nutritionSnapshotJSON ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty
+        if hasSnapshot {
+            return nil
+        }
 
         let normalizedTitle = CustomMealStore.normalizedTitle(activity.title)
         guard !normalizedTitle.isEmpty else { return nil }
@@ -1581,18 +1631,19 @@ private struct PlanDayStatChip: View {
     @Environment(\.weekFitPalette) private var palette
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 5) {
             Image(systemName: icon)
-                .font(.system(size: 10.5, weight: .semibold))
+                .font(WeekFitType.captionEmphasized)
                 .foregroundStyle(tint.opacity(0.88))
 
             Text("\(count)")
-                .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                .font(WeekFitType.secondary.weight(.semibold))
+                .fontDesign(.rounded)
                 .foregroundStyle(palette.textSecondary)
                 .monospacedDigit()
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4.5)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5.5)
         .background {
             Capsule()
                 .fill(tint.opacity(0.09))
@@ -1810,9 +1861,9 @@ private struct PlanningWeekPicker: View {
             action()
         } label: {
             Image(systemName: systemName)
-                .font(.system(size: 11, weight: .bold))
+                .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(WeekFitTheme.whiteOpacity(0.64))
-                .frame(width: 24, height: 38)
+                .frame(width: 28, height: 40)
                 .background {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(PlanScreenSurface.capsuleFill)
@@ -1857,20 +1908,29 @@ private struct DynamicDayCapsule: View {
             VStack(spacing: 1) {
                 HStack(spacing: 2) {
                     Text(dayLabel)
-                        .font(.system(size: 9.5, weight: isSelected ? .semibold : .medium, design: .rounded))
+                        .font(
+                            isSelected
+                                ? WeekFitType.captionEmphasized
+                                : WeekFitType.caption
+                        )
+                        .fontDesign(.rounded)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.70)
 
                     if isToday {
                         Circle()
                             .fill(kind.color.opacity(isSelected ? 1 : 0.72))
-                            .frame(width: 3, height: 3)
+                            .frame(width: 3.5, height: 3.5)
                     }
                 }
                 .foregroundStyle(dayLabelColor)
 
                 Text(dayNumber)
-                    .font(.system(size: 14, weight: isSelected ? .semibold : .medium, design: .rounded))
+                    .font(
+                        isSelected
+                            ? WeekFitType.compactCardTitle
+                            : WeekFitType.body.weight(.medium)
+                    )
+                    .fontDesign(.rounded)
                     .monospacedDigit()
                     .foregroundStyle(dayNumberColor)
             }

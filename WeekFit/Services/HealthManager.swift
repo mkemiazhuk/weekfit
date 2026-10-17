@@ -396,6 +396,23 @@ final class HealthManager: ObservableObject {
         )
     }
     
+    /// Steps + walking/running distance only — for evening recap day comparison.
+    /// Avoids the full `readActivityMetrics` path (workouts/sleep/HRV/VO2 per day).
+    func readStepsAndWalkingDistance(for date: Date) async -> (steps: Int, distanceKm: Double) {
+        if isAppReviewDemoActive, let provider = appReviewDemoProvider {
+            let metrics = provider.activityMetrics(for: date)
+            return (metrics.steps, metrics.distanceKm)
+        }
+
+        guard isHealthAccessRequested else {
+            return (0, 0)
+        }
+
+        async let stepsCount = readDaySum(.stepCount, unit: .count(), for: date)
+        async let distanceMeters = readDaySum(.distanceWalkingRunning, unit: .meter(), for: date)
+        return (Int(await stepsCount), await distanceMeters / 1000.0)
+    }
+
     func readActivityMetrics(for date: Date) async -> ActivityMetricsSnapshot {
         if isAppReviewDemoActive, let provider = appReviewDemoProvider {
             return provider.activityMetrics(for: date)

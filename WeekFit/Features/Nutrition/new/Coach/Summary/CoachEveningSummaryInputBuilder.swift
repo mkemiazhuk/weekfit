@@ -16,19 +16,20 @@ enum CoachEveningSummaryInputBuilder {
         guard calendar.isDate(input.selectedDate, inSameDayAs: now) else {
             return .selectedDateNotToday
         }
-        // Manual test mode: do not require a fresh snapshot clock or 20:00.
         if CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow {
-            guard abs(input.now.timeIntervalSince(now)) < 10 * 60 else { return .snapshotStale }
-            guard CoachEveningSummaryPolicy.isEvening(input.now, calendar: calendar) else {
+            // Evening recap auto path: require local evening; allow slightly stale snapshots.
+            guard CoachEveningSummaryPolicy.isEvening(now, calendar: calendar) else {
                 return .outsideEveningWindow
             }
+            guard abs(input.now.timeIntervalSince(now)) < 30 * 60 else { return .snapshotStale }
         }
         return nil
     }
 
     static func build(input: CoachInputSnapshot, presentation: CoachUIPresentation?,
                       activities: [PlannedActivity], locale: String, now: Date,
-                      calendar: Calendar = .current) -> CoachEveningSummaryInput? {
+                      calendar: Calendar = .current,
+                      dayComparisonFact: String? = nil) -> CoachEveningSummaryInput? {
         if buildBlockReason(input: input, now: now, calendar: calendar) != nil { return nil }
         typealias Fact = CoachEveningSummaryInput.Fact
         var facts: [String: [Fact]] = [:]
@@ -67,6 +68,9 @@ enum CoachEveningSummaryInputBuilder {
         }
         if input.isHealthAccessGranted, input.actualLoad.source == .healthKitSamplesWithAppGoalEstimate {
             facts["activity", default: []].append(fact("activity.load", "Today's HealthKit active energy: \(Int(input.actualLoad.activeCalories)) kcal. This is energy expenditure, not food intake."))
+        }
+        if let dayComparisonFact, !dayComparisonFact.isEmpty {
+            facts["activity", default: []].append(fact("activity.dayComparison", dayComparisonFact))
         }
         if let checkIn = CoachFeelingCheckInStore.latest(on: now, calendar: calendar) {
             facts["feeling"] = [fact("feeling.checkin", "User self-report: \(checkIn.feeling.rawValue); clarification: \(checkIn.clarification?.rawValue ?? "none"); at \(ISO8601DateFormatter().string(from: checkIn.createdAt)). This is subjective, not a measured recovery score.")]

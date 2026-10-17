@@ -134,10 +134,21 @@ final class ConversationPauseResolverTests: XCTestCase {
         XCTAssertEqual(resolution.blockedBy, .safetyAlert)
     }
 
-    func testElevatedAlertSeverityBlocksPause() {
+    func testElevatedAlertSeverityDoesNotBlockPause() {
+        // Everyday fuel/hydration behind → `.elevated`. Reflection may still speak.
         let resolution = resolve(
             context: baseContext(sessionPhase: .idle, focusSource: .idle),
             alertSeverity: .elevated
+        )
+
+        XCTAssertTrue(resolution.isPaused)
+        XCTAssertNil(resolution.blockedBy)
+    }
+
+    func testCriticalAlertSeverityBlocksPause() {
+        let resolution = resolve(
+            context: baseContext(sessionPhase: .idle, focusSource: .idle),
+            alertSeverity: .critical
         )
 
         XCTAssertFalse(resolution.isPaused)

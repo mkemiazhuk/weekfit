@@ -33,6 +33,11 @@ enum AnalyticsEvent: String, Sendable {
     // Coach (view only — no reliable tap/complete/dismiss handlers in product UI).
     case coachRecommendationViewed = "coach_recommendation_viewed"
 
+    // Evening recap feeling — one discrete event per answer (no health values / copy).
+    case coachEveningFeelingTired = "coach_evening_feeling_tired"
+    case coachEveningFeelingGood = "coach_evening_feeling_good"
+    case coachEveningFeelingEnergized = "coach_evening_feeling_energized"
+
     // Morning Coach proposed day (Phase 1) — coarse enums only; no HealthKit / titles / copy.
     case morningProposalGenerated = "morning_proposal_generated"
     case morningProposalUnavailable = "morning_proposal_unavailable"

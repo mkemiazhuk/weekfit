@@ -235,7 +235,23 @@ enum PlanTimelineMetadataBuilder {
         for activity: PlannedActivity,
         in customMeals: [Meals]
     ) -> Meals? {
-        guard activity.type.lowercased() == "meal" else { return nil }
+        let type = activity.type.lowercased()
+        guard type == "meal" || type == "snack" || activity.timelineEventKind == .food else {
+            return nil
+        }
+
+        if let libraryId = activity.libraryMealId?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !libraryId.isEmpty {
+            return customMeals.first { $0.id == libraryId }
+        }
+
+        let hasSnapshot = !(activity.nutritionSnapshotJSON ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty
+        if hasSnapshot {
+            return nil
+        }
 
         let normalizedTitle = CustomMealStore.normalizedTitle(activity.title)
         guard !normalizedTitle.isEmpty else { return nil }

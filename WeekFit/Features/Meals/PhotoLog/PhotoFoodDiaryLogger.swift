@@ -75,7 +75,9 @@ enum PhotoFoodDiaryLogger {
         )
         let snapshotJSON = PhotoFoodNutritionCalculator.encodeSnapshot(snapshot)
 
-        let activityDate = dateForSlot(draft.logDate, slot: draft.mealSlot)
+        // Use the exact clock time of the log, on the selected calendar day
+        // (not a fixed breakfast/lunch/dinner hour like 13:00).
+        let activityDate = activityDate(forSelectedDay: draft.logDate, loggedAt: Date())
         let activityType = draft.mealSlot == .snack ? "snack" : "meal"
         let method: FoodLoggingMethod = draft.captureMethod == .barcode ? .barcode : .photo
 
@@ -131,19 +133,59 @@ enum PhotoFoodDiaryLogger {
 
     // MARK: - Library
 
+    /// Promote a diary-only photo/quick log into the Meals library (Save to Meals).
+    @MainActor
+    static func promoteToLibrary(
+        activity: PlannedActivity,
+        existingMeals: [Meals]
+    ) throws -> Meals {
+        if let existingId = activity.libraryMealId,
+           let existing = existingMeals.first(where: { $0.id == existingId }) {
+            return existing
+        }
+
+        guard let snapshot = PhotoFoodNutritionCalculator.decodeSnapshot(activity.nutritionSnapshotJSON) else {
+            throw LogError.invalidDraft
+        }
+
+        let photoFilename = firstNonEmpty(
+            activity.diaryPhotoFilename,
+            activity.imageName
+        )
+        let meal = makeLibraryMeal(
+            title: snapshot.mealName.isEmpty ? activity.title : snapshot.mealName,
+            components: snapshot.components,
+            totals: snapshot.totals.asTotals,
+            estimateKind: snapshot.estimateKind,
+            barcode: nil,
+            barcodeDataSource: nil,
+            localPhotoFilename: photoFilename,
+            localPhotoThumbnailFilename: photoFilename,
+            suggestedTime: clockTimeString(from: activity.date),
+            existingMeals: existingMeals
+        )
+
+        activity.libraryMealId = meal.id
+        if activity.imageName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let photoFilename {
+            activity.imageName = photoFilename
+        }
+        if activity.diaryPhotoFilename == nil {
+            activity.diaryPhotoFilename = photoFilename
+        }
+
+        var updatedSnapshot = snapshot
+        updatedSnapshot.libraryMealId = meal.id
+        activity.nutritionSnapshotJSON = PhotoFoodNutritionCalculator.encodeSnapshot(updatedSnapshot)
+
+        return meal
+    }
+
     @MainActor
     private static func makeLibraryMeal(
         from draft: PhotoFoodLogDraft,
         existingMeals: [Meals]
     ) throws -> Meals {
-        let title = draft.mealName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let uniqueTitle = uniquedTitle(title, existing: existingMeals)
-        let totals = draft.totals
-        let servingGrams = max(
-            Int(draft.scaledComponents.reduce(0) { $0 + $1.grams }.rounded()),
-            1
-        )
-
         var localPhotoFilename: String?
         var localPhotoThumbnailFilename: String?
         if let preview = draft.previewImage,
@@ -152,18 +194,54 @@ enum PhotoFoodDiaryLogger {
             localPhotoThumbnailFilename = photoSet.thumbnailFilename
         }
 
-        let ingredients: [MealsIngredient] = draft.scaledComponents.map { component in
+        return makeLibraryMeal(
+            title: draft.mealName,
+            components: draft.scaledComponents,
+            totals: draft.totals,
+            estimateKind: draft.estimateKind,
+            barcode: draft.barcode,
+            barcodeDataSource: draft.barcodeDataSource,
+            localPhotoFilename: localPhotoFilename,
+            localPhotoThumbnailFilename: localPhotoThumbnailFilename,
+            suggestedTime: clockTimeString(from: activityDate(forSelectedDay: draft.logDate)),
+            existingMeals: existingMeals
+        )
+    }
+
+    @MainActor
+    private static func makeLibraryMeal(
+        title: String,
+        components: [PhotoFoodComponent],
+        totals: PhotoFoodNutritionTotals,
+        estimateKind: PhotoFoodEstimateKind,
+        barcode: String?,
+        barcodeDataSource: NutritionDataSource?,
+        localPhotoFilename: String?,
+        localPhotoThumbnailFilename: String?,
+        suggestedTime: String,
+        existingMeals: [Meals]
+    ) -> Meals {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let uniqueTitle = uniquedTitle(trimmed.isEmpty ? WeekFitLocalizedString("planner.loggedMeal") : trimmed, existing: existingMeals)
+        let servingGrams = max(
+            Int(components.reduce(0) { $0 + $1.grams }.rounded()),
+            1
+        )
+
+        let ingredients: [MealsIngredient] = components.map { component in
             MealsIngredient(
                 name: component.displayName,
                 amount: "\(Int(component.grams.rounded())) g"
             )
         }
 
+        let imageName = localPhotoThumbnailFilename ?? localPhotoFilename ?? ""
+
         return Meals(
             id: "photo_meal_\(UUID().uuidString)",
             title: uniqueTitle,
             subtitle: WeekFitLocalizedString("today.photoLog.librarySubtitle"),
-            imageName: localPhotoThumbnailFilename ?? localPhotoFilename ?? "",
+            imageName: imageName,
             type: .balanced,
             calories: totals.calories,
             protein: totals.protein,
@@ -172,20 +250,28 @@ enum PhotoFoodDiaryLogger {
             fiber: totals.fiber,
             benefits: [],
             ingredients: ingredients,
-            suggestedTime: suggestedTime(for: draft.mealSlot),
+            suggestedTime: suggestedTime,
             libraryKind: .meal,
             creationMode: .manual,
             servingGrams: servingGrams,
             localPhotoFilename: localPhotoFilename,
             localPhotoThumbnailFilename: localPhotoThumbnailFilename,
-            barcode: draft.barcode,
-            nutritionDataSource: draft.estimateKind == .database
-                ? (draft.barcodeDataSource ?? .photoCatalog)
+            barcode: barcode,
+            nutritionDataSource: estimateKind == .database
+                ? (barcodeDataSource ?? .photoCatalog)
                 : .photoAIEstimate,
             libraryPeriodRaw: MealLibraryPeriod.period(
-                at: Calendar.current.component(.hour, from: draft.logDate)
+                at: Calendar.current.component(.hour, from: Date())
             ).rawValue
         )
+    }
+
+    private static func firstNonEmpty(_ values: String?...) -> String? {
+        for value in values {
+            let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !trimmed.isEmpty { return trimmed }
+        }
+        return nil
     }
 
     private static func uniquedTitle(_ title: String, existing: [Meals]) -> String {
@@ -200,33 +286,28 @@ enum PhotoFoodDiaryLogger {
         return "\(title) \(index)"
     }
 
-    private static func suggestedTime(for slot: WeekFitMealSlot) -> String {
-        switch slot {
-        case .breakfast: return "08:30"
-        case .lunch: return "13:00"
-        case .snack: return "16:00"
-        case .dinner: return "19:00"
-        }
+    /// Selected Today day + clock time when the user confirmed the log.
+    static func activityDate(
+        forSelectedDay day: Date,
+        loggedAt now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Date {
+        let start = calendar.startOfDay(for: day)
+        let parts = calendar.dateComponents([.hour, .minute, .second], from: now)
+        return calendar.date(
+            bySettingHour: parts.hour ?? 0,
+            minute: parts.minute ?? 0,
+            second: parts.second ?? 0,
+            of: start
+        ) ?? now
     }
 
-    private static func dateForSlot(_ day: Date, slot: WeekFitMealSlot) -> Date {
-        var calendar = Calendar.current
-        calendar.timeZone = .current
-        let start = calendar.startOfDay(for: day)
-        let hourMinute: (Int, Int) = {
-            switch slot {
-            case .breakfast: return (8, 30)
-            case .lunch: return (13, 0)
-            case .snack: return (16, 0)
-            case .dinner: return (19, 0)
-            }
-        }()
-        return calendar.date(
-            bySettingHour: hourMinute.0,
-            minute: hourMinute.1,
-            second: 0,
-            of: start
-        ) ?? day
+    static func clockTimeString(from date: Date, timeZone: TimeZone = .current) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
     }
 
     private static func submitKey(for draft: PhotoFoodLogDraft) -> String {

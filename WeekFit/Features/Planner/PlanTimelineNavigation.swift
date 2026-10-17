@@ -9,10 +9,29 @@ enum PlanTimelineRouter {
         for activity: PlannedActivity,
         customMeals: [Meals]
     ) -> Meals {
-        if let matched = matchingCustomMeal(for: activity, in: customMeals) {
+        if let matched = matchingLibraryMeal(for: activity, in: customMeals) {
             return matched
         }
         return Meals.fromLoggedActivity(activity)
+    }
+
+    /// Diary photo / AI / barcode logs that are not linked to a Meals-library recipe.
+    static func shouldOpenLoggedMealDetail(
+        for activity: PlannedActivity,
+        customMeals: [Meals]
+    ) -> Bool {
+        guard activity.timelineEventKind == .food else { return false }
+        if matchingLibraryMeal(for: activity, in: customMeals) != nil {
+            return false
+        }
+
+        let hasDiaryPhoto = !(activity.diaryPhotoFilename ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty
+        let hasSnapshot = !(activity.nutritionSnapshotJSON ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty
+        return hasDiaryPhoto || hasSnapshot
     }
 
     static func shouldOpenNutrition(for activity: PlannedActivity) -> Bool {
@@ -28,11 +47,28 @@ enum PlanTimelineRouter {
         }
     }
 
-    private static func matchingCustomMeal(
+    private static func matchingLibraryMeal(
         for activity: PlannedActivity,
         in customMeals: [Meals]
     ) -> Meals? {
-        guard activity.type.lowercased() == "meal" else { return nil }
+        let type = activity.type.lowercased()
+        guard type == "meal" || type == "snack" || activity.timelineEventKind == .food else {
+            return nil
+        }
+
+        if let libraryId = activity.libraryMealId?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !libraryId.isEmpty {
+            return customMeals.first { $0.id == libraryId }
+        }
+
+        // Diary-only logs keep a nutrition snapshot; do not title-match into another recipe.
+        let hasSnapshot = !(activity.nutritionSnapshotJSON ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty
+        if hasSnapshot {
+            return nil
+        }
 
         let normalizedTitle = CustomMealStore.normalizedTitle(activity.title)
         guard !normalizedTitle.isEmpty else { return nil }

@@ -14,10 +14,11 @@ enum WeekFitStyle {
         static let tiny = SwiftUI.Font.caption2.weight(.bold)
         static let button = WeekFitType.button
         static let icon = SwiftUI.Font.subheadline.weight(.bold)
-        static let dayNumber = SwiftUI.Font.subheadline.weight(.bold)
+        static let dayNumber = SwiftUI.Font.body.weight(.bold)
         static let dayName = SwiftUI.Font.caption.weight(.semibold)
-        static let timelineTime = WeekFitType.caption
-        static let timelineTimeActive = WeekFitType.captionEmphasized
+        /// Keep Plan time tokens in step with `WeekFitType.body`.
+        static let timelineTime = WeekFitType.body.weight(.medium)
+        static let timelineTimeActive = WeekFitType.body.weight(.semibold)
         static let sheetTitle = WeekFitType.cardTitle
         static let sheetSubtitle = WeekFitType.secondary
         static let optionTitle = WeekFitType.secondary.weight(.semibold)

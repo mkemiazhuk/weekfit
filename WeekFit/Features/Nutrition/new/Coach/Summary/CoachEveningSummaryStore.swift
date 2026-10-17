@@ -13,6 +13,25 @@ final class CoachEveningSummaryStore {
     struct LastingCache: Codable, Equatable {
         var summary: CoachEveningSummary
         var receivedAt: Date
+        /// Activity/day fingerprint that produced this summary — regenerate when it changes.
+        var inputFingerprint: String?
+
+        init(summary: CoachEveningSummary, receivedAt: Date, inputFingerprint: String? = nil) {
+            self.summary = summary
+            self.receivedAt = receivedAt
+            self.inputFingerprint = inputFingerprint
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case summary, receivedAt, inputFingerprint
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            summary = try c.decode(CoachEveningSummary.self, forKey: .summary)
+            receivedAt = try c.decode(Date.self, forKey: .receivedAt)
+            inputFingerprint = try c.decodeIfPresent(String.self, forKey: .inputFingerprint)
+        }
     }
 
     private let directory: URL

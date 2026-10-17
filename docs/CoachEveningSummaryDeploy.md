@@ -4,16 +4,18 @@
 
 `POST /v1/coach/day-summary` refuses to run when `COACH_SUMMARY_STORE_DIR` is empty (`503 summary_not_configured`). Photo recognition is independent and keeps working.
 
-## Testing mode (current default)
+## Production evening recap (current default)
 
-Client: `CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow = false`  
-Server: `COACH_SUMMARY_ONCE_PER_DAY` unset or `0`
+Client: `CoachEveningSummaryPolicy.isCoachSurfaceEnabled = true`  
+Client: `CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow = true`  
+Server: `COACH_SUMMARY_ONCE_PER_DAY` can stay `0` while fingerprint-based client refresh is active; set `1` for hard server once-per-day.
 
-- Manual **Get / Refresh summary** on Coach; no automatic AI on launch/tabs/data.
-- Before 20:00 allowed; each press gathers fresh data and calls AI.
-- Existing daily claim files do **not** block unrestricted requests.
-- Last successful answer is kept in a per-user local cache (survives midnight + relaunch).
-- Cache restore does **not** depend on HealthKit, coach snapshot, clock, or 20:00.
+- Coach shows evening recap after 20:00 when there is no live/upcoming unresolved session.
+- AI auto-runs with cache keyed by day + activity fingerprint (new completed workout regenerates).
+- Stale AI replies are discarded if Coach left the evening-recap state.
+- Numeric day metrics render without waiting for AI.
+- UI is one calm card (personal headline, hero activity, compact rows, note, feeling).
+- Feeling replies use a local short reaction (no extra AI call); redeploy backend after prompt voice tweaks.
 
 ### Console diagnostics
 
@@ -44,7 +46,7 @@ A `404 not_found` means the **running** container/commit is still photo-only (ol
    ```bash
    curl -sS https://weekfit-food-photo.onrender.com/healthz
    # expect coachSummaryConfigured:true, coachSummaryOncePerDay:false,
-   # coachSummaryPromptVersion:2  (compact 50–70 word prompt)
+   # coachSummaryPromptVersion:3  (evening recap; UI uses "now" passage)
    curl -sS -X POST https://weekfit-food-photo.onrender.com/v1/coach/day-summary \
      -H 'Content-Type: application/json' -d '{}'
    # expect 401 unauthorized (not 404 not_found)

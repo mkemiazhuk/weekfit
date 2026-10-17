@@ -329,6 +329,36 @@ extension Meals {
         !isFoodProduct && libraryKind != .ingredient
     }
 
+    /// Ingredient-like library rows Meals tab hides from the Meals section.
+    /// Matches `MealsView` resolved-library heuristics when `libraryKind` is missing.
+    var isLibraryIngredientEntry: Bool {
+        if libraryKind == .ingredient { return true }
+        if isFoodProduct { return false }
+        if libraryKind != nil { return false }
+
+        let ids = builderImageItems?.map(\.id) ?? []
+        if !ids.isEmpty {
+            let nonDrinkIds = ids.filter { !$0.hasPrefix("drink_") }
+            return ids.count == 1 || nonDrinkIds.count <= 1
+        }
+        return ingredients.count <= 1
+    }
+
+    /// Meals-tab "Saved meals" section.
+    var appearsInMealsLibraryMealsSection: Bool {
+        isRecipeMeal && !isLibraryIngredientEntry
+    }
+
+    /// Meals-tab "Foods" section.
+    var appearsInMealsLibraryFoodsSection: Bool {
+        isFoodProduct
+    }
+
+    /// Log Food → Блюда tab (same universe as Meals library meals + foods).
+    var appearsInQuickFoodLogMealsTab: Bool {
+        appearsInMealsLibraryMealsSection || appearsInMealsLibraryFoodsSection
+    }
+
     var displayCategoryTitle: String {
         WeekFitLocalizedString(isFoodProduct ? "meals.category.food" : "meals.category.meal")
     }

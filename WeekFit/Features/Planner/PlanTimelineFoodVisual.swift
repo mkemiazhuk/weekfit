@@ -72,6 +72,8 @@ enum PlanTimelineNutritionVisualResolver {
         }
 
         let activityImageName = activity.imageName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let diaryPhotoName = (activity.diaryPhotoFilename ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         if !FoodImageQualityValidator.isPlaceholderAssetName(activityImageName) {
             // Logged builder meals often persist only the primary ingredient asset.
             // Prefer a reconstructed plate whenever the title encodes multiple foods.
@@ -90,6 +92,11 @@ enum PlanTimelineNutritionVisualResolver {
             if let photo = displayableLocalPhoto(filename: activityImageName) {
                 return .localPhoto(photo, kind: kind)
             }
+        }
+
+        if !diaryPhotoName.isEmpty,
+           let photo = displayableLocalPhoto(filename: diaryPhotoName) {
+            return .localPhoto(photo, kind: kind)
         }
 
         // Last resort for already-logged localized builder titles without catalog hit:
@@ -339,7 +346,24 @@ enum PlanTimelineNutritionVisualResolver {
         // Logged foods use PlannerType.meal.title ("Meal"); also accept food/nutrition aliases.
         guard normalizedType == "meal"
             || normalizedType == "food"
-            || normalizedType == "nutrition" else {
+            || normalizedType == "nutrition"
+            || normalizedType == "snack"
+            || activity.timelineEventKind == .food else {
+            return nil
+        }
+
+        if let libraryId = activity.libraryMealId?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !libraryId.isEmpty {
+            return customMeals.first { $0.id == libraryId }
+        }
+
+        // Diary-only photo/AI logs keep a nutrition snapshot; prefer the activity photo
+        // over title-matching into an unrelated library recipe.
+        let hasSnapshot = !(activity.nutritionSnapshotJSON ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty
+        if hasSnapshot {
             return nil
         }
 
@@ -467,7 +491,7 @@ struct PlanTimelineNutritionAvatar: View {
 
         case .fallbackIcon(let systemName, _):
             Image(systemName: systemName)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(accent.opacity(foregroundOpacity))
         }
     }

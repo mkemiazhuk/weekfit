@@ -31,11 +31,15 @@ enum ConversationPauseResolver {
     // MARK: - Blockers
 
     private static func guidanceOwnerBlocker(_ input: Input) -> ConversationPauseBlocker? {
+        // True live safety alerts (hydration/fuel critical) always own the moment.
         if input.safetyAlert != nil {
             return .safetyAlert
         }
 
-        if input.alertSeverity != .none {
+        // Only critical risk chrome blocks Reflection — not everyday
+        // `fuelBehind` / `hydrationBehind` (those map to `.elevated` and would
+        // otherwise keep Reflection silent for most of the day).
+        if input.alertSeverity == .critical {
             return .safetyAlert
         }
 

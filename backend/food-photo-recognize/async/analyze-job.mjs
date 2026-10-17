@@ -1,4 +1,4 @@
-import { recognize } from '../recognition.mjs';
+import { recognize, resolveOutputLanguage } from '../recognition.mjs';
 
 /**
  * Single AI recognition for a durable job (worker or API inline fast-path).
@@ -13,8 +13,14 @@ export async function analyzeQueuedPhoto({
 }) {
   const b64 = imageBase64
     ?? (await objectStore.getJpeg(job.photoKey)).toString('base64');
+  const language = resolveOutputLanguage(job.locale);
   return recognize(
-    { imageBase64: b64, locale: job.locale, note: job.note ?? '' },
+    {
+      imageBase64: b64,
+      locale: language.code,
+      language,
+      note: job.note ?? '',
+    },
     {
       ...config,
       openaiFetcher,
