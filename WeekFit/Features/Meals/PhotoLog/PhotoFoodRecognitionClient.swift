@@ -19,6 +19,20 @@ struct PhotoFoodRecognitionClient: PhotoFoodRecognizing {
     static let acceptTimeoutSeconds: TimeInterval = 90
     static let pollTimeoutSeconds: TimeInterval = 10
 
+    /// App language for recognition copy (`en` / `ru` / `zh-Hans`) — not device region.
+    static func recognitionLocaleIdentifier() -> String {
+        // Refresh in case recognition runs before AppLanguageManager has synced cache.
+        WeekFitWarmLocalizationCache()
+        switch WeekFitCurrentAppLanguage() {
+        case .russian:
+            return AppLanguage.russian.rawValue
+        case .chineseSimplified:
+            return AppLanguage.chineseSimplified.rawValue
+        case .english:
+            return AppLanguage.english.rawValue
+        }
+    }
+
     private static let sharedUploadSession = PhotoFoodUploadSession()
 
     var session: URLSession = sharedUploadSession.session
@@ -237,7 +251,7 @@ struct PhotoFoodRecognitionClient: PhotoFoodRecognizing {
         let body = PhotoFoodRecognizeRequest(
             imageBase64: imageJPEG.base64EncodedString(),
             mimeType: "image/jpeg",
-            locale: WeekFitCurrentLocale().identifier,
+            locale: PhotoFoodRecognitionClient.recognitionLocaleIdentifier(),
             note: note?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         )
         request.httpBody = try JSONEncoder().encode(body)
@@ -399,7 +413,7 @@ struct PhotoFoodRecognitionClient: PhotoFoodRecognizing {
         let body = PhotoFoodRecognizeRequest(
             imageBase64: imageJPEG.base64EncodedString(),
             mimeType: "image/jpeg",
-            locale: WeekFitCurrentLocale().identifier,
+            locale: PhotoFoodRecognitionClient.recognitionLocaleIdentifier(),
             note: note?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         )
         request.httpBody = try JSONEncoder().encode(body)

@@ -42,11 +42,9 @@ struct TodayView: View {
     @AppStorage(OnboardingStore.Keys.introToday) private var todayIntroDismissed = false
     @State private var drinksQuickLogToast: String?
     @State private var foodQuickLogToast: String?
-    /// Brief confirmation after Finish succeeds — not a permanent completion section.
-    @State private var sessionSavedToast: String?
+    /// Save-failure retry banner only — success returns to normal Today with no plaque.
     @State private var sessionFinishErrorToast: String?
     @State private var isFinishingSession = false
-    @State private var sessionSavedToastHideTask: Task<Void, Never>?
     
     @State private var activityToConfirm: PlannedActivity? = nil
     @State private var queuedActivityToConfirm: PlannedActivity? = nil
@@ -954,7 +952,9 @@ struct TodayView: View {
     }
 
     private func refreshQuickLogMealsFromCatalog() {
-        setQuickLogMeals(userSettings.customMealsCatalog)
+        // Keep Log Food → Meals in lockstep with Meals-tab library (meals + foods, no ingredients).
+        let loggable = userSettings.customMealsCatalog.filter(\.appearsInQuickFoodLogMealsTab)
+        setQuickLogMeals(loggable)
     }
 
     private func savePhotoLoggedMealToLibrary(_ meal: Meals) {
@@ -1443,12 +1443,7 @@ struct TodayView: View {
 
         return AnyView(
             VStack(alignment: .leading, spacing: TodayLayout.gapBetweenCards) {
-                if let sessionSavedToast {
-                    todayTransientBanner(
-                        text: sessionSavedToast,
-                        accessibilityID: "today.sessionSavedToast"
-                    )
-                } else if let sessionFinishErrorToast {
+                if let sessionFinishErrorToast {
                     Button {
                         retryFinishIfNeeded()
                     } label: {
@@ -1479,9 +1474,12 @@ struct TodayView: View {
 
                 switch mode {
                 case .activeSession:
-                    // Your Day → In Progress → Quick Log → (pending | Up Next). Focus hidden while live.
+                    // Your Day → In Progress → live Focus → Quick Log → (pending | Up Next).
                     if let activeSession {
                         AnyView(activeSessionCard(activeSession))
+                    }
+                    if shouldShowCoachCard(alongsideActive: activeSession) {
+                        erasedCoachEntryPoint()
                     }
                     AnyView(quickActionsSection)
                     if let planSlot = erasedPlanAttentionSlot(
@@ -2596,7 +2594,7 @@ struct TodayView: View {
 
                     // Empty plan: plus only. With activities the row shows chevron instead.
                     Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(WeekFitType.button.weight(.bold))
                         .foregroundStyle(todaySecondaryReadable)
                         .frame(minWidth: 44, minHeight: 44)
                 }
@@ -2668,16 +2666,16 @@ struct TodayView: View {
             return
         }
 
-        let savedMessage = String(
-            format: WeekFitLocalizedString("today.session.savedFormat"),
-            title
-        )
         withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-            sessionSavedToast = savedMessage
             todayViewModel.triggerHealthRefresh()
         }
-        UIAccessibility.post(notification: .announcement, argument: savedMessage)
-        scheduleSessionSavedToastHide()
+        UIAccessibility.post(
+            notification: .announcement,
+            argument: String(
+                format: WeekFitLocalizedString("today.session.savedFormat"),
+                title
+            )
+        )
 
         ReviewEngagement.record(.activityLoggedOrCompleted)
         ProductAnalytics.activityCompleted(source: .today)
@@ -2694,17 +2692,6 @@ struct TodayView: View {
         appSession.triggerHealthRefresh(source: "today.activeSession.finish")
         appSession.triggerCoachRefresh(source: "today.activeSession.finish")
         isFinishingSession = false
-    }
-
-    private func scheduleSessionSavedToastHide() {
-        sessionSavedToastHideTask?.cancel()
-        sessionSavedToastHideTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_400_000_000)
-            guard !Task.isCancelled else { return }
-            withAnimation(.easeOut(duration: 0.25)) {
-                sessionSavedToast = nil
-            }
-        }
     }
 
     private func retryFinishIfNeeded() {

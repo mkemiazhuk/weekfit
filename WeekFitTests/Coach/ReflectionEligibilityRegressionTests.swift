@@ -102,12 +102,17 @@ final class ReflectionEligibilityRegressionTests: XCTestCase {
         )
     }
 
-    func testReflectionBlockedWhenAlertSeverityIsElevated() {
-        assertReflectionBlocked(
-            context: pausedContext,
-            alertSeverity: .elevated,
-            expectedBlocker: .safetyAlert
+    func testReflectionAllowedWhenAlertSeverityIsElevated() {
+        let offer = ReflectionComposer.compose(
+            ReflectionComposer.Input(
+                snapshot: makeInput(now: date(hour: 15, minute: 0), activities: []),
+                context: pausedContext,
+                urgencyLevel: .calm,
+                safetyAlert: nil,
+                alertSeverity: .elevated
+            )
         )
+        XCTAssertNotNil(offer, "Everyday elevated (fuel/hydration behind) must not suppress Reflection")
     }
 
     func testReflectionBlockedWhenAlertSeverityIsCritical() {

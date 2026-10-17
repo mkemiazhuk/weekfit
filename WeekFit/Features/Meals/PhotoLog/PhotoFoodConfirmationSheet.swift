@@ -9,7 +9,8 @@ struct PhotoFoodConfirmationSheet: View {
     let errorMessage: String?
 
     @Environment(\.weekFitPalette) private var palette
-    @State private var componentsExpanded = false
+    /// Expanded by default so every recognized item is visible before logging.
+    @State private var componentsExpanded = true
 
     private var accent: Color { WeekFitTheme.meal }
     private var totals: PhotoFoodNutritionTotals { draft.totals }
@@ -235,12 +236,24 @@ struct PhotoFoodConfirmationSheet: View {
     }
 
     private func componentRow(_ component: Binding<PhotoFoodComponent>) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(component.wrappedValue.displayName)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(WeekFitTheme.primaryText)
-                Spacer()
+        let preparation = component.wrappedValue.preparation?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(component.wrappedValue.displayName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(WeekFitTheme.primaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !preparation.isEmpty {
+                        Text(preparation)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(WeekFitTheme.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Spacer(minLength: 8)
                 if component.wrappedValue.isAIEstimated {
                     Text(WeekFitLocalizedString("today.photoLog.confirm.aiEstimateBadge"))
                         .font(.caption2.weight(.semibold))

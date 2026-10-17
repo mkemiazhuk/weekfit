@@ -45,13 +45,11 @@ enum MealLibraryCardMetrics {
     /// Plate diameter as a fraction of the media band’s short side.
     static let plateFill: CGFloat = 0.86
     static let horizontalPadding: CGFloat = 12
-    static let textTopPadding: CGFloat = 10
-    static let textBottomPadding: CGFloat = 11
+    static let textTopPadding: CGFloat = 12
+    static let textBottomPadding: CGFloat = 13
     /// Title ↔ calories ↔ protein grouping.
-    static let textBlockSpacing: CGFloat = 7
+    static let textBlockSpacing: CGFloat = 6
     static let menuSize: CGFloat = 28
-    static let titleSize: CGFloat = 15
-    static let metaSize: CGFloat = 13
     /// Preview count on Meals tab before “See all”.
     static let previewLimit: Int = 6
 
@@ -389,7 +387,8 @@ struct MealLibraryGridCard: View {
 
             VStack(alignment: .leading, spacing: MealLibraryCardMetrics.textBlockSpacing) {
                 Text(meal.localizedDisplayTitle)
-                    .font(.system(size: MealLibraryCardMetrics.titleSize, weight: .semibold))
+                    .font(WeekFitType.compactCardTitle)
+                    .fontDesign(.rounded)
                     .foregroundStyle(textPrimary)
                     .tracking(-0.18)
                     .multilineTextAlignment(.leading)
@@ -398,13 +397,15 @@ struct MealLibraryGridCard: View {
                     .frame(maxWidth: .infinity, alignment: .topLeading)
 
                 Text(String(format: WeekFitLocalizedString("meals.value.kcalFormat"), meal.calories))
-                    .font(.system(size: MealLibraryCardMetrics.metaSize, weight: .medium))
+                    .font(WeekFitType.secondary.weight(.medium))
+                    .fontDesign(.rounded)
                     .foregroundStyle(textSecondary)
                     .monospacedDigit()
                     .lineLimit(1)
 
                 Text(String(format: WeekFitLocalizedString("meals.value.proteinGramsFormat"), meal.protein))
-                    .font(.system(size: MealLibraryCardMetrics.metaSize, weight: .medium))
+                    .font(WeekFitType.secondary.weight(.medium))
+                    .fontDesign(.rounded)
                     .foregroundStyle(textSecondary)
                     .monospacedDigit()
                     .lineLimit(1)
@@ -572,19 +573,22 @@ struct HeroMealLibraryRow: View {
             }
 
             Text(meal.localizedDisplayTitle)
-                .font(.system(size: 15.5, weight: .semibold))
+                .font(WeekFitType.compactCardTitle)
+                .fontDesign(.rounded)
                 .foregroundStyle(textPrimary)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(String(format: WeekFitLocalizedString("meals.value.kcalFormat"), meal.calories))
-                .font(.system(size: 12, weight: .medium))
+                .font(WeekFitType.secondary.weight(.medium))
+                .fontDesign(.rounded)
                 .foregroundStyle(textSecondary)
                 .monospacedDigit()
                 .lineLimit(1)
 
             Text(String(format: WeekFitLocalizedString("meals.value.proteinGramsFormat"), meal.protein))
-                .font(.system(size: 12, weight: .medium))
+                .font(WeekFitType.secondary.weight(.medium))
+                .fontDesign(.rounded)
                 .foregroundStyle(textSecondary)
                 .monospacedDigit()
                 .lineLimit(1)

@@ -41,19 +41,16 @@ struct MealCardRow: View {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(alignment: .center, spacing: 6) {
                             Text(meal.isFoodProduct ? meal.title : meal.localizedShortTitle)
-                                .font(.system(
-                                    size: isQuickLogMode ? 17.2 : 15.4,
-                                    weight: .bold,
-                                    design: .rounded
-                                ))
+                                .font(WeekFitType.compactCardTitle.weight(isQuickLogMode ? .bold : .semibold))
+                                .fontDesign(.rounded)
                                 .foregroundStyle(textPrimary)
                                 .tracking(isQuickLogMode ? -0.35 : -0.22)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.82)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
 
                             if isQuickLogMode && isMealMatchingCurrentTime {
                                 Text(WeekFitLocalizedString("meals.suggested"))
-                                    .font(.system(size: 8.8, weight: .bold))
+                                    .font(WeekFitType.captionEmphasized.weight(.bold))
                                     .tracking(0.4)
                                     .foregroundStyle(weekFitGreen)
                                     .padding(.horizontal, 7)
@@ -70,12 +67,11 @@ struct MealCardRow: View {
                         }
 
                         Text(meal.isFoodProduct ? meal.servingDescription : meal.localizedDisplaySubtitle)
-                            .font(.system(
-                                size: isQuickLogMode ? 12.4 : 11.5,
-                                weight: .medium
-                            ))
+                            .font(WeekFitType.secondary.weight(.medium))
+                            .fontDesign(.rounded)
                             .foregroundStyle(textSecondary)
-                            .lineLimit(1)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -112,8 +108,8 @@ struct MealCardRow: View {
             }
         }
         .padding(.horizontal, isQuickLogMode ? 12 : 12)
-        .padding(.vertical, isQuickLogMode ? 10 : 8)
-        .frame(height: isQuickLogMode ? 86 : nil)
+        .padding(.vertical, isQuickLogMode ? 12 : 10)
+        .frame(minHeight: isQuickLogMode ? 86 : nil)
         .weekFitPremiumCard(
             emphasis: .compact,
             accent: isQuickLogMode ? weekFitGreen : nil,
@@ -188,19 +184,19 @@ struct MealCardRow: View {
     private var macrosPill: some View {
         HStack(spacing: 0) {
             Text(String(format: WeekFitLocalizedString("meals.detail.caloriesFormat"), meal.calories))
-                .font(.system(size: isQuickLogMode ? 11.2 : 10.5, weight: .bold, design: .rounded))
+                .font(WeekFitType.captionEmphasized.weight(.bold))
+                .fontDesign(.rounded)
                 .foregroundStyle(textPrimary)
 
-            Rectangle().fill(WeekFitTheme.divider.opacity(0.55)).frame(width: 1, height: 10)
+            Rectangle().fill(WeekFitTheme.divider.opacity(0.55)).frame(width: 1, height: 12)
             macroText("\(WeekFitLocalizedString("nutrition.macro.protein.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.protein))")
-            Rectangle().fill(WeekFitTheme.divider.opacity(0.55)).frame(width: 1, height: 10)
+            Rectangle().fill(WeekFitTheme.divider.opacity(0.55)).frame(width: 1, height: 12)
             macroText("\(WeekFitLocalizedString("nutrition.macro.carbs.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.carbs))")
-            Rectangle().fill(WeekFitTheme.divider.opacity(0.55)).frame(width: 1, height: 10)
+            Rectangle().fill(WeekFitTheme.divider.opacity(0.55)).frame(width: 1, height: 12)
             macroText("\(WeekFitLocalizedString("nutrition.macro.fats.short")) \(String(format: WeekFitLocalizedString("common.unit.gramValueFormat"), meal.fats))")
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 1)
-        .frame(height: isQuickLogMode ? 20 : 18)
+        .padding(.vertical, 3)
         .background {
             Capsule()
                 .fill(WeekFitTheme.internalTile)
@@ -209,7 +205,8 @@ struct MealCardRow: View {
 
     private func macroText(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: isQuickLogMode ? 10.4 : 10, weight: .semibold, design: .monospaced))
+            .font(WeekFitType.captionEmphasized)
+            .fontDesign(.monospaced)
             .foregroundStyle(textSecondary)
             .frame(maxWidth: .infinity)
     }

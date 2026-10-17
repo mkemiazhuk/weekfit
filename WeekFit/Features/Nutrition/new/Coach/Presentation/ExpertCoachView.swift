@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 import WeekFitPlanner
 
 struct ExpertCoachView: View {
@@ -37,6 +38,15 @@ struct ExpertCoachView: View {
     @State private var todaysAssistantConversation: CoachAssistantConversation?
     @State private var askCoachActiveFocus: AskCoachWeeklyFocus?
     @State private var askCoachReviewableFocus: AskCoachWeeklyFocus?
+    @State private var eveningRecapActivity = CoachEveningRecapActivitySummary.emptyWithoutHealth
+    @State private var eveningRecapSignals: [CoachEveningRecapSignal] = []
+    @State private var eveningRecapFingerprint = ""
+    @State private var eveningRecapFeeling: CoachFeelingKind?
+    @State private var eveningRecapDayComparisonFact: String?
+    @State private var eveningRecapLoadTask: Task<Void, Never>?
+    @State private var eveningRecapLoadGeneration = 0
+    @State private var eveningRecapBoundaryEpoch = 0
+    @ObservedObject private var unitsStore = WeekFitUnitsStore.shared
     @AppStorage(OnboardingStore.Keys.introCoach) private var coachIntroDismissed = false
     #if DEBUG
     @State private var showBeliefDebug = false
@@ -81,24 +91,11 @@ struct ExpertCoachView: View {
         }
         .onAppear {
             keepCoachMounted = true
-            reconcileLiveWorkoutIfNeeded()
-            refreshLiveCoachSession()
-            refreshRecoveryChallengeEntry()
-            refreshAskCoachFocus()
-            refreshAssistantConversation()
-            openPendingRecoveryChallengeIfNeeded()
+            prepareCoachTabSurface(source: "coachTab.onAppear")
         }
         .onChange(of: tabIsActive) { _, active in
             if active {
-                if CoachEveningSummaryPolicy.isCoachSurfaceEnabled {
-                    restoreEveningSummaryIfNeeded(source: "coachTab.tabActive")
-                }
-                reconcileLiveWorkoutIfNeeded()
-                refreshLiveCoachSession()
-                refreshRecoveryChallengeEntry()
-                refreshAskCoachFocus()
-                refreshAssistantConversation()
-                openPendingRecoveryChallengeIfNeeded()
+                prepareCoachTabSurface(source: "coachTab.tabActive")
             }
         }
         .onChange(of: pendingRecoveryChallengeOpen.shouldOpen) { _, shouldOpen in
@@ -156,6 +153,9 @@ struct ExpertCoachView: View {
                 refreshLiveCoachSession(recompute: false)
             }
         }
+        .task(id: "eveningRecapBoundary.\(eveningRecapBoundaryEpoch)") {
+            await waitForEveningRecapBoundaryAndRefresh()
+        }
     }
 
     private var liveCoachRefreshLoopID: String? {
@@ -197,7 +197,8 @@ struct ExpertCoachView: View {
                     initials: userSettings.profileInitials,
                     hasProfileName: userSettings.hasProfileName,
                     showAvatar: true,
-                    avatarProminence: .subdued
+                    // Evening: full champagne avatar; other Coach states stay subdued.
+                    avatarProminence: shouldShowEveningRecap ? .standard : .subdued
                 ) {
                     showProfile = true
                 }
@@ -213,6 +214,15 @@ struct ExpertCoachView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.coach")
+        .background {
+            if shouldShowEveningRecap {
+                CoachEveningAtmosphereBackground(
+                    isLight: palette.isLight,
+                    ambientOpacity: palette.ambientOpacity
+                )
+                .ignoresSafeArea()
+            }
+        }
         .weekFitSettingsSheet(isPresented: $showProfile)
         .onChange(of: coachState.discoveryOffer?.id) { _, newID in
             if newID != nil {
@@ -221,9 +231,11 @@ struct ExpertCoachView: View {
         }
         #if DEBUG
         .overlay(alignment: .bottom) {
-            beliefDebugPill
-                .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)
-                .padding(.bottom, WeekFitScreenLayout.tabBarClearance + 10)
+            if !shouldShowEveningRecap {
+                beliefDebugPill
+                    .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)
+                    .padding(.bottom, WeekFitScreenLayout.tabBarClearance + 10)
+            }
         }
         .sheet(isPresented: $showBeliefDebug) {
             NavigationStack {
@@ -354,39 +366,62 @@ struct ExpertCoachView: View {
                     .padding(.top, 4)
                 }
 
-                if shouldSurfaceCoach {
-                    if isLiveWorkoutZoneChrome {
-                        // Active session: guidance first, challenge stays reachable below.
-                        coachCard
-                        if recoveryChallengeHeaderEntry != .hidden {
-                            RecoveryChallengeHeaderEntryChip(
-                                entry: recoveryChallengeHeaderEntry,
-                                onTap: {
-                                    openRecoveryChallenge(source: "coach")
-                                }
-                            )
-                        }
-                        // Assistant entry temporarily hidden — restore via `showsAssistantEntry`.
-                        if showsAssistantEntry {
-                            assistantEntrySection
-                        }
-                        discoverySpotlightSection
-                    } else {
-                        if recoveryChallengeHeaderEntry != .hidden {
-                            RecoveryChallengeHeaderEntryChip(
-                                entry: recoveryChallengeHeaderEntry,
-                                onTap: {
-                                    openRecoveryChallenge(source: "coach")
-                                }
-                            )
-                        }
-                        coachCard
-                        if showsAssistantEntry {
-                            assistantEntrySection
-                        }
-                        discoverySpotlightSection
-                        // All card states own Why inline — no second Why card.
+                if isLiveWorkoutZoneChrome, shouldSurfaceCoach {
+                    // 1) Live session owns Coach.
+                    coachCard
+                    if recoveryChallengeHeaderEntry != .hidden {
+                        RecoveryChallengeHeaderEntryChip(
+                            entry: recoveryChallengeHeaderEntry,
+                            onTap: {
+                                openRecoveryChallenge(source: "coach")
+                            }
+                        )
                     }
+                    if showsAssistantEntry {
+                        assistantEntrySection
+                    }
+                    discoverySpotlightSection
+                } else if shouldShowEveningRecap {
+                    // 3) Evening recap replaces the big recommendation card.
+                    CoachEveningRecapView(
+                        activitySummary: eveningRecapActivity,
+                        daySignals: eveningRecapSignals,
+                        commentary: eveningSummary.displayCommentary,
+                        isLoadingCommentary: eveningSummary.isRefreshing
+                            && eveningSummary.displayCommentary == nil
+                            && eveningRecapFeeling == nil,
+                        commentaryFailed: eveningSummary.lastRefreshFailed
+                            && eveningSummary.displayCommentary == nil
+                            && eveningRecapFeeling == nil,
+                        selectedFeeling: eveningRecapFeeling,
+                        unitSystem: unitsStore.resolvedSystem,
+                        showsHealthConnect: shouldShowHealthConnectPrompt,
+                        onSelectFeeling: saveEveningRecapFeeling,
+                        onConnectHealth: connectAppleHealthFromCoach
+                    )
+                    if recoveryChallengeHeaderEntry != .hidden {
+                        RecoveryChallengeHeaderEntryChip(
+                            entry: recoveryChallengeHeaderEntry,
+                            onTap: {
+                                openRecoveryChallenge(source: "coach")
+                            }
+                        )
+                    }
+                } else if shouldSurfaceCoach {
+                    // 2 / 4) Upcoming prep or other existing Coach states.
+                    if recoveryChallengeHeaderEntry != .hidden {
+                        RecoveryChallengeHeaderEntryChip(
+                            entry: recoveryChallengeHeaderEntry,
+                            onTap: {
+                                openRecoveryChallenge(source: "coach")
+                            }
+                        )
+                    }
+                    coachCard
+                    if showsAssistantEntry {
+                        assistantEntrySection
+                    }
+                    discoverySpotlightSection
                 } else if isRegistryGap || shouldShowCoachPreparingState {
                     registryGapSection
                         .padding(.top, 12)
@@ -400,98 +435,325 @@ struct ExpertCoachView: View {
                         assistantEntrySection
                     }
                 }
-                if CoachEveningSummaryPolicy.isCoachSurfaceEnabled {
-                    CoachEveningSummarySection(
-                        coordinator: eveningSummary,
-                        onRequestSummary: requestEveningSummary
-                    )
-                }
             }
             .padding(.horizontal, coachContentHorizontalInset)
             .frame(maxWidth: .infinity)
             .padding(.bottom, WeekFitScreenLayout.tabBarClearance)
         }
         .weekFitTransparentScrollBackground(fillsCanvas: false)
-        .onAppear {
-            if CoachEveningSummaryPolicy.isCoachSurfaceEnabled {
-                restoreEveningSummaryIfNeeded(source: "coachContent.onAppear")
-            }
+        // Evening recap refresh is owned by `prepareCoachTabSurface` / plan+locale observers
+        // below — avoid a second onAppear/tabActive path that cancels in-flight HK work.
+        .onChange(of: plannedActivitiesSignature) { _, _ in
+            refreshEveningRecapIfNeeded(source: "coachContent.planChange", force: true)
         }
-        .onChange(of: tabIsActive) { _, active in
-            if active, CoachEveningSummaryPolicy.isCoachSurfaceEnabled {
-                restoreEveningSummaryIfNeeded(source: "coachContent.tabActive")
-            }
+        .onChange(of: isLiveWorkoutZoneChrome) { _, _ in
+            refreshEveningRecapIfNeeded(source: "coachContent.liveChange", force: true)
+        }
+        .onChange(of: languageManager.selectedLanguage) { _, _ in
+            eveningRecapFingerprint = ""
+            applyEveningRecapSignals(activity: eveningRecapActivity)
+            refreshEveningRecapIfNeeded(source: "coachContent.languageChange", force: true)
+        }
+        .onChange(of: unitsStore.selectedPreference) { _, _ in
+            eveningRecapFingerprint = ""
+            applyEveningRecapSignals(activity: eveningRecapActivity)
+            refreshEveningRecapIfNeeded(source: "coachContent.unitsChange", force: true)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            refreshEveningRecapIfNeeded(source: "coachContent.foreground", force: true)
         }
     }
 
-    private func restoreEveningSummaryIfNeeded(source: String) {
-        CoachEveningSummaryDiagnostics.event(
-            "coach.enter",
-            detail: "source=\(source) tabActive=\(tabIsActive) hadSummary=\(eveningSummary.summary != nil) isRefreshing=\(eveningSummary.isRefreshing)"
-        )
-        guard AccountSessionController.shared.mode == .realUser else {
-            CoachEveningSummaryDiagnostics.event(
-                "cache.skipped",
-                detail: "source=\(source) reason=notRealUser"
-            )
-            return
+    private func prepareCoachTabSurface(source: String) {
+        refreshEveningRecapIfNeeded(source: source)
+        reconcileLiveWorkoutIfNeeded()
+        // Live HR recompute is irrelevant (and expensive) during evening recap.
+        if !shouldShowEveningRecap {
+            refreshLiveCoachSession()
         }
-        guard let owner = WorkspaceOwnerStore.currentIdentityToken() else {
-            CoachEveningSummaryDiagnostics.event(
-                "cache.skipped",
-                detail: "source=\(source) reason=noOwner"
-            )
-            return
-        }
-        eveningSummary.restore(owner: owner)
+        refreshRecoveryChallengeEntry()
+        refreshAskCoachFocus()
+        refreshAssistantConversation()
+        openPendingRecoveryChallengeIfNeeded()
     }
 
-    private func requestEveningSummary() {
-        let action = eveningSummary.summary == nil ? "get" : "refresh"
-        CoachEveningSummaryDiagnostics.event(
-            "button.tap",
-            detail: "action=\(action) hadSummary=\(eveningSummary.summary != nil) isRefreshing=\(eveningSummary.isRefreshing)"
+    private var shouldShowEveningRecap: Bool {
+        guard CoachEveningSummaryPolicy.isCoachSurfaceEnabled else { return false }
+        guard !isLiveWorkoutZoneChrome else { return false }
+        return CoachEveningRecapEligibility.shouldShowEveningRecap(
+            now: Date(),
+            plannedActivities: Array(plannedActivities)
         )
-        guard !eveningSummary.isRefreshing else {
-            CoachEveningSummaryDiagnostics.event("button.ignored", detail: "reason=alreadyRefreshing")
+    }
+
+    private var plannedActivitiesSignature: String {
+        PlannedActivityRefreshSignature.make(from: Array(plannedActivities))
+    }
+
+    private func waitForEveningRecapBoundaryAndRefresh() async {
+        let target = CoachEveningRecapEligibility.nextRecheckDate()
+        let delay = target.timeIntervalSinceNow + 0.25
+        if delay > 0 {
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+        }
+        guard !Task.isCancelled else { return }
+        refreshEveningRecapIfNeeded(source: "eveningRecap.boundary")
+        eveningRecapBoundaryEpoch &+= 1
+    }
+
+    private func refreshEveningRecapIfNeeded(source: String, force: Bool = false) {
+        CoachEveningSummaryDiagnostics.event(
+            "recap.refresh",
+            detail: "source=\(source) tabActive=\(tabIsActive) eligible=\(shouldShowEveningRecap) force=\(force)"
+        )
+        eveningRecapFeeling = CoachFeelingCheckInStore.latest(on: Date())?.feeling
+
+        guard shouldShowEveningRecap else {
+            eveningRecapLoadTask?.cancel()
+            eveningRecapLoadTask = nil
             return
         }
+
+        if let owner = WorkspaceOwnerStore.currentIdentityToken(),
+           AccountSessionController.shared.mode == .realUser {
+            eveningSummary.restore(owner: owner)
+        }
+
+        // Coalesce bursty first-open triggers so we don't cancel/restart HK mid-flight.
+        if !force, eveningRecapLoadTask != nil {
+            CoachEveningSummaryDiagnostics.event(
+                "recap.refresh.coalesced",
+                detail: "source=\(source)"
+            )
+            return
+        }
+
+        eveningRecapLoadTask?.cancel()
+        eveningRecapLoadGeneration &+= 1
+        let generation = eveningRecapLoadGeneration
+        eveningRecapLoadTask = Task { @MainActor in
+            defer {
+                if eveningRecapLoadGeneration == generation {
+                    eveningRecapLoadTask = nil
+                }
+            }
+            await loadEveningRecapActivityAndMaybeGenerate(source: source, generation: generation)
+        }
+    }
+
+    @MainActor
+    private func loadEveningRecapActivityAndMaybeGenerate(source: String, generation: Int) async {
+        let now = Date()
+        let activities = Array(plannedActivities)
+        guard CoachEveningRecapEligibility.shouldShowEveningRecap(
+            now: now,
+            plannedActivities: activities
+        ) else { return }
+
+        let granted = healthManager.isHealthAccessGranted
+        if !granted {
+            eveningRecapActivity = .emptyWithoutHealth
+            eveningRecapSignals = CoachEveningRecapSignalBuilder.build(
+                activity: .emptyWithoutHealth,
+                sleepHours: 0,
+                recoveryPercent: 0,
+                nutrition: nutritionViewModel.coachMetricsSnapshot?.nutritionContext,
+                unitSystem: unitsStore.resolvedSystem
+            )
+            eveningRecapFingerprint = "noHealth"
+            return
+        }
+
+        // Instant first paint from Today-cached metrics + Plan recovery (no HK wait).
+        paintEveningRecapSeed(activities: activities, now: now)
+
+        let snapshotProvider = ActivityIntelligenceSnapshotProvider()
+        async let todayBundle = snapshotProvider.buildEveningRecapDayBundle(
+            for: now,
+            healthManager: healthManager,
+            plannedActivities: activities
+        )
+        async let priorMetrics = CoachEveningRecapDayComparison.loadPriorMetrics(
+            relativeTo: now,
+            healthManager: healthManager
+        )
+
+        let bundle = await todayBundle
+        let priors = await priorMetrics
+        guard !Task.isCancelled, eveningRecapLoadGeneration == generation else { return }
+
+        // Include Plan recovery (sauna / breath / yoga) even when HealthKit has no row.
+        let daySessions = snapshotProvider.sessionsForEveningRecap(
+            snapshotSessions: bundle.sessions,
+            plannedActivities: activities,
+            day: now
+        )
+        let comparison = CoachEveningRecapDayComparison.compute(
+            todayDistanceKm: bundle.distanceKm,
+            priorDayMetrics: priors
+        )
+        eveningRecapDayComparisonFact = comparison?.aiFactText
+
+        let summary = CoachEveningRecapActivityAggregator.build(
+            steps: bundle.steps,
+            dayWalkingRunningDistanceKm: bundle.distanceKm,
+            sessions: daySessions,
+            healthAccessGranted: true,
+            unitSystem: unitsStore.resolvedSystem,
+            dayComparison: comparison
+        )
+        let fingerprint = CoachEveningRecapActivityAggregator.fingerprint(
+            steps: bundle.steps,
+            distanceKm: bundle.distanceKm,
+            sessions: daySessions,
+            comparisonDeltaKm: comparison?.deltaKm
+        )
+        eveningRecapActivity = summary
+        eveningRecapFingerprint = fingerprint
+        applyEveningRecapSignals(activity: summary)
+
         guard AccountSessionController.shared.mode == .realUser,
-              let owner = WorkspaceOwnerStore.currentIdentityToken() else {
-            CoachEveningSummaryDiagnostics.error("button.blocked", detail: "reason=noOwnerOrSession")
-            return
-        }
-        Task { @MainActor in
-            CoachEveningSummaryDiagnostics.event("input.prepare.start", detail: "action=\(action)")
-            coachInputProvider.invalidateCompletedRefreshCache()
+              let owner = WorkspaceOwnerStore.currentIdentityToken() else { return }
+
+        // Prefer already-built coach input; only refresh when missing.
+        // Avoid invalidate+full Understanding rebuild on every tab open.
+        if coachInputProvider.lastInput == nil {
             await coachInputProvider.refresh(
-                selectedDate: Date(),
-                plannedActivities: plannedActivities,
+                selectedDate: now,
+                plannedActivities: activities,
                 healthManager: healthManager,
                 nutritionViewModel: nutritionViewModel,
                 coachCoordinator: coachCoordinator,
-                source: "eveningSummary.manual",
+                source: "eveningRecap.\(source)",
                 refreshHealth: false
             )
-            let now = Date()
-            let snapshot = coachInputProvider.lastInput
-            if let block = CoachEveningSummaryInputBuilder.buildBlockReason(input: snapshot, now: now) {
-                eveningSummary.noteInputUnavailable(owner: owner, reason: block.rawValue)
-                return
-            }
-            guard let input = snapshot,
-                  let request = CoachEveningSummaryInputBuilder.build(
-                    input: input,
-                    presentation: coachCoordinator.state.coachUIPresentation,
-                    activities: Array(plannedActivities),
-                    locale: languageManager.selectedLanguage.rawValue,
-                    now: now
-                  ) else {
-                eveningSummary.noteInputUnavailable(owner: owner, reason: "buildReturnedNil")
-                return
-            }
-            eveningSummary.refresh(input: request, owner: owner, now: now)
+            guard !Task.isCancelled, eveningRecapLoadGeneration == generation else { return }
+            applyEveningRecapSignals(activity: summary)
         }
+
+        guard CoachEveningRecapEligibility.shouldShowEveningRecap(
+            now: Date(),
+            plannedActivities: Array(plannedActivities)
+        ) else { return }
+
+        let locale = languageManager.selectedLanguage.rawValue
+        guard let input = coachInputProvider.lastInput,
+              let request = CoachEveningSummaryInputBuilder.build(
+                input: input,
+                presentation: nil,
+                activities: Array(plannedActivities),
+                locale: locale,
+                now: Date(),
+                dayComparisonFact: eveningRecapDayComparisonFact
+              ) else {
+            if let owner = WorkspaceOwnerStore.currentIdentityToken() {
+                eveningSummary.noteInputUnavailable(owner: owner, reason: "buildReturnedNil")
+            }
+            return
+        }
+
+        eveningSummary.ensureUpToDate(
+            input: request,
+            owner: owner,
+            fingerprint: fingerprint,
+            now: Date(),
+            isStillEligible: { [plannedActivities] in
+                CoachEveningRecapEligibility.shouldShowEveningRecap(
+                    now: Date(),
+                    plannedActivities: Array(plannedActivities)
+                )
+            }
+        )
+    }
+
+    /// Synchronous shell so Coach doesn't sit empty while HK settles.
+    @MainActor
+    private func paintEveningRecapSeed(activities: [PlannedActivity], now: Date) {
+        guard eveningRecapFingerprint.isEmpty || eveningRecapActivity.hero == nil else { return }
+
+        let provider = ActivityIntelligenceSnapshotProvider()
+        let planSessions = provider.sessionsForEveningRecap(
+            snapshotSessions: [],
+            plannedActivities: activities,
+            day: now
+        )
+        let seed = CoachEveningRecapActivityAggregator.build(
+            steps: healthManager.steps,
+            dayWalkingRunningDistanceKm: healthManager.distanceKm,
+            sessions: planSessions,
+            healthAccessGranted: true,
+            unitSystem: unitsStore.resolvedSystem,
+            dayComparison: nil
+        )
+        eveningRecapActivity = seed
+        applyEveningRecapSignals(activity: seed)
+    }
+
+    private func saveEveningRecapFeeling(_ feeling: CoachFeelingKind) {
+        // One choice for the evening — once settled, do not allow edits.
+        if eveningRecapFeeling != nil { return }
+
+        let now = Date()
+        if let existing = CoachFeelingCheckInStore.latest(on: now) {
+            eveningRecapFeeling = existing.feeling
+            return
+        }
+
+        let checkIn = CoachFeelingCheckIn(
+            id: UUID().uuidString,
+            createdAt: now,
+            updatedAt: now,
+            feeling: feeling,
+            clarification: nil,
+            outcome: .insufficient,
+            evidence: .empty,
+            analysisVersion: CoachFeelingEvidenceRules.analysisVersion,
+            followUpAnswers: []
+        )
+        CoachFeelingCheckInStore.upsert(checkIn)
+        eveningRecapFeeling = feeling
+        trackEveningRecapFeeling(feeling)
+        CoachSnapshotInvalidator.invalidate(
+            coordinator: coachCoordinator,
+            nutritionViewModel: nutritionViewModel,
+            inputProvider: coachInputProvider,
+            reason: "eveningRecap.feeling"
+        )
+    }
+
+    private func trackEveningRecapFeeling(_ feeling: CoachFeelingKind) {
+        let event: AnalyticsEvent
+        switch feeling {
+        case .tired, .low:
+            event = .coachEveningFeelingTired
+        case .okay:
+            event = .coachEveningFeelingGood
+        case .energized:
+            event = .coachEveningFeelingEnergized
+        }
+        AppAnalytics.shared.track(event)
+    }
+
+    private func applyEveningRecapSignals(activity: CoachEveningRecapActivitySummary) {
+        let recovery = coachInputProvider.lastInput?.recoveryContext
+        let sleepHours: Double = {
+            if let hours = recovery?.sleepHours, hours > 0 { return hours }
+            if healthManager.sleepHours > 0 { return healthManager.sleepHours }
+            return Double(max(healthManager.sleepMinutes, 0)) / 60.0
+        }()
+        let recoveryPercent = recovery?.recoveryPercent ?? healthManager.recoveryPercent
+        eveningRecapSignals = CoachEveningRecapSignalBuilder.build(
+            activity: activity,
+            sleepHours: sleepHours,
+            recoveryPercent: recoveryPercent,
+            nutrition: coachInputProvider.lastInput?.nutritionContext
+                ?? nutritionViewModel.coachMetricsSnapshot?.nutritionContext,
+            unitSystem: unitsStore.resolvedSystem
+        )
+    }
+
+    private func connectAppleHealthFromCoach() {
+        appSession.presentHealthAccess()
     }
 
     // MARK: - WeekFit Coach Assistant
@@ -648,14 +910,17 @@ struct ExpertCoachView: View {
         VStack(alignment: .leading, spacing: 10) {
             if let meta = liveStateMetaLabel {
                 Text(meta)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(WeekFitType.captionEmphasized)
+                    .fontDesign(.rounded)
                     .foregroundStyle(textSecondary.opacity(0.78))
                     .padding(.top, 8)
             }
 
             if !hierarchy.action.isEmpty {
                 Text(hierarchy.action)
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    // Keep live guidance more expressive than resting sectionTitle.
+                    .font(WeekFitType.activeTimer.weight(.bold))
+                    .fontDesign(.rounded)
                     .foregroundStyle(textPrimary)
                     .tracking(-0.9)
                     .lineSpacing(1)
@@ -665,7 +930,8 @@ struct ExpertCoachView: View {
 
             if !hierarchy.target.isEmpty {
                 Text(hierarchy.target)
-                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .font(WeekFitType.compactCardTitle)
+                    .fontDesign(.rounded)
                     .foregroundStyle(textPrimary.opacity(0.94))
                     .tracking(-0.3)
                     .lineSpacing(2)
@@ -675,7 +941,8 @@ struct ExpertCoachView: View {
 
             if !hierarchy.context.isEmpty {
                 Text(hierarchy.context)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .font(WeekFitType.secondary.weight(.medium))
+                    .fontDesign(.rounded)
                     .foregroundStyle(textPrimary.opacity(palette.isLight ? 0.62 : 0.68))
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
@@ -736,7 +1003,8 @@ struct ExpertCoachView: View {
         VStack(alignment: .leading, spacing: 0) {
             if !headline.isEmpty {
                 Text(headline)
-                    .font(.system(.title2, design: .rounded).weight(.bold))
+                    .font(WeekFitType.sectionTitle)
+                    .fontDesign(.rounded)
                     .foregroundStyle(textPrimary)
                     .tracking(-0.6)
                     .lineSpacing(1)
@@ -748,7 +1016,8 @@ struct ExpertCoachView: View {
             if !explanation.isEmpty,
                !CoachUIPresentationDedup.isNearDuplicate(explanation, headline) {
                 Text(explanation)
-                    .font(.system(size: 15.5, weight: .medium, design: .rounded))
+                    .font(WeekFitType.body.weight(.medium))
+                    .fontDesign(.rounded)
                     .foregroundStyle(textPrimary.opacity(palette.isLight ? 0.68 : 0.74))
                     .lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
@@ -979,7 +1248,8 @@ struct ExpertCoachView: View {
                 .foregroundStyle(accent)
 
             Text(message)
-                .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                .font(WeekFitType.secondary.weight(.semibold))
+                .fontDesign(.rounded)
                 .foregroundStyle(textPrimary.opacity(0.92))
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -1169,17 +1439,20 @@ struct ExpertCoachView: View {
         guard let input = coachState.input else { return nil }
         let now = input.now
         let candidates = input.dayContext.allActivities.filter {
-            !$0.isSkipped && !$0.isCompleted && $0.durationMinutes > 0
+            CoachSessionPhaseStability.isCoachLiveSession($0, now: now)
         }
-        guard let focus = candidates.min(by: {
-            abs($0.date.timeIntervalSince(now)) < abs($1.date.timeIntervalSince(now))
-        }) else { return nil }
-        return focus.durationMinutes
+        guard let focus = candidates.max(by: { $0.date < $1.date }) else { return nil }
+        // Today / Quick Start: chip follows real elapsed, not the soft default duration.
+        if focus.isUserStartedLiveSession(now: now) {
+            return max(1, Int(now.timeIntervalSince(focus.date) / 60))
+        }
+        return max(focus.durationMinutes, 1)
     }
 
     private func coachMetricChip(_ text: String) -> some View {
         Text(text.uppercased())
-            .font(.system(size: 11.5, weight: .bold, design: .rounded))
+            .font(WeekFitType.captionEmphasized.weight(.bold))
+            .fontDesign(.rounded)
             .tracking(0.4)
             .foregroundStyle(textPrimary.opacity(0.88))
             .padding(.horizontal, 10)
@@ -1208,7 +1481,8 @@ struct ExpertCoachView: View {
             } label: {
                 HStack(spacing: 8) {
                     Text(WeekFitLocalizedString("coach.whyThis"))
-                        .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                        .font(WeekFitType.captionEmphasized.weight(.bold))
+                        .fontDesign(.rounded)
                         .tracking(0.5)
                         .foregroundStyle(textSecondary.opacity(0.78))
                         .textCase(.uppercase)
@@ -1221,11 +1495,12 @@ struct ExpertCoachView: View {
                             Int64(count)
                         )
                     )
-                    .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                    .font(WeekFitType.captionEmphasized)
+                    .fontDesign(.rounded)
                     .foregroundStyle(textSecondary.opacity(0.68))
 
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(WeekFitType.captionEmphasized.weight(.bold))
                         .foregroundStyle(textSecondary.opacity(0.55))
                         .rotationEffect(.degrees(isWhyExpanded ? 90 : 0))
                 }
@@ -1256,13 +1531,15 @@ struct ExpertCoachView: View {
     private func coachNextSection(_ text: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(WeekFitLocalizedString("coach.next"))
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .font(WeekFitType.captionEmphasized.weight(.bold))
+                .fontDesign(.rounded)
                 .tracking(0.6)
                 .foregroundStyle(textSecondary.opacity(0.72))
                 .textCase(.uppercase)
 
             Text(text)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .font(WeekFitType.button)
+                .fontDesign(.rounded)
                 .foregroundStyle(textPrimary.opacity(0.90))
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -1312,16 +1589,18 @@ struct ExpertCoachView: View {
 
             VStack(alignment: .leading, spacing: emphasis ? 5 : 4) {
                 Text(label.uppercased())
-                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                    .font(WeekFitType.captionEmphasized.weight(.bold))
+                    .fontDesign(.rounded)
                     .tracking(0.55)
                     .foregroundStyle(coachSectionLabelColor)
 
                 Text(text)
-                    .font(.system(
-                        size: emphasis ? 15.5 : 14.5,
-                        weight: emphasis ? .semibold : .medium,
-                        design: .rounded
-                    ))
+                    .font(
+                        emphasis
+                            ? WeekFitType.compactCardTitle
+                            : WeekFitType.secondary.weight(.medium)
+                    )
+                    .fontDesign(.rounded)
                     .foregroundStyle(
                         emphasis
                             ? textPrimary.opacity(0.96)
@@ -1332,7 +1611,8 @@ struct ExpertCoachView: View {
 
                 if let supporting, !supporting.isEmpty {
                     Text(supporting)
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .font(WeekFitType.secondary.weight(.medium))
+                        .fontDesign(.rounded)
                         .foregroundStyle(textSecondary.opacity(0.82))
                         .lineSpacing(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1391,11 +1671,13 @@ struct ExpertCoachView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(WeekFitLocalizedString(coachUnavailableTitleKey))
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .font(WeekFitType.compactCardTitle.weight(.bold))
+                    .fontDesign(.rounded)
                     .foregroundStyle(textPrimary)
 
                 Text(WeekFitLocalizedString(coachUnavailableMessageKey))
-                    .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                    .font(WeekFitType.secondary.weight(.medium))
+                    .fontDesign(.rounded)
                     .foregroundStyle(textSecondary)
             }
 
@@ -1416,11 +1698,13 @@ struct ExpertCoachView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(CoachState.registryGapTitle)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .font(WeekFitType.compactCardTitle.weight(.bold))
+                    .fontDesign(.rounded)
                     .foregroundStyle(textPrimary)
 
                 Text(CoachState.registryGapMessage)
-                    .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                    .font(WeekFitType.secondary.weight(.medium))
+                    .fontDesign(.rounded)
                     .foregroundStyle(textSecondary)
             }
 
@@ -1445,7 +1729,8 @@ struct ExpertCoachView: View {
                 .padding(.top, 1)
 
             Text(text)
-                .font(.system(size: 13.2, weight: .medium, design: .rounded))
+                .font(WeekFitType.secondary.weight(.medium))
+                .fontDesign(.rounded)
                 .foregroundStyle(textSecondary.opacity(0.94))
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)

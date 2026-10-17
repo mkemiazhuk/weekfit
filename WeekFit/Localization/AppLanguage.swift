@@ -12,6 +12,16 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
     var localeIdentifier: String { rawValue }
 
+    /// Stable Latin badge codes — same in every UI language (EN / RU / ZH).
+    var shortCode: String {
+        switch self {
+        case .english: return "EN"
+        case .russian: return "RU"
+        case .chineseSimplified: return "ZH"
+        }
+    }
+
+    /// Full name in the current app UI language.
     var title: LocalizedStringResource {
         switch self {
         case .english:

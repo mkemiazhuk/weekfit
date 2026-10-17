@@ -70,11 +70,11 @@ struct MealsView: View {
     // MARK: - Library groups
     
     private var mealItems: [Meals] {
-        mealsViewModel.customMeals.filter { $0.isRecipeMeal && resolvedLibraryType($0) != .ingredient }
+        mealsViewModel.customMeals.filter(\.appearsInMealsLibraryMealsSection)
     }
 
     private var foodItems: [Meals] {
-        mealsViewModel.customMeals.filter { $0.isFoodProduct }
+        mealsViewModel.customMeals.filter(\.appearsInMealsLibraryFoodsSection)
     }
 
     private var shouldShowRecommendation: Bool {
@@ -646,11 +646,12 @@ struct MealsView: View {
                     .foregroundStyle(WeekFitTheme.orange.opacity(0.88))
 
                 Text(WeekFitLocalizedString("meals.catalog.loadFailed.title"))
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(WeekFitType.cardTitle.weight(.bold))
+                    .fontDesign(.rounded)
                     .foregroundStyle(textPrimary)
 
                 Text(WeekFitLocalizedString("meals.catalog.loadFailed.message"))
-                    .font(.system(size: 14, weight: .medium))
+                    .font(WeekFitType.secondary.weight(.medium))
                     .foregroundStyle(textSecondary.opacity(0.82))
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -659,7 +660,7 @@ struct MealsView: View {
                     nutritionViewModel.reloadCatalog()
                 } label: {
                     Text(WeekFitLocalizedString("common.action.retry"))
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(WeekFitType.button)
                         .foregroundStyle(.black.opacity(0.86))
                         .frame(maxWidth: .infinity)
                         .frame(height: 44)
@@ -793,7 +794,7 @@ struct MealsView: View {
                     .foregroundStyle(textSecondary)
             )
             .textFieldStyle(.plain)
-            .font(.system(size: 16, weight: .medium))
+            .font(WeekFitType.body.weight(.medium))
             .foregroundStyle(textPrimary)
             .tint(WeekFitTheme.brandGold)
             .focused($isLibrarySearchFocused)
@@ -843,7 +844,7 @@ struct MealsView: View {
                 .font(.system(size: 26, weight: .semibold))
                 .foregroundStyle(textSecondary.opacity(0.45))
             Text(WeekFitLocalizedString("meals.library.search.empty"))
-                .font(.system(size: 16, weight: .semibold))
+                .font(WeekFitType.compactCardTitle)
                 .foregroundStyle(textSecondary)
                 .multilineTextAlignment(.center)
         }
@@ -1000,19 +1001,22 @@ struct MealsView: View {
         onViewAll: (() -> Void)? = nil
     ) -> some View {
         let _ = icon
-        let titleWeight: Font.Weight = prominence == .primary ? .bold : .semibold
         let linkColor = WeekFitTheme.brandGold
 
         return HStack(alignment: .center, spacing: 8) {
             Text(WeekFitLocalizedString(title))
-                .font(.system(size: prominence == .primary ? 20 : 17, weight: titleWeight))
+                .font(
+                    prominence == .primary
+                        ? WeekFitType.cardTitle.weight(.bold)
+                        : WeekFitType.compactCardTitle
+                )
                 .foregroundStyle(textPrimary)
                 .tracking(-0.2)
                 .accessibilityAddTraits(.isHeader)
 
             if showCount {
                 Text("\(count)")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(WeekFitType.captionEmphasized)
                     .foregroundStyle(textSecondary.opacity(0.72))
                     .monospacedDigit()
                     .padding(.horizontal, 8)
@@ -1034,9 +1038,9 @@ struct MealsView: View {
                 Button(action: onViewAll) {
                     HStack(spacing: 3) {
                         Text(WeekFitLocalizedString("meals.library.seeAll"))
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(WeekFitType.secondary.weight(.semibold))
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(WeekFitType.captionEmphasized.weight(.bold))
                     }
                     .foregroundStyle(linkColor)
                     .frame(minHeight: 44)
@@ -1237,30 +1241,6 @@ struct MealsView: View {
         }
 
         UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-    }
-
-    private enum ResolvedLibraryType {
-        case meal
-        case ingredient
-    }
-
-    private func resolvedLibraryType(_ meal: Meals) -> ResolvedLibraryType {
-        if let libraryKind = meal.libraryKind {
-            return libraryKind == .ingredient ? .ingredient : .meal
-        }
-
-        let ids = meal.builderImageItems?.map { $0.id } ?? []
-
-        if !ids.isEmpty {
-            let nonDrinkIds = ids.filter { !$0.hasPrefix("drink_") }
-            if ids.count == 1 || nonDrinkIds.count <= 1 {
-                return .ingredient
-            }
-
-            return .meal
-        }
-
-        return meal.ingredients.count <= 1 ? .ingredient : .meal
     }
 
     private var bottomFixedActionArea: some View {
@@ -2298,7 +2278,8 @@ private struct RecommendedTodayMealCard: View {
         HStack(alignment: .center, spacing: 14) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(recommendation.heroEyebrow)
-                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                    .font(WeekFitType.captionEmphasized.weight(.bold))
+                    .fontDesign(.rounded)
                     .tracking(1.0)
                     .textCase(.uppercase)
                     .foregroundStyle(accent)
@@ -2317,24 +2298,25 @@ private struct RecommendedTodayMealCard: View {
                             .strokeBorder(accent.opacity(palette.isLight ? 0.28 : 0.22), lineWidth: 0.8)
                     }
                     .lineLimit(1)
-                    .minimumScaleFactor(0.85)
 
                 Text(recommendation.meal.localizedDisplayTitle)
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .font(WeekFitType.compactCardTitle)
+                    .fontDesign(.rounded)
                     .foregroundStyle(textPrimary)
                     .tracking(-0.28)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text(nutritionLine)
-                    .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                    .font(WeekFitType.secondary.weight(.semibold))
+                    .fontDesign(.rounded)
                     .foregroundStyle(textSecondary.opacity(0.88))
                     .monospacedDigit()
                     .lineLimit(1)
-                    .minimumScaleFactor(0.85)
 
                 Text(recommendation.heroSummary)
-                    .font(.system(size: 12.5, weight: .medium, design: .rounded))
+                    .font(WeekFitType.secondary.weight(.medium))
+                    .fontDesign(.rounded)
                     .foregroundStyle(textSecondary.opacity(0.78))
                     .lineSpacing(1)
                     .lineLimit(3)
@@ -2343,9 +2325,10 @@ private struct RecommendedTodayMealCard: View {
                 Button(action: openDetails) {
                     HStack(spacing: 4) {
                         Text(WeekFitLocalizedString("meals.library.hero.viewMeal"))
-                            .font(.system(size: 13.5, weight: .semibold, design: .rounded))
+                            .font(WeekFitType.secondary.weight(.semibold))
+                            .fontDesign(.rounded)
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(WeekFitType.captionEmphasized.weight(.bold))
                     }
                     .foregroundStyle(palette.isLight ? WeekFitLightTokens.brandGoldDark : accent)
                     .frame(minHeight: 40, alignment: .leading)
@@ -2516,7 +2499,8 @@ private struct MealLibraryExpandSheet: View {
                     .accessibilityHidden(true)
 
                 Text(period.title)
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .font(WeekFitType.secondary.weight(.semibold))
+                    .fontDesign(.rounded)
                     .foregroundStyle(
                         palette.isLight
                             ? WeekFitTheme.primaryText

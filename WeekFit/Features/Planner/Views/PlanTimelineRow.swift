@@ -2,7 +2,7 @@ import SwiftUI
 import WeekFitPlanner
 
 enum PlanTimelineLayout {
-    static let timeWidth: CGFloat = 56
+    static let timeWidth: CGFloat = 62
     static let columnWidth: CGFloat = 18
     static let timeToTimelineSpacing: CGFloat = 6
     static let timelineToCardSpacing: CGFloat = 8
@@ -11,19 +11,15 @@ enum PlanTimelineLayout {
     static let lineWidth: CGFloat = 1.0
     static let rowSpacing: CGFloat = 12
     static let cardCornerRadius: CGFloat = WeekFitSurface.compactRadius
-    static let compactHydrationVerticalPadding: CGFloat = 7
+    static let compactHydrationVerticalPadding: CGFloat = 8
     static let cardHorizontalPadding: CGFloat = WeekFitSurface.compactHorizontalPadding
-    static let cardVerticalPadding: CGFloat = 11
-    static let cardIconSpacing: CGFloat = 10
+    static let cardVerticalPadding: CGFloat = 13
+    static let cardIconSpacing: CGFloat = 11
     static let cardAccentBarWidth: CGFloat = WeekFitSurface.accentIndicatorWidth
     static let rowTopInset: CGFloat = 8
     static let firstConnectorInset: CGFloat = 8
     static let lastConnectorInset: CGFloat = 4
-    static let titleFontSize: CGFloat = 15.2
-    static let subtitleFontSize: CGFloat = 12.5
-    /// Slightly larger, secondary — time anchors the day without competing titles.
-    static let timeFontSize: CGFloat = 15.5
-    static let titleSubtitleSpacing: CGFloat = 2
+    static let titleSubtitleSpacing: CGFloat = 3
 }
 
 struct PlanTimelineNowDivider: View {
@@ -93,9 +89,6 @@ struct PlanTimelineRow: View {
     var showsTimeLabel: Bool = true
 
     @ScaledMetric(relativeTo: .caption) private var timeColumnWidth = PlanTimelineLayout.timeWidth
-    @ScaledMetric(relativeTo: .body) private var titleFontSize = PlanTimelineLayout.titleFontSize
-    @ScaledMetric(relativeTo: .subheadline) private var subtitleFontSize = PlanTimelineLayout.subtitleFontSize
-    @ScaledMetric(relativeTo: .callout) private var timeFontSize = PlanTimelineLayout.timeFontSize
     @State private var livePulse = false
     @Environment(\.weekFitPalette) private var palette
 
@@ -171,19 +164,21 @@ struct PlanTimelineRow: View {
             if showsTimeLabel {
                 if time.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Text(WeekFitLocalizedString("planner.timeline.anytime"))
-                        .font(.system(size: timeFontSize * 0.82, weight: .medium, design: .rounded))
+                        .font(WeekFitType.secondary.weight(.medium))
+                        .fontDesign(.rounded)
                         .foregroundStyle(palette.textSecondary.opacity(0.72))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.78)
                 } else {
                     Text(time)
-                        .font(.system(size: timeFontSize, weight: .medium).monospacedDigit())
+                        .font(WeekFitType.body.weight(.medium))
+                        .monospacedDigit()
                         .foregroundStyle(timeColor)
                 }
             } else {
                 // Duplicate clock — keep column alignment without stray punctuation.
                 Text(verbatim: " ")
-                    .font(.system(size: timeFontSize, weight: .medium).monospacedDigit())
+                    .font(WeekFitType.body.weight(.medium))
+                    .monospacedDigit()
                     .opacity(0)
                     .accessibilityHidden(true)
             }
@@ -289,13 +284,14 @@ struct PlanTimelineRow: View {
                 VStack(alignment: .leading, spacing: PlanTimelineLayout.titleSubtitleSpacing + 1) {
                     HStack(alignment: .center, spacing: 6) {
                         Text(displayTitle)
-                            .font(.system(size: titleFontSize, weight: titleFontWeight, design: .rounded))
+                            .font(WeekFitType.compactCardTitle.weight(titleFontWeight))
+                            .fontDesign(.rounded)
                             .foregroundStyle(titleColor)
                             .tracking(-0.22)
                             .strikethrough(status == .skipped, color: titleColor.opacity(0.72))
                             .lineLimit(2)
-                            .minimumScaleFactor(0.88)
                             .truncationMode(.tail)
+                            .fixedSize(horizontal: false, vertical: true)
                             .layoutPriority(1)
 
                         if isLive {
@@ -316,9 +312,9 @@ struct PlanTimelineRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(WeekFitType.captionEmphasized)
                     .foregroundStyle(chevronColor)
-                    .frame(width: 6, alignment: .trailing)
+                    .frame(width: 8, alignment: .trailing)
                     .opacity(0.55)
                     .accessibilityHidden(true)
             }
@@ -487,7 +483,7 @@ struct PlanTimelineRow: View {
                 watchSourceBadge
             }
         }
-        .font(.system(size: subtitleFontSize, weight: .regular))
+        .font(WeekFitType.secondary)
         .foregroundStyle(metadataColor)
         .lineLimit(1)
     }
@@ -511,7 +507,7 @@ struct PlanTimelineRow: View {
 
     private var watchSourceBadge: some View {
         Image(systemName: "applewatch")
-            .font(.system(size: 10, weight: .medium))
+            .font(WeekFitType.caption)
             .foregroundStyle(metadataColor.opacity(0.58))
             .accessibilityLabel(WeekFitLocalizedString("planner.timeline.source.appleWatch"))
     }
@@ -593,7 +589,7 @@ struct PlanTimelineRow: View {
                     .lineLimit(1)
             }
         }
-        .font(.system(size: subtitleFontSize, weight: .semibold))
+        .font(WeekFitType.secondary.weight(.semibold))
         .foregroundStyle(pendingAttentionColor.opacity(0.92))
     }
 

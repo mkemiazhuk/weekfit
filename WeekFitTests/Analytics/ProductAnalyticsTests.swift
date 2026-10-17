@@ -157,6 +157,12 @@ final class ProductAnalyticsTests: XCTestCase {
         XCTAssertNil(AnalyticsEvent(rawValue: "coach_action_dismissed"))
     }
 
+    func testCoachEveningFeelingEventsAreDiscrete() {
+        XCTAssertEqual(AnalyticsEvent.coachEveningFeelingTired.rawValue, "coach_evening_feeling_tired")
+        XCTAssertEqual(AnalyticsEvent.coachEveningFeelingGood.rawValue, "coach_evening_feeling_good")
+        XCTAssertEqual(AnalyticsEvent.coachEveningFeelingEnergized.rawValue, "coach_evening_feeling_energized")
+    }
+
     func testHydrationLoggingCompletionAfterPersistenceSemantics() {
         ProductAnalytics.hydrationLoggingStarted(method: .quickLog, source: .today)
         ProductAnalytics.hydrationLoggingCompleted(method: .quickLog, source: .today)

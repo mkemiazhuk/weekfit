@@ -552,6 +552,112 @@ final class CustomMealsXCTests: XCTestCase {
         XCTAssertEqual(sections[2].meals.map(\.id), ["a"])
     }
 
+    func testQuickFoodLogMealsTabMatchesMealsLibraryVisibleSet() {
+        let recipe = Meals(
+            id: "recipe",
+            title: "Chicken Bowl",
+            subtitle: "",
+            imageName: "",
+            type: .highProtein,
+            calories: 500,
+            protein: 40,
+            carbs: 40,
+            fats: 12,
+            fiber: 6,
+            benefits: [],
+            ingredients: [
+                MealsIngredient(name: "Chicken", amount: "150g"),
+                MealsIngredient(name: "Rice", amount: "100g"),
+            ],
+            libraryKind: .meal,
+            creationMode: .ingredients
+        )
+        let food = Meals(
+            id: "food",
+            title: "Greek Yogurt",
+            subtitle: "170g serving",
+            imageName: "",
+            type: .balanced,
+            calories: 150,
+            protein: 15,
+            carbs: 8,
+            fats: 4,
+            fiber: 0,
+            benefits: [],
+            ingredients: [MealsIngredient(name: "Serving", amount: "170g")],
+            libraryKind: .product,
+            creationMode: .manual,
+            servingGrams: 170
+        )
+        let ingredient = Meals(
+            id: "ingredient",
+            title: "Olive Oil",
+            subtitle: "",
+            imageName: "",
+            type: .balanced,
+            calories: 120,
+            protein: 0,
+            carbs: 0,
+            fats: 14,
+            fiber: 0,
+            benefits: [],
+            ingredients: [MealsIngredient(name: "Olive Oil", amount: "14g")],
+            libraryKind: .ingredient,
+            creationMode: .ingredients
+        )
+        let legacySingleIngredient = Meals(
+            id: "legacy-ingredient",
+            title: "Banana",
+            subtitle: "",
+            imageName: "",
+            type: .balanced,
+            calories: 90,
+            protein: 1,
+            carbs: 23,
+            fats: 0,
+            fiber: 3,
+            benefits: [],
+            ingredients: [MealsIngredient(name: "Banana", amount: "1")],
+            builderImageItems: [
+                MealBuilderImageItem(
+                    id: "fruit_banana",
+                    imageName: "fruit_banana",
+                    visualSize: 40,
+                    visualDensity: 1,
+                    supportsStandalonePresentation: true,
+                    offsetX: 0,
+                    offsetY: 0,
+                    rotation: 0,
+                    zIndex: 0,
+                    grams: 100
+                )
+            ]
+        )
+
+        XCTAssertTrue(recipe.appearsInMealsLibraryMealsSection)
+        XCTAssertFalse(recipe.appearsInMealsLibraryFoodsSection)
+        XCTAssertTrue(recipe.appearsInQuickFoodLogMealsTab)
+
+        XCTAssertFalse(food.appearsInMealsLibraryMealsSection)
+        XCTAssertTrue(food.appearsInMealsLibraryFoodsSection)
+        XCTAssertTrue(food.appearsInQuickFoodLogMealsTab)
+
+        XCTAssertFalse(ingredient.appearsInMealsLibraryMealsSection)
+        XCTAssertFalse(ingredient.appearsInMealsLibraryFoodsSection)
+        XCTAssertFalse(ingredient.appearsInQuickFoodLogMealsTab)
+
+        XCTAssertTrue(legacySingleIngredient.isLibraryIngredientEntry)
+        XCTAssertFalse(legacySingleIngredient.appearsInQuickFoodLogMealsTab)
+
+        let catalog = [recipe, food, ingredient, legacySingleIngredient]
+        let mealsTabVisible = catalog.filter {
+            $0.appearsInMealsLibraryMealsSection || $0.appearsInMealsLibraryFoodsSection
+        }
+        let logFoodVisible = catalog.filter(\.appearsInQuickFoodLogMealsTab)
+        XCTAssertEqual(mealsTabVisible.map(\.id), ["recipe", "food"])
+        XCTAssertEqual(logFoodVisible.map(\.id), mealsTabVisible.map(\.id))
+    }
+
     private func timedMeal(id: String, time: String?) -> Meals {
         Meals(
             id: id,

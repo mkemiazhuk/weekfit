@@ -84,7 +84,7 @@ Reflection is blocked while any Guidance owner is active:
 | Tomorrow protection | `sessionPhase == .tomorrowProtection` |
 | Meaningful work remaining | upcoming workout later today |
 | Elevated urgency | `urgencyLevel >= .protective` |
-| Safety alert | non-`none` alert severity or active `safetyAlert` |
+| Safety alert | active `safetyAlert`, or `alertSeverity == .critical` (not everyday `.elevated` fuel/hydration behind) |
 
 Silence is the correct default. Most Coach visits show Guidance only.
 

@@ -212,6 +212,30 @@ struct CoachPlannedActivitySnapshot: Equatable, Hashable, Sendable, Identifiable
         ) ?? date
         return date <= now && now <= endDate
     }
+
+    /// Quick Start / Today-started sessions — not plan slots whose window merely overlaps `now`.
+    var isUserStartedSessionSource: Bool {
+        let normalized = source.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch normalized {
+        case "today", "quickstart", "quick_start", "appreviewdemo":
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Open-ended until the user completes/skips — mirrors `PlannedActivity.isUserStartedLiveSession`.
+    func isUserStartedLiveSession(now: Date = Date()) -> Bool {
+        switch type.lowercased() {
+        case "workout", "recovery":
+            break
+        default:
+            return false
+        }
+        guard !isCompleted, !isSkipped else { return false }
+        guard isUserStartedSessionSource else { return false }
+        return date <= now
+    }
 }
 
 extension Array where Element == PlannedActivity {

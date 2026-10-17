@@ -172,14 +172,14 @@ public extension PlannedActivity {
         }
 
         if normalizedType == "recovery" {
-            if normalizedTitle.contains("sauna") {
+            if normalizedTitle.contains("sauna") || normalizedTitle.contains("саун") {
                 return .sauna
             }
 
             return .recovery
         }
 
-        if normalizedTitle.contains("sauna") {
+        if normalizedTitle.contains("sauna") || normalizedTitle.contains("саун") {
             return .sauna
         }
 

@@ -41,12 +41,12 @@ struct CoachEveningSummary: Codable, Equatable, Sendable {
 }
 
 enum CoachEveningSummaryPolicy {
-    /// Coach surface for evening AI summary. Off while the feature is parked.
-    static let isCoachSurfaceEnabled = false
+    /// Coach surface for evening recap (Your day + AI + feeling).
+    static let isCoachSurfaceEnabled = true
 
-    /// Production path: after 20:00 local, one AI attempt per calendar day (client claim + server reservation).
-    /// Keep `false` while manually testing with the Coach refresh button.
-    static let enforcesOncePerDayAndEveningWindow = false
+    /// Auto path: after 20:00 local; regenerate when activity fingerprint changes.
+    /// Manual Get/Refresh is not the primary UX anymore.
+    static let enforcesOncePerDayAndEveningWindow = true
 
     static var allowsManualRefreshAnytime: Bool { !enforcesOncePerDayAndEveningWindow }
 
@@ -65,5 +65,27 @@ enum CoachEveningSummaryPolicy {
             return isEvening(date, calendar: calendar)
         }
         return true
+    }
+
+    /// Prefer `now` (concrete evening step); fall back to `today` takeaway.
+    static func displayCommentary(from summary: CoachEveningSummary) -> String {
+        let now = summary.now.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !now.isEmpty { return clampCommentary(now) }
+        let today = summary.today.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return clampCommentary(today)
+    }
+
+    private static func clampCommentary(_ text: String) -> String {
+        let sentences = text
+            .components(separatedBy: CharacterSet(charactersIn: ".!?。！？"))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        if sentences.isEmpty { return text }
+        let kept = Array(sentences.prefix(2))
+        var joined = kept.joined(separator: ". ")
+        if !joined.hasSuffix(".") && !joined.hasSuffix("!") && !joined.hasSuffix("?") {
+            joined += "."
+        }
+        return joined
     }
 }

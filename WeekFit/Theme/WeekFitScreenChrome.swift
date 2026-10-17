@@ -38,11 +38,13 @@ enum WeekFitSurface {
 //
 /// Canonical semantic type roles (Dynamic Type). Approximate default sizes:
 /// screenTitle ~34, cardTitle ~20, compactCardTitle ~17–18, body ~17, primaryMetric ~22,
-/// activeTimer ~28–32, secondary ~15, sectionLabel ~13–14, button ~17.
-/// Prefer these over fixed `system(size:)` call sites. Dense Plan-timeline tokens in
-/// `WeekFitStyle.Font` remain layout exceptions until those surfaces migrate.
+/// heroMetric ~53/43, activeTimer ~28–32, secondary ~15, sectionLabel ~13–14, button ~17.
+/// Prefer these over fixed `system(size:)` call sites.
+///
+/// Tab roots (Today / Coach / Meals / Plan) are content-first: they do **not** require
+/// `screenTitle`. Keep `screenTitle` for push/detail screens and other titled surfaces.
 enum WeekFitType {
-    /// Screen title — largeTitle / ~34 bold.
+    /// Screen title — largeTitle / ~34 bold. Not required on main tab roots.
     static let screenTitle = Font.largeTitle.weight(.bold)
     /// Supporting line under a screen title.
     static let screenSubtitle = Font.body
@@ -57,6 +59,14 @@ enum WeekFitType {
     static let body = Font.body
     /// Primary metric (rings, scores) — title2 / ~22 semibold.
     static let primaryMetric = Font.title2.weight(.semibold)
+    /// Evening / day-hero metric bases for `@ScaledMetric(relativeTo: .largeTitle)`.
+    /// Regular ~53; compact (accessibility Dynamic Type) ~43.
+    static let heroMetricBase: CGFloat = 53
+    static let heroMetricCompactBase: CGFloat = 43
+    /// Unit label beside `heroMetric` — title3 / ~20 medium.
+    static let heroMetricUnit = Font.title3.weight(.medium)
+    /// Signal / secondary hero value — title3 / ~20 semibold.
+    static let heroMetricSignal = Font.title3.weight(.semibold)
     /// Live session timer — title / ~28 semibold, monospaced digits.
     static let activeTimer = Font.title.weight(.semibold)
     /// Secondary / supporting — subheadline / ~15.
@@ -75,6 +85,15 @@ enum WeekFitType {
     static let caption = Font.caption.weight(.medium)
     /// Emphasized caption meta.
     static let captionEmphasized = Font.caption.weight(.semibold)
+
+    /// Scaled hero metric font from `heroMetricBase` / `heroMetricCompactBase`.
+    static func heroMetric(compact: Bool = false) -> Font {
+        .system(
+            size: compact ? heroMetricCompactBase : heroMetricBase,
+            weight: .bold,
+            design: .rounded
+        )
+    }
 }
 
 extension View {

@@ -117,7 +117,9 @@ struct CoachInputFingerprint: Hashable, CustomStringConvertible {
 
     /// 15-minute live-session copy bucket — rotates coach guidance during long activities.
     private static func liveSessionElapsedQuarter(from snapshot: CoachInputSnapshot) -> Int? {
-        guard let active = snapshot.plannedActivities.first(where: { $0.isActive(at: snapshot.now) }) else {
+        guard let active = snapshot.plannedActivities.first(where: {
+            CoachSessionPhaseStability.isCoachLiveSession($0, now: snapshot.now)
+        }) else {
             return nil
         }
         let elapsed = snapshot.now.timeIntervalSince(active.date)

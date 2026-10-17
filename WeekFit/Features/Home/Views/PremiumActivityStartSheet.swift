@@ -562,7 +562,7 @@ struct PremiumActivityStartSheet: View {
                     .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
 
-                liveProgressText(startedAt: liveItem.date, maxMinutes: liveItem.durationMinutes)
+                liveElapsedText(startedAt: liveItem.date)
             }
 
             Spacer(minLength: 8)
@@ -608,16 +608,21 @@ struct PremiumActivityStartSheet: View {
         }
     }
 
-    private func liveProgressText(startedAt: Date, maxMinutes: Int) -> some View {
+    /// Open-ended elapsed label — Today sessions are not capped by the soft default duration.
+    private func liveElapsedText(startedAt: Date) -> some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
-            let elapsed = max(0, Int(context.date.timeIntervalSince(startedAt)))
-            let elapsedMinutes = min(elapsed / 60, max(maxMinutes, 1))
+            let elapsedMinutes = max(0, Int(context.date.timeIntervalSince(startedAt)) / 60)
 
-            Text(String(format: WeekFitLocalizedString("home.activityStart.progressFormat"), elapsedMinutes, maxMinutes))
-                .font(.system(size: 10.6, weight: .semibold))
-                .monospacedDigit()
-                .foregroundStyle(WeekFitTheme.secondaryText)
-                .lineLimit(1)
+            Text(
+                String(
+                    format: WeekFitLocalizedString("home.activityStart.elapsedFormat"),
+                    Int64(elapsedMinutes)
+                )
+            )
+            .font(.system(size: 10.6, weight: .semibold))
+            .monospacedDigit()
+            .foregroundStyle(WeekFitTheme.secondaryText)
+            .lineLimit(1)
         }
     }
 

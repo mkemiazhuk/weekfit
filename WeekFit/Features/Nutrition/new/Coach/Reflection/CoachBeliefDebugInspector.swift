@@ -321,6 +321,9 @@ enum CoachBeliefDebugInspector {
 
         if !pause.isPaused {
             let blocker = pause.blockedBy?.rawValue ?? "unknown"
+            if pause.blockedBy == .safetyAlert {
+                return "Pause blocked by safetyAlert (true safetyAlert or alertSeverity.critical — not everyday elevated fuel/hydration)."
+            }
             return "Pause blocked by \(blocker)."
         }
 

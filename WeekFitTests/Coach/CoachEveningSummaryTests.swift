@@ -36,10 +36,31 @@ final class CoachEveningSummaryTests: XCTestCase {
         XCTAssertEqual(CoachEveningSummaryPolicy.dayKey(date("2026-10-12T22:00:00Z"), calendar: calendar()), "2026-10-13")
     }
 
-    func testTestModeAllowsGenerationBefore20() {
-        XCTAssertFalse(CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow)
-        XCTAssertTrue(CoachEveningSummaryPolicy.allowsGeneration(
+    func testProductionModeRequiresEveningWindow() {
+        XCTAssertTrue(CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow)
+        XCTAssertFalse(CoachEveningSummaryPolicy.allowsGeneration(
             at: date("2026-10-12T10:00:00Z"), calendar: calendar()))
+        XCTAssertTrue(CoachEveningSummaryPolicy.allowsGeneration(
+            at: date("2026-10-12T18:00:00Z"), calendar: calendar()))
+    }
+
+    func testDisplayCommentaryPrefersNowPassage() {
+        let input = input()
+        let summary = CoachEveningSummary(
+            headline: "Recap",
+            today: .init(text: "Today takeaway about the whole day.", evidenceIds: ["sleep.duration"]),
+            now: .init(text: "Keep your evening easy and wind down.", evidenceIds: ["sleep.duration"]),
+            tomorrow: .init(text: "Plan is not yet known.", evidenceIds: ["sleep.duration"]),
+            limitations: [],
+            day: input.day,
+            locale: input.locale,
+            generatedAt: "2026-10-12T18:00:00Z",
+            source: "ai"
+        )
+        XCTAssertEqual(
+            CoachEveningSummaryPolicy.displayCommentary(from: summary),
+            "Keep your evening easy and wind down."
+        )
     }
 
     func testPersistedClaimSurvivesStoreRecreationAndIsScopedToOwner() throws {
@@ -53,7 +74,7 @@ final class CoachEveningSummaryTests: XCTestCase {
         XCTAssertTrue(try b.claim(owner: "local", day: "2026-10-13"))
     }
 
-    func testManualRefreshIgnoresDailyClaimAndCallsAIRepeatedly() async {
+    func testManualRefreshCallsAIInEveningWindow() async {
         let store = temporaryStore()
         XCTAssertTrue(try! store.claim(owner: "local", day: "2026-10-12"))
         var calls = 0
@@ -61,17 +82,91 @@ final class CoachEveningSummaryTests: XCTestCase {
             calls += 1
             return self.answer(input, headline: "H\(calls)")
         }
-        let morning = date("2026-10-12T10:00:00Z")
-        coordinator.refresh(input: input(), owner: "local", now: morning, calendar: calendar())
+        let evening = date("2026-10-12T18:30:00Z")
+        coordinator.refresh(input: input(), owner: "local", now: evening, calendar: calendar())
         for _ in 0..<40 { await Task.yield() }
         XCTAssertEqual(calls, 1)
         XCTAssertEqual(coordinator.summary?.headline, "H1")
         XCTAssertFalse(coordinator.isRefreshing)
 
-        coordinator.refresh(input: input(), owner: "local", now: morning, calendar: calendar())
+        coordinator.refresh(input: input(), owner: "local", now: evening, calendar: calendar())
         for _ in 0..<40 { await Task.yield() }
         XCTAssertEqual(calls, 2)
         XCTAssertEqual(coordinator.summary?.headline, "H2")
+    }
+
+    func testEnsureUpToDateRegeneratesWhenFingerprintChanges() async {
+        let store = temporaryStore()
+        var calls = 0
+        let coordinator = CoachEveningSummaryCoordinator(store: store) { input, _ in
+            calls += 1
+            return self.answer(input, headline: "H\(calls)")
+        }
+        let evening = date("2026-10-12T18:30:00Z")
+        coordinator.ensureUpToDate(
+            input: input(),
+            owner: "local",
+            fingerprint: "fp1",
+            now: evening,
+            calendar: calendar(),
+            isStillEligible: { true }
+        )
+        for _ in 0..<40 { await Task.yield() }
+        XCTAssertEqual(calls, 1)
+        XCTAssertEqual(coordinator.cachedFingerprint, "fp1")
+
+        coordinator.ensureUpToDate(
+            input: input(),
+            owner: "local",
+            fingerprint: "fp1",
+            now: evening,
+            calendar: calendar(),
+            isStillEligible: { true }
+        )
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertEqual(calls, 1)
+
+        coordinator.ensureUpToDate(
+            input: input(),
+            owner: "local",
+            fingerprint: "fp2",
+            now: evening,
+            calendar: calendar(),
+            isStillEligible: { true }
+        )
+        for _ in 0..<40 { await Task.yield() }
+        XCTAssertEqual(calls, 2)
+        XCTAssertEqual(coordinator.cachedFingerprint, "fp2")
+    }
+
+    func testStaleResponseDiscardedWhenNoLongerEligible() async {
+        let store = temporaryStore()
+        let gate = AsyncGate()
+        var eligible = true
+        let coordinator = CoachEveningSummaryCoordinator(store: store) { input, _ in
+            await gate.wait()
+            return self.answer(input, headline: "Late")
+        }
+        let evening = date("2026-10-12T18:30:00Z")
+        coordinator.ensureUpToDate(
+            input: input(),
+            owner: "local",
+            fingerprint: "fp1",
+            now: evening,
+            calendar: calendar(),
+            isStillEligible: { eligible }
+        )
+        for _ in 0..<40 where !coordinator.isRefreshing {
+            await Task.yield()
+        }
+        XCTAssertTrue(coordinator.isRefreshing)
+        eligible = false
+        await gate.open()
+        for _ in 0..<40 where coordinator.isRefreshing {
+            await Task.yield()
+        }
+        XCTAssertNil(coordinator.summary)
+        XCTAssertFalse(coordinator.isRefreshing)
     }
 
     func testRefreshFailureKeepsPreviousSummary() async {
@@ -82,12 +177,13 @@ final class CoachEveningSummaryTests: XCTestCase {
             if calls == 1 { return self.answer(input, headline: "Good") }
             throw URLError(.timedOut)
         }
-        coordinator.refresh(input: input(), owner: "local", now: date("2026-10-12T10:00:00Z"), calendar: calendar())
+        let evening = date("2026-10-12T18:30:00Z")
+        coordinator.refresh(input: input(), owner: "local", now: evening, calendar: calendar())
         for _ in 0..<40 { await Task.yield() }
         XCTAssertEqual(coordinator.summary?.headline, "Good")
         let received = coordinator.receivedAt
 
-        coordinator.refresh(input: input(), owner: "local", now: date("2026-10-12T11:00:00Z"), calendar: calendar())
+        coordinator.refresh(input: input(), owner: "local", now: evening, calendar: calendar())
         for _ in 0..<40 { await Task.yield() }
         XCTAssertEqual(calls, 2)
         XCTAssertEqual(coordinator.summary?.headline, "Good")
@@ -105,7 +201,7 @@ final class CoachEveningSummaryTests: XCTestCase {
             await gate.wait()
             return self.answer(input)
         }
-        let now = date("2026-10-12T10:00:00Z")
+        let now = date("2026-10-12T18:30:00Z")
         coordinator.refresh(input: input(), owner: "local", now: now, calendar: calendar())
         for _ in 0..<40 where !coordinator.isRefreshing {
             await Task.yield()
@@ -154,8 +250,16 @@ final class CoachEveningSummaryTests: XCTestCase {
         XCTAssertFalse(coordinator.lastRefreshFailed)
     }
 
-    func testManualModeOnlyBlocksMissingOrWrongDaySnapshot() {
-        XCTAssertFalse(CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow)
+    func testProductionModeBlocksMissingSnapshotAndOutsideEveningWindow() {
+        XCTAssertTrue(CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow)
+        XCTAssertEqual(
+            CoachEveningSummaryInputBuilder.buildBlockReason(
+                input: nil,
+                now: date("2026-10-12T18:30:00Z"),
+                calendar: calendar()
+            ),
+            .snapshotStale
+        )
         XCTAssertEqual(
             CoachEveningSummaryInputBuilder.buildBlockReason(
                 input: nil,
@@ -164,6 +268,8 @@ final class CoachEveningSummaryTests: XCTestCase {
             ),
             .snapshotStale
         )
+        // Nil input short-circuits before the evening-window check; with no snapshot the
+        // builder still reports stale rather than inventing facts.
     }
 
     func testCacheIsolatedByOwner() throws {

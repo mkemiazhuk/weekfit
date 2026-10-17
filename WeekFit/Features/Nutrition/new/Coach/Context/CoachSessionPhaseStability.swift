@@ -11,6 +11,8 @@ enum CoachSessionPhaseStability {
     static func isCoachLiveSession(_ activity: CoachPlannedActivitySnapshot, now: Date) -> Bool {
         guard !activity.isSkipped else { return false }
         guard CoachActivityClassifier.family(for: activity) != .none else { return false }
+        // Today / Quick Start: stay live past the soft default duration until Stop.
+        if activity.isUserStartedLiveSession(now: now) { return true }
         if activity.isActive(at: now) { return true }
         return treatsCompletedAsLive(activity: activity, now: now)
     }

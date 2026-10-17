@@ -73,6 +73,44 @@ final class CoachSessionFocusEligibilityTests: XCTestCase {
         XCTAssertTrue(color.isLiveSessionChrome)
     }
 
+    func testTodayStartedSessionStaysLivePastSoftDefaultDuration() {
+        let start = date(hour: 13, minute: 0)
+        let now = date(hour: 13, minute: 35)
+        let mobility = CoachPlannedActivitySnapshot(
+            date: start,
+            type: "recovery",
+            title: "Mobility",
+            durationMinutes: 20,
+            source: "today"
+        )
+
+        XCTAssertFalse(mobility.isActive(at: now))
+        XCTAssertTrue(mobility.isUserStartedLiveSession(now: now))
+        XCTAssertTrue(CoachSessionPhaseStability.isCoachLiveSession(mobility, now: now))
+
+        let focus = CoachFocusResolver.resolve(input: makeInput(now: now, activities: [mobility]))
+        XCTAssertEqual(focus.source, .active)
+        XCTAssertEqual(focus.phase, .during)
+        XCTAssertEqual(focus.activity?.title, "Mobility")
+    }
+
+    func testTodayStartedSessionEndsWhenUserCompletes() {
+        let start = date(hour: 13, minute: 0)
+        let now = date(hour: 13, minute: 35)
+        let mobility = CoachPlannedActivitySnapshot(
+            date: start,
+            type: "recovery",
+            title: "Mobility",
+            durationMinutes: 20,
+            isCompleted: true,
+            source: "today",
+            actualDurationMinutes: 35
+        )
+
+        XCTAssertFalse(mobility.isUserStartedLiveSession(now: now))
+        XCTAssertFalse(CoachSessionPhaseStability.isCoachLiveSession(mobility, now: now))
+    }
+
     func testMealIsNotSessionFocusCandidate() {
         let meal = snapshot(
             type: "meal",

@@ -71,7 +71,13 @@ final class CoachInputProvider: ObservableObject {
         let task = Task { @MainActor in
             let dayActivities = DailyStateSnapshotBuilder.activities(on: selectedDate, from: plannedActivities)
 
-            if dayActivities.contains(where: { !$0.isSkipped && $0.isActive(at: Date()) }) {
+            let now = Date()
+            if dayActivities.contains(where: {
+                CoachSessionPhaseStability.isCoachLiveSession(
+                    CoachPlannedActivitySnapshot(from: $0),
+                    now: now
+                )
+            }) {
                 await healthManager.ensureHeartRateZonePhysiology()
             }
 

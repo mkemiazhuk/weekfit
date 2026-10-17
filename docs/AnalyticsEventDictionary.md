@@ -168,6 +168,9 @@ Helper: `MorningProposalAnalytics` / `ProductAnalytics` wrappers.
 | Event | Trigger | Parameters |
 |-------|---------|------------|
 | `coach_recommendation_viewed` | Recommendation text actually appears | `source=coach` only |
+| `coach_evening_feeling_tired` | User taps Tired on evening recap | none |
+| `coach_evening_feeling_good` | User taps Good on evening recap | none |
+| `coach_evening_feeling_energized` | User taps Energized on evening recap | none |
 
 **Omitted:** health topic categories (`sleep` / `recovery` / `nutrition` / …), scenario keys, copy, HealthKit.
 
