@@ -31,6 +31,19 @@ export const en = {
       "Never leaves your iPhone",
     ],
   },
+  aiNutrition: {
+    kicker: "New in WeekFit",
+    title: "AI Nutrition Assistant",
+    lead: "Estimate calories and macros from a photo — take one now or choose from your library.",
+    points: [
+      "Snap a plate and get calories, protein, carbs, and fat",
+      "Works from camera or your photo library",
+      "Included with WeekFit Premium",
+    ],
+    badge: "Premium",
+    cta: "Get WeekFit",
+    imageAlt: "WeekFit Log Food sheet showing AI Nutrition Assistant with Take photo and Choose photo",
+  },
   coachAdvice: {
     label: "Coach",
     matters: "What matters now",
@@ -270,7 +283,7 @@ export const en = {
     features: [
       "Recovery score",
       "Sleep & readiness",
-      "Nutrition balance",
+      "AI photo nutrition",
       "Weekly planning",
       "Home Screen widgets",
       "On-device privacy",
@@ -291,7 +304,7 @@ export const en = {
       },
       nutrition: {
         name: "Nutrition",
-        desc: "Macros in the context of your day.",
+        desc: "Macros in the context of your day — including AI from a photo.",
       },
       hydration: {
         name: "Hydration",
@@ -425,6 +438,19 @@ export const ru: Dict = {
       "Apple Health",
       "Данные только на iPhone",
     ],
+  },
+  aiNutrition: {
+    kicker: "Новое в WeekFit",
+    title: "AI Nutrition Assistant",
+    lead: "Оценивайте калории и БЖУ по фото — снимите блюдо или выберите снимок из галереи.",
+    points: [
+      "Фото тарелки → калории, белки, углеводы и жиры",
+      "Камера или библиотека фото",
+      "Входит в WeekFit Premium",
+    ],
+    badge: "Premium",
+    cta: "Установить WeekFit",
+    imageAlt: "Экран Log Food в WeekFit с AI Nutrition Assistant — кнопки Сделать фото и Выбрать фото",
   },
   coachAdvice: {
     label: "Коуч",
@@ -665,7 +691,7 @@ export const ru: Dict = {
     features: [
       "Восстановление",
       "Сон и готовность",
-      "Питание",
+      "AI-питание по фото",
       "План на неделю",
       "Виджеты на экране Домой",
       "Приватность",
@@ -686,7 +712,7 @@ export const ru: Dict = {
       },
       nutrition: {
         name: "Питание",
-        desc: "БЖУ в контексте вашего дня.",
+        desc: "БЖУ в контексте дня — в том числе по фото с AI.",
       },
       hydration: {
         name: "Вода",

@@ -483,6 +483,22 @@ export const changelog: Record<
     roadmap: "More on the way — cloud sync, deeper insights, and Apple Watch are on the roadmap.",
     releases: [
       {
+        version: "1.4",
+        date: "Oct 18, 2026",
+        tag: "Update",
+        added: [
+          "AI Nutrition Assistant — estimate calories and macros from a photo in Log Food",
+          "Evening Coach recap with a calmer day summary after 20:00",
+        ],
+        improved: [
+          "Faster Coach first open and clearer Today focus while a session is in progress",
+          "Custom meals stay intact across app updates",
+        ],
+        fixed: [
+          "Paywall subscribe spinner no longer hangs after the app wakes from sleep",
+        ],
+      },
+      {
         version: "1.3",
         date: "Sep 5, 2026",
         tag: "Update",
@@ -539,6 +555,22 @@ export const changelog: Record<
     labels: { added: "Добавлено", improved: "Улучшено", fixed: "Исправлено" },
     roadmap: "Дальше — больше: облачная синхронизация, детальная аналитика и Apple Watch уже в планах.",
     releases: [
+      {
+        version: "1.4",
+        date: "18 октября 2026",
+        tag: "Обновление",
+        added: [
+          "AI Nutrition Assistant — калории и БЖУ по фото в Log Food",
+          "Вечерний итог Коуча после 20:00",
+        ],
+        improved: [
+          "Быстрее первое открытие Коуча и спокойнее Today во время активной сессии",
+          "Свои блюда больше не пропадают после обновления приложения",
+        ],
+        fixed: [
+          "Кнопка подписки на paywall больше не зависает после сна приложения",
+        ],
+      },
       {
         version: "1.3",
         date: "5 сентября 2026",
