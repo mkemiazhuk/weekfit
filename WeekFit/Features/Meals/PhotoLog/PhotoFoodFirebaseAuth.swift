@@ -28,7 +28,9 @@ enum PhotoFoodFirebaseAuth {
         if Auth.auth().currentUser == nil {
             do {
                 _ = try await Auth.auth().signInAnonymously()
+                #if DEBUG
                 logger.info("Firebase anonymous session established for photo recognition")
+                #endif
             } catch {
                 throw mapSignInError(error)
             }

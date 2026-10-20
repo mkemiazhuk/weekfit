@@ -171,7 +171,15 @@ struct WeekFitApp: App {
         case .active:
             activityCoordinator.refresh()
             nightComfort.handleSceneBecameActive()
-            Task { await subscriptionManager.refreshOnForeground() }
+            // Only drop StoreKit product cache after a real sleep/background stretch.
+            // Brief app-switch foregrounds should not pay a full catalog reload.
+            let backgroundDuration = backgroundEnteredAt.map { Date().timeIntervalSince($0) } ?? 0
+            let invalidateStoreProducts = backgroundDuration >= 45
+            Task {
+                await subscriptionManager.refreshOnForeground(
+                    invalidateProducts: invalidateStoreProducts
+                )
+            }
             // Palette store is owned solely by `WeekFitPaletteEnvironmentSync`.
             // Do not write it here from `UITraitCollection` — that races SwiftUI's
             // `colorScheme` and leaves env Light + WeekFitTheme Dark (or vice versa).

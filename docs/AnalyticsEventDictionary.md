@@ -352,7 +352,7 @@ Never send prices, trial length, HealthKit, nutrition, recovery, or account iden
 | `subscription_purchase_started` | Purchase CTA | `product_id`; `requested_tab` |
 | `subscription_purchase_success` | Verified entitlement after purchase (incl. deferred Ask-to-Buy unlock). **May be free-trial signup**, not paid conversion — keep distinct from auto-renew / expiry lifecycle events | `product_id`; `requested_tab` |
 | `subscription_purchase_cancelled` | User cancelled StoreKit sheet | `product_id`; `requested_tab` |
-| `subscription_purchase_failed` | StoreKit / verification / products unavailable / pending / entitlement lag | `product_id`; `requested_tab`; `failure_reason` = `storekit_error` \| `verification_failed` \| `entitlement_not_propagated` \| `products_unavailable` \| `pending` |
+| `subscription_purchase_failed` | StoreKit / verification / products unavailable / pending / entitlement lag / purchase timeout | `product_id`; `requested_tab`; `failure_reason` = `storekit_error` \| `verification_failed` \| `entitlement_not_propagated` \| `products_unavailable` \| `pending` \| `timeout` |
 | `subscription_restore_started` | Explicit Restore Purchases tap only | `source`; `requested_tab`; optional `paywall_instance_id` |
 | `subscription_restore_success` | Access confirmed | `result` = `restored` \| `already_entitled`; `source`; `requested_tab`; `has_entitlement_before`; `has_entitlement_after`; `restored_product_id`; optional `paywall_instance_id` |
 | `subscription_restore_completed` | Finished without access grant and without StoreKit fault | `result` = `no_purchases` \| `cancelled`; `source`; `requested_tab`; `has_entitlement_before`; `has_entitlement_after`; optional `paywall_instance_id` |
@@ -431,6 +431,7 @@ Purchase `failure_reason` distinctions:
 - `entitlement_not_propagated` — StoreKit returned a **verified** transaction, but WeekFit still had no active entitlement after refresh/retries.
 - `pending` — Ask to Buy / deferred; later unlock may arrive via `Transaction.updates`.
 - `storekit_error` / `products_unavailable` — StoreKit/network or missing catalog.
+- `timeout` — `Product.purchase()` did not return within the purchase timeout (often after long background/sleep).
 
 Restore:
 `paywall_viewed` → `subscription_restore_started` → `subscription_restore_success` \| `subscription_restore_completed` \| `subscription_restore_failed`

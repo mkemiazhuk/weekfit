@@ -355,4 +355,6 @@ enum SubscriptionPurchaseFailureReason: String, Sendable {
     case productsUnavailable = "products_unavailable"
     /// Ask to Buy / deferred — closes the started→terminal funnel for this attempt.
     case pending
+    /// `Product.purchase()` did not return within the purchase timeout (often stale Product after sleep).
+    case timeout
 }

@@ -14,6 +14,8 @@ final class RecordingWeekFitStoreKitService: WeekFitStoreKitServicing {
     var restoreError: Error?
     var restoreGrantsSubscription = true
     var restoreHangForever = false
+    /// When true, `purchase` never returns (mirrors stale-Product hang after sleep).
+    var purchaseHangForever = false
     var purchaseCalls: [String] = []
     var restoreCount = 0
     var finishVerifiedPurchaseCount = 0
@@ -61,17 +63,21 @@ final class RecordingWeekFitStoreKitService: WeekFitStoreKitServicing {
     }
 
     func purchase(productID: String) async -> WeekFitPurchaseOutcome {
-        if cachedProductIDs.contains(productID) == false {
-            do {
-                _ = try await loadProducts()
-            } catch {
-                return .productsUnavailable
-            }
+        // Mirror live service: always invalidate + reload before purchase.
+        invalidateCachedProducts()
+        do {
+            _ = try await loadProducts()
+        } catch {
+            return .productsUnavailable
         }
         guard cachedProductIDs.contains(productID) else {
             return .productsUnavailable
         }
         purchaseCalls.append(productID)
+        if purchaseHangForever {
+            try? await Task.sleep(for: .seconds(3_600))
+            return .failed
+        }
         deferredGrantRemainingLoads = nil
         if purchaseOutcome == .success {
             // Mirror live service: do not mutate entitlements inside purchase();
@@ -471,6 +477,50 @@ final class SubscriptionManagerTests: XCTestCase {
         XCTAssertEqual(failed.parameters[AnalyticsParameterKey.result], "timeout")
         XCTAssertEqual(failed.parameters[AnalyticsParameterKey.hasEntitlementAfter], "false")
         XCTAssertEqual(failed.parameters[AnalyticsParameterKey.errorDomain], "weekfit.storekit.restore")
+    }
+
+    func testPurchaseTimeoutEmitsFailedTimeoutAndClearsInFlight() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "test"
+        )
+        store.purchaseHangForever = true
+        let timedManager = SubscriptionManager(
+            store: store,
+            bypassProvider: { .none },
+            fallbackStore: WeekFitEntitlementFallbackStore(defaults: fallbackDefaults),
+            purchaseTimeout: .milliseconds(80)
+        )
+        await timedManager.start()
+        await timedManager.purchaseSelected()
+        XCTAssertFalse(timedManager.isPurchaseInFlight)
+        XCTAssertEqual(timedManager.lastOutcome, .failed)
+        XCTAssertEqual(timedManager.lastOutcomeSource, .purchase)
+        XCTAssertEqual(
+            WeekFitPaywallStatusCopy.purchaseMessage(
+                outcome: timedManager.lastOutcome,
+                source: timedManager.lastOutcomeSource
+            ),
+            WeekFitLocalizedString("paywall.error.failed")
+        )
+        XCTAssertEqual(recording.events(named: .subscriptionPurchaseStarted).count, 1)
+        XCTAssertTrue(recording.events(named: .subscriptionPurchaseSuccess).isEmpty)
+        let failed = try! XCTUnwrap(recording.events(named: .subscriptionPurchaseFailed).first)
+        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.failureReason], "timeout")
+        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.result], "timeout")
+    }
+
+    func testForegroundRefreshInvalidatesCachedProductsOnlyWhenRequested() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "Sandbox"
+        )
+        await manager.start()
+        let before = store.invalidateCachedProductsCount
+        await manager.refreshOnForeground()
+        XCTAssertEqual(store.invalidateCachedProductsCount, before)
+        await manager.refreshOnForeground(invalidateProducts: true)
+        XCTAssertGreaterThan(store.invalidateCachedProductsCount, before)
     }
 
     func testStartAndRefreshDoNotEmitRestoreAnalytics() async {
@@ -975,18 +1025,19 @@ final class SubscriptionManagerTests: XCTestCase {
         XCTAssertNil(manager.monthlyProduct?.displayPrice)
     }
 
-    func testPurchaseAfterCacheInvalidationReloadsBeforePurchase() async {
+    func testPurchaseAlwaysReloadsProductsBeforePurchase() async {
         store.appTransaction = .verified(
             originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
             environment: "Sandbox"
         )
         await manager.start()
         let loadsAfterStart = store.loadProductsCallCount
-        store.invalidateCachedProducts()
+        let invalidationsAfterStart = store.invalidateCachedProductsCount
         manager.selectProduct(WeekFitSubscriptionProductID.annual.rawValue)
         await manager.purchaseSelected()
         XCTAssertEqual(store.purchaseCalls, [WeekFitSubscriptionProductID.annual.rawValue])
         XCTAssertGreaterThan(store.loadProductsCallCount, loadsAfterStart)
+        XCTAssertGreaterThan(store.invalidateCachedProductsCount, invalidationsAfterStart)
     }
 
     func testLoadingFailOpenGateStaysGatedOnLaterRefresh() async {

@@ -258,7 +258,7 @@ final class CustomMealsXCTests: XCTestCase {
         XCTAssertEqual(decoded.first?.fiberPer100g, 0)
     }
 
-    func testCustomMealStorageRoundTripKeepsNewMetadata() {
+    func testCustomMealStorageRoundTripKeepsNewMetadata() throws {
         let meal = manualMeal(
             from: CustomMealFormInput(
                 name: "Saved Product",
@@ -273,7 +273,7 @@ final class CustomMealsXCTests: XCTestCase {
             thumbnailFilename: "custom-thumb.jpg"
         )
 
-        let encoded = CustomMealStore.encode([meal])
+        let encoded = try XCTUnwrap(CustomMealStore.encode([meal]))
         let decoded = CustomMealStore.load(from: encoded)
 
         XCTAssertEqual(decoded.count, 1)
@@ -284,6 +284,73 @@ final class CustomMealsXCTests: XCTestCase {
         XCTAssertEqual(decoded.first?.localPhotoFilename, "custom-photo.jpg")
         XCTAssertEqual(decoded.first?.localPhotoThumbnailFilename, "custom-thumb.jpg")
         XCTAssertEqual(decoded.first?.displayPhotoFilename, "custom-thumb.jpg")
+    }
+
+    func testLoadSalvagesSiblingMealsWhenOneRowIsCorrupt() {
+        let json = """
+        [
+          {
+            "id": "keep-me",
+            "title": "User Bowl",
+            "subtitle": "",
+            "imageName": "plate-dark",
+            "type": "balanced",
+            "calories": 400,
+            "protein": 30,
+            "carbs": 40,
+            "fats": 12,
+            "ingredients": []
+          },
+          {
+            "id": "broken",
+            "title": 12345,
+            "calories": "nope"
+          }
+        ]
+        """
+        let decoded = CustomMealStore.load(from: json)
+        XCTAssertEqual(decoded.map(\.id), ["keep-me"])
+        XCTAssertEqual(decoded.first?.title, "User Bowl")
+    }
+
+    func testEncodeFailureDoesNotReturnEmptyStringForNonEmptyCatalog() {
+        // Empty catalog encodes to "[]"; non-empty must never silently become "".
+        XCTAssertEqual(CustomMealStore.encode([]), "[]")
+        let meal = manualMeal(
+            from: CustomMealFormInput(
+                name: "Keep",
+                servingGrams: 100,
+                calories: 100,
+                protein: 10,
+                carbs: 10,
+                fats: 2,
+                fiber: 0
+            )
+        )
+        let encoded = CustomMealStore.encode([meal])
+        XCTAssertNotNil(encoded)
+        XCTAssertFalse(encoded?.isEmpty == true)
+    }
+
+    func testUnknownNutritionDataSourceDoesNotFailMealDecode() throws {
+        let json = """
+        {
+          "id": "photo-meal",
+          "title": "Photo Bowl",
+          "subtitle": "",
+          "imageName": "plate-dark",
+          "type": "balanced",
+          "calories": 300,
+          "protein": 20,
+          "carbs": 30,
+          "fats": 8,
+          "ingredients": [],
+          "nutritionDataSource": "futureSourceFromNewerApp"
+        }
+        """.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(Meals.self, from: json)
+        XCTAssertEqual(decoded.title, "Photo Bowl")
+        XCTAssertNil(decoded.nutritionDataSource)
     }
 
     func testLegacyMealDecodeDefaultsMetadataToNil() throws {

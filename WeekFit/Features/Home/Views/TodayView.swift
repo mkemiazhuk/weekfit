@@ -94,6 +94,10 @@ struct TodayView: View {
             ? Color(red: 0.62, green: 0.28, blue: 0.26)
             : Color(red: 0.92, green: 0.68, blue: 0.66)
     }
+    /// Brighter edge so the capsule separates from the dark card surface.
+    private var sessionStopBorder: Color {
+        sessionStopForeground.opacity(palette.isLight ? 0.45 : 0.72)
+    }
 
     private enum TodayLayout {
         static let cardRadius: CGFloat = TodayChrome.cardRadius
@@ -1474,24 +1478,11 @@ struct TodayView: View {
 
                 switch mode {
                 case .activeSession:
-                    // Your Day → In Progress → live Focus → Quick Log → (pending | Up Next).
+                    // Your Day → In Progress → Quick Log. Hide Focus / Up next while live.
                     if let activeSession {
                         AnyView(activeSessionCard(activeSession))
                     }
-                    if shouldShowCoachCard(alongsideActive: activeSession) {
-                        erasedCoachEntryPoint()
-                    }
                     AnyView(quickActionsSection)
-                    if let planSlot = erasedPlanAttentionSlot(
-                        now: now,
-                        upcoming: nextUpcomingPlannedActivity(
-                            now: now,
-                            excludingActivityID: activeSession?.id
-                        ),
-                        excludingActivityID: activeSession?.id
-                    ) {
-                        planSlot
-                    }
 
                 case .upcoming:
                     // Your Day → (pending confirms | Up Next) → Today’s Focus → Quick Log.
@@ -2415,6 +2406,10 @@ struct TodayView: View {
                         .background {
                             Capsule(style: .continuous)
                                 .fill(sessionStopFill)
+                                .overlay {
+                                    Capsule(style: .continuous)
+                                        .strokeBorder(sessionStopBorder, lineWidth: 1)
+                                }
                         }
                 }
                 .buttonStyle(.plain)
@@ -2713,38 +2708,6 @@ struct TodayView: View {
     private func openCompletedSession(_ activity: PlannedActivity) {
         let _ = activity
         openActivityIntelligence()
-    }
-
-    private func shouldShowCoachCard(alongsideActive active: PlannedActivity?) -> Bool {
-        guard let active else { return true }
-        switch todayCoachInsightPhase {
-        case .insight(let presentation, _):
-            return !coachRecommendationConflictsWithActiveSession(presentation, active: active)
-        case .awaitingHealthConnect, .awaitingMorningSync, .preparing:
-            return true
-        }
-    }
-
-    private func coachRecommendationConflictsWithActiveSession(
-        _ presentation: CoachUIPresentation,
-        active: PlannedActivity
-    ) -> Bool {
-        // Keep live HR guidance — it is support, not a duplicate start prompt.
-        if presentation.semanticColor.isLiveSessionChrome {
-            return false
-        }
-        let runningSnapshot = CoachPlannedActivitySnapshot(from: active)
-        let runningFamily = CoachActivityClassifier.family(for: runningSnapshot)
-        if runningFamily != .none,
-           let family = presentation.scenario.activityFamily,
-           family == runningFamily {
-            return true
-        }
-        let runningIcon = upNextIcon(for: active, isLive: true)
-        if presentation.icon == runningIcon || (!active.icon.isEmpty && presentation.icon == active.icon) {
-            return true
-        }
-        return false
     }
 
     private func upNextTimePill(text: String) -> some View {

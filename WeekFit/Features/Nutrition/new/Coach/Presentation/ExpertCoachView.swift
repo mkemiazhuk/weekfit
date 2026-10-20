@@ -25,7 +25,6 @@ struct ExpertCoachView: View {
     @ObservedObject private var pendingRecoveryChallengeOpen = PendingRecoveryChallengeOpen.shared
 
     @State private var showProfile = false
-    @State private var keepCoachMounted = false
     @State private var didRecordCoachRecommendationOpen = false
     @State private var discoverySpotlightDismissedLocally = false
     @State private var showRecoveryChallenge = false
@@ -77,12 +76,12 @@ struct ExpertCoachView: View {
     }
 
     var body: some View {
+        // Match Today/Meals: tear down the heavy Coach tree while inactive.
+        // Keeping it at opacity 0 still rebuilt on HealthKit / @Query / HR publishes
+        // and made every other tab feel sticky after Coach was opened once.
         Group {
-            if tabIsActive || keepCoachMounted {
+            if tabIsActive {
                 activeCoachBody
-                    .opacity(tabIsActive ? 1 : 0)
-                    .allowsHitTesting(tabIsActive)
-                    .accessibilityHidden(!tabIsActive)
             } else {
                 Color.clear
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -90,7 +89,7 @@ struct ExpertCoachView: View {
             }
         }
         .onAppear {
-            keepCoachMounted = true
+            guard tabIsActive else { return }
             prepareCoachTabSurface(source: "coachTab.onAppear")
         }
         .onChange(of: tabIsActive) { _, active in

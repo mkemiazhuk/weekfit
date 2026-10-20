@@ -39,6 +39,8 @@ final class SubscriptionManager: ObservableObject {
     private let failOpenTimeout: Duration
     /// Cap for `AppStore.sync()` — it can hang indefinitely on Apple ID / Sandbox auth.
     private let restoreTimeout: Duration
+    /// Cap for `Product.purchase()` — stale Products after sleep can hang until process kill.
+    private let purchaseTimeout: Duration
 
     var hasResolved: Bool { accessState != .loading }
 
@@ -110,13 +112,15 @@ final class SubscriptionManager: ObservableObject {
         bypassProvider: (() -> WeekFitEntitlementBypass)? = nil,
         fallbackStore: WeekFitEntitlementFallbackStore = WeekFitEntitlementFallbackStore(),
         failOpenTimeout: Duration = .seconds(12),
-        restoreTimeout: Duration = .seconds(45)
+        restoreTimeout: Duration = .seconds(45),
+        purchaseTimeout: Duration = .seconds(60)
     ) {
         self.store = store ?? LiveWeekFitStoreKitService()
         self.bypassProvider = bypassProvider
         self.fallbackStore = fallbackStore
         self.failOpenTimeout = failOpenTimeout
         self.restoreTimeout = restoreTimeout
+        self.purchaseTimeout = purchaseTimeout
         freeTrialObserver = NotificationCenter.default.addObserver(
             forName: .weekFitPhotoAIFreeTrialConsumed,
             object: nil,
@@ -169,8 +173,14 @@ final class SubscriptionManager: ObservableObject {
         // Keep selectedProductID so a successful reload can restore the same plan.
     }
 
-    func refreshOnForeground() async {
+    /// - Parameter invalidateProducts: drop cached StoreKit `Product`s. Use after a
+    ///   meaningful background interval (sleep) so `Product.purchase()` does not hang.
+    ///   Purchase already force-reloads; do not invalidate on every brief foreground.
+    func refreshOnForeground(invalidateProducts: Bool = false) async {
         guard hasStarted else { return }
+        if invalidateProducts {
+            store.invalidateCachedProducts()
+        }
         await refresh(source: "foreground")
     }
 
@@ -212,7 +222,28 @@ final class SubscriptionManager: ObservableObject {
             productID: productID,
             requestedTab: requestedTab
         )
-        let outcome = await store.purchase(productID: productID)
+        let outcome: WeekFitPurchaseOutcome
+        do {
+            outcome = try await performPurchaseWithTimeout(productID: productID)
+        } catch is WeekFitStoreKitPurchaseTimeoutError {
+            await refresh(source: "purchase.timeout")
+            lastOutcome = .failed
+            SubscriptionAnalytics.purchaseFailed(
+                productID: productID,
+                requestedTab: requestedTab,
+                failureReason: .timeout
+            )
+            return
+        } catch {
+            await refresh(source: "purchase.failed")
+            lastOutcome = .failed
+            SubscriptionAnalytics.purchaseFailed(
+                productID: productID,
+                requestedTab: requestedTab,
+                failureReason: .storekitError
+            )
+            return
+        }
         switch outcome {
         case .success:
             // StoreKit verified the transaction. Deliver entitlements before finish().
@@ -461,6 +492,29 @@ final class SubscriptionManager: ObservableObject {
             do {
                 _ = try await group.next()
                 group.cancelAll()
+            } catch {
+                group.cancelAll()
+                throw error
+            }
+        }
+    }
+
+    /// Cap `Product.purchase()` — after sleep the system sheet may never appear.
+    private func performPurchaseWithTimeout(productID: String) async throws -> WeekFitPurchaseOutcome {
+        try await withThrowingTaskGroup(of: WeekFitPurchaseOutcome.self) { group in
+            group.addTask { @MainActor in
+                await self.store.purchase(productID: productID)
+            }
+            group.addTask {
+                try await Task.sleep(for: self.purchaseTimeout)
+                throw WeekFitStoreKitPurchaseTimeoutError()
+            }
+            do {
+                guard let outcome = try await group.next() else {
+                    throw WeekFitStoreKitPurchaseTimeoutError()
+                }
+                group.cancelAll()
+                return outcome
             } catch {
                 group.cancelAll()
                 throw error

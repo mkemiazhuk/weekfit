@@ -14,6 +14,7 @@ enum PlannedActivityPersistenceAudit {
         isSkipped: Bool,
         auditSource: String
     ) {
+        #if DEBUG
         logger.debug(
             """
             liveObjectResolved id=\(id, privacy: .public) title=\(title, privacy: .public) \
@@ -21,7 +22,6 @@ enum PlannedActivityPersistenceAudit {
             isSkipped=\(isSkipped, privacy: .public) auditSource=\(auditSource, privacy: .public)
             """
         )
-        #if DEBUG
         print(
             "[PlannedActivityPersistence] liveObjectResolved id=\(id) title=\(title) " +
             "persistentModelID=\(persistentModelID) isSkipped=\(isSkipped)"
@@ -42,27 +42,37 @@ enum PlannedActivityPersistenceAudit {
         source: String,
         auditSource: String
     ) {
+        #if DEBUG
         logger.debug(
             "deleteRequested id=\(id, privacy: .public) title=\(title, privacy: .public) type=\(type, privacy: .public) source=\(source, privacy: .public) auditSource=\(auditSource, privacy: .public)"
         )
+        #endif
     }
 
     static func waterGroupDeleteRequested(count: Int, ids: [String], auditSource: String) {
+        #if DEBUG
         logger.debug(
             "waterGroupDeleteRequested count=\(count, privacy: .public) ids=\(ids.joined(separator: ","), privacy: .public) auditSource=\(auditSource, privacy: .public)"
         )
+        #endif
     }
 
     static func contextDeleted(id: String) {
+        #if DEBUG
         logger.debug("contextDeleted id=\(id, privacy: .public)")
+        #endif
     }
 
     static func saveAttempted(idCount: Int) {
+        #if DEBUG
         logger.debug("saveAttempted idCount=\(idCount, privacy: .public)")
+        #endif
     }
 
     static func saveCompleted(idCount: Int) {
+        #if DEBUG
         logger.debug("saveCompleted idCount=\(idCount, privacy: .public)")
+        #endif
     }
 
     static func saveFailed(idCount: Int, error: Error) {
@@ -72,17 +82,23 @@ enum PlannedActivityPersistenceAudit {
     }
 
     static func fetchAfterSave(id: String, remainingCount: Int) {
+        #if DEBUG
         logger.debug(
             "fetchAfterSave id=\(id, privacy: .public) remainingCount=\(remainingCount, privacy: .public)"
         )
+        #endif
     }
 
     static func notificationCleanupStarted(id: String) {
+        #if DEBUG
         logger.debug("notificationCleanupStarted id=\(id, privacy: .public)")
+        #endif
     }
 
     static func notificationCleanupCompleted(id: String) {
+        #if DEBUG
         logger.debug("notificationCleanupCompleted id=\(id, privacy: .public)")
+        #endif
     }
 
     static func notificationCleanupFailed(id: String, error: Error) {

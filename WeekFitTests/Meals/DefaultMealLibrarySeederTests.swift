@@ -189,7 +189,7 @@ final class DefaultMealLibrarySeederTests: XCTestCase {
         // User deletes a world breakfast.
         let pruned = afterUpgrade.filter { $0.id != "custom_meal_starter_shakshuka" }
         settings.replaceCustomMealsCatalog(pruned)
-        settings.setCustomMealsStorage(CustomMealStore.encode(pruned))
+        settings.setCustomMealsStorage(CustomMealStore.encode(pruned) ?? "[]")
 
         // Subsequent launches must NOT restore the deleted starter.
         XCTAssertFalse(
@@ -260,5 +260,35 @@ final class DefaultMealLibrarySeederTests: XCTestCase {
         }
         XCTAssertEqual(legacySubset.count, 9)
         XCTAssertTrue(DefaultMealLibrarySeeder.isCurrentStarterCatalogOnly(legacySubset))
+    }
+
+    @MainActor
+    func testSeedDoesNotReplaceNonEmptyRawStorageWhenDecodeYieldsEmpty() {
+        let suiteName = "weekfit.tests.meals.seed.corrupt.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        // Corrupt blob that cannot decode to [Meals], but must not be wiped.
+        let corrupt = "[{\"id\":\"user-meal\",\"title\":123}]"
+        defaults.set(corrupt, forKey: CustomMealStore.storageKey)
+        defaults.set(false, forKey: DefaultMealLibrarySeeder.seededKey)
+
+        let settings = WeekFitUserSettings.shared
+        let backupCatalog = settings.customMealsCatalog
+        let backupStorage = settings.customMealsStorage
+        defer {
+            settings.replaceCustomMealsCatalog(backupCatalog)
+            settings.setCustomMealsStorage(backupStorage)
+        }
+
+        // In-memory catalog empty while injected defaults still hold the raw blob.
+        settings.replaceCustomMealsCatalog([])
+        settings.setCustomMealsStorage("")
+
+        XCTAssertFalse(
+            DefaultMealLibrarySeeder.seedIfNeeded(settings: settings, defaults: defaults)
+        )
+        XCTAssertEqual(defaults.string(forKey: CustomMealStore.storageKey), corrupt)
+        XCTAssertFalse(defaults.bool(forKey: DefaultMealLibrarySeeder.seededKey))
     }
 }

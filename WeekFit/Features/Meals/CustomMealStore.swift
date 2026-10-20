@@ -7,18 +7,49 @@ import UIKit
 enum CustomMealStore {
     static let storageKey = "weekfit_custom_meals_v1"
 
+    /// Loads the catalog. Prefer the full-array decode; if that fails (schema drift on
+    /// one meal), salvage every element that still decodes so one bad row cannot wipe
+    /// the whole user library on update.
     static func load(from storage: String) -> [Meals] {
-        guard let data = storage.data(using: .utf8),
-              let decoded = try? JSONDecoder().decode([Meals].self, from: data) else {
+        guard !storage.isEmpty, let data = storage.data(using: .utf8) else {
             return []
         }
 
-        return decoded
+        if let decoded = try? JSONDecoder().decode([Meals].self, from: data) {
+            return decoded
+        }
+
+        return salvagedMeals(from: data)
     }
 
-    static func encode(_ meals: [Meals]) -> String {
-        guard let data = try? JSONEncoder().encode(meals) else { return "" }
-        return String(data: data, encoding: .utf8) ?? ""
+    /// Encodes the catalog. Returns `nil` on failure — callers must **not** write an
+    /// empty string over an existing library when encoding fails.
+    static func encode(_ meals: [Meals]) -> String? {
+        if meals.isEmpty { return "[]" }
+        guard let data = try? JSONEncoder().encode(meals),
+              let string = String(data: data, encoding: .utf8),
+              !string.isEmpty else {
+            return nil
+        }
+        return string
+    }
+
+    private static func salvagedMeals(from data: Data) -> [Meals] {
+        guard let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [Any] else {
+            return []
+        }
+        let decoder = JSONDecoder()
+        var salvaged: [Meals] = []
+        salvaged.reserveCapacity(jsonArray.count)
+        for element in jsonArray {
+            guard JSONSerialization.isValidJSONObject(element),
+                  let elementData = try? JSONSerialization.data(withJSONObject: element),
+                  let meal = try? decoder.decode(Meals.self, from: elementData) else {
+                continue
+            }
+            salvaged.append(meal)
+        }
+        return salvaged
     }
 
     static func hasDuplicateTitle(
@@ -163,8 +194,11 @@ enum CustomIngredientStore {
     }
 
     static func encode(_ ingredients: [MealBuilderIngredient]) -> String {
-        guard let data = try? JSONEncoder().encode(ingredients) else { return "" }
-        return String(data: data, encoding: .utf8) ?? ""
+        guard let data = try? JSONEncoder().encode(ingredients),
+              let string = String(data: data, encoding: .utf8) else {
+            return ingredients.isEmpty ? "[]" : ""
+        }
+        return string
     }
 
     static func hasDuplicateTitle(

@@ -764,13 +764,11 @@ struct WeekFitRootView: View {
             resetPlanDateToToday()
         }
 
-        withAnimation(
-            .spring(
-                response: 0.36,
-                dampingFraction: 0.82,
-                blendDuration: 0.08
-            )
-        ) {
+        // No spring on the root ZStack — animating opacity/zIndex across mounted
+        // tab trees made switches feel laggy once Coach/Plan had been opened.
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
             selectedTab = tab
         }
     }
@@ -1033,9 +1031,7 @@ struct WeekFitRootView: View {
     private func returnToToday() {
         todaySelectedDate = Date()
         todayResetTrigger = UUID()
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-            selectedTab = .today
-        }
+        commitTabSelection(.today)
     }
 
     private func resetPlanDateToToday() {

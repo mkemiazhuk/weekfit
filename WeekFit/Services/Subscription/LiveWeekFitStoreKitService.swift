@@ -211,14 +211,14 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
     }
 
     func purchase(productID: String) async -> WeekFitPurchaseOutcome {
-        // After storefront invalidation the cache is empty — reload before purchase so
-        // we never call purchase() on a Product retained from a prior storefront.
-        if productsByID[productID] == nil {
-            do {
-                _ = try await loadProducts()
-            } catch {
-                return .productsUnavailable
-            }
+        // Always fetch a fresh `Product` before purchase. Cached instances (and even a
+        // same-storefront cache hit) can leave `Product.purchase()` hanging forever after
+        // long background / device sleep — paywall spins until the process is killed.
+        invalidateCachedProducts()
+        do {
+            _ = try await loadProducts()
+        } catch {
+            return .productsUnavailable
         }
         guard let product = productsByID[productID] else {
             return .productsUnavailable

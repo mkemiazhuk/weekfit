@@ -111,19 +111,20 @@ final class WeekFitUserSettings: ObservableObject {
         #endif
     }
 
+    /// Synchronous UserDefaults write. Async persistence previously raced with seed /
+    /// `refreshFromStorage` and could leave a newer in-memory catalog unpersisted (or
+    /// write a failed empty encode over the library after update).
     private func persistCustomMealsCatalogToDisk(_ meals: [Meals]) {
         customMealsPersistGeneration &+= 1
-        let generation = customMealsPersistGeneration
-
-        Task.detached(priority: .utility) {
-            let encoded = CustomMealStore.encode(meals)
-            await MainActor.run { [encoded] in
-                guard generation == self.customMealsPersistGeneration else { return }
-                UserDefaults.standard.set(encoded, forKey: CustomMealStore.storageKey)
-                if self.customMealsStorage != encoded {
-                    self.customMealsStorage = encoded
-                }
-            }
+        guard let encoded = CustomMealStore.encode(meals) else {
+            #if DEBUG
+            assertionFailure("CustomMealStore.encode failed — refusing to wipe catalog on disk")
+            #endif
+            return
+        }
+        UserDefaults.standard.set(encoded, forKey: CustomMealStore.storageKey)
+        if customMealsStorage != encoded {
+            customMealsStorage = encoded
         }
     }
 }

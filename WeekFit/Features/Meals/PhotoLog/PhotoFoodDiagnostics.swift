@@ -22,6 +22,7 @@ enum PhotoFoodDiagnostics {
     }
 
     static func event(_ name: String, clock: AnalysisClock, detail: String? = nil) {
+        #if DEBUG
         if let detail {
             logger.info(
                 "id=\(clock.analysisId, privacy: .public) t=\(clock.elapsedMs, privacy: .public)ms event=\(name, privacy: .public) detail=\(detail, privacy: .public)"
@@ -31,9 +32,15 @@ enum PhotoFoodDiagnostics {
                 "id=\(clock.analysisId, privacy: .public) t=\(clock.elapsedMs, privacy: .public)ms event=\(name, privacy: .public)"
             )
         }
+        #else
+        _ = name
+        _ = clock
+        _ = detail
+        #endif
     }
 
     static func stage(_ stage: String, clock: AnalysisClock, durationMs: Int? = nil) {
+        #if DEBUG
         if let durationMs {
             logger.info(
                 "id=\(clock.analysisId, privacy: .public) t=\(clock.elapsedMs, privacy: .public)ms stage=\(stage, privacy: .public) durationMs=\(durationMs, privacy: .public)"
@@ -43,6 +50,11 @@ enum PhotoFoodDiagnostics {
                 "id=\(clock.analysisId, privacy: .public) t=\(clock.elapsedMs, privacy: .public)ms stage=\(stage, privacy: .public)"
             )
         }
+        #else
+        _ = stage
+        _ = clock
+        _ = durationMs
+        #endif
     }
 
     static func http(
@@ -52,9 +64,17 @@ enum PhotoFoodDiagnostics {
         requestId: String?,
         durationMs: Int
     ) {
+        #if DEBUG
         logger.info(
             "id=\(clock.analysisId, privacy: .public) t=\(clock.elapsedMs, privacy: .public)ms event=http status=\(status, privacy: .public) responseBytes=\(responseBytes, privacy: .public) requestId=\(requestId ?? "-", privacy: .public) durationMs=\(durationMs, privacy: .public)"
         )
+        #else
+        _ = clock
+        _ = status
+        _ = responseBytes
+        _ = requestId
+        _ = durationMs
+        #endif
     }
 
     static func decodeSuccess(
@@ -65,9 +85,18 @@ enum PhotoFoodDiagnostics {
         requestId: String?,
         durationMs: Int
     ) {
+        #if DEBUG
         logger.info(
             "id=\(clock.analysisId, privacy: .public) t=\(clock.elapsedMs, privacy: .public)ms event=decodeOk items=\(itemCount, privacy: .public) isFood=\(isFood, privacy: .public) requiresConfirmation=\(requiresConfirmation, privacy: .public) requestId=\(requestId ?? "-", privacy: .public) durationMs=\(durationMs, privacy: .public)"
         )
+        #else
+        _ = clock
+        _ = itemCount
+        _ = isFood
+        _ = requiresConfirmation
+        _ = requestId
+        _ = durationMs
+        #endif
     }
 
     static func decodeFailure(clock: AnalysisClock, error: Error, durationMs: Int) {
@@ -89,9 +118,15 @@ enum PhotoFoodDiagnostics {
     }
 
     static func stateTransition(clock: AnalysisClock, from: String, to: String) {
+        #if DEBUG
         logger.info(
             "id=\(clock.analysisId, privacy: .public) t=\(clock.elapsedMs, privacy: .public)ms event=state from=\(from, privacy: .public) to=\(to, privacy: .public)"
         )
+        #else
+        _ = clock
+        _ = from
+        _ = to
+        #endif
     }
 
     static func cancelled(clock: AnalysisClock, at: String) {

@@ -14,9 +14,9 @@ enum PlannedActivityPlannerAudit {
         activity: PlannedActivity,
         modelContext: ModelContext
     ) {
+        #if DEBUG
         let contextID = ObjectIdentifier(modelContext)
         let persistentID = String(describing: activity.persistentModelID)
-
         logger.debug(
             """
             plannerAction action=\(action, privacy: .public) \
@@ -28,13 +28,15 @@ enum PlannedActivityPlannerAudit {
             modelContext=\(String(describing: contextID), privacy: .public)
             """
         )
-
-        #if DEBUG
         print(
             "[PlannerDelete] action=\(action) id=\(activity.id) title=\(activity.title) " +
             "date=\(activity.date) isSkipped=\(activity.isSkipped) " +
             "persistentModelID=\(persistentID) modelContext=\(contextID)"
         )
+        #else
+        _ = action
+        _ = activity
+        _ = modelContext
         #endif
     }
 
@@ -45,9 +47,9 @@ enum PlannedActivityPlannerAudit {
         dates: [Date],
         modelContext: ModelContext
     ) {
+        #if DEBUG
         let contextID = ObjectIdentifier(modelContext)
         let matchingBeforeDelete = (try? matchingCount(for: activityIDs, in: modelContext)) ?? -1
-
         logger.debug(
             """
             deleteTapped kind=\(itemKind, privacy: .public) \
@@ -58,12 +60,16 @@ enum PlannedActivityPlannerAudit {
             matchingBeforeDelete=\(matchingBeforeDelete, privacy: .public)
             """
         )
-
-        #if DEBUG
         print(
             "[PlannerDelete] deleteTapped kind=\(itemKind) ids=\(activityIDs) " +
             "matchingBeforeDelete=\(matchingBeforeDelete) modelContext=\(contextID)"
         )
+        #else
+        _ = itemKind
+        _ = activityIDs
+        _ = titles
+        _ = dates
+        _ = modelContext
         #endif
     }
 
@@ -74,11 +80,11 @@ enum PlannedActivityPlannerAudit {
         matches: [(title: String, date: Date, isSkipped: Bool)],
         modelContext: ModelContext
     ) {
+        #if DEBUG
         let contextID = ObjectIdentifier(modelContext)
         let matchSummary = matches.map {
             "\($0.title)@\($0.date.timeIntervalSince1970):skipped=\($0.isSkipped)"
         }.joined(separator: ";")
-
         logger.debug(
             """
             fetchVerification phase=\(phase, privacy: .public) \
@@ -88,12 +94,16 @@ enum PlannedActivityPlannerAudit {
             modelContext=\(String(describing: contextID), privacy: .public)
             """
         )
-
-        #if DEBUG
         print(
             "[PlannerDelete] fetchVerification phase=\(phase) id=\(activityID) " +
             "count=\(count) matches=[\(matchSummary)] modelContext=\(contextID)"
         )
+        #else
+        _ = phase
+        _ = activityID
+        _ = count
+        _ = matches
+        _ = modelContext
         #endif
     }
 
@@ -102,10 +112,10 @@ enum PlannedActivityPlannerAudit {
         modelContext: ModelContext,
         queryActivityIDs: [String]
     ) {
+        #if DEBUG
         let contextID = ObjectIdentifier(modelContext)
         let matchingAfterSave = (try? matchingCount(for: activityIDs, in: modelContext)) ?? -1
         let queryStillContains = activityIDs.filter { queryActivityIDs.contains($0) }
-
         logger.debug(
             """
             deleteCompleted ids=\(activityIDs.joined(separator: ","), privacy: .public) \
@@ -114,12 +124,14 @@ enum PlannedActivityPlannerAudit {
             queryStillContains=\(queryStillContains.joined(separator: ","), privacy: .public)
             """
         )
-
-        #if DEBUG
         print(
             "[PlannerDelete] deleteCompleted ids=\(activityIDs) matchingAfterSave=\(matchingAfterSave) " +
             "queryStillContains=\(queryStillContains) modelContext=\(contextID)"
         )
+        #else
+        _ = activityIDs
+        _ = modelContext
+        _ = queryActivityIDs
         #endif
     }
 
@@ -147,9 +159,11 @@ enum PlannedActivityPlannerAudit {
         #endif
     }
 
+    #if DEBUG
     private static func matchingCount(for ids: [String], in modelContext: ModelContext) throws -> Int {
         try ids.reduce(into: 0) { partialResult, id in
             partialResult += try PlannedActivityPersistenceService.remainingCount(for: id, in: modelContext)
         }
     }
+    #endif
 }

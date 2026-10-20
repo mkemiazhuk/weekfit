@@ -26,12 +26,18 @@ enum CoachDebugSettings {
 
     static var logLevel: CoachLogLevel {
         get {
+            #if DEBUG
             CoachLogLevel(
                 rawValue: UserDefaults.standard.string(forKey: logLevelKey) ?? CoachLogLevel.off.rawValue
             ) ?? .off
+            #else
+            .off
+            #endif
         }
         set {
+            #if DEBUG
             UserDefaults.standard.set(newValue.rawValue, forKey: logLevelKey)
+            #endif
         }
     }
 
@@ -45,13 +51,21 @@ enum CoachDebugSettings {
     }
 
     static var pipelineTraceEnabled: Bool {
+        #if DEBUG
         UserDefaults.standard.bool(forKey: pipelineTraceKey) ||
             ProcessInfo.processInfo.environment["WEEKFIT_COACH_PIPELINE_TRACE"] == "1"
+        #else
+        false
+        #endif
     }
 
     static var todayDataAuditEnabled: Bool {
+        #if DEBUG
         UserDefaults.standard.bool(forKey: todayDataAuditKey) ||
             ProcessInfo.processInfo.environment["WEEKFIT_TODAY_DATA_AUDIT"] == "1"
+        #else
+        false
+        #endif
     }
 
     static let tabSwitchDiagnosticsKey = "weekfit_tab_switch_diagnostics_enabled"
@@ -59,18 +73,30 @@ enum CoachDebugSettings {
     static let nightComfortDiagnosticsKey = "weekfit_night_comfort_diagnostics_enabled"
 
     static var tabSwitchDiagnosticsEnabled: Bool {
+        #if DEBUG
         UserDefaults.standard.bool(forKey: tabSwitchDiagnosticsKey) ||
             ProcessInfo.processInfo.environment["WEEKFIT_TAB_SWITCH_DIAG"] == "1"
+        #else
+        false
+        #endif
     }
 
     static var lifecycleDiagnosticsEnabled: Bool {
+        #if DEBUG
         UserDefaults.standard.bool(forKey: lifecycleDiagnosticsKey) ||
             ProcessInfo.processInfo.environment["WEEKFIT_LIFECYCLE_DIAG"] == "1"
+        #else
+        false
+        #endif
     }
 
     static var nightComfortDiagnosticsEnabled: Bool {
+        #if DEBUG
         UserDefaults.standard.bool(forKey: nightComfortDiagnosticsKey) ||
             ProcessInfo.processInfo.environment["WEEKFIT_NIGHT_COMFORT_DIAG"] == "1"
+        #else
+        false
+        #endif
     }
 
     static var healthRefreshGuardLoggingEnabled: Bool {

@@ -229,10 +229,12 @@ struct Meals: Identifiable, Codable, Equatable {
             forKey: .barcode
         )
 
-        nutritionDataSource = try container.decodeIfPresent(
-            NutritionDataSource.self,
-            forKey: .nutritionDataSource
-        )
+        // Decode via raw string so an unknown future source cannot fail the whole meal.
+        if let rawSource = try container.decodeIfPresent(String.self, forKey: .nutritionDataSource) {
+            nutritionDataSource = NutritionDataSource(rawValue: rawSource)
+        } else {
+            nutritionDataSource = nil
+        }
 
         // Backward compatible: older catalogs omit this key.
         libraryPeriodRaw = try container.decodeIfPresent(

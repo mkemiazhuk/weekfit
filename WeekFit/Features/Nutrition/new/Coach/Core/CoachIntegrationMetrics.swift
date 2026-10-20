@@ -122,7 +122,13 @@ enum CoachIntegrationMetrics {
         lock.unlock()
     }
 
+    private static var lastPersistAt = Date.distantPast
+
     private static func persist(_ snapshot: Snapshot) {
+        // Coach recomputes often — don't write UserDefaults on every evaluation.
+        let now = Date()
+        guard now.timeIntervalSince(lastPersistAt) >= 5 else { return }
+        lastPersistAt = now
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         UserDefaults.standard.set(data, forKey: storageKey)
     }

@@ -153,6 +153,9 @@ enum WeekFitPurchaseOutcome: Equatable, Sendable {
 /// Thrown when `AppStore.sync()` does not return within `SubscriptionManager`'s restore timeout.
 struct WeekFitStoreKitRestoreTimeoutError: Error, Equatable, Sendable {}
 
+/// Thrown when `Product.purchase()` does not return within `SubscriptionManager`'s purchase timeout.
+struct WeekFitStoreKitPurchaseTimeoutError: Error, Equatable, Sendable {}
+
 struct WeekFitEntitlementDecision: Equatable, Sendable {
     var state: WeekFitAccessState
     /// Persist only when StoreKit verification produced this state.

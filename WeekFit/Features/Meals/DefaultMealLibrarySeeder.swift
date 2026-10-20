@@ -322,7 +322,19 @@ enum DefaultMealLibrarySeeder {
         )
 
         let existing = settings.customMealsCatalog
+        let rawStorage = defaults.string(forKey: CustomMealStore.storageKey) ?? ""
         MealsSeedDiagnostics.info("MEALS SEED preexistingCount=\(existing.count)", run: run)
+
+        // Non-empty blob that failed to decode must never be replaced with starters —
+        // that is the "my meals disappeared after update" failure mode.
+        if existing.isEmpty, !rawStorage.isEmpty {
+            MealsSeedDiagnostics.skipped(
+                run: run,
+                reason: "nonEmptyRawStorageFailedDecode",
+                detail: "rawBytes=\(rawStorage.utf8.count) account=\(accountMode)"
+            )
+            return false
+        }
 
         let flagSet = defaults.bool(forKey: seededKey)
         let isCurrentStarterCatalog = isCurrentStarterCatalogOnly(existing)
@@ -536,7 +548,18 @@ enum DefaultMealLibrarySeeder {
         completionKey: String = seededKey
     ) -> Bool {
         MealsSeedDiagnostics.info("MEALS SEED save BEGIN", run: run)
-        let encoded = CustomMealStore.encode(meals)
+        guard let encoded = CustomMealStore.encode(meals) else {
+            MealsSeedDiagnostics.error(
+                run: run,
+                operation: "encodeCatalog",
+                error: NSError(
+                    domain: "com.weekfit.app.mealsSeed",
+                    code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to encode \(meals.count) meals."]
+                )
+            )
+            return false
+        }
         defaults.set(encoded, forKey: CustomMealStore.storageKey)
         settings.replaceCustomMealsCatalog(meals)
         settings.setCustomMealsStorage(encoded)
