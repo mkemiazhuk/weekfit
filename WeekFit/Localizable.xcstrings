@@ -21303,6 +21303,1938 @@
         }
       }
     },
+    "coach.eveningRecap.comparison.lessThanUsual": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You walked %@ less than usual."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вы прошли на %@ меньше обычного."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你比平时少走了 %@。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.comparison.moreThanUsual": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You walked %@ more than usual."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вы прошли на %@ больше обычного."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你比平时多走了 %@。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.duration.hoursFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld hr"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ч"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 小时"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.duration.hoursMinutesFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld hr %2$lld min"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld ч %2$lld мин"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld小时 %2$lld分钟"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.change": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменить"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.energized": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Energized"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Полон сил"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "很有精神"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.good": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Good"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Хорошо"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还不错"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.prompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How are you feeling this evening?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Как вы себя чувствуете этим вечером?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今晚感觉怎么样？"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.prompt.selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This evening, you feel"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этим вечером вы чувствуете себя"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今晚你感觉"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.reaction.energized.active": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Good energy after a full day. Keep the evening light."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отличная энергия после насыщенного дня. Оставьте вечер лёгким."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "充实一天后仍有精神。晚上保持轻松。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.reaction.energized.active.named": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Good energy after a full day, %@. Keep the evening light."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отличная энергия после насыщенного дня, %@. Оставьте вечер лёгким."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@，充实一天后仍有精神。晚上保持轻松。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.reaction.energized.quiet": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nice to feel light today. Carry that ease into night."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приятно чувствовать лёгкость сегодня. Сохраните её до ночи."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天感觉轻盈很好。把这份轻松带到夜里。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.reaction.energized.quiet.named": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nice to feel light today, %@. Carry that ease into night."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приятно чувствовать лёгкость сегодня, %@. Сохраните её до ночи."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@，今天感觉轻盈很好。把这份轻松带到夜里。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.reaction.good.active": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nice steady day of movement. Ease into the night."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Хороший день с движением. Спокойно завершите вечер."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天活动很稳。慢慢进入夜晚。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.reaction.good.active.named": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nice steady day of movement, %@. Ease into the night."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Хороший день с движением, %@. Спокойно завершите вечер."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@，今天活动很稳。慢慢进入夜晚。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.reaction.good.quiet": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Glad the day felt okay. A quiet finish is enough."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Хорошо, что день прошёл спокойно. Тихого завершения достаточно."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "很高兴今天感觉还好。安静收尾就够了。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.reaction.good.quiet.named": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Glad the day felt okay, %@. A quiet finish is enough."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Хорошо, что день прошёл спокойно, %@. Тихого завершения достаточно."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@，很高兴今天感觉还好。安静收尾就够了。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.reaction.tired.active": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A lot of movement today. Give yourself a quiet evening."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сегодня было много движения. Устройте себе спокойный вечер."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天活动不少。给自己一个安静的夜晚。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.reaction.tired.active.named": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A lot of movement today. Give yourself a quiet evening, %@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сегодня было много движения. Устройте себе спокойный вечер, %@."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@，今天活动不少。给自己一个安静的夜晚。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.reaction.tired.quiet": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A soft evening sounds right. Rest without pressure."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Спокойный вечер — хороший выбор. Отдыхайте без давления."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安静的夜晚很合适。轻松休息就好。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.reaction.tired.quiet.named": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A soft evening sounds right, %@. Rest without pressure."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Спокойный вечер — хороший выбор, %@. Отдыхайте без давления."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@，安静的夜晚很合适。轻松休息就好。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.settledFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feeling %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Самочувствие — %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "感觉%@"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.feeling.tired": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tired"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Устали"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有点累"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.forEvening.badge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FOR YOUR EVENING"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "НА ВЕЧЕР"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今晚建议"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.forEvening.fallback": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep the evening easy and make a little room to wind down."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сделайте вечер спокойнее и оставьте чуть времени на отдых."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今晚轻松一些，留一点时间放松。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.forEvening.loading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Putting together your evening note…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Собираю вечерний комментарий…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在整理晚间建议…"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.headline.active": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You made time to move."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вы нашли время подвигаться."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你今天抽出时间活动了。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.headline.active.named": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You made time to move, %@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вы нашли время подвигаться, %@."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@，你今天抽出时间活动了。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.headline.quiet": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A quieter day."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Более спокойный день."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平静的一天。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.headline.quiet.named": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A quieter day, %@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Более спокойный день, %@."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@，平静的一天。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.health.connectHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect Apple Health to show today’s walking, workouts, and distance."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключите Apple Health, чтобы видеть ходьбу, тренировки и дистанцию."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接 Apple 健康以显示今日步行、训练和距离。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.hero.cycledToday": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cycled today"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сегодня на велосипеде"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天骑行"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.hero.movedToday": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moved today"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сегодня в движении"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天有活动"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.hero.ranToday": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ran today"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сегодня бегали"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天跑步"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.hero.recoveryToday": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recovery today"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Восстановление сегодня"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天恢复"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.hero.strengthToday": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strength today"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Силовая сегодня"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天力量训练"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.hero.trainedToday": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trained today"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тренировка сегодня"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天训练"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.hero.walkedToday": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walked today"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сегодня прошли"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天步行"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.note.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A note for you"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заметка для вас"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "给你的一句话"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.recordedRidesFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld recorded rides"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld записанные поездки"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 次骑行记录"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.recordedRunsFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld recorded runs"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld записанные пробежки"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 次跑步记录"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.recordedSessionsFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld recorded sessions"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld записанные тренировки"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 次训练记录"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.recordedStrengthFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld recorded strength sessions"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld силовые тренировки"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 次力量训练"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.recordedWalksFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld recorded walks"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld записанные прогулки"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 次步行记录"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.row.cycling": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cycling"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Велосипед"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "骑行"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.row.other": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тренировка"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "训练"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.row.recovery": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recovery"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Восстановление"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.row.running": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Running"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Бег"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.row.strength": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strength"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Силовая"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "力量训练"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.row.walking": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walking"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ходьба"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步行"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.row.walkingAndRunning": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walking & running"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ходьба и бег"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步行与跑步"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.sessionsCountFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld sessions"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld занятия"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 次"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.food.mealsLogged": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meals are logged for today"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приёмы пищи за сегодня отмечены"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天有用餐记录"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.food.proteinCovered": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protein looks covered"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Белок выглядит закрытым"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "蛋白质摄入不错"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.food.proteinLight": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protein stayed on the light side"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Белка сегодня меньше обычного"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天蛋白质偏少"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.food.proteinPartial": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protein is partway there"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Белка пока средне"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "蛋白质还有一些缺口"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.food.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Food"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Питание"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "饮食"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.food.waterGood": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hydration looks fine"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "С водой всё в порядке"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "水分补充不错"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.food.waterLow": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fluids are still a bit low"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Жидкости пока маловато"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "水分还差一点"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.movement.heroOnly": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.movement.heroPlus": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · plus %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · плюс %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · 还有%@"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.movement.quiet": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A quieter movement day"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Более спокойный день по движению"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "活动偏少的一天"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.movement.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Movement"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Движение"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "活动"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.movement.workoutsOnly": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ of training"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ тренировок"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "训练 %@"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.recovery.scoreOkay": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recovery looked okay today"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Восстановление сегодня в порядке"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天恢复还可以"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.recovery.scoreSofter": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recovery felt a bit softer today"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Восстановление сегодня чуть мягче"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天恢复稍弱一些"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.recovery.scoreSolid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recovery looked solid today"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Восстановление сегодня выглядело уверенно"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天恢复状态不错"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.recovery.sleepOnly": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About %@ hours of sleep"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Около %@ часов сна"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大约 %@ 小时睡眠"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.recovery.sleepSofter": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About %@ h sleep — a bit softer"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Около %@ ч сна — чуть мягче обычного"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大约 %@ 小时睡眠，稍显疲惫"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.recovery.sleepSolid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About %@ h sleep — looked solid"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Около %@ ч сна — выглядело уверенно"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大约 %@ 小时睡眠，状态不错"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.recovery.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recovery"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Восстановление"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.sleep.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sleep"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сон"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "睡眠"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.water.loggedFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ L logged"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ л записано"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已记录 %@ 升"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.signal.water.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Water"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вода"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "饮水"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.stepsFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ steps"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ шагов"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 步"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.unit.steps": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "steps"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "шагов"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.workouts.detailsHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shows today’s workouts"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показывает тренировки за сегодня"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看今天的训练"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.workouts.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No workouts today"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сегодня без тренировок"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天没有训练"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.workouts.listHeaderFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld workouts today"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld тренировки сегодня"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天 %lld 次训练"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.workouts.sheetTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today’s workouts"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тренировки сегодня"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天的训练"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.workoutsCountFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld workouts"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld тренировки"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 次训练"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.yourDay.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No movement logged yet today."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сегодня пока нет данных о движении."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天还没有活动记录。"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.yourDay.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your evening recap"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вечерний итог"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "晚间回顾"
+          }
+        }
+      }
+    },
+    "coach.eveningRecap.yourDay.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your day"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваш день"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的一天"
+          }
+        }
+      }
+    },
     "coach.eveningReview.achievement.longestSessionPrefix": {
       "extractionState": "manual",
       "localizations": {
@@ -68057,6 +69989,29 @@
         }
       }
     },
+    "home.activityStart.elapsedFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld min elapsed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld мин прошло"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已进行 %lld 分钟"
+          }
+        }
+      }
+    },
     "home.activityStart.intensity.easy": {
       "extractionState": "manual",
       "localizations": {
@@ -68145,29 +70100,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "力量侧重"
-          }
-        }
-      }
-    },
-    "home.activityStart.elapsedFormat": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld min elapsed"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld мин прошло"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已进行 %lld 分钟"
           }
         }
       }
@@ -107533,6 +109465,29 @@
         }
       }
     },
+    "paywall.cta.connecting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecting to App Store…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключение к App Store…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在连接 App Store…"
+          }
+        }
+      }
+    },
     "paywall.cta.startTrialFormat": {
       "extractionState": "manual",
       "localizations": {
@@ -107598,6 +109553,52 @@
           "stringUnit": {
             "state": "translated",
             "value": "未能完成购买，请重试。"
+          }
+        }
+      }
+    },
+    "paywall.error.timeout": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Store is taking too long. Check your connection and try again."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Store отвечает слишком долго. Проверьте соединение и попробуйте ещё раз."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Store 响应过久。请检查网络后重试。"
+          }
+        }
+      }
+    },
+    "paywall.status.loadingPrices": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading prices…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загрузка цен…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在加载价格…"
           }
         }
       }
@@ -108522,6 +110523,282 @@
         }
       }
     },
+    "planner.add.choose.habit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose your habit"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите привычку"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择习惯"
+          }
+        }
+      }
+    },
+    "planner.add.choose.meal": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose your meal"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите блюдо"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择餐食"
+          }
+        }
+      }
+    },
+    "planner.add.choose.recovery": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose your recovery"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите восстановление"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择恢复"
+          }
+        }
+      }
+    },
+    "planner.add.choose.workout": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose your workout"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите тренировку"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择训练"
+          }
+        }
+      }
+    },
+    "planner.add.library.recoveryActivities": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recovery activities"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Активности восстановления"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复活动"
+          }
+        }
+      }
+    },
+    "planner.add.prompt.selectMeal": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select a meal to continue"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите блюдо, чтобы продолжить"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请选择餐食以继续"
+          }
+        }
+      }
+    },
+    "planner.add.prompt.selectWorkout": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select a workout to continue"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите тренировку, чтобы продолжить"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请选择训练以继续"
+          }
+        }
+      }
+    },
+    "planner.add.prompt.selectRecovery": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select a recovery activity to continue"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите восстановление, чтобы продолжить"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请选择恢复活动以继续"
+          }
+        }
+      }
+    },
+    "planner.add.prompt.selectHabit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select a habit to continue"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите привычку, чтобы продолжить"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请选择习惯以继续"
+          }
+        }
+      }
+    },
+    "planner.add.nutritionA11yFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nutrition for %@, protein %lld grams, carbs %lld grams, fat %lld grams, fiber %lld grams"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Питание для %@, белки %lld г, углеводы %lld г, жиры %lld г, клетчатка %lld г"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 的营养：蛋白质 %lld 克，碳水 %lld 克，脂肪 %lld 克，膳食纤维 %lld 克"
+          }
+        }
+      }
+    },
+    "planner.time.rangeWithDurationFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@–%@ · %lld min"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@–%@ · %lld мин"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@–%@ · %lld 分钟"
+          }
+        }
+      }
+    },
+    "planner.sheet.tomorrowDateFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tomorrow, %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завтра, %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "明天，%@"
+          }
+        }
+      }
+    },
     "planner.add.habit": {
       "extractionState": "manual",
       "localizations": {
@@ -108541,6 +110818,98 @@
           "stringUnit": {
             "state": "translated",
             "value": "添加习惯"
+          }
+        }
+      }
+    },
+    "planner.add.library.habits": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your habits"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваши привычки"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "您的习惯"
+          }
+        }
+      }
+    },
+    "planner.add.library.meals": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your meals"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваши блюда"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "您的餐食"
+          }
+        }
+      }
+    },
+    "planner.add.library.recovery": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your recovery"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваше восстановление"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "您的恢复"
+          }
+        }
+      }
+    },
+    "planner.add.library.workouts": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your workouts"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваши тренировки"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "您的训练"
           }
         }
       }
@@ -108587,6 +110956,144 @@
           "stringUnit": {
             "state": "translated",
             "value": "添加恢复功能"
+          }
+        }
+      }
+    },
+    "planner.add.saveChangesWithTimeFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save changes · %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить · %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存更改 · %@"
+          }
+        }
+      }
+    },
+    "planner.add.scenario.habit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan a habit"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запланировать привычку"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "计划习惯"
+          }
+        }
+      }
+    },
+    "planner.add.scenario.meal": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan a meal"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запланировать еду"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "计划一餐"
+          }
+        }
+      }
+    },
+    "planner.add.scenario.recovery": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan recovery"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запланировать восстановление"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "计划恢复"
+          }
+        }
+      }
+    },
+    "planner.add.scenario.workout": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan a workout"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запланировать тренировку"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "计划训练"
+          }
+        }
+      }
+    },
+    "planner.add.toPlanWithTimeFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add to plan · %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В план · %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加到计划 · %@"
           }
         }
       }
@@ -111006,6 +113513,29 @@
         }
       }
     },
+    "planner.duration.customMinutesFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom · %lld min"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Своё · %lld мин"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义 · %lld 分钟"
+          }
+        }
+      }
+    },
     "planner.duration.custom": {
       "extractionState": "manual",
       "localizations": {
@@ -113283,6 +115813,29 @@
         }
       }
     },
+    "planner.sheet.changeAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменить"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改"
+          }
+        }
+      }
+    },
     "planner.sheet.chooseActivity": {
       "extractionState": "manual",
       "localizations": {
@@ -113444,6 +115997,29 @@
         }
       }
     },
+    "planner.sheet.dateLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дата"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日期"
+          }
+        }
+      }
+    },
     "planner.sheet.editSubtitle": {
       "extractionState": "manual",
       "localizations": {
@@ -113486,6 +116062,52 @@
           "stringUnit": {
             "state": "translated",
             "value": "编辑活动"
+          }
+        }
+      }
+    },
+    "planner.sheet.timeLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Время"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "时间"
+          }
+        }
+      }
+    },
+    "planner.sheet.todayDateFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today, %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сегодня, %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天，%@"
           }
         }
       }
@@ -114452,6 +117074,52 @@
           "stringUnit": {
             "state": "translated",
             "value": "适用于减速"
+          }
+        }
+      }
+    },
+    "planner.time.suggestedFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggested: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рекомендуем: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "建议：%@"
+          }
+        }
+      }
+    },
+    "planner.time.suggestedWindowFormat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggested: %@ · %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рекомендуем: %@ · %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "建议：%@ · %@"
           }
         }
       }
@@ -141176,1934 +143844,761 @@
         }
       }
     },
-    "coach.eveningRecap.yourDay.title": {
+    "planner.add.toPlan": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your day"
+            "value": "Add to plan"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ваш день"
+            "value": "В план"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的一天"
+            "value": "加入计划"
           }
         }
       }
     },
-    "coach.eveningRecap.yourDay.subtitle": {
+    "planner.add.saveChanges": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your evening recap"
+            "value": "Save changes"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Вечерний итог"
+            "value": "Сохранить"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "晚间回顾"
+            "value": "保存更改"
           }
         }
       }
     },
-    "coach.eveningRecap.yourDay.empty": {
+    "planner.duration.customEllipsis": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No movement logged yet today."
+            "value": "Custom…"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сегодня пока нет данных о движении."
+            "value": "Своя…"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天还没有活动记录。"
+            "value": "自定义…"
           }
         }
       }
     },
-    "coach.eveningRecap.row.walking": {
+    "planner.add.footer.dayRangeFormat": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Walking"
+            "value": "%@, %@–%@"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ходьба"
+            "value": "%@, %@–%@"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "步行"
+            "value": "%@，%@–%@"
           }
         }
       }
     },
-    "coach.eveningRecap.row.walkingAndRunning": {
+    "planner.agenda.character.recovery": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Walking & running"
+            "value": "Recovery day"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ходьба и бег"
+            "value": "День восстановления"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "步行与跑步"
+            "value": "恢复日"
           }
         }
       }
     },
-    "coach.eveningRecap.row.running": {
+    "planner.agenda.character.endurance": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Running"
+            "value": "Endurance day"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Бег"
+            "value": "День выносливости"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "跑步"
+            "value": "耐力日"
           }
         }
       }
     },
-    "coach.eveningRecap.row.cycling": {
+    "planner.agenda.character.strength": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cycling"
+            "value": "Strength day"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Велосипед"
+            "value": "День силы"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "骑行"
+            "value": "力量日"
           }
         }
       }
     },
-    "coach.eveningRecap.row.strength": {
+    "planner.agenda.character.mixed": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Strength"
+            "value": "Mixed day"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Силовая"
+            "value": "Разнообразный день"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "力量训练"
+            "value": "综合日"
           }
         }
       }
     },
-    "coach.eveningRecap.row.other": {
+    "planner.agenda.character.open": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Workout"
+            "value": "Your day — your plan"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тренировка"
+            "value": "Ваш день — ваш план"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "训练"
+            "value": "你的一天，你的计划"
           }
         }
       }
     },
-    "coach.eveningRecap.row.recovery": {
+    "planner.agenda.character.detail.recovery": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Recovery"
+            "value": "Recovery and light movement"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Восстановление"
+            "value": "Восстановление и лёгкое движение"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "恢复"
+            "value": "恢复与轻度活动"
           }
         }
       }
     },
-    "coach.eveningRecap.stepsFormat": {
+    "planner.agenda.character.detail.endurance": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ steps"
+            "value": "Cardio and stamina sessions on the schedule."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ шагов"
+            "value": "В плане — кардио и работа на выносливость."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ 步"
+            "value": "计划中有有氧与耐力训练。"
           }
         }
       }
     },
-    "coach.eveningRecap.workoutsCountFormat": {
+    "planner.agenda.character.detail.strength": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld workouts"
+            "value": "Strength work on the schedule."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld тренировки"
+            "value": "В плане — силовая работа."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld 次训练"
+            "value": "计划中有力量训练。"
           }
         }
       }
     },
-    "coach.eveningRecap.forEvening.badge": {
+    "planner.agenda.character.detail.mixed": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "FOR YOUR EVENING"
+            "value": "Training and recovery share this day."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "НА ВЕЧЕР"
+            "value": "Тренировки и восстановление делят этот день."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今晚建议"
+            "value": "训练与恢复同在这一天。"
           }
         }
       }
     },
-    "coach.eveningRecap.forEvening.loading": {
+    "planner.agenda.character.detail.open": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Putting together your evening note…"
+            "value": "Add meals, workouts, or habits as you like."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Собираю вечерний комментарий…"
+            "value": "Добавляйте приёмы пищи, тренировки или привычки."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "正在整理晚间建议…"
+            "value": "可按需添加餐食、训练或习惯。"
           }
         }
       }
     },
-    "coach.eveningRecap.forEvening.fallback": {
+    "planner.agenda.events": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keep the evening easy and make a little room to wind down."
+            "value": "Events"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сделайте вечер спокойнее и оставьте чуть времени на отдых."
+            "value": "События"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今晚轻松一些，留一点时间放松。"
+            "value": "事项"
           }
         }
       }
     },
-    "coach.eveningRecap.feeling.prompt": {
+    "planner.agenda.completedCountFormat": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "How are you feeling this evening?"
+            "value": "%lld completed"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Как вы себя чувствуете этим вечером?"
+            "value": "%lld выполнено"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今晚感觉怎么样？"
+            "value": "已完成 %lld"
           }
         }
       }
     },
-    "coach.eveningRecap.feeling.tired": {
+    "planner.agenda.yourSchedule": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tired"
+            "value": "Your schedule"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Устали"
+            "value": "Ваше расписание"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "有点累"
+            "value": "你的日程"
           }
         }
       }
     },
-    "coach.eveningRecap.feeling.good": {
+    "planner.agenda.progressOfFormat": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Good"
+            "value": "%lld of %lld completed"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Хорошо"
+            "value": "%lld из %lld выполнено"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "还不错"
+            "value": "已完成 %lld / %lld"
           }
         }
       }
     },
-    "coach.eveningRecap.feeling.energized": {
+    "planner.agenda.progressAllFormat": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Energized"
+            "value": "All %lld completed"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Полон сил"
+            "value": "Все %lld выполнено"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "很有精神"
+            "value": "已完成全部 %lld"
           }
         }
       }
     },
-    "coach.eveningRecap.health.connectHint": {
+    "planner.agenda.upNext": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connect Apple Health to show today’s walking, workouts, and distance."
+            "value": "Up next"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Подключите Apple Health, чтобы видеть ходьбу, тренировки и дистанцию."
+            "value": "Далее"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "连接 Apple 健康以显示今日步行、训练和距离。"
+            "value": "接下来"
           }
         }
       }
     },
-    "coach.eveningRecap.headline.active": {
+    "planner.agenda.earlier": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You made time to move."
+            "value": "Earlier"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Вы нашли время подвигаться."
+            "value": "Ранее"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你今天抽出时间活动了。"
+            "value": "更早"
           }
         }
       }
     },
-    "coach.eveningRecap.headline.active.named": {
+    "planner.agenda.planned": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You made time to move, %@."
+            "value": "Planned"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Вы нашли время подвигаться, %@."
+            "value": "Запланировано"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@，你今天抽出时间活动了。"
+            "value": "已计划"
           }
         }
       }
     },
-    "coach.eveningRecap.headline.quiet": {
+    "planner.agenda.notCompleted": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A quieter day."
+            "value": "Not completed"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Более спокойный день."
+            "value": "Не выполнено"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "平静的一天。"
+            "value": "未完成"
           }
         }
       }
     },
-    "coach.eveningRecap.headline.quiet.named": {
+    "planner.agenda.completedSectionFormat": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A quieter day, %@."
+            "value": "Completed · %lld"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Более спокойный день, %@."
+            "value": "Выполнено · %lld"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@，平静的一天。"
+            "value": "已完成 · %lld"
           }
         }
       }
     },
-    "coach.eveningRecap.hero.walkedToday": {
+    "planner.agenda.allDoneMessage": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Walked today"
+            "value": "All planned activities completed"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сегодня прошли"
+            "value": "Все запланированные активности выполнены"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天步行"
+            "value": "所有计划活动已完成"
           }
         }
       }
     },
-    "coach.eveningRecap.hero.movedToday": {
+    "planner.agenda.add": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Moved today"
+            "value": "Add"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сегодня в движении"
+            "value": "Добавить"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天有活动"
+            "value": "添加"
           }
         }
       }
     },
-    "coach.eveningRecap.hero.ranToday": {
+    "planner.agenda.dayContextFormat": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ran today"
+            "value": "%@ · %@"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сегодня бегали"
+            "value": "%@ · %@"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天跑步"
+            "value": "%@ · %@"
           }
         }
       }
     },
-    "coach.eveningRecap.hero.cycledToday": {
+    "planner.agenda.markComplete": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cycled today"
+            "value": "Mark complete"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сегодня на велосипеде"
+            "value": "Отметить выполненным"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天骑行"
+            "value": "标记完成"
           }
         }
       }
     },
-    "coach.eveningRecap.hero.strengthToday": {
+    "planner.agenda.completedToggleHint": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Strength today"
+            "value": "Shows or hides completed events"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Силовая сегодня"
+            "value": "Показывает или скрывает выполненные события"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天力量训练"
+            "value": "显示或隐藏已完成事项"
           }
         }
       }
     },
-    "coach.eveningRecap.hero.trainedToday": {
+    "common.expanded": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Trained today"
+            "value": "Expanded"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тренировка сегодня"
+            "value": "Развернуто"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天训练"
+            "value": "已展开"
           }
         }
       }
     },
-    "coach.eveningRecap.hero.recoveryToday": {
+    "common.collapsed": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Recovery today"
+            "value": "Collapsed"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Восстановление сегодня"
+            "value": "Свернуто"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天恢复"
+            "value": "已收起"
           }
         }
       }
     },
-    "coach.eveningRecap.note.title": {
+    "planner.agenda.pastEmpty": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A note for you"
+            "value": "No activities were planned for this day."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Заметка для вас"
+            "value": "На этот день ничего не было запланировано."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "给你的一句话"
+            "value": "这一天没有计划活动。"
           }
         }
       }
     },
-    "coach.eveningRecap.feeling.reaction.tired.active": {
+    "common.selected": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A lot of movement today. Give yourself a quiet evening."
+            "value": "Selected"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сегодня было много движения. Устройте себе спокойный вечер."
+            "value": "Выбрано"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "今天活动不少。给自己一个安静的夜晚。"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.feeling.reaction.tired.quiet": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A soft evening sounds right. Rest without pressure."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Спокойный вечер — хороший выбор. Отдыхайте без давления."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "安静的夜晚很合适。轻松休息就好。"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.feeling.reaction.good.active": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nice steady day of movement. Ease into the night."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Хороший день с движением. Спокойно завершите вечер."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "今天活动很稳。慢慢进入夜晚。"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.feeling.reaction.good.quiet": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Glad the day felt okay. A quiet finish is enough."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Хорошо, что день прошёл спокойно. Тихого завершения достаточно."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "很高兴今天感觉还好。安静收尾就够了。"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.feeling.reaction.energized.active": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Good energy after a full day. Keep the evening light."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Отличная энергия после насыщенного дня. Оставьте вечер лёгким."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "充实一天后仍有精神。晚上保持轻松。"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.feeling.reaction.energized.quiet": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nice to feel light today. Carry that ease into night."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Приятно чувствовать лёгкость сегодня. Сохраните её до ночи."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "今天感觉轻盈很好。把这份轻松带到夜里。"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.sessionsCountFormat": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld sessions"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld занятия"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld 次"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.duration.hoursFormat": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld hr"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld ч"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld 小时"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.duration.hoursMinutesFormat": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$lld hr %2$lld min"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$lld ч %2$lld мин"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$lld小时 %2$lld分钟"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.workouts.sheetTitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Today’s workouts"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Тренировки сегодня"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "今天的训练"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.workouts.empty": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No workouts today"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Сегодня без тренировок"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "今天没有训练"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.workouts.detailsHint": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shows today’s workouts"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Показывает тренировки за сегодня"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "查看今天的训练"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.feeling.prompt.selected": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This evening, you feel"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Этим вечером вы чувствуете себя"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "今晚你感觉"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.feeling.reaction.tired.active.named": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A lot of movement today. Give yourself a quiet evening, %@."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Сегодня было много движения. Устройте себе спокойный вечер, %@."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@，今天活动不少。给自己一个安静的夜晚。"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.feeling.reaction.tired.quiet.named": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A soft evening sounds right, %@. Rest without pressure."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Спокойный вечер — хороший выбор, %@. Отдыхайте без давления."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@，安静的夜晚很合适。轻松休息就好。"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.feeling.reaction.good.active.named": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nice steady day of movement, %@. Ease into the night."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Хороший день с движением, %@. Спокойно завершите вечер."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@，今天活动很稳。慢慢进入夜晚。"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.feeling.reaction.good.quiet.named": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Glad the day felt okay, %@. A quiet finish is enough."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Хорошо, что день прошёл спокойно, %@. Тихого завершения достаточно."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@，很高兴今天感觉还好。安静收尾就够了。"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.feeling.reaction.energized.active.named": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Good energy after a full day, %@. Keep the evening light."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Отличная энергия после насыщенного дня, %@. Оставьте вечер лёгким."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@，充实一天后仍有精神。晚上保持轻松。"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.feeling.reaction.energized.quiet.named": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nice to feel light today, %@. Carry that ease into night."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Приятно чувствовать лёгкость сегодня, %@. Сохраните её до ночи."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@，今天感觉轻盈很好。把这份轻松带到夜里。"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.recordedWalksFormat": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld recorded walks"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld записанные прогулки"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld 次步行记录"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.recordedRunsFormat": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld recorded runs"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld записанные пробежки"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld 次跑步记录"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.recordedRidesFormat": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld recorded rides"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld записанные поездки"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld 次骑行记录"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.recordedStrengthFormat": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld recorded strength sessions"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld силовые тренировки"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld 次力量训练"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.recordedSessionsFormat": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld recorded sessions"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld записанные тренировки"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld 次训练记录"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.comparison.moreThanUsual": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "You walked %@ more than usual."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Вы прошли на %@ больше обычного."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "你比平时多走了 %@。"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.comparison.lessThanUsual": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "You walked %@ less than usual."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Вы прошли на %@ меньше обычного."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "你比平时少走了 %@。"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.unit.steps": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "steps"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "шагов"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "步"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.workouts.listHeaderFormat": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld workouts today"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld тренировки сегодня"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "今天 %lld 次训练"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.movement.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Movement"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Движение"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "活动"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.movement.heroOnly": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.movement.heroPlus": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ · plus %@"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ · плюс %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ · 还有%@"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.movement.workoutsOnly": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ of training"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ тренировок"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "训练 %@"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.movement.quiet": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A quieter movement day"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Более спокойный день по движению"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "活动偏少的一天"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.recovery.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recovery"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Восстановление"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "恢复"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.sleep.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sleep"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Сон"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "睡眠"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.recovery.sleepSolid": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "About %@ h sleep — looked solid"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Около %@ ч сна — выглядело уверенно"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "大约 %@ 小时睡眠，状态不错"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.recovery.sleepSofter": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "About %@ h sleep — a bit softer"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Около %@ ч сна — чуть мягче обычного"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "大约 %@ 小时睡眠，稍显疲惫"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.recovery.sleepOnly": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "About %@ hours of sleep"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Около %@ часов сна"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "大约 %@ 小时睡眠"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.recovery.scoreSolid": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recovery looked solid today"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Восстановление сегодня выглядело уверенно"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "今天恢复状态不错"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.recovery.scoreSofter": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recovery felt a bit softer today"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Восстановление сегодня чуть мягче"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "今天恢复稍弱一些"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.recovery.scoreOkay": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recovery looked okay today"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Восстановление сегодня в порядке"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "今天恢复还可以"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.food.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Food"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Питание"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "饮食"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.food.proteinCovered": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Protein looks covered"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Белок выглядит закрытым"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "蛋白质摄入不错"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.food.proteinPartial": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Protein is partway there"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Белка пока средне"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "蛋白质还有一些缺口"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.food.proteinLight": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Protein stayed on the light side"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Белка сегодня меньше обычного"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "今天蛋白质偏少"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.food.waterLow": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fluids are still a bit low"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Жидкости пока маловато"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "水分还差一点"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.food.waterGood": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hydration looks fine"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "С водой всё в порядке"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "水分补充不错"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.food.mealsLogged": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Meals are logged for today"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Приёмы пищи за сегодня отмечены"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "今天有用餐记录"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.feeling.settledFormat": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Feeling %@"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Самочувствие — %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "感觉%@"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.water.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Water"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Вода"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "饮水"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.signal.water.loggedFormat": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ L logged"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ л записано"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已记录 %@ 升"
-          }
-        }
-      }
-    },
-    "coach.eveningRecap.feeling.change": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Change"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Изменить"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "更改"
+            "value": "已选中"
           }
         }
       }

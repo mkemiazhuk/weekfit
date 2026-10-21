@@ -23,6 +23,23 @@ enum QuickDrinkFrequentComposer {
             case .afternoonPick: return "today.quickLog.badge.afternoonPick"
             }
         }
+
+        /// Inline emoji — drinks badges are words + emoji only (no SF Symbol).
+        var emoji: String {
+            switch self {
+            case .mostUsed: return "⭐️"
+            case .morningBoost: return "☀️"
+            case .forTheHeat: return "🔥"
+            case .stayHydrated: return "💧"
+            case .warmUp: return "☕️"
+            case .windDown: return "🌙"
+            case .afternoonPick: return "🌤"
+            }
+        }
+
+        var displayTitle: String {
+            "\(emoji) \(WeekFitLocalizedString(localizationKey))"
+        }
     }
 
     struct Pick: Equatable, Sendable {

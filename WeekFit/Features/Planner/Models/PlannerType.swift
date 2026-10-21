@@ -23,6 +23,19 @@ enum PlannerType: CaseIterable {
     case recovery
     case habit
 
+    var segmentID: String {
+        switch self {
+        case .meal: "meal"
+        case .workout: "workout"
+        case .recovery: "recovery"
+        case .habit: "habit"
+        }
+    }
+
+    static func from(segmentID: String) -> PlannerType? {
+        allCases.first { $0.segmentID == segmentID }
+    }
+
     var title: String {
         switch self {
         case .meal: "Meal"

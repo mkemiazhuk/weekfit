@@ -21,6 +21,8 @@ enum WeekFitPaywallStatusCopy {
             return WeekFitLocalizedString("paywall.error.verification")
         case .entitlementNotPropagated:
             return WeekFitLocalizedString("paywall.error.entitlementNotReady")
+        case .timedOut:
+            return WeekFitLocalizedString("paywall.error.timeout")
         case .failed, .productsUnavailable:
             return WeekFitLocalizedString("paywall.error.failed")
         case .cancelled, .success, .nothingToRestore, .none:
@@ -36,7 +38,7 @@ enum WeekFitPaywallStatusCopy {
         switch outcome {
         case .nothingToRestore:
             return WeekFitLocalizedString("paywall.restore.noneFound")
-        case .failed, .productsUnavailable:
+        case .timedOut, .failed, .productsUnavailable:
             return WeekFitLocalizedString("paywall.error.failed")
         case .cancelled, .success, .pending, .failedVerification,
              .entitlementNotPropagated, .none:

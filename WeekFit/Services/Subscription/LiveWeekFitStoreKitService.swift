@@ -31,6 +31,10 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
     /// Avoids re-hitting the network on every `SubscriptionManager.refresh()` /
     /// foreground while the catalog is unchanged.
     private var cachedProductsResult: WeekFitProductsLoadResult?
+    /// When `productsByID` was last filled — used to avoid a full reload on every Continue
+    /// while still refreshing after long background / Sandbox stalls.
+    private var productsLoadedAt: Date?
+    private let purchaseProductMaxAge: TimeInterval = 45
     /// Verified purchase awaiting entitlement delivery + `finish()` (Apple: unlock → finish).
     private var pendingVerifiedPurchase: Transaction?
     /// Product ids waiting for Ask to Buy / SCA to resolve via `Transaction.updates`.
@@ -98,6 +102,7 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
                 mapped[product.id] = product
             }
             productsByID = mapped
+            productsLoadedAt = Date()
             var snapshots: [WeekFitProductSnapshot] = []
             snapshots.reserveCapacity(storeProducts.count)
             for product in storeProducts {
@@ -208,17 +213,21 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
     func invalidateCachedProducts() {
         productsByID = [:]
         cachedProductsResult = nil
+        productsLoadedAt = nil
     }
 
     func purchase(productID: String) async -> WeekFitPurchaseOutcome {
-        // Always fetch a fresh `Product` before purchase. Cached instances (and even a
-        // same-storefront cache hit) can leave `Product.purchase()` hanging forever after
-        // long background / device sleep — paywall spins until the process is killed.
-        invalidateCachedProducts()
-        do {
-            _ = try await loadProducts()
-        } catch {
-            return .productsUnavailable
+        // Stale `Product` instances after long background can hang `purchase()` forever.
+        // Reload when missing or older than `purchaseProductMaxAge` — not on every tap
+        // (Sandbox product reload itself often feels like a dead Continue).
+        let cacheAge = productsLoadedAt.map { Date().timeIntervalSince($0) } ?? .infinity
+        if productsByID[productID] == nil || cacheAge > purchaseProductMaxAge {
+            invalidateCachedProducts()
+            do {
+                _ = try await loadProducts()
+            } catch {
+                return .productsUnavailable
+            }
         }
         guard let product = productsByID[productID] else {
             return .productsUnavailable

@@ -494,20 +494,49 @@ final class SubscriptionManagerTests: XCTestCase {
         await timedManager.start()
         await timedManager.purchaseSelected()
         XCTAssertFalse(timedManager.isPurchaseInFlight)
-        XCTAssertEqual(timedManager.lastOutcome, .failed)
+        XCTAssertEqual(timedManager.lastOutcome, .timedOut)
         XCTAssertEqual(timedManager.lastOutcomeSource, .purchase)
         XCTAssertEqual(
             WeekFitPaywallStatusCopy.purchaseMessage(
                 outcome: timedManager.lastOutcome,
                 source: timedManager.lastOutcomeSource
             ),
-            WeekFitLocalizedString("paywall.error.failed")
+            WeekFitLocalizedString("paywall.error.timeout")
         )
         XCTAssertEqual(recording.events(named: .subscriptionPurchaseStarted).count, 1)
         XCTAssertTrue(recording.events(named: .subscriptionPurchaseSuccess).isEmpty)
         let failed = try! XCTUnwrap(recording.events(named: .subscriptionPurchaseFailed).first)
         XCTAssertEqual(failed.parameters[AnalyticsParameterKey.failureReason], "timeout")
         XCTAssertEqual(failed.parameters[AnalyticsParameterKey.result], "timeout")
+    }
+
+    func testSecondPurchaseTapAbandonsHungAttempt() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "test"
+        )
+        store.purchaseHangForever = true
+        store.purchaseOutcome = .failed
+        let timedManager = SubscriptionManager(
+            store: store,
+            bypassProvider: { .none },
+            fallbackStore: WeekFitEntitlementFallbackStore(defaults: fallbackDefaults),
+            purchaseTimeout: .seconds(30)
+        )
+        await timedManager.start()
+
+        let hung = Task { await timedManager.purchaseSelected() }
+        // Let the first attempt enter purchase() hang.
+        try? await Task.sleep(for: .milliseconds(40))
+        XCTAssertTrue(timedManager.isPurchaseInFlight)
+
+        // Unhang the store for the retry; first attempt stays suspended forever.
+        store.purchaseHangForever = false
+        await timedManager.purchaseSelected()
+
+        XCTAssertFalse(timedManager.isPurchaseInFlight)
+        XCTAssertEqual(timedManager.lastOutcome, .failed)
+        hung.cancel()
     }
 
     func testForegroundRefreshInvalidatesCachedProductsOnlyWhenRequested() async {

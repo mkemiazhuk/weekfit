@@ -20,11 +20,11 @@ enum QuickActionSheetDesign {
                 // Neutral deep cream — lifts warm-white cards off the sheet.
                 return WeekFitLightTokens.backgroundSecondary
             case .food:
-                // Deeper warm stone so white elevated cards read clearly.
-                return SwiftUI.Color(red: 0.886, green: 0.855, blue: 0.800) // #E2DACC
+                // Light warm stone — section hint without a muddy beige wash.
+                return SwiftUI.Color(red: 0.965, green: 0.953, blue: 0.933) // #F6F3EE
             case .drinks:
-                // Same depth, cooler mist (hydration family).
-                return SwiftUI.Color(red: 0.862, green: 0.882, blue: 0.875) // #DCE1DF
+                // Light cool mist — hydration hint on a brighter neutral base.
+                return SwiftUI.Color(red: 0.953, green: 0.961, blue: 0.957) // #F3F5F4
             }
         }
     }
@@ -49,11 +49,10 @@ enum QuickActionSheetDesign {
         static let segmentedTopPadding: CGFloat = 4
         static let segmentedBottomPadding: CGFloat = 8
 
-        /// Default quick-log sheet height — fits header + Recommended cards
-        /// (Most Used + next) without peeking into Recently Added.
-        static let sheetDetentFraction: CGFloat = 0.62
-        /// Activity Start sits lower so Today Overview rings/labels stay readable.
-        static let activitySheetDetentFraction: CGFloat = 0.54
+        /// Default quick-log sheet height — header + frequent cards (+ badge row).
+        static let sheetDetentFraction: CGFloat = 0.76
+        /// Activity Start: tall enough for frequent tiles; Overview rings stay partly visible.
+        static let activitySheetDetentFraction: CGFloat = 0.64
     }
 
     enum Row {
@@ -63,17 +62,32 @@ enum QuickActionSheetDesign {
         static let imageCornerRadius: CGFloat = 15
         static let cardCornerRadius: CGFloat = 20
         static let actionButtonSize: CGFloat = 36
-        static let actionExpandedWidth: CGFloat = 88
+        static let actionExpandedWidth: CGFloat = 102
         static let contentSpacing: CGFloat = 12
     }
 
     /// Shared recommended-card action treatment (Drinks / Food / Start Activity).
     enum RecommendedCard {
-        static let padding: CGFloat = 14
+        static let padding: CGFloat = 16
+        static let cornerRadius: CGFloat = 22
+        static let width: CGFloat = 172
+        /// Fits badge row + media + title/meta + 44pt action without clipping +.
+        static let minHeight: CGFloat = 272
+        static let interCardSpacing: CGFloat = 14
         static let actionInset: CGFloat = 4
         static let actionVisualSize: CGFloat = 30
-        static var actionHitSize: CGFloat { Row.actionButtonSize }
+        /// Minimum tap target for + / play on frequent cards.
+        static let actionHitSize: CGFloat = 44
         static let metaSpacing: CGFloat = 6
+        /// Reserved badge strip above media (not overlaid on photos).
+        static let badgeRowMinHeight: CGFloat = 24
+        /// Clear air between badge bottom and media slot.
+        static let badgeToMedia: CGFloat = 12
+        static let mediaHeight: CGFloat = 100
+        static let mediaToTitle: CGFloat = 16
+        /// Tight per-card lift — wide soft shadows merge into one slab under the pair.
+        static let cardShadowRadius: CGFloat = 6
+        static let cardShadowY: CGFloat = 2
     }
 
     enum Typography {
@@ -124,7 +138,7 @@ enum QuickSheetChrome {
         isLight ? WeekFitLightTokens.internalTile : WeekFitTheme.whiteOpacity(0.08)
     }
 
-    /// "Most used" / time-context capsules.
+    /// Legacy context badge colors — prefer `QuickSheetPhotoSafeBadge` on photo cards.
     static func contextBadgeForeground(isLight: Bool) -> Color {
         isLight ? WeekFitLightTokens.brandGoldDark : WeekFitTheme.brandGold.opacity(0.92)
     }
@@ -141,18 +155,20 @@ enum QuickSheetChrome {
     }
 
     static func frequentCardStroke(isLight: Bool) -> Color {
-        isLight ? Color.black.opacity(0.07) : WeekFitTheme.whiteOpacity(0.10)
+        isLight ? Color.black.opacity(0.055) : WeekFitTheme.whiteOpacity(0.10)
     }
 
-    /// Soft lift for floating cards — low opacity so the silhouette stays rounded, not a dark slab.
+    /// Soft lift for floating cards — keep opacity low so paired cards don’t share one gray pillow.
     static func cardShadowColor(isLight: Bool) -> Color {
-        isLight ? Color.black.opacity(0.13) : .clear
+        isLight ? Color.black.opacity(0.06) : .clear
     }
 
-    static let cardShadowRadius: CGFloat = 12
-    static let cardShadowY: CGFloat = 5
+    static var cardShadowRadius: CGFloat { QuickActionSheetDesign.RecommendedCard.cardShadowRadius }
+    static var cardShadowY: CGFloat { QuickActionSheetDesign.RecommendedCard.cardShadowY }
 
-    /// Recommended / Frequently Used tiles — white pearl + soft accent wash that lifts off warm sheet stone.
+    /// Recommended / Frequently Used tiles.
+    /// Light: soft full-card tint + slightly stronger top wash so Water/Tea/Workout cards read apart.
+    /// Dark: adaptive surface + quiet accent wash (no lifted white fills).
     @ViewBuilder
     static func elevatedTileBackground(
         cornerRadius: CGFloat,
@@ -164,53 +180,40 @@ enum QuickSheetChrome {
         shape
             .fill(frequentCardFill(isLight: isLight))
             .overlay {
+                // Full-card tint — keeps light cards from reading as identical pure white.
+                shape.fill(
+                    accent.opacity(isLight ? 0.10 : 0.08)
+                )
+            }
+            .overlay {
                 shape.fill(
                     LinearGradient(
                         colors: isLight
                             ? [
-                                accent.opacity(0.18),
-                                accent.opacity(0.06),
-                                Color.white.opacity(0)
-                            ]
-                            : [
                                 accent.opacity(0.16),
                                 accent.opacity(0.05),
+                                Color.clear
+                            ]
+                            : [
+                                accent.opacity(0.18),
+                                accent.opacity(0.06),
                                 WeekFitTheme.whiteOpacity(0)
                             ],
-                        startPoint: .topLeading,
-                        endPoint: UnitPoint(x: 0.92, y: 0.82)
+                        startPoint: .top,
+                        endPoint: UnitPoint(x: 0.5, y: 0.62)
                     )
                 )
             }
             .overlay {
-                // Soft top specular — reads as elevated glass, not flat wash.
                 shape.strokeBorder(
-                    LinearGradient(
-                        colors: isLight
-                            ? [
-                                Color.white.opacity(0.95),
-                                Color.white.opacity(0.20)
-                            ]
-                            : [
-                                WeekFitTheme.whiteOpacity(0.14),
-                                WeekFitTheme.whiteOpacity(0.03)
-                            ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ),
-                    lineWidth: 1
+                    frequentCardStroke(isLight: isLight),
+                    lineWidth: 0.75
                 )
             }
-            // Tight per-card lift only — wide soft shadows merge into a shared slab under the row.
             .shadow(
-                color: isLight ? Color.black.opacity(0.08) : .clear,
-                radius: 6,
-                y: 3
-            )
-            .shadow(
-                color: isLight ? Color.black.opacity(0.04) : .clear,
-                radius: 1,
-                y: 1
+                color: cardShadowColor(isLight: isLight),
+                radius: cardShadowRadius,
+                y: cardShadowY
             )
     }
 }
@@ -279,10 +282,9 @@ struct QuickRecommendedCardCircleAction: View {
     var body: some View {
         let visual = QuickActionSheetDesign.RecommendedCard.actionVisualSize
         let hit = QuickActionSheetDesign.RecommendedCard.actionHitSize
-        let scale = visual / hit
 
         Image(systemName: systemName)
-            .font(.system(size: symbolSize * scale, weight: .bold))
+            .font(.system(size: symbolSize, weight: .bold))
             .foregroundStyle(Color.white)
             .offset(opticalGlyphOffset)
             .frame(width: visual, height: visual)
@@ -290,12 +292,77 @@ struct QuickRecommendedCardCircleAction: View {
                 Circle().fill(fill)
             }
             .shadow(
-                color: isLight ? fill.opacity(0.22) : .clear,
-                radius: 4 * scale,
-                y: 2 * scale
+                color: isLight ? fill.opacity(0.18) : .clear,
+                radius: 4,
+                y: 2
             )
             .frame(width: hit, height: hit)
             .contentShape(Circle())
+    }
+}
+
+/// Frequent-card context chip shared by Activity / Food / Drink.
+/// Lives on its own row above media — never over faces/photos.
+/// Light: near-white fill + dark-gray label + small accent glyph.
+/// Dark: adaptive charcoal surface (not a lifted white chip).
+struct QuickSheetPhotoSafeBadge: View {
+    let title: String
+    var systemImage: String? = nil
+    var accent: Color = WeekFitTheme.brandGold
+    /// Outer inset when overlaid; prefer `0` when the badge sits in a dedicated row.
+    var padding: CGFloat = 0
+
+    @Environment(\.weekFitPalette) private var palette
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private static let darkChipFill = Color(red: 0.16, green: 0.17, blue: 0.19)
+    private static let lightLabel = Color(red: 0.28, green: 0.29, blue: 0.31)
+
+    private var allowsWrap: Bool {
+        dynamicTypeSize >= .accessibility1
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 4) {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(accent.opacity(palette.isLight ? 0.85 : 0.92))
+                    .accessibilityHidden(true)
+            }
+            Text(title)
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundStyle(
+                    palette.isLight
+                        ? Self.lightLabel
+                        : Color.white.opacity(0.88)
+                )
+                .lineLimit(allowsWrap ? 2 : 1)
+                .minimumScaleFactor(allowsWrap ? 1 : 0.85)
+                .multilineTextAlignment(.trailing)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background {
+            Capsule(style: .continuous)
+                .fill(
+                    palette.isLight
+                        ? Color.white.opacity(0.97)
+                        : Self.darkChipFill
+                )
+        }
+        .overlay {
+            Capsule(style: .continuous)
+                .strokeBorder(
+                    palette.isLight
+                        ? Color.black.opacity(0.05)
+                        : Color.white.opacity(0.10),
+                    lineWidth: 0.6
+                )
+        }
+        .padding(padding)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -311,9 +378,10 @@ struct QuickActionCoachRecommendationSlot: View {
 /// Horizontal recommended/frequent row for Food / Drinks / Activity sheets.
 /// Centers when cards fit the sheet width (Pro Max + 1–2 picks); scrolls when they don't.
 struct QuickSheetHorizontalCarousel<Content: View>: View {
-    var spacing: CGFloat = 12
+    var spacing: CGFloat = QuickActionSheetDesign.RecommendedCard.interCardSpacing
     var horizontalPadding: CGFloat = 18
-    var verticalPadding: CGFloat = 14
+    /// Just enough for per-card shadow — large padding left a gray band under the pair.
+    var verticalPadding: CGFloat = 6
     @ViewBuilder var content: () -> Content
 
     var body: some View {

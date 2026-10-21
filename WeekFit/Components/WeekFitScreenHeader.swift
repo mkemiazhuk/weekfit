@@ -12,14 +12,20 @@ struct WeekFitScreenHeader<Trailing: View>: View {
     @ViewBuilder let trailing: () -> Trailing
     let onAvatarTap: () -> Void
 
+    private var showsSubtitle: Bool {
+        !subtitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: showsSubtitle ? 5 : 0) {
                 Text(title)
                     .weekFitScreenTitle()
 
-                Text(subtitle)
-                    .weekFitScreenSubtitle()
+                if showsSubtitle {
+                    Text(subtitle)
+                        .weekFitScreenSubtitle()
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .layoutPriority(1)
@@ -39,7 +45,7 @@ struct WeekFitScreenHeader<Trailing: View>: View {
             }
             .fixedSize(horizontal: true, vertical: false)
         }
-        .frame(minHeight: 52)
+        .frame(minHeight: showsSubtitle ? 52 : 40)
     }
 }
 

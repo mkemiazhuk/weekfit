@@ -11,6 +11,9 @@ enum QuickFoodAccent {
     /// Former drinks CTA gold — now used on Food + circles and kcal chips.
     static let actionOrange = Color(red: 0.78, green: 0.58, blue: 0.28)
     static let green = Color(red: 0.38, green: 0.70, blue: 0.48)
+    /// Soft frequent washes — matched intensity, warm vs leaf.
+    static let warmWash = Color(red: 0.90, green: 0.80, blue: 0.68)
+    static let leafWash = Color(red: 0.74, green: 0.82, blue: 0.72)
 
     /// Food + circles — always the former drinks gold/orange.
     static func action(isLight _: Bool) -> Color {
@@ -19,7 +22,7 @@ enum QuickFoodAccent {
 
     /// Card wash only — CTA circles and kcal chips use `actionOrange`, not this.
     static func frequentColor(at index: Int, isLight _: Bool) -> Color {
-        index == 0 ? orange : green
+        index == 0 ? warmWash : leafWash
     }
 
     /// kcal + flame chip — same gold as Food + / «add one», no per-item rainbow.
@@ -33,12 +36,12 @@ enum QuickFoodAccent {
 
     static func cardTop(for accent: Color, isLight: Bool) -> Color {
         guard isLight else { return accent.opacity(0.14) }
-        return accent.opacity(0.12)
+        return accent.opacity(0.08)
     }
 
     static func cardBottom(for accent: Color, isLight: Bool) -> Color {
         guard isLight else { return accent.opacity(0.05) }
-        return accent.opacity(0.04)
+        return accent.opacity(0.03)
     }
 }
 
@@ -649,11 +652,16 @@ struct QuickFoodLogSheet: View {
                             metaAccent: QuickFoodAccent.frequentMeta(at: index, isLight: palette.isLight),
                             selection: selection,
                             displayQuantity: selection.effectivePortions(for: profile),
+                            badgeKey: frequent.badgeKey,
+                            badgeSymbol: frequent.badgeSymbol,
                             onPlusTap: { onMealPlus(frequent.row.meal) },
                             onIncrement: { onMealIncrement(frequent.row.meal) },
                             onDecrement: { onMealDecrement(frequent.row.meal) }
                         ) {
-                            QuickFoodCircularMealThumb(row: frequent.row, size: 108)
+                            QuickFoodCircularMealThumb(
+                                row: frequent.row,
+                                size: QuickActionSheetDesign.RecommendedCard.mediaHeight
+                            )
                         }
                         .zIndex(selection.isExpanded ? 1 : 0)
                     }
@@ -696,11 +704,16 @@ struct QuickFoodLogSheet: View {
                             metaAccent: QuickFoodAccent.frequentMeta(at: index, isLight: palette.isLight),
                             selection: selection,
                             displayQuantity: selection.effectivePortions(for: profile),
+                            badgeKey: frequent.badgeKey,
+                            badgeSymbol: frequent.badgeSymbol,
                             onPlusTap: { onSnackPlus(frequent.item) },
                             onIncrement: { onSnackIncrement(frequent.item) },
                             onDecrement: { onSnackDecrement(frequent.item) }
                         ) {
-                            QuickFoodCircularSnackThumb(row: frequent.row, size: 108)
+                            QuickFoodCircularSnackThumb(
+                                row: frequent.row,
+                                size: QuickActionSheetDesign.RecommendedCard.mediaHeight
+                            )
                         }
                         .zIndex(selection.isExpanded ? 1 : 0)
                     }
@@ -855,7 +868,7 @@ struct QuickFoodLogSheet: View {
                     Image(systemName: "chevron.down")
                         .font(.system(size: 9, weight: .bold))
                 }
-                .foregroundStyle(foodAccent)
+                .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.72))
             }
             .buttonStyle(.plain)
         }
@@ -941,39 +954,57 @@ private struct QuickFoodFrequentCard<Thumb: View>: View {
     let metaAccent: Color
     let selection: QuickLogSelection
     let displayQuantity: Double
+    var badgeKey: String? = nil
+    var badgeSymbol: String? = nil
     let onPlusTap: () -> Void
     let onIncrement: () -> Void
     let onDecrement: () -> Void
     @ViewBuilder let thumb: () -> Thumb
 
     @Environment(\.weekFitPalette) private var palette
-    @ScaledMetric(relativeTo: .body) private var cardWidth: CGFloat = 172
 
-    private let cardRadius: CGFloat = 22
+    private var cardWidth: CGFloat { QuickActionSheetDesign.RecommendedCard.width }
+    private var cardHeight: CGFloat { QuickActionSheetDesign.RecommendedCard.minHeight }
+    private var cardRadius: CGFloat { QuickActionSheetDesign.RecommendedCard.cornerRadius }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+                if let badgeKey {
+                    QuickSheetPhotoSafeBadge(
+                        title: WeekFitLocalizedString(badgeKey),
+                        systemImage: badgeSymbol,
+                        accent: accent
+                    )
+                }
+            }
+            .frame(
+                minHeight: QuickActionSheetDesign.RecommendedCard.badgeRowMinHeight,
+                alignment: .topTrailing
+            )
+
             thumb()
                 .frame(maxWidth: .infinity, alignment: .center)
+                .frame(height: QuickActionSheetDesign.RecommendedCard.mediaHeight)
+                .padding(.top, QuickActionSheetDesign.RecommendedCard.badgeToMedia)
 
             Text(title)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
                 .foregroundStyle(WeekFitTheme.primaryText)
-                .lineLimit(2)
+                .lineLimit(1)
                 .minimumScaleFactor(0.85)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 10)
+                .padding(.top, QuickActionSheetDesign.RecommendedCard.mediaToTitle)
 
             if !subtitle.isEmpty {
                 Text(subtitle)
                     .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.58))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 3)
+                    .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.68))
+                    .lineLimit(1)
+                    .padding(.top, 2)
             }
 
-            Spacer(minLength: 10)
+            Spacer(minLength: QuickActionSheetDesign.Row.contentSpacing)
 
             QuickRecommendedMetaActionRow {
                 QuickFoodCaloriePill(calories: calories, accent: metaAccent, style: .frequent)
@@ -994,12 +1025,14 @@ private struct QuickFoodFrequentCard<Thumb: View>: View {
                     onIncrement: onIncrement,
                     onDecrement: onDecrement
                 )
-                .frame(minWidth: 44, minHeight: 44)
+                .frame(
+                    minWidth: QuickActionSheetDesign.RecommendedCard.actionHitSize,
+                    minHeight: QuickActionSheetDesign.RecommendedCard.actionHitSize
+                )
             }
         }
-        .padding(14)
-        .frame(width: cardWidth, alignment: .topLeading)
-        .frame(minHeight: 210, alignment: .topLeading)
+        .padding(QuickActionSheetDesign.RecommendedCard.padding)
+        .frame(width: cardWidth, height: cardHeight, alignment: .topLeading)
         .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
         .background {
             QuickSheetChrome.elevatedTileBackground(
@@ -1007,13 +1040,6 @@ private struct QuickFoodFrequentCard<Thumb: View>: View {
                 accent: accent,
                 isLight: palette.isLight
             )
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
-                .strokeBorder(
-                    QuickSheetChrome.frequentCardStroke(isLight: palette.isLight),
-                    lineWidth: 0.85
-                )
         }
     }
 }
@@ -1031,14 +1057,18 @@ private struct QuickFoodCaloriePill: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: "flame.fill")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(accent)
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(
+                        style == .frequent
+                            ? WeekFitTheme.secondaryText.opacity(0.55)
+                            : accent
+                    )
 
-            Text(QuickLogLocalizedNutrition.calories(calories))
-                .font(.system(size: style == .frequent ? 12 : 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.78))
-        }
+                Text(QuickLogLocalizedNutrition.calories(calories))
+                    .font(.system(size: style == .frequent ? 12 : 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.78))
+            }
         .padding(.horizontal, style == .list ? 8 : 0)
         .padding(.vertical, style == .list ? 4 : 0)
         .background {

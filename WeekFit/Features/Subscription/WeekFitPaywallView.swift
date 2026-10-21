@@ -298,7 +298,8 @@ struct WeekFitPaywallView: View {
             OnboardingPrimaryButton(
                 title: purchaseCTATitle,
                 isLoading: subscriptionManager.isPurchaseInFlight,
-                isEnabled: subscriptionManager.selectedProduct != nil && !subscriptionManager.isRestoreInFlight
+                // Keep tappable when prices are still loading — silent disabled Continue felt broken in Sandbox.
+                isEnabled: !subscriptionManager.isRestoreInFlight
             ) {
                 Task { await subscriptionManager.purchaseSelected() }
             }
@@ -312,6 +313,14 @@ struct WeekFitPaywallView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity)
                     .accessibilityIdentifier("paywall.purchaseStatus")
+            } else if subscriptionManager.products.isEmpty, !subscriptionManager.productsFailedToLoad {
+                Text(WeekFitLocalizedString("paywall.status.loadingPrices"))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(palette.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("paywall.loadingPrices")
             }
 
             #if DEBUG
@@ -401,6 +410,9 @@ struct WeekFitPaywallView: View {
     }
 
     private var purchaseCTATitle: String {
+        if subscriptionManager.isPurchaseInFlight {
+            return WeekFitLocalizedString("paywall.cta.connecting")
+        }
         if let days = WeekFitPaywallCopy.verifiedFreeTrialDayCount(
             for: subscriptionManager.selectedProduct
         ) {

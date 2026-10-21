@@ -324,4 +324,16 @@ public extension PlannedActivity {
         guard isUserStartedSessionSource else { return false }
         return date <= now
     }
+
+    /// Today “In Progress” card: Quick Start / Today-started **or** a plan workout/recovery
+    /// whose scheduled window currently overlaps `now`.
+    func isTodayLiveSessionDisplay(now: Date = Date()) -> Bool {
+        if isUserStartedLiveSession(now: now) { return true }
+        switch type.lowercased() {
+        case "workout", "recovery":
+            return isActive(at: now)
+        default:
+            return false
+        }
+    }
 }

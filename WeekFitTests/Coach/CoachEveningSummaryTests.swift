@@ -44,13 +44,32 @@ final class CoachEveningSummaryTests: XCTestCase {
             at: date("2026-10-12T18:00:00Z"), calendar: calendar()))
     }
 
-    func testDisplayCommentaryPrefersNowPassage() {
+    func testDisplayCommentaryPrefersTodayAndTomorrow() {
         let input = input()
         let summary = CoachEveningSummary(
             headline: "Recap",
             today: .init(text: "Today takeaway about the whole day.", evidenceIds: ["sleep.duration"]),
             now: .init(text: "Keep your evening easy and wind down.", evidenceIds: ["sleep.duration"]),
-            tomorrow: .init(text: "Plan is not yet known.", evidenceIds: ["sleep.duration"]),
+            tomorrow: .init(text: "Tomorrow protect protein at breakfast.", evidenceIds: ["sleep.duration"]),
+            limitations: [],
+            day: input.day,
+            locale: input.locale,
+            generatedAt: "2026-10-12T18:00:00Z",
+            source: "ai"
+        )
+        XCTAssertEqual(
+            CoachEveningSummaryPolicy.displayCommentary(from: summary),
+            "Today takeaway about the whole day. Tomorrow protect protein at breakfast."
+        )
+    }
+
+    func testDisplayCommentaryFallsBackToNow() {
+        let input = input()
+        let summary = CoachEveningSummary(
+            headline: "Recap",
+            today: .init(text: " ", evidenceIds: ["sleep.duration"]),
+            now: .init(text: "Keep your evening easy and wind down.", evidenceIds: ["sleep.duration"]),
+            tomorrow: .init(text: " ", evidenceIds: ["sleep.duration"]),
             limitations: [],
             day: input.day,
             locale: input.locale,

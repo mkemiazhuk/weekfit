@@ -124,7 +124,7 @@ final class CoachEveningRecapEligibilityTests: XCTestCase {
         )
     }
 
-    func testOverdueUnresolvedWorkoutBlocksRecap() {
+    func testOverdueUnresolvedWorkoutDoesNotBlockRecap() {
         let now = date(hour: 21, minute: 0)
         let overdue = PlannedActivity(
             date: date(hour: 18, minute: 0),
@@ -137,7 +137,8 @@ final class CoachEveningRecapEligibilityTests: XCTestCase {
             colorBlue: 0.9,
             source: "planner"
         )
-        XCTAssertFalse(
+        // Stale unfinished slots must not keep day-closing copy instead of the evening summary.
+        XCTAssertTrue(
             CoachEveningRecapEligibility.shouldShowEveningRecap(
                 now: now,
                 plannedActivities: [overdue],

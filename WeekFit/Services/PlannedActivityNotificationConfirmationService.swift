@@ -41,4 +41,16 @@ enum PlannedActivityNotificationConfirmationService {
         try modelContext.save()
         ActivityNotificationService.shared.cancelNotifications(for: activity)
     }
+
+    /// Reopens a user-planned activity that was marked completed from Plan.
+    /// Does not alter HealthKit imports — callers must only pass toggleable rows.
+    static func markIncomplete(
+        _ activity: PlannedActivity,
+        modelContext: ModelContext
+    ) throws {
+        activity.isCompleted = false
+        activity.isSkipped = false
+
+        try modelContext.save()
+    }
 }

@@ -9,17 +9,17 @@ enum PlanTimelineLayout {
     static let nodeSize: CGFloat = 9
     static let nodeVerticalPadding: CGFloat = 3
     static let lineWidth: CGFloat = 1.0
-    static let rowSpacing: CGFloat = 12
-    static let cardCornerRadius: CGFloat = WeekFitSurface.compactRadius
-    static let compactHydrationVerticalPadding: CGFloat = 8
-    static let cardHorizontalPadding: CGFloat = WeekFitSurface.compactHorizontalPadding
+    static let rowSpacing: CGFloat = PlanAgendaLayout.cardSpacing
+    static let cardCornerRadius: CGFloat = PlanAgendaLayout.cardCornerRadius
+    static let compactHydrationVerticalPadding: CGFloat = 10
+    static let cardHorizontalPadding: CGFloat = PlanAgendaLayout.cardPadding
     static let cardVerticalPadding: CGFloat = 13
-    static let cardIconSpacing: CGFloat = 11
+    static let cardIconSpacing: CGFloat = 12
     static let cardAccentBarWidth: CGFloat = WeekFitSurface.accentIndicatorWidth
     static let rowTopInset: CGFloat = 8
     static let firstConnectorInset: CGFloat = 8
     static let lastConnectorInset: CGFloat = 4
-    static let titleSubtitleSpacing: CGFloat = 3
+    static let titleSubtitleSpacing: CGFloat = 2
 }
 
 struct PlanTimelineNowDivider: View {
@@ -87,20 +87,17 @@ struct PlanTimelineRow: View {
     let connectorAbove: CGFloat
     var density: PlanTimelineRowDensity = .standard
     var showsTimeLabel: Bool = true
+    var completionControl: PlanAgendaCompletionControl = .none
+    var onToggleCompletion: (() -> Void)? = nil
 
-    @ScaledMetric(relativeTo: .caption) private var timeColumnWidth = PlanTimelineLayout.timeWidth
     @State private var livePulse = false
     @Environment(\.weekFitPalette) private var palette
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var accent: Color {
-        switch activity.timelineEventKind {
-        case .food:
-            return WeekFitProgressRingColor.nutrition
-        case .drink:
-            return Color(red: 0.25, green: 0.55, blue: 0.95)
-        default:
-            return activity.color
-        }
+        // Soft category wells: movement blue, recovery lavender, nutrition token.
+        category.color
     }
 
     private var pendingAttentionColor: Color {
@@ -127,233 +124,92 @@ struct PlanTimelineRow: View {
         )?.kind
     }
 
-    private var rowOpacity: Double {
-        // Finished rows stay readable — soften only slightly in both themes.
-        switch emphasis {
-        case .past:
-            return palette.isLight ? 0.94 : 0.90
-        case .skipped:
-            return palette.isLight ? 0.72 : 0.62
-        case .upcoming, .active, .next:
-            return 1.0
-        }
+    private var allowsTitleWrap: Bool {
+        dynamicTypeSize >= .accessibility1
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            timeLabel
-
-            Color.clear
-                .frame(width: PlanTimelineLayout.timeToTimelineSpacing)
-
-            timelineColumn
-
-            Color.clear
-                .frame(width: PlanTimelineLayout.timelineToCardSpacing)
-
-            activityCard
-        }
-        .opacity(rowOpacity)
-        .animation(.spring(response: 0.42, dampingFraction: 0.86), value: emphasis)
-        .animation(.spring(response: 0.42, dampingFraction: 0.86), value: status)
-        .animation(.spring(response: 0.42, dampingFraction: 0.86), value: activity.isCompleted)
+        agendaCard
+            .animation(reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.86), value: emphasis)
+            .animation(reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.86), value: status)
+            .animation(reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.86), value: activity.isCompleted)
+            .onAppear {
+                guard isLive, !reduceMotion else { return }
+                withAnimation(.easeInOut(duration: 0.95).repeatForever(autoreverses: true)) {
+                    livePulse = true
+                }
+            }
+            .onChange(of: isLive) { _, live in
+                guard live, !reduceMotion else {
+                    livePulse = false
+                    return
+                }
+                withAnimation(.easeInOut(duration: 0.95).repeatForever(autoreverses: true)) {
+                    livePulse = true
+                }
+            }
     }
 
-    private var timeLabel: some View {
-        Group {
-            if showsTimeLabel {
-                if time.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    Text(WeekFitLocalizedString("planner.timeline.anytime"))
-                        .font(WeekFitType.secondary.weight(.medium))
-                        .fontDesign(.rounded)
-                        .foregroundStyle(palette.textSecondary.opacity(0.72))
-                        .lineLimit(1)
-                } else {
-                    Text(time)
-                        .font(WeekFitType.body.weight(.medium))
-                        .monospacedDigit()
-                        .foregroundStyle(timeColor)
-                }
-            } else {
-                // Duplicate clock — keep column alignment without stray punctuation.
-                Text(verbatim: " ")
-                    .font(WeekFitType.body.weight(.medium))
+    private var agendaCard: some View {
+        HStack(alignment: .center, spacing: PlanTimelineLayout.cardIconSpacing) {
+            iconView
+
+            VStack(alignment: .leading, spacing: PlanTimelineLayout.titleSubtitleSpacing) {
+                Text(displayedTime)
+                    .font(WeekFitType.secondary.weight(.medium))
+                    .fontDesign(.rounded)
                     .monospacedDigit()
-                    .opacity(0)
-                    .accessibilityHidden(true)
-            }
-        }
-        .frame(width: timeColumnWidth, alignment: .trailing)
-        .padding(.top, PlanTimelineLayout.rowTopInset)
-        .fixedSize(horizontal: true, vertical: false)
-        .layoutPriority(1)
-        .accessibilityHidden(true)
-    }
+                    .foregroundStyle(timeColor)
+                    .lineLimit(1)
 
-    private var timeColor: Color {
-        if isLive {
-            return accent.opacity(0.92)
-        }
+                HStack(alignment: .center, spacing: 6) {
+                    Text(displayTitle)
+                        .font(WeekFitType.compactCardTitle.weight(titleFontWeight))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(titleColor)
+                        .tracking(-0.22)
+                        .strikethrough(status == .skipped, color: titleColor.opacity(0.72))
+                        .lineLimit(allowsTitleWrap ? nil : 2)
+                        .truncationMode(.tail)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .layoutPriority(1)
 
-        switch emphasis {
-        case .next, .active:
-            return palette.textSecondary.opacity(0.96)
-        case .upcoming, .past:
-            return palette.textSecondary.opacity(0.82)
-        case .skipped:
-            return palette.textDisabled
-        }
-    }
-
-    private var timelineColumn: some View {
-        VStack(spacing: 0) {
-            if isFirst && connectorAbove == 0 {
-                Color.clear.frame(height: PlanTimelineLayout.firstConnectorInset)
-            } else {
-                timelineLine(opacity: lineOpacityAbove)
-                    .frame(height: max(10, connectorAbove + 8))
-            }
-
-            PlanTimelineNode(
-                accent: rowAccent,
-                status: status,
-                emphasis: emphasis,
-                livePulse: $livePulse
-            )
-            .padding(.vertical, PlanTimelineLayout.nodeVerticalPadding)
-
-            if isLast {
-                Color.clear.frame(height: PlanTimelineLayout.lastConnectorInset)
-            } else {
-                timelineLine(opacity: lineOpacityBelow)
-                    .frame(minHeight: 12)
-                    .frame(maxHeight: .infinity)
-            }
-        }
-        .frame(width: PlanTimelineLayout.columnWidth)
-    }
-
-    private func timelineLine(opacity: Double) -> some View {
-        // Continuous neutral rail — markers carry semantic color, not the line.
-        Rectangle()
-            .fill(railColor.opacity(opacity))
-            .frame(width: PlanTimelineLayout.lineWidth)
-            .frame(maxWidth: .infinity)
-    }
-
-    private var railColor: Color {
-        palette.isLight
-            ? WeekFitLightTokens.divider
-            : Color.white.opacity(0.22)
-    }
-
-    private var lineOpacityAbove: Double {
-        lineOpacity(for: emphasis)
-    }
-
-    private var lineOpacityBelow: Double {
-        guard let nextEmphasis else {
-            return lineOpacity(for: emphasis) * 0.92
-        }
-        return (lineOpacity(for: emphasis) + lineOpacity(for: nextEmphasis)) / 2
-    }
-
-    private func lineOpacity(for emphasis: PlanTimelineVisualEmphasis) -> Double {
-        // Near-constant opacity so the day reads as one continuous rail.
-        let base = palette.isLight ? 0.64 : 0.48
-        switch emphasis {
-        case .skipped:
-            return base * 0.85
-        case .past:
-            return base * 0.92
-        case .upcoming, .active, .next:
-            return base
-        }
-    }
-
-    private var activityCard: some View {
-        HStack(alignment: .center, spacing: 0) {
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(rowAccent.opacity(accentBarOpacity))
-                .frame(width: PlanTimelineLayout.cardAccentBarWidth)
-                .padding(.vertical, 4)
-
-            HStack(alignment: .center, spacing: PlanTimelineLayout.cardIconSpacing) {
-                iconView
-
-                VStack(alignment: .leading, spacing: PlanTimelineLayout.titleSubtitleSpacing + 1) {
-                    HStack(alignment: .center, spacing: 6) {
-                        Text(displayTitle)
-                            .font(WeekFitType.compactCardTitle.weight(titleFontWeight))
-                            .fontDesign(.rounded)
-                            .foregroundStyle(titleColor)
-                            .tracking(-0.22)
-                            .strikethrough(status == .skipped, color: titleColor.opacity(0.72))
-                            .lineLimit(2)
-                            .truncationMode(.tail)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .layoutPriority(1)
-
-                        if isLive {
-                            liveStatusBadge
-                        }
-
-                        if let coachKind = coachProvenanceKind {
-                            CoachProvenanceBadge(kind: coachKind, showsLabel: false, compact: true)
-                        }
-                    }
-
-                    if isPending {
-                        pendingStatusLine
-                    } else if !metadata.isEmpty {
-                        metadataLine
+                    if let coachKind = coachProvenanceKind {
+                        CoachProvenanceBadge(kind: coachKind, showsLabel: false, compact: true)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
 
-                Image(systemName: "chevron.right")
-                    .font(WeekFitType.captionEmphasized)
-                    .foregroundStyle(chevronColor)
-                    .frame(width: 8, alignment: .trailing)
-                    .opacity(0.55)
-                    .accessibilityHidden(true)
+                if isPending {
+                    pendingStatusLine
+                } else if !metadata.isEmpty {
+                    metadataLine
+                }
             }
-            .padding(.leading, 10)
-            .padding(.trailing, PlanTimelineLayout.cardHorizontalPadding)
-            .padding(.vertical, cardVerticalPadding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            trailingStatusControl
+                .padding(.leading, 2)
         }
-        .weekFitCompactRowCard(
-            accent: timelinePremiumAccent
-        )
-        .overlay {
-            // Soft category wash — Plan light canvas is bright; default compact wash reads as white.
+        .padding(.horizontal, PlanTimelineLayout.cardHorizontalPadding)
+        .padding(.vertical, cardVerticalPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
             RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
-                .fill(planCardTint)
-                .allowsHitTesting(false)
+                .fill(agendaCardFill)
         }
         .overlay {
-            if isLive {
-                RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
-                    .stroke(accent.opacity(livePulse ? 0.38 : 0.22), lineWidth: 1)
-            } else if palette.isLight {
-                RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
-                    .strokeBorder(rowAccent.opacity(planBorderOpacity), lineWidth: 0.9)
-            }
+            RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
+                .strokeBorder(agendaBorderColor, lineWidth: isLive || isPending ? 0.9 : 0.55)
         }
         .shadow(
-            color: nextGlowColor,
-            radius: emphasis == .next ? 8 : 0,
-            y: emphasis == .next ? 2 : 0
+            color: palette.isLight ? Color.black.opacity(0.03) : Color.black.opacity(0.14),
+            radius: palette.isLight ? 2 : 3,
+            y: 1
         )
         .shadow(
             color: liveGlowColor,
-            radius: isLive && livePulse ? 12 : (isLive ? 8 : 0),
-            y: isLive ? 2 : 0
-        )
-        .shadow(
-            color: pendingGlowColor,
-            radius: isPending ? 8 : 0,
-            y: isPending ? 2 : 0
+            radius: isLive && livePulse ? 6 : (isLive ? 3 : 0),
+            y: isLive ? 1 : 0
         )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabelText)
@@ -361,71 +217,112 @@ struct PlanTimelineRow: View {
         .accessibilityAddTraits(.isButton)
     }
 
-    private var timelinePremiumAccent: Color? {
-        if isPending { return pendingAttentionColor }
-        // Keep category tint on past rows too — otherwise Plan reads as flat white.
-        return accent
-    }
-
-    private var planCardTint: LinearGradient {
-        let peak = planTintPeak
-        return LinearGradient(
-            colors: [
-                rowAccent.opacity(peak),
-                rowAccent.opacity(peak * 0.42),
-                rowAccent.opacity(peak * 0.10)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    private var planTintPeak: Double {
-        if isPending { return palette.isLight ? 0.12 : 0.14 }
-        if isLive { return palette.isLight ? 0.14 : 0.16 }
-
-        if palette.isLight {
-            switch emphasis {
-            case .next, .active: return 0.12
-            case .upcoming: return 0.10
-            case .past: return 0.075
-            case .skipped: return 0.045
+    @ViewBuilder
+    private var trailingStatusControl: some View {
+        switch completionControl {
+        case .interactive(let isCompleted):
+            Button {
+                onToggleCompletion?()
+            } label: {
+                completionGlyph(isCompleted: isCompleted, interactive: true)
+                    .frame(width: PlanAgendaLayout.minHitSize, height: PlanAgendaLayout.minHitSize)
+                    .contentShape(Rectangle())
             }
-        }
+            .buttonStyle(.plain)
+            .accessibilityLabel(
+                isCompleted
+                    ? WeekFitLocalizedString("planner.status.completed")
+                    : WeekFitLocalizedString("planner.agenda.markComplete")
+            )
+            .accessibilityAddTraits(.isButton)
 
-        switch emphasis {
-        case .next, .active: return 0.13
-        case .upcoming: return 0.10
-        case .past: return 0.08
-        case .skipped: return 0.05
+        case .informational(let isCompleted):
+            completionGlyph(isCompleted: isCompleted, interactive: false)
+                .frame(width: PlanAgendaLayout.minHitSize, height: PlanAgendaLayout.minHitSize)
+                .accessibilityLabel(status.title)
+                .accessibilityHidden(!isCompleted && status == .upcoming)
+
+        case .none:
+            compactStatusIndicator
+                .frame(minWidth: 28, minHeight: PlanAgendaLayout.minHitSize)
         }
     }
 
-    private var planBorderOpacity: Double {
-        if isPending { return 0.22 }
-        switch emphasis {
-        case .next, .active: return 0.18
-        case .upcoming: return 0.14
-        case .past: return 0.11
-        case .skipped: return 0.07
-        }
+    private func completionGlyph(isCompleted: Bool, interactive: Bool) -> some View {
+        Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
+            .font(.system(size: 22, weight: .semibold))
+            .foregroundStyle(
+                isCompleted
+                    ? WeekFitTheme.brandGold
+                    : (interactive
+                        ? palette.textTertiary.opacity(0.85)
+                        : palette.textTertiary.opacity(0.55))
+            )
+            .accessibilityHidden(true)
     }
 
-    private var accentBarOpacity: Double {
-        if isPending { return 0.86 }
-        if isLive { return 0.80 }
+    private var displayedTime: String {
+        let trimmed = time.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return WeekFitLocalizedString("planner.timeline.anytime")
+        }
+        return trimmed
+    }
 
-        switch emphasis {
-        case .next:
-            return 0.72
-        case .active:
-            return 0.64
-        case .upcoming:
-            return 0.56
-        case .past:
-            return 0.46
+    private var timeColor: Color {
+        if isLive { return accent.opacity(0.95) }
+        if isPending { return pendingAttentionColor.opacity(0.92) }
+        if status == .skipped { return palette.textDisabled }
+        return palette.textSecondary.opacity(0.90)
+    }
+
+    private var agendaCardFill: Color {
+        palette.isLight ? Color.white.opacity(0.96) : WeekFitTheme.cardBackground
+    }
+
+    private var agendaBorderColor: Color {
+        if isLive {
+            return accent.opacity(livePulse ? 0.34 : 0.20)
+        }
+        if isPending {
+            return pendingAttentionColor.opacity(0.28)
+        }
+        return palette.isLight
+            ? Color.black.opacity(0.05)
+            : WeekFitTheme.whiteOpacity(0.08)
+    }
+
+    @ViewBuilder
+    private var compactStatusIndicator: some View {
+        switch status {
+        case .completed, .logged:
+            completionGlyph(isCompleted: true, interactive: false)
+
+        case .live:
+            Circle()
+                .fill(accent.opacity(livePulse ? 1.0 : 0.55))
+                .frame(width: 8, height: 8)
+                .padding(5)
+                .background {
+                    Circle()
+                        .fill(accent.opacity(livePulse ? 0.18 : 0.10))
+                }
+                .accessibilityHidden(true)
+
+        case .pending:
+            Image(systemName: "exclamationmark.circle.fill")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(pendingAttentionColor)
+                .accessibilityHidden(true)
+
         case .skipped:
-            return 0.28
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Color(red: 1.0, green: 0.42, blue: 0.42).opacity(0.78))
+                .accessibilityHidden(true)
+
+        case .upcoming:
+            EmptyView()
         }
     }
 
@@ -513,13 +410,7 @@ struct PlanTimelineRow: View {
     }
 
     private var accessibilityLabelText: String {
-        var parts: [String] = [time, displayTitle]
-        if isLive {
-            parts.append(WeekFitLocalizedString("planner.status.live"))
-        }
-        if status == .skipped {
-            parts.append(WeekFitLocalizedString("planner.status.skipped"))
-        }
+        var parts: [String] = [time, displayTitle, status.title]
         if let primary = metadata.primary, !primary.isEmpty {
             parts.append(primary)
         }
@@ -543,12 +434,13 @@ struct PlanTimelineRow: View {
         return parts.joined(separator: ", ")
     }
 
+    // Watch / HealthKit stay in metadata — not mixed into the completion glyph.
+
     private var titleColor: Color {
         switch emphasis {
-        case .next, .active, .upcoming:
+        case .next, .active, .upcoming, .past:
+            // Completed rows stay fully readable — checkmark already signals done.
             return palette.textPrimary
-        case .past:
-            return palette.textPrimary.opacity(0.90)
         case .skipped:
             return palette.textDisabled
         }
@@ -556,22 +448,16 @@ struct PlanTimelineRow: View {
 
     private var metadataColor: Color {
         switch emphasis {
-        case .next, .active, .upcoming:
+        case .next, .active, .upcoming, .past:
             return palette.textSecondary
-        case .past:
-            return palette.textSecondary.opacity(0.88)
         case .skipped:
             return palette.textTertiary
         }
     }
 
 
-    private var nextGlowColor: Color {
-        emphasis == .next ? accent.opacity(0.06) : .clear
-    }
-
     private var liveGlowColor: Color {
-        isLive ? accent.opacity(livePulse ? 0.18 : 0.10) : .clear
+        isLive ? accent.opacity(livePulse ? 0.16 : 0.08) : .clear
     }
 
     private var pendingGlowColor: Color {
@@ -597,23 +483,25 @@ struct PlanTimelineRow: View {
     private var iconView: some View {
         if isPending {
             ZStack {
-                Circle()
-                    .fill(pendingAttentionColor.opacity(0.10))
-                    .frame(width: 34, height: 34)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(pendingAttentionColor.opacity(0.12))
+                    .frame(width: PlanAgendaLayout.iconSize, height: PlanAgendaLayout.iconSize)
 
                 Image(systemName: "exclamationmark.circle.fill")
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(pendingAttentionColor)
             }
+            .frame(width: PlanAgendaLayout.iconSize, height: PlanAgendaLayout.iconSize)
         } else {
             WeekFitIconBadge(
                 systemName: resolvedIcon,
                 color: accent,
-                size: .sm,
+                size: .md,
                 shape: .roundedRect,
                 backgroundOpacity: iconBackgroundOpacity,
                 foregroundOpacity: iconForegroundOpacity
             )
+            .frame(width: PlanAgendaLayout.iconSize, height: PlanAgendaLayout.iconSize)
         }
     }
 
@@ -623,12 +511,10 @@ struct PlanTimelineRow: View {
         switch emphasis {
         case .next:
             return palette.isLight ? 0.26 : 0.20
-        case .active:
+        case .active, .past:
             return palette.isLight ? 0.24 : 0.17
         case .upcoming:
             return palette.isLight ? 0.22 : 0.14
-        case .past:
-            return palette.isLight ? 0.18 : 0.11
         case .skipped:
             return palette.isLight ? 0.12 : 0.06
         }
@@ -638,12 +524,10 @@ struct PlanTimelineRow: View {
         if isLive { return 1.0 }
 
         switch emphasis {
-        case .next:
+        case .next, .past:
             return 1.0
         case .active, .upcoming:
             return palette.isLight ? 0.96 : 0.84
-        case .past:
-            return palette.isLight ? 0.88 : 0.70
         case .skipped:
             return palette.isLight ? 0.55 : 0.42
         }

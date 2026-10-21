@@ -46,7 +46,7 @@ A `404 not_found` means the **running** container/commit is still photo-only (ol
    ```bash
    curl -sS https://weekfit-food-photo.onrender.com/healthz
    # expect coachSummaryConfigured:true, coachSummaryOncePerDay:false,
-   # coachSummaryPromptVersion:3  (evening recap; UI uses "now" passage)
+   # coachSummaryPromptVersion:5  (today conclusion + tomorrow guidance; principal nutrition coach)
    curl -sS -X POST https://weekfit-food-photo.onrender.com/v1/coach/day-summary \
      -H 'Content-Type: application/json' -d '{}'
    # expect 401 unauthorized (not 404 not_found)

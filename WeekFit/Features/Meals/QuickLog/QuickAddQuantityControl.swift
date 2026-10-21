@@ -16,7 +16,7 @@ enum QuickAddQuantityDensity {
     var expandedWidth: CGFloat {
         switch self {
         case .regular: return QuickActionSheetDesign.Row.actionExpandedWidth
-        case .compact: return 74
+        case .compact: return 90
         }
     }
 
@@ -36,8 +36,8 @@ enum QuickAddQuantityDensity {
 
     var quantityMinWidth: CGFloat {
         switch self {
-        case .regular: return 24
-        case .compact: return 18
+        case .regular: return 28
+        case .compact: return 24
         }
     }
 }

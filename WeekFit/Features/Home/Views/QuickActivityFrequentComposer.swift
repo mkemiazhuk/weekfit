@@ -67,24 +67,42 @@ enum QuickActivityFrequentComposer {
         }
 
         let hour = calendar.component(.hour, from: now)
+        let isRecoveryCatalog = options.contains { $0.imageName.hasPrefix("recovery-") }
         let preferred = preferredKeys(
             hour: hour,
             weatherRisk: weatherRisk,
             recoveryBand: recoveryBand,
-            isRecoveryCatalog: options.contains { $0.imageName.hasPrefix("recovery-") }
-        )
-        let contextBadge = badge(
-            hour: hour,
-            weatherRisk: weatherRisk,
-            recoveryBand: recoveryBand
+            isRecoveryCatalog: isRecoveryCatalog
         )
 
         if let key = preferred.first(where: { !used.contains($0) && byImage[$0] != nil }),
            let option = byImage[key] {
-            picks.append(Pick(option: option, badge: contextBadge))
+            picks.append(
+                Pick(
+                    option: option,
+                    badge: badge(
+                        for: option,
+                        hour: hour,
+                        weatherRisk: weatherRisk,
+                        recoveryBand: recoveryBand,
+                        isRecoveryCatalog: isRecoveryCatalog
+                    )
+                )
+            )
             used.insert(option.imageName)
         } else if let fallback = options.first(where: { !used.contains($0.imageName) }) {
-            picks.append(Pick(option: fallback, badge: contextBadge))
+            picks.append(
+                Pick(
+                    option: fallback,
+                    badge: badge(
+                        for: fallback,
+                        hour: hour,
+                        weatherRisk: weatherRisk,
+                        recoveryBand: recoveryBand,
+                        isRecoveryCatalog: isRecoveryCatalog
+                    )
+                )
+            )
             used.insert(fallback.imageName)
         }
 
@@ -103,15 +121,29 @@ enum QuickActivityFrequentComposer {
         return Array(picks.prefix(limit))
     }
 
+    /// “Wind down” only for recovery-catalog evening picks — never Core / strength workouts.
     private static func badge(
+        for option: PlannerOption,
         hour: Int,
         weatherRisk: ProposalWeatherRiskToken,
-        recoveryBand: CoachRecoveryBand?
+        recoveryBand: CoachRecoveryBand?,
+        isRecoveryCatalog: Bool
     ) -> Badge {
         if weatherRisk == .heat { return .forTheHeat }
         if recoveryBand == .low { return .easyDay }
-        if hour >= 18 { return .windDown }
+        if hour >= 18 {
+            return isRecoveryCatalog || isWindDownAppropriateWorkout(option) ? .windDown : .forNow
+        }
         return .forNow
+    }
+
+    private static func isWindDownAppropriateWorkout(_ option: PlannerOption) -> Bool {
+        switch option.imageName {
+        case "workout-swimming", "workout-hiking", "workout-cycling":
+            return true
+        default:
+            return false
+        }
     }
 
     private static func preferredKeys(
@@ -151,9 +183,10 @@ enum QuickActivityFrequentComposer {
         case 14..<18:
             return ["workout-hiit", "workout-fullbody", "workout-tennis", "workout-running", "workout-cycling"]
         case 18..<22:
-            return ["workout-core", "workout-strength", "workout-swimming", "workout-running"]
+            // Evening: prefer lighter sessions — Core/strength are not “wind down”.
+            return ["workout-swimming", "workout-hiking", "workout-cycling", "workout-running"]
         default:
-            return ["workout-strength", "workout-core", "workout-swimming", "workout-cycling"]
+            return ["workout-swimming", "workout-hiking", "workout-cycling", "workout-running"]
         }
     }
 }

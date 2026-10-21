@@ -38,6 +38,15 @@ final class PlanViewModel: ObservableObject {
     @Published var customMeals: [Meals] = []
     @Published var selectedMealID: String?
 
+    /// Per-category draft while the planner stays open (date/time are shared).
+    private struct CategoryDraft {
+        var mealID: String?
+        var item: PlannerOption
+        var duration: Int
+    }
+
+    private var categoryDrafts: [PlannerType: CategoryDraft] = [:]
+
     var dayKindCacheRevision = ""
     var dayKindByDayStart: [TimeInterval: PlanDayKind] = [:]
     var timelineItemsCacheKey = ""
@@ -87,10 +96,93 @@ final class PlanViewModel: ObservableObject {
     }
     
     func selectType(_ type: PlannerType) {
+        guard selectedType != type else { return }
+        persistCurrentCategoryDraft()
         selectedType = type
-        selectedItem = type == .meal ? PlannerOption.emptyMealPlaceholder : type.options[0]
+        restoreCategoryDraft(for: type)
+    }
 
+    /// True when the current category has an intentional catalog selection (not an empty placeholder).
+    var hasValidItemSelection: Bool {
+        if editingActivity != nil { return true }
+        switch selectedType {
+        case .meal:
+            return selectedMealForPlanner != nil
+        case .workout, .recovery, .habit:
+            return selectedType.options.contains {
+                $0.imageName == selectedItem.imageName || $0.title == selectedItem.title
+            }
+        }
+    }
+
+    private func persistCurrentCategoryDraft() {
+        categoryDrafts[selectedType] = CategoryDraft(
+            mealID: selectedMealID,
+            item: selectedItem,
+            duration: selectedDuration
+        )
+    }
+
+    private func restoreCategoryDraft(for type: PlannerType) {
+        if let draft = categoryDrafts[type] {
+            selectedMealID = draft.mealID
+            selectedItem = draft.item
+            selectedDuration = draft.duration
+            customDuration = draft.duration
+            showCustomDuration = false
+            return
+        }
+
+        applyDefaultSelection(for: type)
+    }
+
+    /// Intentional product default: first catalog item for the type.
+    private func applyDefaultSelection(for type: PlannerType) {
+        switch type {
+        case .meal:
+            if let meal = availableMeals.first {
+                selectedMealID = meal.id
+                selectedItem = plannerOption(for: meal)
+            } else {
+                selectedMealID = nil
+                selectedItem = PlannerOption(
+                    title: "",
+                    subtitle: "",
+                    icon: type.icon,
+                    imageName: ""
+                )
+            }
+            selectedDuration = 15
+        case .workout, .recovery, .habit:
+            selectedMealID = nil
+            if let option = type.options.first {
+                selectedItem = option
+            } else {
+                selectedItem = PlannerOption(
+                    title: "",
+                    subtitle: "",
+                    icon: type.icon,
+                    imageName: ""
+                )
+            }
+            switch type {
+            case .workout: selectedDuration = 45
+            case .recovery: selectedDuration = 20
+            case .habit: selectedDuration = 15
+            case .meal: break
+            }
+        }
+        customDuration = selectedDuration
+        showCustomDuration = false
         applyDefaultDurationForSelectedItem()
+    }
+
+    private func clearItemSelection(for type: PlannerType) {
+        applyDefaultSelection(for: type)
+    }
+
+    func resetPlannerDrafts() {
+        categoryDrafts.removeAll()
     }
     
     func applyDefaultDurationForSelectedItem() {
@@ -186,9 +278,14 @@ final class PlanViewModel: ObservableObject {
     func syncDefaultSelectedMeal() {
         guard selectedType == .meal else { return }
 
-        let meal = availableMeals.first
-        selectedMealID = meal?.id
-        selectedItem = meal.map { plannerOption(for: $0) } ?? PlannerOption.emptyMealPlaceholder
+        // Keep an intentional / restored selection if it still exists.
+        if let selectedMealID,
+           let meal = availableMeals.first(where: { $0.id == selectedMealID }) {
+            selectedItem = plannerOption(for: meal)
+            return
+        }
+
+        applyDefaultSelection(for: .meal)
     }
 
     func activities(for date: Date, from activities: [PlannedActivity]) -> [PlannedActivity] {
@@ -333,13 +430,8 @@ final class PlanViewModel: ObservableObject {
         editingActivity = nil
         selectedSlot = normalizedSlot
         selectedType = .meal
-
-        let firstMeal = availableMeals.first
-        selectedMealID = firstMeal?.id
-        selectedItem = firstMeal.map { plannerOption(for: $0) } ?? PlannerOption.emptyMealPlaceholder
-
-        selectedDuration = 15
-        customDuration = 15
+        resetPlannerDrafts()
+        applyDefaultSelection(for: .meal)
 
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         ProductAnalytics.planItemCreationStarted(itemType: .meal)
@@ -351,9 +443,11 @@ final class PlanViewModel: ObservableObject {
 
     func startEditing(_ activity: PlannedActivity) {
         editingActivity = activity
+        selectedDate = calendar.startOfDay(for: activity.date)
         selectedSlot = activity.date
         selectedDuration = activity.durationMinutes
         customDuration = activity.durationMinutes
+        resetPlannerDrafts()
 
         // 🎯 ФИКС 1: Сравниваем типы через lowercased(), чтобы сопоставить "workout" из SwiftData и "Workout" из Enum
         let type = PlannerType.allCases.first { $0.title.lowercased() == activity.type.lowercased() } ?? .meal
@@ -424,6 +518,11 @@ final class PlanViewModel: ObservableObject {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
         let meal = selectedType == .meal ? selectedMealForPlanner : nil
+
+        if !hasValidItemSelection {
+            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+            return
+        }
 
         if selectedType == .meal, meal == nil, editingActivity == nil {
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
@@ -551,6 +650,7 @@ final class PlanViewModel: ObservableObject {
         }
 
         selectedSlot = nil
+        resetPlannerDrafts()
     }
 
     var beforePlannedActivityDeleted: (() -> Void)?

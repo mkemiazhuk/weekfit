@@ -145,6 +145,8 @@ enum WeekFitPurchaseOutcome: Equatable, Sendable {
     case entitlementNotPropagated
     case productsUnavailable
     case failed
+    /// `Product.purchase()` / product reload did not return within the paywall timeout (common in Sandbox).
+    case timedOut
     /// Restore finished successfully, but this Apple ID has no active WeekFit entitlement.
     /// Not a StoreKit failure — do not show the purchase-error copy.
     case nothingToRestore

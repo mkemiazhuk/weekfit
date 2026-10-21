@@ -85,5 +85,47 @@ final class PlannedActivityTests: XCTestCase {
         XCTAssertFalse(plannedSlot.isUserStartedLiveSession(now: now))
         XCTAssertEqual(plannedSlot.terminalState(now: now), .planned)
         XCTAssertTrue(started.isUserStartedLiveSession(now: now))
+        // Past soft duration: plan slot is not in-window; Quick Start still displays as live.
+        XCTAssertFalse(plannedSlot.isTodayLiveSessionDisplay(now: now))
+        XCTAssertTrue(started.isTodayLiveSessionDisplay(now: now))
+    }
+
+    func testTodayLiveSessionDisplayIncludesInWindowPlannerWorkout() {
+        let start = Date().addingTimeInterval(-10 * 60)
+        let planned = PlannedActivity(
+            date: start,
+            type: "workout",
+            title: "Tempo Run",
+            durationMinutes: 45,
+            icon: "figure.run",
+            colorRed: 0.2,
+            colorGreen: 0.5,
+            colorBlue: 0.9,
+            source: "planner"
+        )
+        let now = Date()
+
+        XCTAssertFalse(planned.isUserStartedLiveSession(now: now))
+        XCTAssertTrue(planned.isActive(at: now))
+        XCTAssertTrue(planned.isTodayLiveSessionDisplay(now: now))
+    }
+
+    func testTodayLiveSessionDisplayIgnoresInWindowMeal() {
+        let start = Date().addingTimeInterval(-5 * 60)
+        let meal = PlannedActivity(
+            date: start,
+            type: "meal",
+            title: "Lunch",
+            durationMinutes: 30,
+            icon: "fork.knife",
+            colorRed: 0.9,
+            colorGreen: 0.5,
+            colorBlue: 0.2,
+            source: "planner"
+        )
+        let now = Date()
+
+        XCTAssertTrue(meal.isActive(at: now))
+        XCTAssertFalse(meal.isTodayLiveSessionDisplay(now: now))
     }
 }

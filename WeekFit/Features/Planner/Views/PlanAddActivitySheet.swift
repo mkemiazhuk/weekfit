@@ -12,6 +12,13 @@ private struct AddSheetTimeSlotState: Identifiable {
     let isRecommended: Bool
 }
 
+private struct PlanAddLibraryWidthKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 /// Single meal sheet avoids dismiss→present races when opening the builder from the library.
 private enum PlannerMealSheetStep: Equatable {
     case library
@@ -62,21 +69,106 @@ struct PlanAddActivitySheet: View {
     @State private var showMealSheet = false
     @State private var mealSheetStep: PlannerMealSheetStep = .library
     @State private var mealSheetDetent: PresentationDetent = .medium
+    @State private var showOptionCatalogSheet = false
+    @State private var isSaving = false
+    @State private var showDatePicker = false
+    @State private var showExpandedTimePicker = false
+    /// Measured content width so exactly two library cards fit the viewport.
+    @State private var libraryContentWidth: CGFloat = 0
+    @Namespace private var typePickerNamespace
 
     @Environment(\.weekFitPalette) private var palette
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var textPrimary: Color { WeekFitTheme.primaryText }
-    private var textSecondary: Color { WeekFitTheme.secondaryText }
+    private var textSecondary: Color {
+        // Night: slightly softer secondary so labels don’t glare on charcoal.
+        palette.isLight ? WeekFitTheme.secondaryText : WeekFitTheme.secondaryText.opacity(0.88)
+    }
+    /// Decorative accent: Meal green, Workout blue, Recovery purple, Habit amber.
+    private var selectionAccent: Color {
+        guard !palette.isLight else { return viewModel.selectedType.color }
+        return PlanAddNightChrome.softAccent(for: viewModel.selectedType)
+    }
+    /// Light: cool gray. Dark: calm charcoal (not OLED pure black).
+    private var screenBackground: Color {
+        if palette.isLight {
+            return Color(red: 0.969, green: 0.969, blue: 0.969) // #F7F7F7
+        }
+        return PlanAddNightChrome.canvas
+    }
 
-    private let addSheetCarouselInset: CGFloat = 10
+    private let contentPadding: CGFloat = 16
+    /// Date → library / parameters → time panels — tight so the sheet fits without vertical scroll.
+    private let majorSectionSpacing: CGFloat = 10
+    /// Section heading → cards / controls
+    private let sectionHeaderSpacing: CGFloat = 8
+    private let libraryCardGap: CGFloat = 10
+    private let addSheetCarouselInset: CGFloat = 0
     private let busySlotColor = WeekFitTheme.orange
-    private let addSheetMealCardWidth: CGFloat = 118
-    private let addSheetMealCardHeight: CGFloat = 104
-    private let addSheetMealImageWidth: CGFloat = 104
-    private let addSheetMealImageHeight: CGFloat = 48
-    /// Taller well so workout / recovery / habit people photos are not sliced into a thin strip.
-    private let addSheetActivityCardHeight: CGFloat = 128
-    private let addSheetActivityImageHeight: CGFloat = 72
+    private let cardCornerRadius: CGFloat = 20
+    private let cardInnerPadding: CGFloat = 12
+    /// Two-line title band shared by every card in the carousel.
+    private let cardTitleBlockHeight: CGFloat = 40
+    private let plannerChipHeight: CGFloat = 34
+    private let plannerChipCorner: CGFloat = 12
+    /// Visible plate ≈ 85–90% of the square image well.
+    private let mealPlateFillRatio: CGFloat = 0.90
+    private let sectionPanelRadius: CGFloat = 16
+    private let sectionPanelPadding: CGFloat = 12
+
+    private var sectionPanelFill: Color {
+        palette.isLight ? Color.white : PlanAddNightChrome.cardFill
+    }
+
+    private var sectionPanelStroke: Color {
+        palette.isLight ? Color.black.opacity(0.10) : WeekFitTheme.whiteOpacity(0.12)
+    }
+
+    private var libraryCardWidth: CGFloat {
+        // Measured inside the library section panel (inner width after panel padding).
+        let width = libraryContentWidth > 0 ? libraryContentWidth : 350
+        return floor((width - libraryCardGap) / 2)
+    }
+
+    /// Circular / square media fills the card width (original card presence).
+    private var mediaSize: CGFloat {
+        max(96, libraryCardWidth - (cardInnerPadding * 2))
+    }
+
+    private var activityThumbSize: CGFloat { mediaSize }
+    private var mealThumbSize: CGFloat { mediaSize }
+
+    private var showsLibraryViewAll: Bool {
+        switch viewModel.selectedType {
+        case .meal:
+            return availableMeals.count > 2
+        case .workout, .recovery, .habit:
+            return currentOptions.count > 2
+        }
+    }
+
+    /// Deep CTA fills for ≥4.5:1 white text; night uses muted family fills (not neon accents).
+    private var actionButtonFill: Color {
+        if palette.isLight {
+            switch viewModel.selectedType {
+            case .meal:
+                return Color(red: 0.10, green: 0.48, blue: 0.36)
+            case .workout:
+                return Color(red: 0.18, green: 0.38, blue: 0.72)
+            case .recovery:
+                return Color(red: 0.38, green: 0.28, blue: 0.68)
+            case .habit:
+                return Color(red: 0.70, green: 0.38, blue: 0.10)
+            }
+        }
+        return PlanAddNightChrome.ctaFill(for: viewModel.selectedType)
+    }
+
+    private var chipNeutralFill: Color {
+        palette.isLight ? Color.white : PlanAddNightChrome.elevatedSurface
+    }
 
     private let timelineStartHour = 5
     private let timelineEndHour = 24
@@ -88,11 +180,6 @@ struct PlanAddActivitySheet: View {
     private var availableMeals: [Meals] { viewModel.availableMeals }
     private var currentOptions: [PlannerOption] { viewModel.currentOptions }
     private var showsMealEmptyState: Bool { viewModel.selectedType == .meal && availableMeals.isEmpty }
-    private var mealPickerSectionHeight: CGFloat {
-        (viewModel.selectedType == .meal ? addSheetMealCardHeight : addSheetActivityCardHeight) + 8
-    }
-
-    
 
     private var timeSlots: [Date] {
         let startOfDay = calendar.startOfDay(for: viewModel.selectedDate)
@@ -113,214 +200,468 @@ struct PlanAddActivitySheet: View {
         }
     }
 
-    private var addSheetPresentationDetents: Set<PresentationDetent> {
-        if showsMealEmptyState {
-            return [.fraction(0.62), .large]
-        }
-        return [.fraction(0.82), .large]
-    }
-    
     var body: some View {
         let _ = languageManager.selectedLanguage
 
-        addActivitySheet
-            .presentationDetents(addSheetPresentationDetents)
-            .presentationDragIndicator(.hidden)
-            .presentationContentInteraction(.scrolls)
-            .weekFitSheetChrome(
-                cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
-                background: PlanAddSheetPalette.sheetBase(
-                    for: viewModel.selectedType,
-                    isLight: palette.isLight
-                )
-            )
-            .sheet(isPresented: $showMealSheet) {
-                PlannerMealSheetHost(
-                    step: $mealSheetStep,
-                    detent: $mealSheetDetent,
-                    library: { mealLibrarySheet },
-                    onBuilderSave: { newMeal in
-                        saveMealToLibrary(newMeal)
-                        showMealSheet = false
+        NavigationStack {
+            addActivityScreen
+                .background {
+                    ZStack {
+                        screenBackground
+                        if !palette.isLight {
+                            LinearGradient(
+                                colors: PlanAddSheetPalette.sheetWash(
+                                    for: viewModel.selectedType,
+                                    isLight: false
+                                ),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                            .allowsHitTesting(false)
+                        }
                     }
-                )
-            }
-            .onChange(of: showMealSheet) { _, isPresented in
-                guard !isPresented else { return }
-                mealSheetStep = .library
-                mealSheetDetent = .medium
-            }
-            .sheet(isPresented: $viewModel.showCustomDuration) {
-                customDurationSheet
+                    .ignoresSafeArea()
+                    .animation(.easeInOut(duration: 0.28), value: viewModel.selectedType)
+                }
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    cancelToolbarItem
+
+                    ToolbarItem(placement: .principal) {
+                        Text(
+                            viewModel.editingActivity == nil
+                                ? scenarioTitle
+                                : WeekFitLocalizedString("planner.sheet.editTitle")
+                        )
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .accessibilityAddTraits(.isHeader)
+                    }
+
+                    if viewModel.editingActivity != nil {
+                        deleteToolbarItem
+                    }
+                }
+                .sheet(isPresented: $showDatePicker) {
+                    NavigationStack {
+                        DatePicker(
+                            WeekFitLocalizedString("planner.sheet.dateLabel"),
+                            selection: $viewModel.selectedDate,
+                            displayedComponents: .date
+                        )
+                        .datePickerStyle(.graphical)
+                        .tint(selectionAccent)
+                        .padding()
+                        .navigationTitle(WeekFitLocalizedString("planner.sheet.dateLabel"))
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button(WeekFitLocalizedString("common.action.done")) {
+                                    showDatePicker = false
+                                }
+                                .foregroundStyle(selectionAccent)
+                            }
+                        }
+                    }
+                    .presentationDetents([.medium])
                     .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
-            }
-            .alert(WeekFitLocalizedString("planner.timeConflict.title"), isPresented: $viewModel.showTimeConflictAlert) {
-                Button(WeekFitLocalizedString("common.action.ok"), role: .cancel) { }
-            } message: {
-                Text(viewModel.timeConflictMessage)
-            }
-            .alert(WeekFitLocalizedString("planner.saveFailure.title"), isPresented: $viewModel.showSaveFailureAlert) {
-                Button(WeekFitLocalizedString("common.action.ok"), role: .cancel) { }
-            } message: {
-                Text(viewModel.saveFailureMessage)
-            }
-            .alert(WeekFitLocalizedString("planner.delete.title"), isPresented: $showDeleteConfirmation) {
-                Button(WeekFitLocalizedString("common.action.cancel"), role: .cancel) { }
-
-                Button(WeekFitLocalizedString("common.action.delete"), role: .destructive) {
-                    if let editingActivity = viewModel.editingActivity {
-                        deleteActivity(editingActivity)
-                        closeAddSheet()
-                    }
                 }
-            } message: {
-                Text(AppText.Planner.deleteActivityMessage)
-            }
+        }
+        .preferredColorScheme(palette.isLight ? .light : .dark)
+        .environment(\.weekFitPalette, palette)
+        .sheet(isPresented: $showMealSheet) {
+            PlannerMealSheetHost(
+                step: $mealSheetStep,
+                detent: $mealSheetDetent,
+                library: { mealLibrarySheet },
+                onBuilderSave: { newMeal in
+                    saveMealToLibrary(newMeal)
+                    showMealSheet = false
+                }
+            )
+        }
+        .onChange(of: showMealSheet) { _, isPresented in
+            guard !isPresented else { return }
+            mealSheetStep = .library
+            mealSheetDetent = .medium
+        }
+        .sheet(isPresented: $viewModel.showCustomDuration) {
+            customDurationSheet
+                .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
+        }
+        .sheet(isPresented: $showOptionCatalogSheet) {
+            optionCatalogSheet
+                .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
+        }
+        .alert(WeekFitLocalizedString("planner.timeConflict.title"), isPresented: $viewModel.showTimeConflictAlert) {
+            Button(WeekFitLocalizedString("common.action.ok"), role: .cancel) { }
+        } message: {
+            Text(viewModel.timeConflictMessage)
+        }
+        .alert(WeekFitLocalizedString("planner.saveFailure.title"), isPresented: $viewModel.showSaveFailureAlert) {
+            Button(WeekFitLocalizedString("common.action.ok"), role: .cancel) { }
+        } message: {
+            Text(viewModel.saveFailureMessage)
+        }
+        .alert(WeekFitLocalizedString("planner.delete.title"), isPresented: $showDeleteConfirmation) {
+            Button(WeekFitLocalizedString("common.action.cancel"), role: .cancel) { }
 
-            .onAppear {
-                lightHaptic.prepare()
-                viewModel.syncCustomMeals(
-                    from: userSettings.customMealsCatalog,
-                    revision: userSettings.customMealsCatalogRevision
-                )
-
-                if viewModel.editingActivity == nil {
-                    viewModel.syncDefaultSelectedMeal()
+            Button(WeekFitLocalizedString("common.action.delete"), role: .destructive) {
+                if let editingActivity = viewModel.editingActivity {
+                    deleteActivity(editingActivity)
+                    closeAddSheet()
                 }
             }
-            .onChange(of: userSettings.customMealsCatalogRevision) { _, revision in
-                viewModel.syncCustomMeals(
-                    from: userSettings.customMealsCatalog,
-                    revision: revision
-                )
-
-                if viewModel.editingActivity == nil {
-                    viewModel.syncDefaultSelectedMeal()
-                }
-            }
+        } message: {
+            Text(AppText.Planner.deleteActivityMessage)
+        }
+        .onAppear {
+            lightHaptic.prepare()
+            isSaving = false
+            viewModel.syncCustomMeals(
+                from: userSettings.customMealsCatalog,
+                revision: userSettings.customMealsCatalogRevision
+            )
+            viewModel.syncDefaultSelectedMeal()
+        }
+        .onChange(of: userSettings.customMealsCatalogRevision) { _, revision in
+            viewModel.syncCustomMeals(
+                from: userSettings.customMealsCatalog,
+                revision: revision
+            )
+            viewModel.syncDefaultSelectedMeal()
+        }
+        .onChange(of: viewModel.selectedDate) { _, newDate in
+            remapSelectedSlot(toDay: newDate)
+        }
     }
 }
 
-// MARK: - Main Sheet
+// MARK: - Main Screen
 
 private extension PlanAddActivitySheet {
 
-    var addActivitySheet: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            addSheetGrabber
+    @ToolbarContentBuilder
+    var cancelToolbarItem: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarItem(placement: .topBarLeading) {
+                cancelToolbarButton
+            }
+            .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .topBarLeading) {
+                cancelToolbarButton
+            }
+        }
+    }
 
-            sheetHeader
-                .padding(.bottom, 8)
+    @ToolbarContentBuilder
+    var deleteToolbarItem: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarItem(placement: .topBarTrailing) {
+                deleteToolbarButton
+            }
+            .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .topBarTrailing) {
+                deleteToolbarButton
+            }
+        }
+    }
 
-            Group {
-                if showsMealEmptyState {
-                    VStack(alignment: .leading, spacing: 6) {
-                        activityTypePickerSection
-                        itemPickerSection
-                    }
-                    .padding(.bottom, 4)
-                } else {
+    var cancelToolbarButton: some View {
+        Button {
+            closeAddSheet()
+        } label: {
+            Text(WeekFitLocalizedString("common.action.cancel"))
+                .font(.body)
+                .foregroundStyle(selectionAccent)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(isSaving)
+    }
+
+    var deleteToolbarButton: some View {
+        Button(role: .destructive) {
+            showDeleteConfirmation = true
+        } label: {
+            Image(systemName: "trash")
+                .frame(minWidth: 44, minHeight: 44)
+        }
+        .disabled(isSaving)
+        .accessibilityLabel(WeekFitLocalizedString("common.action.delete"))
+    }
+
+    var addActivityScreen: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize || showExpandedTimePicker {
+                ScrollView(showsIndicators: false) {
+                    sheetBodyContent(fillsHeight: false)
+                }
+            } else {
+                // Prefer one-page layout; fall back to scroll only if large cards don't fit.
+                ViewThatFits(in: .vertical) {
+                    sheetBodyContent(fillsHeight: true)
                     ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            activityTypePickerSection
-                            itemPickerSection
-                            timePickerSection
-                            durationPickerSection
-                        }
-                        .padding(.bottom, 4)
+                        sheetBodyContent(fillsHeight: false)
                     }
+                }
+            }
+        }
+        .onPreferenceChange(PlanAddLibraryWidthKey.self) { libraryContentWidth = $0 }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !showsMealEmptyState {
+                footerBar
+            }
+        }
+    }
+
+    /// Shared body for Meal / Workout / Recovery / Habit.
+    private func sheetBodyContent(fillsHeight: Bool) -> some View {
+        VStack(alignment: .leading, spacing: majorSectionSpacing) {
+            activityTypePickerSection
+                .padding(.top, 8)
+
+            sectionPanel {
+                dateChipButton
+            }
+
+            sectionPanel {
+                VStack(alignment: .leading, spacing: 10) {
+                    itemPickerSection
+
+                    // Meal macros stay with the selected card; duration is its own panel below.
+                    if showsMealMacros {
+                        selectedParametersSection
+                    }
+                }
+                .background {
+                    GeometryReader { geo in
+                        Color.clear.preference(
+                            key: PlanAddLibraryWidthKey.self,
+                            value: geo.size.width
+                        )
+                    }
+                }
+            }
+
+            if showsDurationPanel {
+                sectionPanel {
+                    durationPickerSection
                 }
             }
 
             if !showsMealEmptyState {
-                saveButton
-                    .padding(.top, 6)
+                sectionPanel {
+                    timePickerSection
+                }
+            }
+
+            if fillsHeight {
+                Spacer(minLength: 0)
             }
         }
-        .padding(.horizontal, WeekFitStyle.Size.horizontalPadding)
-        .padding(.top, 7)
-        .padding(.bottom, viewModel.editingActivity == nil ? 12 : 10)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background { addSheetBackground }
+        .padding(.horizontal, contentPadding)
+        .padding(.bottom, 8)
+        .frame(
+            maxWidth: .infinity,
+            maxHeight: fillsHeight ? .infinity : nil,
+            alignment: .topLeading
+        )
     }
 
-    var addSheetGrabber: some View {
-        Capsule()
-            .fill(
-                palette.isLight
-                    ? WeekFitLightTokens.shadowContact.opacity(0.18)
-                    : WeekFitTheme.whiteOpacity(0.16)
-            )
-            .frame(width: 40, height: 5)
-            .frame(maxWidth: .infinity)
-            .padding(.bottom, 4)
+    /// Elevated region chrome — white/charcoal tile + hairline so Date / Library / Time read as blocks.
+    @ViewBuilder
+    private func sectionPanel<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(sectionPanelPadding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: sectionPanelRadius, style: .continuous)
+                    .fill(sectionPanelFill)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: sectionPanelRadius, style: .continuous)
+                    .strokeBorder(sectionPanelStroke, lineWidth: 1)
+            }
     }
 
-    var sheetHeader: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(viewModel.editingActivity == nil ? WeekFitLocalizedString("planner.sheet.addTitle") : WeekFitLocalizedString("planner.sheet.editTitle"))
-                    .font(.system(size: 21.5, weight: .semibold))
+    /// Protein / carbs / fats / fiber under the selected meal card.
+    private var showsMealMacros: Bool {
+        viewModel.selectedType == .meal && viewModel.selectedMealForPlanner != nil
+    }
+
+    /// Workout / Recovery duration — separate panel from the library cards.
+    private var showsDurationPanel: Bool {
+        viewModel.selectedType == .workout || viewModel.selectedType == .recovery
+    }
+
+    private var footerBar: some View {
+        saveButton
+            .padding(.horizontal, contentPadding)
+            .padding(.top, 8)
+            .padding(.bottom, 6)
+            .background {
+                VStack(spacing: 0) {
+                    Rectangle()
+                        .fill(sectionPanelStroke.opacity(palette.isLight ? 0.85 : 1))
+                        .frame(height: 1)
+                    screenBackground
+                }
+                .ignoresSafeArea(edges: .bottom)
+            }
+    }
+
+    var scenarioTitle: String {
+        switch viewModel.selectedType {
+        case .meal: return WeekFitLocalizedString("planner.add.scenario.meal")
+        case .workout: return WeekFitLocalizedString("planner.add.scenario.workout")
+        case .recovery: return WeekFitLocalizedString("planner.add.scenario.recovery")
+        case .habit: return WeekFitLocalizedString("planner.add.scenario.habit")
+        }
+    }
+
+    var librarySectionTitle: String {
+        switch viewModel.selectedType {
+        case .meal: return WeekFitLocalizedString("planner.add.library.meals")
+        case .workout: return WeekFitLocalizedString("planner.add.library.workouts")
+        case .recovery: return WeekFitLocalizedString("planner.add.library.recoveryActivities")
+        case .habit: return WeekFitLocalizedString("planner.add.library.habits")
+        }
+    }
+
+    var selectionPrompt: String {
+        switch viewModel.selectedType {
+        case .meal: return WeekFitLocalizedString("planner.add.prompt.selectMeal")
+        case .workout: return WeekFitLocalizedString("planner.add.prompt.selectWorkout")
+        case .recovery: return WeekFitLocalizedString("planner.add.prompt.selectRecovery")
+        case .habit: return WeekFitLocalizedString("planner.add.prompt.selectHabit")
+        }
+    }
+
+    var dateChipButton: some View {
+        Button {
+            lightHaptic.impactOccurred()
+            showDatePicker = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(selectionAccent)
+
+                Text(addSheetDayChipTitle)
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(textPrimary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.88)
-                    .allowsTightening(true)
+                    .minimumScaleFactor(0.85)
 
-                HStack(spacing: 8) {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(viewModel.selectedType.color)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(textSecondary.opacity(0.55))
 
-                    Text(addSheetDayChipTitle)
-                        .font(.system(size: 13.8, weight: .semibold, design: .rounded))
-                        .foregroundStyle(textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-                        .allowsTightening(true)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(viewModel.selectedType.color.opacity(0.08))
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(viewModel.selectedType.color.opacity(0.18), lineWidth: 1)
-                }
+                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .layoutPriority(1)
-
-            if viewModel.editingActivity != nil {
-                Button(role: .destructive) {
-                    lightHaptic.impactOccurred()
-                    showDeleteConfirmation = true
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(Color.red.opacity(0.62))
-                        .frame(width: 30, height: 30)
-                        .background(Color.red.opacity(0.028))
-                        .clipShape(Circle())
-                        .overlay {
-                            Circle()
-                                .stroke(Color.red.opacity(0.05), lineWidth: 1)
-                        }
-                }
-                .buttonStyle(.plain)
-                .fixedSize()
-
-                Spacer()
-                    .frame(width: 6)
-            }
-
-            WeekFitCloseButton(size: .compact) {
-                closeAddSheet()
-            }
-            .fixedSize()
-            .padding(.top, 1)
+            .frame(minHeight: 22)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .accessibilityLabel(WeekFitLocalizedString("planner.sheet.dateLabel"))
+        .accessibilityValue(addSheetDayChipTitle)
+    }
+
+    @ViewBuilder
+    var selectedParametersSection: some View {
+        switch viewModel.selectedType {
+        case .meal:
+            if let meal = viewModel.selectedMealForPlanner {
+                mealMacrosRow(meal)
+            }
+        case .workout, .recovery:
+            durationPickerSection
+        case .habit:
+            EmptyView()
+        }
+    }
+
+    func mealMacrosRow(_ meal: Meals) -> some View {
+        let unit = WeekFitLocalizedString("common.unit.gramShort")
+        return HStack(spacing: 0) {
+            macroStat(
+                label: WeekFitLocalizedString("nutrition.macro.protein"),
+                value: "\(meal.protein) \(unit)"
+            )
+            macroDivider
+            macroStat(
+                label: WeekFitLocalizedString("nutrition.macro.carbs"),
+                value: "\(meal.carbs) \(unit)"
+            )
+            macroDivider
+            macroStat(
+                label: WeekFitLocalizedString("nutrition.macro.fats"),
+                value: "\(meal.fats) \(unit)"
+            )
+            macroDivider
+            macroStat(
+                label: WeekFitLocalizedString("nutrition.macro.fiber"),
+                value: "\(meal.fiber) \(unit)"
+            )
+        }
+        .padding(.top, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            String(
+                format: WeekFitLocalizedString("planner.add.nutritionA11yFormat"),
+                meal.title,
+                meal.protein,
+                meal.carbs,
+                meal.fats,
+                meal.fiber
+            )
+        )
+    }
+
+    private func formattedDurationLabel(_ minutes: Int) -> String {
+        String(format: WeekFitLocalizedString("common.duration.minutesFormat"), minutes)
+    }
+
+    func macroStat(label: String, value: String) -> some View {
+        VStack(spacing: 3) {
+            Text(label)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(textPrimary)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    var macroDivider: some View {
+        Rectangle()
+            .fill(palette.isLight ? Color.black.opacity(0.10) : WeekFitTheme.whiteOpacity(0.10))
+            .frame(width: 1, height: 28)
+    }
+
+    func remapSelectedSlot(toDay newDate: Date) {
+        let day = calendar.startOfDay(for: newDate)
+        let reference = viewModel.selectedSlot ?? Date()
+        let hour = calendar.component(.hour, from: reference)
+        let minute = calendar.component(.minute, from: reference)
+        guard let remapped = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: day) else {
+            return
+        }
+        viewModel.selectedSlot = viewModel.clampedTimelineDate(remapped)
     }
 
     func isPastSlot(_ slot: Date) -> Bool {
@@ -345,69 +686,150 @@ private extension PlanAddActivitySheet {
 
 private extension PlanAddActivitySheet {
 
-    var activityTypePickerSection: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            sheetSectionHeader(WeekFitLocalizedString("planner.sheet.activitySection"))
+    private var categoryPickerTrackFill: Color {
+        palette.isLight ? Color(white: 0.93) : PlanAddNightChrome.trackFill
+    }
 
-            HStack(spacing: 9) {
-                ForEach(PlannerType.allCases, id: \.self) { type in
-                    typeButton(type)
+    private var categoryPickerSelectedFill: Color {
+        // Night: soft elevated pill — avoid near-white glare on charcoal.
+        palette.isLight ? Color.white : PlanAddNightChrome.selectedPill
+    }
+
+    private var usesAccessibilityCategoryLayout: Bool {
+        dynamicTypeSize.isAccessibilitySize
+    }
+
+    var activityTypePickerSection: some View {
+        Group {
+            if usesAccessibilityCategoryLayout {
+                categoryPickerGrid
+            } else {
+                // Ideal width = 4 × longest title; otherwise fall back to wrapping grid.
+                ViewThatFits(in: .horizontal) {
+                    categoryPickerSingleRow
+                    categoryPickerGrid
                 }
             }
         }
     }
 
+    private var categoryPickerSingleRow: some View {
+        PlanAddEqualWidthSegmentLayout {
+            ForEach(PlannerType.allCases, id: \.segmentID) { type in
+                typeSegmentButton(type, allowsMultiline: false)
+            }
+        }
+        .padding(4)
+        .background {
+            Capsule(style: .continuous)
+                .fill(categoryPickerTrackFill)
+        }
+    }
+
+    private var categoryPickerGrid: some View {
+        LazyVGrid(
+            columns: [
+                GridItem(.flexible(), spacing: 4),
+                GridItem(.flexible(), spacing: 4)
+            ],
+            spacing: 4
+        ) {
+            ForEach(PlannerType.allCases, id: \.segmentID) { type in
+                typeSegmentButton(type, allowsMultiline: true)
+            }
+        }
+        .padding(4)
+        .background {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(categoryPickerTrackFill)
+        }
+    }
+
+    private func selectPlannerType(_ type: PlannerType) {
+        guard viewModel.selectedType != type else { return }
+        lightHaptic.impactOccurred()
+        let apply = {
+            showExpandedTimePicker = false
+            viewModel.selectType(type)
+        }
+        if reduceMotion {
+            apply()
+        } else {
+            withAnimation(.easeInOut(duration: 0.22)) {
+                apply()
+            }
+        }
+    }
+
     var itemPickerSection: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            sheetSectionHeader(
-                viewModel.selectedType == .meal
-                    ? WeekFitLocalizedString("planner.sheet.chooseMeal")
-                    : WeekFitLocalizedString("planner.sheet.chooseActivity"),
-                subtitle: chooseItemSubtitle,
-                trailing: viewModel.selectedType == .meal && !availableMeals.isEmpty
-                    ? WeekFitLocalizedString("planner.sheet.viewAll")
-                    : nil,
-                trailingAction: viewModel.selectedType == .meal && !availableMeals.isEmpty
-                    ? {
-                        mealSheetStep = .library
-                        mealSheetDetent = .medium
-                        showMealSheet = true
+        VStack(alignment: .leading, spacing: sectionHeaderSpacing) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(librarySectionTitle)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(textPrimary)
+
+                Spacer(minLength: 8)
+
+                if showsLibraryViewAll {
+                    Button {
+                        lightHaptic.impactOccurred()
+                        openLibraryCatalog()
+                    } label: {
+                        Text(WeekFitLocalizedString("planner.sheet.viewAll"))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(selectionAccent)
                     }
-                    : nil
-            )
-            .padding(.top, 1)
+                    .buttonStyle(.plain)
+                }
+            }
 
             if showsMealEmptyState {
                 emptyMealPickerState
             } else {
                 itemPickerCarousel
-                    .frame(height: mealPickerSectionHeight)
             }
+
+            if !viewModel.hasValidItemSelection, !showsMealEmptyState {
+                Text(selectionPrompt)
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(textSecondary)
+            }
+        }
+    }
+
+    private func openLibraryCatalog() {
+        switch viewModel.selectedType {
+        case .meal:
+            mealSheetStep = .library
+            mealSheetDetent = .medium
+            showMealSheet = true
+        case .workout, .recovery, .habit:
+            showOptionCatalogSheet = true
         }
     }
 
     var itemPickerCarousel: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
+                HStack(alignment: .top, spacing: libraryCardGap) {
                     if viewModel.selectedType == .meal {
                         ForEach(availableMeals) { meal in
                             mealOptionCard(meal)
                                 .id(meal.id)
                         }
                     } else {
-                        ForEach(currentOptions) { option in
+                        ForEach(currentOptions, id: \.imageName) { option in
                             optionCard(option)
                                 .id(optionScrollID(option))
                         }
                     }
                 }
                 .padding(.horizontal, addSheetCarouselInset)
-                .padding(.vertical, 2)
             }
             .onAppear { scrollToSelectedOption(proxy) }
             .onChange(of: viewModel.selectedItem.title) { _, _ in scrollToSelectedOption(proxy) }
             .onChange(of: viewModel.selectedType) { _, _ in scrollToSelectedOption(proxy) }
+            .onChange(of: viewModel.selectedMealID) { _, _ in scrollToSelectedOption(proxy) }
         }
     }
 
@@ -424,51 +846,199 @@ private extension PlanAddActivitySheet {
             mealSheetDetent = .large
             showMealSheet = true
         }
-        .padding(.top, 2)
     }
 
     var timePickerSection: some View {
         ScrollViewReader { proxy in
-            VStack(alignment: .leading, spacing: 7) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(AppText.Planner.whenTitle)
-                        .font(.system(size: 15.6, weight: .semibold))
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 8) {
+                    Text(WeekFitLocalizedString("planner.sheet.timeLabel"))
+                        .font(.headline.weight(.semibold))
                         .foregroundStyle(textPrimary)
 
-                    Text(timeSectionSubtitle)
-                        .font(.system(size: 12.2, weight: .regular))
-                        .foregroundStyle(textSecondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.82)
-                }
-                .padding(.top, 2)
+                    Spacer(minLength: 8)
 
-                timeSelectionSection(proxy)
+                    if let range = selectedDurationTimeRangeLabel {
+                        Text(range)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(textSecondary)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                    }
+
+                    Button {
+                        lightHaptic.impactOccurred()
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showExpandedTimePicker.toggle()
+                        }
+                    } label: {
+                        Text(
+                            showExpandedTimePicker
+                                ? WeekFitLocalizedString("planner.sheet.changeAction")
+                                : WeekFitLocalizedString("planner.time.chooseTime")
+                        )
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(selectionAccent)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.bottom, sectionHeaderSpacing)
+
+                if showExpandedTimePicker {
+                    timeSelectionSection(proxy)
+                } else {
+                    quickTimePicksRow
+                }
+
+                if hasSelectedTimeConflict {
+                    Text(WeekFitLocalizedString("planner.time.overlapMessage"))
+                        .font(.caption)
+                        .foregroundStyle(WeekFitLightTokens.critical)
+                        .lineLimit(2)
+                        .padding(.top, 8)
+                } else if let suggestion = suggestedTimeLine, let recommended = recommendedSlot {
+                    Button {
+                        lightHaptic.impactOccurred()
+                        viewModel.selectedSlot = recommended
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(selectionAccent.opacity(0.85))
+                            Text(suggestion)
+                                .font(.caption)
+                                .foregroundStyle(textSecondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 8)
+                }
+            }
+            .onAppear {
+                ensureSelectedAvailableSlot(proxy)
+            }
+            .onChange(of: viewModel.selectedDate) { _, _ in
+                ensureSelectedAvailableSlot(proxy)
+            }
+            .onChange(of: viewModel.selectedType) { _, _ in
+                ensureSelectedAvailableSlot(proxy)
+            }
+            .onChange(of: viewModel.selectedDuration) { _, _ in
+                ensureSelectedAvailableSlot(proxy)
             }
         }
+    }
+
+    private var recommendedSlot: Date? {
+        buildTimeSlotStates().first { $0.isRecommended && !$0.isOccupied && !$0.isPast }?.slot
+    }
+
+    private var quickTimePicksRow: some View {
+        let picks = quickTimePickStates
+        return HStack(spacing: 10) {
+            ForEach(picks) { state in
+                timeSlotButton(state, compact: true)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var quickTimePickStates: [AddSheetTimeSlotState] {
+        let all = buildTimeSlotStates().filter { !$0.isPast && !$0.isOccupied }
+        guard !all.isEmpty else { return [] }
+
+        if let selected = viewModel.selectedSlot,
+           let selectedIndex = all.firstIndex(where: {
+               calendar.isDate($0.slot, equalTo: selected, toGranularity: .minute)
+           }) {
+            let start = max(0, selectedIndex - 1)
+            let end = min(all.count, start + 3)
+            let adjustedStart = max(0, end - 3)
+            return Array(all[adjustedStart..<end])
+        }
+
+        return Array(all.prefix(3))
+    }
+
+    private var suggestedTimeLine: String? {
+        guard let recommended = recommendedSlot else { return nil }
+        // Only meal windows are meaningful recommendations; first-free for others is not personalized.
+        guard viewModel.selectedType == .meal else { return nil }
+        let window = selectedTimeIntelligenceLabel
+        guard !window.isEmpty else { return nil }
+        return String(
+            format: WeekFitLocalizedString("planner.time.suggestedWindowFormat"),
+            slotTitle(recommended),
+            window
+        )
+    }
+
+    /// Workout / Recovery: selected start–end interval from duration (e.g. "13:30–14:15").
+    private var selectedDurationTimeRangeLabel: String? {
+        guard viewModel.selectedType == .workout || viewModel.selectedType == .recovery,
+              let start = viewModel.selectedSlot else { return nil }
+        let end = calendar.date(byAdding: .minute, value: viewModel.selectedDuration, to: start) ?? start
+        return "\(slotTitle(start))–\(slotTitle(end))"
     }
 
     @ViewBuilder
     var durationPickerSection: some View {
         if viewModel.selectedType == .workout || viewModel.selectedType == .recovery {
-            VStack(alignment: .leading, spacing: 7) {
-                sheetSectionHeader(WeekFitLocalizedString("planner.duration.pickerTitle"), subtitle: durationSectionSubtitle)
-                    .padding(.top, 2)
+            VStack(alignment: .leading, spacing: sectionHeaderSpacing) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(WeekFitLocalizedString("planner.duration.pickerTitle"))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(textPrimary)
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 9) {
-                        durationButton(15)
-                        durationButton(30)
-                        durationButton(45)
-                        durationButton(60)
-                        customDurationButton
+                    Spacer(minLength: 8)
+
+                    Button {
+                        lightHaptic.impactOccurred()
+                        viewModel.customDuration = viewModel.selectedDuration
+                        viewModel.showCustomDuration = true
+                    } label: {
+                        Text(customDurationHeaderTitle)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(selectionAccent)
                     }
-                    .padding(.horizontal, addSheetCarouselInset)
-                    .padding(.vertical, 2)
+                    .buttonStyle(.plain)
                 }
-                .mask { durationFadeMask }
+
+                FlowLayout(spacing: 6) {
+                    ForEach(durationPresets, id: \.self) { minutes in
+                        durationButton(minutes)
+                    }
+                }
             }
         }
+    }
+
+    private var customDurationHeaderTitle: String {
+        if isCustomDurationSelected {
+            return String(
+                format: WeekFitLocalizedString("planner.duration.customMinutesFormat"),
+                viewModel.selectedDuration
+            )
+        }
+        return WeekFitLocalizedString("planner.duration.customEllipsis")
+    }
+
+    private var durationPresets: [Int] {
+        switch viewModel.selectedType {
+        case .recovery:
+            return [10, 15, 20, 30]
+        case .workout:
+            return [15, 30, 45, 60]
+        case .meal, .habit:
+            return []
+        }
+    }
+
+    private var isCustomDurationSelected: Bool {
+        !durationPresets.contains(viewModel.selectedDuration)
     }
 }
 
@@ -513,246 +1083,155 @@ private extension PlanAddActivitySheet {
         }
     }
 
-    func typeButton(_ type: PlannerType) -> some View {
+    func typeSegmentButton(_ type: PlannerType, allowsMultiline: Bool) -> some View {
         let active = viewModel.selectedType == type
-        let activeFillOpacity: Double = switch type {
-        case .workout: 0.30
-        case .habit: 0.46
-        case .recovery: 0.38
-        case .meal: 0.38
-        }
 
         return Button {
-            guard viewModel.selectedType != type else { return }
-
-            lightHaptic.impactOccurred()
-            viewModel.selectedType = type
-
-            if type == .meal {
-                viewModel.syncDefaultSelectedMeal()
-            } else {
-                viewModel.selectedMealID = nil
-                viewModel.selectedItem = type.options[0]
-                viewModel.applyDefaultDurationForSelectedItem()
-            }
+            selectPlannerType(type)
         } label: {
-            VStack(spacing: 3) {
-                Image(systemName: type.icon)
-                    .font(.system(size: 11, weight: .semibold))
-
-                Text(localizedTitle(for: type))
-                    .font(.system(size: 9.8, weight: .medium, design: .rounded))
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                    .minimumScaleFactor(0.72)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .foregroundStyle(active ? typeButtonActiveForeground(for: type) : (palette.isLight ? textSecondary : textPrimary.opacity(0.58)))
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: 38)
-            .padding(.horizontal, 2)
-            .padding(.vertical, 5)
-            .background {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .fill(active
-                          ? (palette.isLight ? type.color.opacity(0.16) : type.color.opacity(activeFillOpacity))
-                          : (palette.isLight
-                             ? PlanAddSheetPalette.typeChipIdleFill(for: viewModel.selectedType)
-                             : WeekFitTheme.whiteOpacity(0.026)))
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .stroke(
-                        active
-                            ? (palette.isLight ? type.color.opacity(0.42) : WeekFitTheme.whiteOpacity(type == .habit ? 0.10 : 0.070))
-                            : (palette.isLight
-                               ? WeekFitLightTokens.cardBorder.opacity(0.22)
-                               : WeekFitTheme.whiteOpacity(0.035)),
-                        lineWidth: 1
-                    )
-            }
-            .shadow(
-                color: active
-                    ? type.color.opacity(type == .workout ? 0.014 : 0.022)
-                    : Color.black.opacity(palette.isLight ? 0.02 : 0.032),
-                radius: active ? 6 : 1.5,
-                y: active ? 3 : 1
-            )
+            Text(localizedTitle(for: type))
+                .font(.system(size: 14.5, weight: active ? .semibold : .medium))
+                .foregroundStyle(
+                    active
+                        ? (palette.isLight ? type.color : PlanAddNightChrome.softAccent(for: type))
+                        : textSecondary
+                )
+                .lineLimit(allowsMultiline ? 3 : 1)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: !allowsMultiline, vertical: false)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: allowsMultiline ? 40 : 34)
+                .padding(.horizontal, 2)
+                .padding(.vertical, allowsMultiline ? 4 : 0)
+                .background {
+                    if active {
+                        Capsule(style: .continuous)
+                            .fill(categoryPickerSelectedFill)
+                            .matchedGeometryEffect(id: "planAddTypeSelection", in: typePickerNamespace)
+                    }
+                }
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(active ? .isSelected : [])
+        .accessibilityLabel(localizedTitle(for: type))
     }
 
     func optionCard(_ option: PlannerOption) -> some View {
         let active = selectedItemMatches(option)
+        let thumb = activityThumbSize
 
         return Button {
             lightHaptic.impactOccurred()
-
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+            withAnimation(.easeInOut(duration: 0.18)) {
                 viewModel.selectedItem = option
                 viewModel.applyDefaultDurationForSelectedItem()
             }
         } label: {
-            VStack(alignment: .leading, spacing: 5) {
-                ZStack(alignment: .topTrailing) {
-                    optionImage(option)
-                        .frame(width: addSheetMealImageWidth, height: addSheetActivityImageHeight)
-                        .clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-
-                    if active {
-                        selectionCheckmark
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(localizedTitle(for: option))
-                        .font(.system(size: 11.8, weight: .semibold))
-                        .foregroundStyle(textPrimary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .minimumScaleFactor(0.88)
-
-                    Text(localizedSubtitle(for: option))
-                        .font(.system(size: 10.2, weight: .medium))
-                        .foregroundStyle(palette.isLight ? textSecondary : viewModel.selectedType.color.opacity(active ? 0.60 : 0.42))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.78)
-                }
-                .frame(height: 34, alignment: .topLeading)
-
-                Spacer(minLength: 0)
+            planSelectionCard(
+                active: active,
+                title: localizedTitle(for: option),
+                subtitle: localizedSubtitle(for: option),
+                width: libraryCardWidth,
+                thumbSize: thumb,
+                clipsMediaToCircle: true
+            ) {
+                activityCircularPhoto(option: option, size: thumb)
             }
-            .padding(.horizontal, 6)
-            .padding(.top, 6)
-            .padding(.bottom, 7)
-            .frame(width: addSheetMealCardWidth, height: addSheetActivityCardHeight, alignment: .topLeading)
-            .background {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(
-                        PlanAddSheetPalette.optionCardFill(
-                            active: active,
-                            type: viewModel.selectedType,
-                            isLight: palette.isLight
-                        )
-                    )
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(
-                        active
-                            ? viewModel.selectedType.color.opacity(palette.isLight ? 0.38 : 0.16)
-                            : (palette.isLight
-                               ? WeekFitLightTokens.cardBorder.opacity(0.28)
-                               : WeekFitTheme.whiteOpacity(0.05)),
-                        lineWidth: 1
-                    )
-            }
-            .shadow(
-                color: PlanAddSheetPalette.optionCardShadow(
-                    active: active,
-                    type: viewModel.selectedType,
-                    isLight: palette.isLight
-                ),
-                radius: active ? 6 : 2,
-                x: 0,
-                y: active ? 3 : 1
-            )
         }
         .buttonStyle(.plain)
     }
 
     func mealOptionCard(_ meal: Meals) -> some View {
         let active = viewModel.selectedMealID == meal.id
+        let thumb = mealThumbSize
 
         return Button {
             lightHaptic.impactOccurred()
-
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+            withAnimation(.easeInOut(duration: 0.18)) {
                 viewModel.selectedMealID = meal.id
                 viewModel.selectedItem = viewModel.plannerOption(for: meal)
             }
         } label: {
-            VStack(alignment: .leading, spacing: 5) {
-                ZStack(alignment: .topTrailing) {
-                    mealPreview(meal)
-                        .frame(width: addSheetMealImageWidth, height: addSheetMealImageHeight)
-                        .clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-                        .opacity(active ? 1.0 : 0.90)
-
-                    if active {
-                        selectionCheckmark
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(meal.title)
-                        .font(.system(size: 13.2, weight: .semibold))
-                        .foregroundStyle(textPrimary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .minimumScaleFactor(0.88)
-
-                    Text(
-                        String(
-                            format: WeekFitLocalizedString("planner.meal.macroSummaryFormat"),
-                            meal.calories,
-                            meal.protein,
-                            meal.carbs,
-                            meal.fats
-                        )
-                    )
-                        .font(.system(size: 10.5, weight: .medium))
-                        .foregroundStyle(
-                            palette.isLight
-                                ? (active ? viewModel.selectedType.color : textSecondary)
-                                : viewModel.selectedType.color.opacity(active ? 0.60 : 0.50)
-                        )
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.78)
-                }
-                .frame(minHeight: 34, alignment: .topLeading)
-
-                Spacer(minLength: 0)
+            planSelectionCard(
+                active: active,
+                title: meal.title,
+                subtitle: "\(meal.calories) \(WeekFitLocalizedString("common.unit.kcal"))",
+                width: libraryCardWidth,
+                thumbSize: thumb,
+                clipsMediaToCircle: false
+            ) {
+                mealPreview(meal, size: thumb)
             }
-            .padding(.horizontal, 6)
-            .padding(.top, 6)
-            .padding(.bottom, 7)
-            .frame(width: addSheetMealCardWidth, height: addSheetMealCardHeight, alignment: .topLeading)
-            .background {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(
-                        PlanAddSheetPalette.optionCardFill(
-                            active: active,
-                            type: viewModel.selectedType,
-                            isLight: palette.isLight
-                        )
-                    )
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(
-                        active
-                            ? viewModel.selectedType.color.opacity(palette.isLight ? 0.38 : 0.16)
-                            : (palette.isLight
-                               ? WeekFitLightTokens.cardBorder.opacity(0.28)
-                               : WeekFitTheme.whiteOpacity(0.05)),
-                        lineWidth: 1
-                    )
-            }
-            .shadow(
-                color: PlanAddSheetPalette.optionCardShadow(
-                    active: active,
-                    type: viewModel.selectedType,
-                    isLight: palette.isLight
-                ),
-                radius: active ? 6 : 2,
-                x: 0,
-                y: active ? 3 : 1
-            )
         }
         .buttonStyle(.plain)
+    }
+
+    func planSelectionCard<Thumb: View>(
+        active: Bool,
+        title: String,
+        subtitle: String,
+        width: CGFloat,
+        thumbSize: CGFloat,
+        clipsMediaToCircle: Bool,
+        @ViewBuilder thumb: () -> Thumb
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ZStack(alignment: .topTrailing) {
+                Group {
+                    if clipsMediaToCircle {
+                        thumb()
+                    } else {
+                        // Square image well — plate fills ~88% without cropping the dish.
+                        thumb()
+                    }
+                }
+                .frame(width: thumbSize, height: thumbSize)
+                .frame(maxWidth: .infinity)
+
+                if active {
+                    selectionCheckmark
+                }
+            }
+
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(textPrimary)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, minHeight: cardTitleBlockHeight, alignment: .topLeading)
+                .padding(.top, 10)
+
+            Text(subtitle)
+                .font(.footnote)
+                .foregroundStyle(textSecondary)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 4)
+        }
+        .padding(cardInnerPadding)
+        .frame(width: width, alignment: .topLeading)
+        // Selection stroke drawn inset so active/inactive cards stay the same size.
+        .background {
+            RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
+                .fill(
+                    active
+                        ? selectionAccent.opacity(palette.isLight ? 0.10 : 0.16)
+                        : (palette.isLight
+                            ? Color(white: 0.985)
+                            : PlanAddNightChrome.elevatedSurface)
+                )
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
+                .strokeBorder(
+                    active
+                        ? selectionAccent.opacity(palette.isLight ? 1 : 0.72)
+                        : sectionPanelStroke.opacity(palette.isLight ? 0.90 : 1),
+                    lineWidth: active ? 1.25 : 1
+                )
+        }
+        .accessibilityAddTraits(active ? .isSelected : [])
     }
 }
 
@@ -883,19 +1362,6 @@ private extension PlanAddActivitySheet {
             }
 
             timeSlotLegendRow(showsPastLegend: showsPastLegend, showsBusyLegend: showsBusyLegend)
-
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(hasSelectedTimeConflict ? Color.red.opacity(0.74) : viewModel.selectedType.color.opacity(0.70))
-                    .frame(width: 5, height: 5)
-
-                Text(selectedTimeStatusText)
-                    .font(.system(size: 11.6, weight: .medium))
-                    .foregroundStyle(hasSelectedTimeConflict ? WeekFitLightTokens.critical : textSecondary)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.82)
-            }
-            .padding(.horizontal, addSheetCarouselInset)
         }
     }
 
@@ -935,12 +1401,11 @@ private extension PlanAddActivitySheet {
         }
     }
 
-    func timeSlotButton(_ state: AddSheetTimeSlotState) -> some View {
+    func timeSlotButton(_ state: AddSheetTimeSlotState, compact: Bool = false) -> some View {
         let slot = state.slot
         let active = state.isActive
         let occupied = state.isOccupied
         let isPast = state.isPast
-        let recommended = state.isRecommended
 
         return Button {
             guard !isPast else { return }
@@ -948,127 +1413,78 @@ private extension PlanAddActivitySheet {
             lightHaptic.impactOccurred()
             viewModel.selectedSlot = slot
         } label: {
-            VStack(spacing: 1) {
-                HStack(spacing: 3) {
-                    Text(slotTitle(slot))
-                        .font(.system(size: active ? 13.4 : 12.6, weight: active ? .bold : .semibold, design: .rounded))
-                        .monospacedDigit()
-
-                    if recommended && !active && !occupied && !isPast {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 8.5, weight: .semibold))
-                            .foregroundStyle(viewModel.selectedType.color.opacity(0.72))
-                    }
-                }
-
-                if active && recommended && !occupied {
-                    Text(WeekFitLocalizedString("planner.time.recommended"))
-                        .font(.system(size: 8.6, weight: .semibold))
-                        .foregroundStyle(viewModel.selectedType.color.opacity(0.68))
-                        .lineLimit(1)
-                }
-            }
-            .foregroundStyle(
-                selectionChipForeground(active: active, occupied: occupied, isPast: isPast)
-            )
-            .padding(.horizontal, active ? 12 : 10)
-            .frame(minWidth: active ? 68 : 58)
-            .frame(height: active ? 38 : 32)
-            .background {
-                RoundedRectangle(cornerRadius: active ? 16 : 13, style: .continuous)
-                    .fill(
-                        selectionChipBackground(active: active, occupied: occupied, isPast: isPast)
-                    )
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: active ? 16 : 13, style: .continuous)
-                    .stroke(
-                        selectionChipBorder(active: active, occupied: occupied, isPast: isPast),
-                        lineWidth: active ? 1.05 : 1
-                    )
-            }
-            .shadow(
-                color: active && !occupied ? viewModel.selectedType.color.opacity(0.10) : Color.black.opacity(0.018),
-                radius: active ? 8 : 3,
-                y: active ? 4 : 2
+            plannerControlChip(
+                title: slotTitle(slot),
+                active: active,
+                monospaced: true,
+                minWidth: compact ? 76 : 58
             )
         }
         .buttonStyle(.plain)
         .disabled(isPast || occupied)
-        .opacity(isPast ? 0.30 : 1.0)
+        .opacity(isPast ? 0.30 : (occupied ? 0.45 : 1.0))
+        .accessibilityAddTraits(active ? .isSelected : [])
     }
 
     func durationButton(_ minutes: Int) -> some View {
-        durationChip(
-            title: String(format: WeekFitLocalizedString("common.duration.minutesFormat"), minutes),
-            active: viewModel.selectedDuration == minutes
-        ) {
+        let active = viewModel.selectedDuration == minutes
+        return Button {
+            lightHaptic.impactOccurred()
             withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
                 viewModel.selectedDuration = minutes
                 viewModel.customDuration = minutes
             }
-        }
-    }
-
-    var customDurationButton: some View {
-        let presetDurations = [15, 30, 45, 60]
-        let isCustomActive = !presetDurations.contains(viewModel.selectedDuration)
-
-        return durationChip(
-            title: isCustomActive
-                ? String(format: WeekFitLocalizedString("common.duration.minutesFormat"), viewModel.selectedDuration)
-                : WeekFitLocalizedString("planner.duration.custom"),
-            active: isCustomActive,
-            showsIcon: !isCustomActive
-        ) {
-            viewModel.customDuration = viewModel.selectedDuration
-            viewModel.showCustomDuration = true
-        }
-    }
-
-    func durationChip(
-        title: String,
-        active: Bool,
-        showsIcon: Bool = false,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button {
-            lightHaptic.impactOccurred()
-            action()
         } label: {
-            HStack(spacing: 5) {
-                Text(title)
-                    .font(.system(size: active ? 13.4 : 12.6, weight: active ? .bold : .semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-
-                if showsIcon {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 11, weight: .semibold))
-                }
-            }
-            .foregroundStyle(selectionChipForeground(active: active, occupied: false, isPast: false))
-            .padding(.horizontal, active ? 14 : 12)
-            .frame(minWidth: active ? 76 : 68)
-            .frame(height: active ? 38 : 32)
-            .background {
-                RoundedRectangle(cornerRadius: active ? 16 : 13, style: .continuous)
-                    .fill(selectionChipBackground(active: active, occupied: false, isPast: false))
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: active ? 16 : 13, style: .continuous)
-                    .stroke(
-                        selectionChipBorder(active: active, occupied: false, isPast: false),
-                        lineWidth: active ? 1.05 : 1
-                    )
-            }
-            .shadow(
-                color: active ? viewModel.selectedType.color.opacity(0.10) : Color.black.opacity(0.018),
-                radius: active ? 8 : 3,
-                y: active ? 4 : 2
+            plannerControlChip(
+                title: String(format: WeekFitLocalizedString("common.duration.minutesFormat"), minutes),
+                active: active,
+                monospaced: false,
+                minWidth: 64
             )
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(active ? .isSelected : [])
+    }
+
+    /// Shared Duration / Time chip: ~44 pt, no shadow, weight + border for selection.
+    @ViewBuilder
+    func plannerControlChip(
+        title: String,
+        active: Bool,
+        monospaced: Bool,
+        minWidth: CGFloat
+    ) -> some View {
+        let label = Text(title)
+            .font(.subheadline.weight(active ? .bold : .semibold))
+            .foregroundStyle(active ? textPrimary : textSecondary)
+            .lineLimit(1)
+
+        Group {
+            if monospaced {
+                label.monospacedDigit()
+            } else {
+                label
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(minWidth: minWidth, minHeight: plannerChipHeight)
+        .background {
+            RoundedRectangle(cornerRadius: plannerChipCorner, style: .continuous)
+                .fill(
+                    active
+                        ? selectionAccent.opacity(palette.isLight ? 0.14 : 0.18)
+                        : (palette.isLight ? Color(white: 0.97) : chipNeutralFill)
+                )
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: plannerChipCorner, style: .continuous)
+                .strokeBorder(
+                    active
+                        ? selectionAccent.opacity(palette.isLight ? 1 : 0.70)
+                        : sectionPanelStroke.opacity(palette.isLight ? 0.85 : 1),
+                    lineWidth: active ? 1.25 : 1
+                )
+        }
     }
 }
 
@@ -1077,60 +1493,48 @@ private extension PlanAddActivitySheet {
 private extension PlanAddActivitySheet {
 
     var saveButton: some View {
-        let topOpacity: Double = viewModel.selectedType == .workout ? 0.38 : 0.42
-        let bottomOpacity: Double = viewModel.selectedType == .workout ? 0.32 : 0.36
-        let accent = viewModel.selectedType.color
+        let title = primaryActionTitle
+        let enabled = canSaveSelectedItem && !isSaving
 
         return Button {
             saveSelectedItem()
         } label: {
-            HStack(spacing: 7) {
-                Image(systemName: viewModel.editingActivity == nil ? "plus.circle.fill" : "checkmark.circle.fill")
-                    .font(.system(size: 14.5, weight: .semibold))
-
-                Text(viewModel.editingActivity == nil ? addButtonTitle : WeekFitLocalizedString("planner.saveChanges"))
-                    .font(.system(size: 15.2, weight: .semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.86)
-            }
-            .foregroundStyle(saveButtonForeground)
-            .frame(maxWidth: .infinity)
-            .frame(height: 40)
-            .background {
-                if palette.isLight {
-                    RoundedRectangle(cornerRadius: 15, style: .continuous)
-                        .fill(accent)
-                } else {
-                    LinearGradient(
-                        colors: [
-                            accent.opacity(topOpacity),
-                            accent.opacity(bottomOpacity)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+            HStack(spacing: 10) {
+                if isSaving {
+                    ProgressView()
+                        .tint(enabled ? Color.white : textSecondary)
                 }
+
+                Text(title)
+                    .font(WeekFitType.button)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-            .overlay {
+            .foregroundStyle(enabled ? Color.white : textSecondary)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(
-                        palette.isLight
-                            ? Color.white.opacity(0.22)
-                            : WeekFitTheme.whiteOpacity(0.055),
-                        lineWidth: 1
-                    )
+                    .fill(enabled ? actionButtonFill : disabledActionFill)
             }
-            .shadow(color: accent.opacity(palette.isLight ? 0.22 : 0.020), radius: 4, y: 2)
-            .shadow(color: Color.black.opacity(palette.isLight ? 0.08 : 0.12), radius: 6, y: 3)
-            .shadow(color: accent.opacity(palette.isLight ? 0.16 : 0.08), radius: 18, y: 8)
         }
         .buttonStyle(.plain)
-        .disabled(!canSaveSelectedItem)
-        .opacity(canSaveSelectedItem ? 1 : 0.46)
+        .disabled(!enabled)
         .animation(.easeInOut(duration: 0.22), value: viewModel.selectedType)
-        .accessibilityLabel(viewModel.editingActivity == nil ? addButtonTitle : WeekFitLocalizedString("planner.saveChanges"))
+        .accessibilityLabel(title)
+    }
+
+    private var disabledActionFill: Color {
+        palette.isLight
+            ? Color(white: 0.90)
+            : PlanAddNightChrome.elevatedSurface
+    }
+
+    var primaryActionTitle: String {
+        if viewModel.editingActivity == nil {
+            return WeekFitLocalizedString("planner.add.toPlan")
+        }
+        return WeekFitLocalizedString("planner.add.saveChanges")
     }
 }
 
@@ -1202,105 +1606,105 @@ private extension PlanAddActivitySheet {
 
     var selectionCheckmark: some View {
         Circle()
-            .fill(viewModel.selectedType.color)
-            .frame(width: 18, height: 18)
+            .fill(selectionAccent)
+            .frame(width: 22, height: 22)
             .overlay {
                 Image(systemName: "checkmark")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(palette.isLight ? Color.white : Color.black.opacity(0.82))
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color.white)
             }
-            .shadow(color: viewModel.selectedType.color.opacity(0.18), radius: 5, y: 2)
-            .padding(5)
+            .padding(6)
     }
 
-    func optionImage(_ option: PlannerOption) -> some View {
+    /// Workout / Recovery / Habit — circular photo, aspect-fill, no nested wells.
+    func activityCircularPhoto(option: PlannerOption, size: CGFloat) -> some View {
         Group {
-            if !option.imageName.isEmpty, FoodImageQualityValidator.isDisplayableAsset(named: option.imageName) {
-                addSheetCoverImage(named: option.imageName)
+            if !option.imageName.isEmpty,
+               FoodImageQualityValidator.isDisplayableAsset(named: option.imageName) {
+                Image(option.imageName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .clipped()
+                    .clipShape(Circle())
             } else {
-                fallbackOptionImage(icon: option.icon)
+                ZStack {
+                    Circle()
+                        .fill(selectionAccent.opacity(0.12))
+                    Image(systemName: option.icon.isEmpty ? viewModel.selectedType.icon : option.icon)
+                        .font(.system(size: size * 0.34, weight: .semibold))
+                        .foregroundStyle(selectionAccent.opacity(0.78))
+                }
+                .frame(width: size, height: size)
             }
-        }
-        .overlay {
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.00),
-                    Color.black.opacity(0.16)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
     }
 
-    func mealPreview(_ meal: Meals) -> some View {
+    /// Meal plates — whole plate, no tinted well / nested colored container.
+    func mealPreview(_ meal: Meals, size: CGFloat? = nil) -> some View {
+        let thumb = size ?? mealThumbSize
         if meal.isFoodProduct {
-            return AnyView(customFoodPreview(meal))
+            return AnyView(customFoodPreview(meal, size: thumb))
         }
 
         let sortedItems = meal.builderImageItems?.sorted { $0.zIndex < $1.zIndex } ?? []
 
         if !sortedItems.isEmpty {
-            return AnyView(customMealPreview(items: sortedItems))
+            return AnyView(customMealPreview(items: sortedItems, size: thumb))
         }
 
         if !meal.imageName.isEmpty, FoodImageQualityValidator.isDisplayableAsset(named: meal.imageName) {
-            return AnyView(addSheetCoverImage(named: meal.imageName))
+            return AnyView(mealPlateAsset(named: meal.imageName, size: thumb))
         }
 
-        return AnyView(fallbackOptionImage(icon: PlannerType.meal.icon))
+        return AnyView(mealFallbackIcon(size: thumb))
     }
 
-    func customFoodPreview(_ meal: Meals) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(viewModel.selectedType.color.opacity(0.09))
-
-            AsyncCustomFoodVisualView(
-                filename: meal.displayPhotoFilename,
-                placeholderInitial: meal.placeholderInitial,
-                size: 42,
-                imageScale: 0.62,
-                fallbackSystemImage: PlannerType.meal.icon
-            )
-        }
+    func customFoodPreview(_ meal: Meals, size: CGFloat) -> some View {
+        let plate = size * mealPlateFillRatio
+        return AsyncCustomFoodVisualView(
+            filename: meal.displayPhotoFilename,
+            placeholderInitial: meal.placeholderInitial,
+            size: plate,
+            imageScale: 1.08,
+            fallbackSystemImage: PlannerType.meal.icon
+        )
+        .frame(width: size, height: size)
+        .clipShape(Circle())
     }
 
-    func customMealPreview(items sortedItems: [MealBuilderImageItem]) -> some View {
+    func customMealPreview(items sortedItems: [MealBuilderImageItem], size: CGFloat) -> some View {
+        // Plate occupies ~88% of the square well; whole dish + shadow room, no crop.
         BuiltMealPlateView(
             items: sortedItems,
-            plateSize: 80,
-            itemScale: 0.30,
-            offsetScale: 0.28,
-            plateOpacity: 0.42,
-            shadowOpacity: 0.12,
-            layoutMode: .compactPreview
+            plateSize: size * mealPlateFillRatio,
+            itemScale: 0.74,
+            offsetScale: 0.32,
+            plateOpacity: 0.82,
+            shadowOpacity: 0.10,
+            layoutMode: .preview,
+            showsPlateChrome: true
         )
+        .frame(width: size, height: size)
     }
 
-    func fallbackOptionImage(icon: String) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(viewModel.selectedType.color.opacity(0.09))
-
-            Image(systemName: icon.isEmpty ? viewModel.selectedType.icon : icon)
-                .font(.system(size: 23, weight: .semibold))
-                .foregroundStyle(viewModel.selectedType.color.opacity(0.68))
-        }
+    func mealPlateAsset(named imageName: String, size: CGFloat) -> some View {
+        // scaledToFit keeps the whole plate; scale counters transparent asset padding.
+        Image(imageName)
+            .resizable()
+            .interpolation(.high)
+            .scaledToFit()
+            .scaleEffect(1.10)
+            .frame(width: size * mealPlateFillRatio, height: size * mealPlateFillRatio)
+            .frame(width: size, height: size)
+            .clipped()
     }
 
-    func addSheetCoverImage(named imageName: String) -> some View {
-        PlanAddSheetPalette.imageWellFill(
-            for: viewModel.selectedType,
-            isLight: palette.isLight
-        )
-        .overlay {
-            Image(imageName)
-                .resizable()
-                .scaledToFill()
-        }
-        .clipped()
+    func mealFallbackIcon(size: CGFloat) -> some View {
+        Image(systemName: PlannerType.meal.icon)
+            .font(.system(size: size * 0.28, weight: .semibold))
+            .foregroundStyle(selectionAccent.opacity(0.72))
+            .frame(width: size, height: size)
     }
 
 }
@@ -1367,14 +1771,13 @@ private extension PlanAddActivitySheet {
 
     var saveButtonForeground: Color {
         if palette.isLight {
-            // Solid type fills are saturated enough for white label on all four types.
             return Color.white
         }
         switch viewModel.selectedType {
         case .workout, .recovery:
-            return WeekFitTheme.whiteOpacity(0.90)
+            return WeekFitTheme.whiteOpacity(0.92)
         case .meal, .habit:
-            return Color.black.opacity(0.82)
+            return Color.black.opacity(0.84)
         }
     }
 
@@ -1486,13 +1889,26 @@ private extension PlanAddActivitySheet {
     }
 
     var addSheetDayChipTitle: String {
-        if calendar.isDateInToday(viewModel.selectedDate) {
-            return WeekFitLocalizedString("planner.sheet.todayLabel")
-        }
-
         let formatter = DateFormatter()
         formatter.locale = WeekFitCurrentLocale()
-        formatter.setLocalizedDateFormatFromTemplate("EEEE, d MMMM")
+        formatter.setLocalizedDateFormatFromTemplate("MMM d")
+        let shortDay = formatter.string(from: viewModel.selectedDate)
+
+        if calendar.isDateInToday(viewModel.selectedDate) {
+            return String(
+                format: WeekFitLocalizedString("planner.sheet.todayDateFormat"),
+                shortDay
+            )
+        }
+
+        if calendar.isDateInTomorrow(viewModel.selectedDate) {
+            return String(
+                format: WeekFitLocalizedString("planner.sheet.tomorrowDateFormat"),
+                shortDay
+            )
+        }
+
+        formatter.setLocalizedDateFormatFromTemplate("EEE, MMM d")
         return formatter.string(from: viewModel.selectedDate)
     }
 
@@ -1559,7 +1975,12 @@ private extension PlanAddActivitySheet {
     }
 
     func slotTitle(_ date: Date) -> String {
-        date.formatted(.dateTime.hour().minute())
+        // Match mockup clock chips: "12:15" without locale AM/PM suffix.
+        date.formatted(
+            Date.FormatStyle(date: .omitted, time: .shortened)
+                .hour(.twoDigits(amPM: .omitted))
+                .minute(.twoDigits)
+        )
     }
 
     func optionScrollID(_ option: PlannerOption) -> String {
@@ -1568,19 +1989,108 @@ private extension PlanAddActivitySheet {
 
     func scrollToSelectedOption(_ proxy: ScrollViewProxy) {
         DispatchQueue.main.async {
-            if viewModel.selectedType == .meal,
-               let selectedMealID = viewModel.selectedMealID {
-                proxy.scrollTo(selectedMealID, anchor: .center)
-            } else {
-                proxy.scrollTo(optionScrollID(viewModel.selectedItem), anchor: .center)
+            if viewModel.selectedType == .meal {
+                if let selectedMealID = viewModel.selectedMealID {
+                    let isFirst = availableMeals.first?.id == selectedMealID
+                    proxy.scrollTo(selectedMealID, anchor: isFirst ? .leading : .center)
+                } else if let firstID = availableMeals.first?.id {
+                    proxy.scrollTo(firstID, anchor: .leading)
+                }
+            } else if viewModel.hasValidItemSelection {
+                let isFirst = currentOptions.first.map(selectedItemMatches) ?? false
+                proxy.scrollTo(
+                    optionScrollID(viewModel.selectedItem),
+                    anchor: isFirst ? .leading : .center
+                )
+            } else if let first = currentOptions.first {
+                proxy.scrollTo(optionScrollID(first), anchor: .leading)
             }
         }
     }
 }
 
-// MARK: - Meal Library
+// MARK: - Catalog Sheets
 
 private extension PlanAddActivitySheet {
+
+    var optionCatalogSheet: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(spacing: 10) {
+                    ForEach(currentOptions, id: \.imageName) { option in
+                        Button {
+                            lightHaptic.impactOccurred()
+                            viewModel.selectedItem = option
+                            viewModel.applyDefaultDurationForSelectedItem()
+                            showOptionCatalogSheet = false
+                        } label: {
+                            optionCatalogRow(option)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            }
+            .background(screenBackground.ignoresSafeArea())
+            .navigationTitle(libraryCatalogTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(WeekFitLocalizedString("common.action.cancel")) {
+                        showOptionCatalogSheet = false
+                    }
+                    .foregroundStyle(selectionAccent)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private var libraryCatalogTitle: String {
+        switch viewModel.selectedType {
+        case .meal: return WeekFitLocalizedString("planner.add.choose.meal")
+        case .workout: return WeekFitLocalizedString("planner.add.choose.workout")
+        case .recovery: return WeekFitLocalizedString("planner.add.choose.recovery")
+        case .habit: return WeekFitLocalizedString("planner.add.choose.habit")
+        }
+    }
+
+    func optionCatalogRow(_ option: PlannerOption) -> some View {
+        let active = selectedItemMatches(option)
+        return HStack(spacing: 12) {
+            activityCircularPhoto(option: option, size: 52)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(localizedTitle(for: option))
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(textPrimary)
+                    .lineLimit(2)
+
+                Text(localizedSubtitle(for: option))
+                    .font(.footnote)
+                    .foregroundStyle(textSecondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+
+            if active {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(selectionAccent)
+            }
+        }
+        .padding(12)
+        .background {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(active ? selectionAccent.opacity(0.10) : chipNeutralFill)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(active ? selectionAccent : Color.clear, lineWidth: 1.25)
+        }
+    }
 
     var mealLibrarySheet: some View {
         NavigationStack {
@@ -1626,7 +2136,7 @@ private extension PlanAddActivitySheet {
 
     func mealLibraryRow(_ meal: Meals) -> some View {
         HStack(spacing: 12) {
-            mealPreview(meal)
+            mealPreview(meal, size: 52)
                 .frame(width: 52, height: 52)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
@@ -1655,7 +2165,7 @@ private extension PlanAddActivitySheet {
             if viewModel.selectedMealID == meal.id {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(viewModel.selectedType.color.opacity(0.82))
+                    .foregroundStyle(selectionAccent)
             }
         }
         .padding(12)
@@ -1679,14 +2189,20 @@ private extension PlanAddActivitySheet {
     }
 
     func saveSelectedItem() {
-        guard canSaveSelectedItem else { return }
+        guard canSaveSelectedItem, !isSaving else { return }
 
+        isSaving = true
         viewModel.saveSelectedItem(
             activities: plannedActivities,
             modelContext: modelContext,
             activityRemindersEnabled: activityRemindersEnabled,
             completionCheckInsEnabled: completionCheckInsEnabled
         )
+
+        // Conflict / save-failure keeps the screen open — allow retry.
+        if viewModel.showAddActivity {
+            isSaving = false
+        }
     }
 
     func deleteActivity(_ activity: PlannedActivity) {
@@ -1696,10 +2212,7 @@ private extension PlanAddActivitySheet {
     var canSaveSelectedItem: Bool {
         guard viewModel.selectedSlot != nil else { return false }
         guard !hasSelectedTimeConflict else { return false }
-
-        return viewModel.selectedType != .meal ||
-            viewModel.selectedMealForPlanner != nil ||
-            viewModel.editingActivity != nil
+        return viewModel.hasValidItemSelection
     }
 
     func saveMealToLibrary(_ meal: Meals) {
@@ -1719,13 +2232,51 @@ private extension PlanAddActivitySheet {
 
 // MARK: - Add sheet surfaces (4 types)
 
+/// Calm night surfaces for Plan Add — charcoal canvas, muted accents, no OLED glare.
+private enum PlanAddNightChrome {
+    /// Soft charcoal canvas (~#1A1C20), lifted from pure black.
+    static let canvas = Color(red: 0.102, green: 0.110, blue: 0.125)
+    /// Quiet elevated wells for chips / idle cards.
+    static let elevatedSurface = Color.white.opacity(0.07)
+    static let cardFill = Color(red: 0.145, green: 0.152, blue: 0.168)
+    static let trackFill = Color.white.opacity(0.06)
+    /// Selected segment — soft slate, not near-white.
+    static let selectedPill = Color(red: 0.22, green: 0.23, blue: 0.255)
+
+    static func softAccent(for type: PlannerType) -> Color {
+        switch type {
+        case .meal:
+            return Color(red: 0.45, green: 0.72, blue: 0.60) // muted sage
+        case .workout:
+            return Color(red: 0.48, green: 0.62, blue: 0.88) // soft steel blue
+        case .recovery:
+            return Color(red: 0.62, green: 0.55, blue: 0.82) // quiet lilac
+        case .habit:
+            return Color(red: 0.82, green: 0.62, blue: 0.42) // warm sand
+        }
+    }
+
+    static func ctaFill(for type: PlannerType) -> Color {
+        switch type {
+        case .meal:
+            return Color(red: 0.22, green: 0.46, blue: 0.38)
+        case .workout:
+            return Color(red: 0.26, green: 0.38, blue: 0.62)
+        case .recovery:
+            return Color(red: 0.38, green: 0.32, blue: 0.58)
+        case .habit:
+            return Color(red: 0.55, green: 0.38, blue: 0.22)
+        }
+    }
+}
+
 /// Soft stone sheets + family-tinted ceramic cards — Quick Log depth language, per Plan type.
 /// Idle cards must never read as pure white on the sheet.
 private enum PlanAddSheetPalette {
 
     @MainActor
     static func sheetBase(for type: PlannerType, isLight: Bool) -> Color {
-        guard isLight else { return WeekFitTheme.backgroundColor }
+        guard isLight else { return PlanAddNightChrome.canvas }
         switch type {
         case .meal:
             return Color(red: 0.941, green: 0.922, blue: 0.890) // #F0EBE3 deeper food stone
@@ -1740,7 +2291,7 @@ private enum PlanAddSheetPalette {
 
     @MainActor
     static func sheetWash(for type: PlannerType, isLight: Bool) -> [Color] {
-        let accent = type.color
+        let accent = isLight ? type.color : PlanAddNightChrome.softAccent(for: type)
         if isLight {
             return [
                 accent.opacity(0.070),
@@ -1749,8 +2300,8 @@ private enum PlanAddSheetPalette {
             ]
         }
         return [
-            accent.opacity(0.08),
-            accent.opacity(0.03),
+            accent.opacity(0.05),
+            accent.opacity(0.018),
             Color.clear
         ]
     }
@@ -1819,5 +2370,46 @@ private enum PlanAddSheetPalette {
         }
         // Quiet contact only — no floating white-sticker look.
         return Color.black.opacity(isLight ? 0.035 : 0.012)
+    }
+}
+
+/// Equal-width segments sized to the longest label so titles never truncate in a single row.
+private struct PlanAddEqualWidthSegmentLayout: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard !subviews.isEmpty else {
+            return .zero
+        }
+
+        let ideals = subviews.map { $0.sizeThatFits(.unspecified) }
+        // Slack covers medium → semibold width shift when selection changes.
+        let segmentWidth = ceil((ideals.map(\.width).max() ?? 0) + 2)
+        let height = max(ideals.map(\.height).max() ?? 0, 38)
+        let count = CGFloat(subviews.count)
+        let idealWidth = segmentWidth * count
+
+        if let proposedWidth = proposal.width, proposedWidth.isFinite, proposedWidth > 0 {
+            // Report ideal when proposed space is too narrow so ViewThatFits can fall back.
+            if proposedWidth + 0.5 < idealWidth {
+                return CGSize(width: idealWidth, height: height)
+            }
+            return CGSize(width: proposedWidth, height: height)
+        }
+
+        return CGSize(width: idealWidth, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard !subviews.isEmpty else { return }
+
+        let count = CGFloat(subviews.count)
+        let segmentWidth = bounds.width / count
+
+        for index in subviews.indices {
+            let x = bounds.minX + CGFloat(index) * segmentWidth
+            subviews[index].place(
+                at: CGPoint(x: x, y: bounds.minY),
+                proposal: ProposedViewSize(width: segmentWidth, height: bounds.height)
+            )
+        }
     }
 }

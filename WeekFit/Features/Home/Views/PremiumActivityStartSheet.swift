@@ -33,11 +33,11 @@ struct PremiumActivityStartSheet: View {
         let now = Date()
         let calendar = Calendar.current
 
-        // Match Today: only user-started sessions stay live past a plan window.
+        // Match Today: Quick Start or plan workout/recovery currently in its window.
         return allPlannedActivities
             .filter { activity in
                 calendar.isDate(activity.date, inSameDayAs: now)
-                    && activity.isUserStartedLiveSession(now: now)
+                    && activity.isTodayLiveSessionDisplay(now: now)
             }
             .sorted { $0.date < $1.date }
             .first
@@ -112,6 +112,7 @@ struct PremiumActivityStartSheet: View {
                 activityOptionsList(liveActivity: liveActivity)
             }
         }
+        .accessibilityIdentifier("sheet.activityStart")
         .onAppear {
             usageEntries = QuickActivityUsageStore.load()
             revealContent = false
@@ -252,7 +253,7 @@ struct PremiumActivityStartSheet: View {
                     Image(systemName: "chevron.down")
                         .font(.system(size: 9, weight: .bold))
                 }
-                .foregroundStyle(activityAccent)
+                .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.72))
             }
             .buttonStyle(.plain)
         }
@@ -265,38 +266,60 @@ struct PremiumActivityStartSheet: View {
     ) -> some View {
         let duration = defaultDuration(for: option, type: selectedPlannerType)
         let intensityKey = ActivityOptionPresentation.intensityLabelKey(for: option)
-        let cardWidth: CGFloat = 168
-        let cardHeight: CGFloat = 228
-        let cardRadius: CGFloat = 24
-        let mediaSize: CGFloat = 112
-        let accent = activityAccent
+        let cardWidth = QuickActionSheetDesign.RecommendedCard.width
+        let cardRadius = QuickActionSheetDesign.RecommendedCard.cornerRadius
+        let mediaSize = QuickActionSheetDesign.RecommendedCard.mediaHeight
+        let sectionAccent = activityAccent
+        let wash = QuickActivityAccent.frequentWash(
+            for: option.imageName,
+            plannerType: selectedPlannerType,
+            isLight: palette.isLight
+        )
 
         return Button {
             start(option: option, duration: duration)
         } label: {
             VStack(alignment: .leading, spacing: 0) {
-                activityThumb(option.imageName, size: mediaSize, cornerRadius: 18)
+                HStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    QuickSheetPhotoSafeBadge(
+                        title: WeekFitLocalizedString(badge.localizationKey),
+                        systemImage: badge.symbolName,
+                        accent: sectionAccent
+                    )
+                }
+                .frame(
+                    minHeight: QuickActionSheetDesign.RecommendedCard.badgeRowMinHeight,
+                    alignment: .topTrailing
+                )
+
+                activityThumb(option.imageName, size: mediaSize, cornerRadius: 18, wash: wash)
                     .frame(maxWidth: .infinity, alignment: .center)
+                    .frame(height: QuickActionSheetDesign.RecommendedCard.mediaHeight)
+                    .padding(.top, QuickActionSheetDesign.RecommendedCard.badgeToMedia)
 
                 Text(localizedOptionTitle(option.title))
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
-                    .padding(.top, 10)
+                    .padding(.top, QuickActionSheetDesign.RecommendedCard.mediaToTitle)
 
                 Text(WeekFitLocalizedString(intensityKey))
                     .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.58))
+                    .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.68))
                     .lineLimit(1)
                     .padding(.top, 2)
 
                 Spacer(minLength: QuickActionSheetDesign.Row.contentSpacing)
 
                 QuickRecommendedMetaActionRow {
-                    HStack(alignment: .center, spacing: QuickActionSheetDesign.RecommendedCard.metaSpacing) {
+                    HStack(
+                        alignment: .center,
+                        spacing: QuickActionSheetDesign.RecommendedCard.metaSpacing
+                    ) {
                         Image(systemName: "clock.fill")
                             .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(accent)
+                            .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.55))
                         Text(formattedDurationLabel(duration))
                             .font(.system(size: 12, weight: .medium, design: .rounded))
                             .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.78))
@@ -306,78 +329,25 @@ struct PremiumActivityStartSheet: View {
                 } action: {
                     QuickRecommendedCardCircleAction(
                         systemName: "play.fill",
-                        fill: accent,
+                        fill: sectionAccent,
                         isLight: palette.isLight,
                         opticalGlyphOffset: CGSize(width: 0.5, height: 0)
                     )
                 }
             }
-            .padding(12)
-            .frame(width: cardWidth, height: cardHeight, alignment: .topLeading)
+            .padding(QuickActionSheetDesign.RecommendedCard.padding)
+            .frame(
+                width: cardWidth,
+                height: QuickActionSheetDesign.RecommendedCard.minHeight,
+                alignment: .topLeading
+            )
             .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
             .background {
-                RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                QuickActivityAccent.cardTop(accent: accent, isLight: palette.isLight),
-                                QuickActivityAccent.cardBottom(accent: accent, isLight: palette.isLight)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay {
-                        RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
-                            .fill(
-                                palette.isLight
-                                    ? Color.white.opacity(0.22)
-                                    : WeekFitTheme.cardBackground.opacity(0.55)
-                            )
-                    }
-                    .shadow(
-                        color: QuickSheetChrome.cardShadowColor(isLight: palette.isLight),
-                        radius: QuickSheetChrome.cardShadowRadius,
-                        y: QuickSheetChrome.cardShadowY
-                    )
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
-                    .strokeBorder(
-                        palette.isLight
-                            ? accent.opacity(0.14)
-                            : WeekFitTheme.whiteOpacity(0.08),
-                        lineWidth: 0.75
-                    )
-            }
-            .overlay(alignment: .topTrailing) {
-                HStack(spacing: 4) {
-                    Image(systemName: badge.symbolName)
-                        .font(.system(size: 9, weight: .bold))
-                    Text(WeekFitLocalizedString(badge.localizationKey))
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        .lineLimit(1)
-                }
-                .foregroundStyle(palette.isLight ? accent : WeekFitTheme.secondaryText.opacity(0.88))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
-                .background {
-                    Capsule()
-                        .fill(
-                            palette.isLight
-                                ? Color.white.opacity(0.92)
-                                : WeekFitTheme.whiteOpacity(0.08)
-                        )
-                }
-                .overlay {
-                    Capsule().strokeBorder(
-                        palette.isLight
-                            ? accent.opacity(0.28)
-                            : WeekFitTheme.whiteOpacity(0.10),
-                        lineWidth: 0.8
-                    )
-                }
-                .padding(10)
+                QuickSheetChrome.elevatedTileBackground(
+                    cornerRadius: cardRadius,
+                    accent: wash,
+                    isLight: palette.isLight
+                )
             }
             .opacity(isBlocked ? 0.55 : 1)
         }
@@ -390,13 +360,14 @@ struct PremiumActivityStartSheet: View {
     private func activityThumb(
         _ imageName: String,
         size: CGFloat,
-        cornerRadius: CGFloat
+        cornerRadius: CGFloat,
+        wash: Color
     ) -> some View {
         if !imageName.isEmpty, UIImage(named: imageName) != nil {
             PremiumAssetImage(
                 imageName: imageName,
                 style: .activityThumbnail,
-                accentColor: activityAccent,
+                accentColor: wash,
                 fallbackSystemName: selectedPlannerType.icon,
                 size: size,
                 cornerRadius: cornerRadius
@@ -404,17 +375,13 @@ struct PremiumActivityStartSheet: View {
         } else {
             Image(systemName: selectedPlannerType.icon)
                 .font(.system(size: size * 0.28, weight: .semibold))
-                .foregroundStyle(
-                    palette.isLight
-                        ? activityAccent.opacity(0.7)
-                        : WeekFitTheme.secondaryText.opacity(0.55)
-                )
+                .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.55))
                 .frame(width: size, height: size)
                 .background(
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .fill(
                             palette.isLight
-                                ? activityAccent.opacity(0.10)
+                                ? wash.opacity(0.14)
                                 : WeekFitTheme.whiteOpacity(0.06)
                         )
                 )

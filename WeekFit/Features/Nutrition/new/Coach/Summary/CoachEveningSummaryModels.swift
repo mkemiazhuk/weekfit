@@ -67,21 +67,26 @@ enum CoachEveningSummaryPolicy {
         return true
     }
 
-    /// Prefer `now` (concrete evening step); fall back to `today` takeaway.
+    /// Prefer day conclusion + tomorrow guidance; fall back to the short `now` note.
     static func displayCommentary(from summary: CoachEveningSummary) -> String {
-        let now = summary.now.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !now.isEmpty { return clampCommentary(now) }
         let today = summary.today.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        return clampCommentary(today)
+        let tomorrow = summary.tomorrow.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let now = summary.now.text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        var parts: [String] = []
+        if !today.isEmpty { parts.append(today) }
+        if !tomorrow.isEmpty { parts.append(tomorrow) }
+        if parts.isEmpty, !now.isEmpty { parts.append(now) }
+        return clampCommentary(parts.joined(separator: " "), maxSentences: 3)
     }
 
-    private static func clampCommentary(_ text: String) -> String {
+    private static func clampCommentary(_ text: String, maxSentences: Int = 2) -> String {
         let sentences = text
             .components(separatedBy: CharacterSet(charactersIn: ".!?。！？"))
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         if sentences.isEmpty { return text }
-        let kept = Array(sentences.prefix(2))
+        let kept = Array(sentences.prefix(max(1, maxSentences)))
         var joined = kept.joined(separator: ". ")
         if !joined.hasSuffix(".") && !joined.hasSuffix("!") && !joined.hasSuffix("?") {
             joined += "."

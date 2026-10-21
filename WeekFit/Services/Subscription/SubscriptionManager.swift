@@ -41,6 +41,8 @@ final class SubscriptionManager: ObservableObject {
     private let restoreTimeout: Duration
     /// Cap for `Product.purchase()` — stale Products after sleep can hang until process kill.
     private let purchaseTimeout: Duration
+    /// Bumped on every Continue tap so a hung Sandbox `purchase()` can be abandoned by retry.
+    private var purchaseGeneration: UInt64 = 0
 
     var hasResolved: Bool { accessState != .loading }
 
@@ -113,7 +115,9 @@ final class SubscriptionManager: ObservableObject {
         fallbackStore: WeekFitEntitlementFallbackStore = WeekFitEntitlementFallbackStore(),
         failOpenTimeout: Duration = .seconds(12),
         restoreTimeout: Duration = .seconds(45),
-        purchaseTimeout: Duration = .seconds(60)
+        // Sandbox often shows a system error then never returns from purchase();
+        // fail visibly so Connecting… cannot stick for minutes.
+        purchaseTimeout: Duration = .seconds(20)
     ) {
         self.store = store ?? LiveWeekFitStoreKitService()
         self.bypassProvider = bypassProvider
@@ -201,8 +205,27 @@ final class SubscriptionManager: ObservableObject {
     }
 
     func purchaseSelected() async {
+        // New Continue always wins: Sandbox may show a system error while
+        // `Product.purchase()` never returns — a second tap must not be a silent no-op.
+        let attempt = beginPurchaseAttempt()
+        defer { endPurchaseAttemptIfCurrent(attempt) }
+
+        // Empty catalog: reload once so Continue isn’t a silent no-op.
+        if selectedProduct == nil {
+            await refresh(source: "paywall.cta.reloadProducts")
+            guard isCurrentPurchaseAttempt(attempt) else { return }
+            guard selectedProduct != nil else {
+                lastOutcome = .productsUnavailable
+                SubscriptionAnalytics.purchaseFailed(
+                    productID: selectedProductID,
+                    requestedTab: paywallRequestedTabID,
+                    failureReason: .productsUnavailable
+                )
+                return
+            }
+        }
+
         guard let productID = selectedProduct?.id else {
-            lastOutcomeSource = .purchase
             lastOutcome = .productsUnavailable
             SubscriptionAnalytics.purchaseFailed(
                 productID: selectedProductID,
@@ -211,12 +234,7 @@ final class SubscriptionManager: ObservableObject {
             )
             return
         }
-        guard !isPurchaseInFlight else { return }
 
-        isPurchaseInFlight = true
-        defer { isPurchaseInFlight = false }
-        lastOutcome = nil
-        lastOutcomeSource = .purchase
         let requestedTab = paywallRequestedTabID
         SubscriptionAnalytics.purchaseStarted(
             productID: productID,
@@ -226,8 +244,11 @@ final class SubscriptionManager: ObservableObject {
         do {
             outcome = try await performPurchaseWithTimeout(productID: productID)
         } catch is WeekFitStoreKitPurchaseTimeoutError {
+            guard isCurrentPurchaseAttempt(attempt) else { return }
+            // Drop stale Product cache so the next Continue fetches a fresh instance.
+            store.invalidateCachedProducts()
             await refresh(source: "purchase.timeout")
-            lastOutcome = .failed
+            lastOutcome = .timedOut
             SubscriptionAnalytics.purchaseFailed(
                 productID: productID,
                 requestedTab: requestedTab,
@@ -235,6 +256,7 @@ final class SubscriptionManager: ObservableObject {
             )
             return
         } catch {
+            guard isCurrentPurchaseAttempt(attempt) else { return }
             await refresh(source: "purchase.failed")
             lastOutcome = .failed
             SubscriptionAnalytics.purchaseFailed(
@@ -244,6 +266,7 @@ final class SubscriptionManager: ObservableObject {
             )
             return
         }
+        guard isCurrentPurchaseAttempt(attempt) else { return }
         switch outcome {
         case .success:
             // StoreKit verified the transaction. Deliver entitlements before finish().
@@ -251,6 +274,7 @@ final class SubscriptionManager: ObservableObject {
             if !hasFullAccess {
                 await retryRefreshUntilFullAccess(maxAttempts: 4, source: "purchase.successRetry")
             }
+            guard isCurrentPurchaseAttempt(attempt) else { return }
             await store.finishVerifiedPurchaseIfNeeded()
             // Confirm after finish — auto-renewables remain in currentEntitlements.
             if !hasFullAccess {
@@ -259,6 +283,7 @@ final class SubscriptionManager: ObservableObject {
                     await retryRefreshUntilFullAccess(maxAttempts: 2, source: "purchase.afterFinishRetry")
                 }
             }
+            guard isCurrentPurchaseAttempt(attempt) else { return }
             if hasFullAccess {
                 lastOutcome = .success
                 WeekFitDeferredPurchaseStore.clear()
@@ -312,16 +337,33 @@ final class SubscriptionManager: ObservableObject {
                 requestedTab: requestedTab,
                 failureReason: .productsUnavailable
             )
-        case .failed, .nothingToRestore, .entitlementNotPropagated:
-            // entitlementNotPropagated / nothingToRestore are not store.purchase() results.
+        case .timedOut, .failed, .nothingToRestore, .entitlementNotPropagated:
+            // timedOut / entitlementNotPropagated / nothingToRestore are not store.purchase() results.
             await refresh(source: "purchase.failed")
-            lastOutcome = .failed
+            lastOutcome = outcome == .timedOut ? .timedOut : .failed
             SubscriptionAnalytics.purchaseFailed(
                 productID: productID,
                 requestedTab: requestedTab,
-                failureReason: .storekitError
+                failureReason: outcome == .timedOut ? .timeout : .storekitError
             )
         }
+    }
+
+    private func beginPurchaseAttempt() -> UInt64 {
+        purchaseGeneration &+= 1
+        isPurchaseInFlight = true
+        lastOutcome = nil
+        lastOutcomeSource = .purchase
+        return purchaseGeneration
+    }
+
+    private func isCurrentPurchaseAttempt(_ attempt: UInt64) -> Bool {
+        attempt == purchaseGeneration
+    }
+
+    private func endPurchaseAttemptIfCurrent(_ attempt: UInt64) {
+        guard isCurrentPurchaseAttempt(attempt) else { return }
+        isPurchaseInFlight = false
     }
 
     /// User-initiated Restore Purchases only (paywall / Settings).

@@ -349,6 +349,10 @@ struct WeekFitRootView: View {
                 guard shouldOpen else { return }
                 selectTab(.coach)
             }
+            .onChange(of: PendingPlanAddOpen.shared.shouldOpen) { _, shouldOpen in
+                guard shouldOpen else { return }
+                selectTab(.calendar)
+            }
     }
 
     /// Dismissible paywall for Coach / Meals / Plan. Today stays free.

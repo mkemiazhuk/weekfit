@@ -4,8 +4,12 @@ import SwiftUI
 
 enum QuickDrinkAccent {
     static let hydration = Color(red: 0.29, green: 0.56, blue: 0.92)
+    /// Soft icy blue — Water frequent-card wash only.
+    static let waterWash = Color(red: 0.62, green: 0.78, blue: 0.90)
     static let coffee = Color(red: 0.86, green: 0.55, blue: 0.30)
     static let tea = Color(red: 0.42, green: 0.62, blue: 0.48)
+    /// Light tea / sage — Tea frequent-card wash only.
+    static let teaWash = Color(red: 0.72, green: 0.80, blue: 0.72)
     static let cocoa = Color(red: 0.62, green: 0.38, blue: 0.24)
     static let juice = Color(red: 0.92, green: 0.58, blue: 0.28)
     static let milk = Color(red: 0.64, green: 0.66, blue: 0.76)
@@ -39,6 +43,26 @@ enum QuickDrinkAccent {
         return hydration
     }
 
+    /// Delicate frequent-card wash — matched intensity, distinct hue per drink family.
+    static func frequentWash(for item: QuickItem, isLight _: Bool) -> Color {
+        let id = item.id.lowercased()
+        if id.contains("water") { return waterWash }
+        if id.contains("tea") { return teaWash }
+        if id.contains("espresso") || id.contains("coffee") || id.contains("latte") {
+            return Color(red: 0.86, green: 0.72, blue: 0.58)
+        }
+        if id.contains("cocoa") || id.contains("chocolate") {
+            return Color(red: 0.78, green: 0.66, blue: 0.56)
+        }
+        if id.contains("juice") || id.contains("fanta") {
+            return Color(red: 0.90, green: 0.78, blue: 0.58)
+        }
+        if id.contains("milk") || id.contains("kefir") || id.contains("shake") {
+            return Color(red: 0.78, green: 0.80, blue: 0.86)
+        }
+        return waterWash
+    }
+
     /// CTA circles — always hydration blue (not per-drink orange/gold).
     static func action(for _: QuickItem, isLight _: Bool) -> Color {
         listAction
@@ -63,12 +87,38 @@ enum QuickDrinkAccent {
 
     static func recommendedTop(for item: QuickItem, isLight: Bool) -> Color {
         guard isLight else { return WeekFitTheme.whiteOpacity(0.06) }
-        return color(for: item, isLight: true).opacity(0.22)
+        return frequentWash(for: item, isLight: true).opacity(0.22)
     }
 
     static func recommendedBottom(for item: QuickItem, isLight: Bool) -> Color {
         guard isLight else { return WeekFitTheme.whiteOpacity(0.02) }
-        return color(for: item, isLight: true).opacity(0.08)
+        return frequentWash(for: item, isLight: true).opacity(0.08)
+    }
+}
+
+/// Transparent PNG padding fractions for drink cutouts (measured on asset alpha).
+/// Used so badge/title spacing tracks the visible object, not the Image frame.
+enum QuickDrinkOpticalInset {
+    struct Fractions {
+        let top: CGFloat
+        let bottom: CGFloat
+    }
+
+    static func fractions(for imageName: String) -> Fractions {
+        switch imageName {
+        case "ingredient-water":
+            return Fractions(top: 0.152, bottom: 0.139)
+        case "ingredient-tea":
+            return Fractions(top: 0.098, bottom: 0.228)
+        case "ingredient-coffee":
+            return Fractions(top: 0.102, bottom: 0.128)
+        case "ingredient-iced-coffee":
+            return Fractions(top: 0.110, bottom: 0.070)
+        case "ingredient-cocoa":
+            return Fractions(top: 0.131, bottom: 0.133)
+        default:
+            return Fractions(top: 0.12, bottom: 0.14)
+        }
     }
 }
 
@@ -79,10 +129,11 @@ enum QuickDrinkLogDesign {
         static let horizontalPadding: CGFloat = 18
         static let sectionSpacing: CGFloat = 22
         static let sectionTitleBottom: CGFloat = 12
-        static let recommendedCardWidth: CGFloat = 172
-        static let recommendedCardHeight: CGFloat = 228
-        static let recommendedCardRadius: CGFloat = 26
+        static let recommendedCardWidth: CGFloat = QuickActionSheetDesign.RecommendedCard.width
+        static let recommendedCardMinHeight: CGFloat = QuickActionSheetDesign.RecommendedCard.minHeight
+        static let recommendedCardRadius: CGFloat = QuickActionSheetDesign.RecommendedCard.cornerRadius
         static let recommendedCardPadding: CGFloat = QuickActionSheetDesign.RecommendedCard.padding
+        static let recommendedMediaHeight: CGFloat = QuickActionSheetDesign.RecommendedCard.mediaHeight
         static let recentItemWidth: CGFloat = 74
         static let listCardRadius: CGFloat = 22
         static let listRowMinHeight: CGFloat = 92
@@ -185,6 +236,7 @@ struct QuickDrinkLogSheet: View {
                 .padding(.bottom, 28)
             }
         }
+        .accessibilityIdentifier("sheet.quickDrinkLog")
         .onAppear(perform: runEntranceAnimation)
     }
 
@@ -296,7 +348,7 @@ struct QuickDrinkLogSheet: View {
                     let selection = session.selection(for: frequent.id)
                     QuickDrinkRecommendedCard(
                         row: frequent.row,
-                        badge: WeekFitLocalizedString(frequent.badge.localizationKey),
+                        badge: frequent.badge.displayTitle,
                         selection: selection,
                         displayQuantity: selection.effectivePortions(for: profile),
                         onPlusTap: { onPlusTap(frequent.item) },
@@ -452,7 +504,7 @@ private enum QuickDrinkPhotoRole {
 
     var size: CGFloat {
         switch self {
-        case .recommended: return 108
+        case .recommended: return QuickDrinkLogDesign.Layout.recommendedMediaHeight
         case .recent: return 56
         case .library: return 68
         }
@@ -460,7 +512,9 @@ private enum QuickDrinkPhotoRole {
 
     var contentScale: CGFloat {
         switch self {
-        case .recommended: return 0.96
+        /// Must stay ≤ 1 so wide cutouts (cocoa saucer, handles) never clip.
+        /// Slight inset leaves room for optical Y nudge inside the media slot.
+        case .recommended: return 0.92
         case .recent: return 0.78
         case .library: return 0.90
         }
@@ -483,6 +537,8 @@ private struct QuickDrinkPhoto: View {
     @Environment(\.weekFitPalette) private var palette
 
     private var size: CGFloat { role.size }
+    /// Hard cap — never paint larger than the slot (protects wide saucers/handles).
+    private var drawScale: CGFloat { min(role.contentScale, 1) }
 
     var body: some View {
         ZStack {
@@ -500,18 +556,18 @@ private struct QuickDrinkPhoto: View {
 
             drinkAsset
                 .frame(
-                    width: size * role.contentScale,
-                    height: size * role.contentScale
+                    width: size * drawScale,
+                    height: size * drawScale
                 )
         }
         .frame(width: size, height: size)
         .modifier(QuickDrinkPhotoClip(role: role))
         .shadow(
-            color: role == .recent
+            color: role == .recommended || role == .recent
                 ? .clear
                 : (palette.isLight ? WeekFitLightTokens.shadowAmbient.opacity(0.14) : .clear),
-            radius: role == .recommended ? 8 : 5,
-            y: role == .recommended ? 4 : 2
+            radius: 5,
+            y: 2
         )
     }
 
@@ -557,15 +613,19 @@ private struct QuickDrinkRecommendedCard: View {
 
     @Environment(\.weekFitPalette) private var palette
 
-    private var tint: Color { QuickDrinkAccent.color(for: row.item, isLight: palette.isLight) }
+    private var wash: Color { QuickDrinkAccent.frequentWash(for: row.item, isLight: palette.isLight) }
     private var action: Color { QuickDrinkAccent.listAction }
+    private var optical: QuickDrinkOpticalInset.Fractions {
+        QuickDrinkOpticalInset.fractions(for: row.item.imageName)
+    }
+    private var mediaSize: CGFloat { QuickDrinkPhotoRole.recommended.size }
 
     private var recommendedMetaRow: some View {
         QuickRecommendedMetaActionRow {
             HStack(alignment: .center, spacing: QuickActionSheetDesign.RecommendedCard.metaSpacing) {
                 Image(systemName: QuickDrinkAccent.metaSymbol(for: row.item))
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(tint)
+                    .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.55))
 
                 Text(QuickLogLocalizedNutrition.calories(row.item.calories))
                     .font(QuickDrinkLogDesign.Typography.recommendedCalories)
@@ -588,23 +648,25 @@ private struct QuickDrinkRecommendedCard: View {
                 onIncrement: onIncrement,
                 onDecrement: onDecrement
             )
+            .frame(
+                minWidth: QuickActionSheetDesign.RecommendedCard.actionHitSize,
+                minHeight: QuickActionSheetDesign.RecommendedCard.actionHitSize
+            )
         }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            QuickDrinkPhoto(
-                row: row,
-                role: .recommended,
-                accent: tint
-            )
-            .frame(maxWidth: .infinity, alignment: .center)
+            badgeRow
+
+            drinkMedia
+                .padding(.top, QuickActionSheetDesign.RecommendedCard.badgeToMedia)
 
             Text(row.item.localizedTitle)
                 .font(QuickDrinkLogDesign.Typography.recommendedTitle)
                 .foregroundStyle(WeekFitTheme.primaryText)
                 .lineLimit(1)
-                .padding(.top, 12)
+                .padding(.top, QuickActionSheetDesign.RecommendedCard.mediaToTitle)
 
             Text(row.item.localizedServingSizeDescription)
                 .font(QuickDrinkLogDesign.Typography.recommendedSubtitle)
@@ -619,7 +681,7 @@ private struct QuickDrinkRecommendedCard: View {
         .padding(QuickDrinkLogDesign.Layout.recommendedCardPadding)
         .frame(
             width: QuickDrinkLogDesign.Layout.recommendedCardWidth,
-            height: QuickDrinkLogDesign.Layout.recommendedCardHeight,
+            height: QuickDrinkLogDesign.Layout.recommendedCardMinHeight,
             alignment: .topLeading
         )
         .clipShape(
@@ -631,54 +693,49 @@ private struct QuickDrinkRecommendedCard: View {
         .background {
             QuickSheetChrome.elevatedTileBackground(
                 cornerRadius: QuickDrinkLogDesign.Layout.recommendedCardRadius,
-                accent: tint,
+                accent: wash,
                 isLight: palette.isLight
             )
         }
-        .overlay {
-            RoundedRectangle(
-                cornerRadius: QuickDrinkLogDesign.Layout.recommendedCardRadius,
-                style: .continuous
-            )
-            .strokeBorder(
-                QuickSheetChrome.frequentCardStroke(isLight: palette.isLight),
-                lineWidth: 0.85
-            )
-        }
-        .overlay(alignment: .topTrailing) {
+    }
+
+    @ViewBuilder
+    private var badgeRow: some View {
+        HStack(spacing: 0) {
+            Spacer(minLength: 0)
             if let badge {
-                Text(badge)
-                    .font(QuickDrinkLogDesign.Typography.badge)
-                    .foregroundStyle(palette.isLight ? tint : WeekFitTheme.secondaryText.opacity(0.88))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background {
-                        Capsule()
-                            .fill(
-                                palette.isLight
-                                    ? Color.white
-                                    : WeekFitTheme.whiteOpacity(0.08)
-                            )
-                            .shadow(
-                                color: palette.isLight ? Color.black.opacity(0.06) : .clear,
-                                radius: 4,
-                                y: 1
-                            )
-                    }
-                    .overlay {
-                        Capsule()
-                            .strokeBorder(
-                                palette.isLight
-                                    ? tint.opacity(0.32)
-                                    : WeekFitTheme.whiteOpacity(0.10),
-                                lineWidth: 0.8
-                            )
-                    }
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .padding(10)
+                QuickSheetPhotoSafeBadge(title: badge, accent: wash)
             }
         }
+        .frame(
+            minHeight: QuickActionSheetDesign.RecommendedCard.badgeRowMinHeight,
+            alignment: .topTrailing
+        )
+    }
+
+    /// Fixed media slot. Optical Y nudge is capped so the full cutout stays inside —
+    /// never scale/clip past the slot (wide saucers / handles must remain intact).
+    private var drinkMedia: some View {
+        let scale = min(QuickDrinkPhotoRole.recommended.contentScale, 1)
+        let contentSide = mediaSize * scale
+        let slack = max(0, mediaSize - contentSide)
+        let referenceBottom: CGFloat = 0.14
+        let bottomNudge = contentSide * (optical.bottom - referenceBottom)
+        // Mild pull toward the badge using transparent top pad (badgeToMedia keeps air).
+        let topPull = contentSide * optical.top * 0.55
+        let maxShift = slack / 2
+        let offsetY = min(max(bottomNudge - topPull, -maxShift), maxShift)
+
+        return ZStack {
+            QuickDrinkPhoto(
+                row: row,
+                role: .recommended,
+                accent: wash
+            )
+            .offset(y: offsetY)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: QuickDrinkLogDesign.Layout.recommendedMediaHeight)
     }
 }
 

@@ -17,7 +17,7 @@ struct PremiumActivityStartCard: View {
     @Environment(\.weekFitPalette) private var palette
     @State private var pressed = false
 
-    private var actionButtonSize: CGFloat { 40 }
+    private var actionButtonSize: CGFloat { 44 }
     private var listImageSize: CGFloat { 76 }
 
     private var titleColor: Color {
@@ -171,12 +171,18 @@ struct PremiumActivityStartCard: View {
 }
 
 enum QuickActivityAccent {
-    /// Workout — green (matches mock / activity token).
+    /// Workout — green (matches mock / activity token). Segment + primary start only.
     static let workout = Color(red: 0.22, green: 0.72, blue: 0.45)
-    /// Recovery — soft purple (distinct from workout).
+    /// Recovery — soft purple (distinct from workout). Segment + primary start only.
     static let recovery = Color(red: 0.62, green: 0.54, blue: 0.86)
 
     static let green = workout
+
+    /// Per-card washes — matched intensity, distinct hue (frequent tiles only).
+    static let upperBodyWash = Color(red: 0.86, green: 0.78, blue: 0.64) // warm sand
+    static let runningWash = Color(red: 0.62, green: 0.74, blue: 0.86) // muted blue
+    static let breathingWash = Color(red: 0.70, green: 0.76, blue: 0.82) // gray-blue
+    static let walkWash = Color(red: 0.72, green: 0.80, blue: 0.72) // soft sage
 
     static func color(for type: PlannerType, isLight: Bool) -> Color {
         switch type {
@@ -189,24 +195,50 @@ enum QuickActivityAccent {
         }
     }
 
+    /// Soft frequent-card wash keyed by catalog image — not the section green/purple.
+    static func frequentWash(for imageName: String, plannerType: PlannerType, isLight: Bool) -> Color {
+        switch imageName {
+        case "workout-strength":
+            return upperBodyWash
+        case "workout-running":
+            return runningWash
+        case "recovery-breathing":
+            return breathingWash
+        case "recovery-walk":
+            return walkWash
+        case "workout-cycling", "workout-swimming", "workout-hiking":
+            return Color(red: 0.64, green: 0.78, blue: 0.84)
+        case "workout-core", "workout-lowerbody", "workout-fullbody":
+            return Color(red: 0.84, green: 0.76, blue: 0.66)
+        case "workout-tennis", "workout-squash", "workout-hiit":
+            return Color(red: 0.86, green: 0.72, blue: 0.66)
+        case "recovery-stretch", "recovery-yoga":
+            return Color(red: 0.76, green: 0.74, blue: 0.84)
+        case "recovery-sauna":
+            return Color(red: 0.86, green: 0.74, blue: 0.68)
+        default:
+            return color(for: plannerType, isLight: isLight)
+        }
+    }
+
     static func frequentFill(accent: Color, isLight: Bool) -> Color {
         guard isLight else { return WeekFitTheme.whiteOpacity(0.06) }
-        return accent.opacity(0.11)
+        return accent.opacity(0.08)
     }
 
     static func frequentStroke(accent: Color, isLight: Bool) -> Color {
         guard isLight else { return WeekFitTheme.whiteOpacity(0.08) }
-        return accent.opacity(0.16)
+        return Color.black.opacity(0.055)
     }
 
-    /// Matches Quick Food / Drink frequent tile gradient chrome.
+    /// Matches Quick Food / Drink frequent tile gradient chrome (6–9% light).
     static func cardTop(accent: Color, isLight: Bool) -> Color {
-        guard isLight else { return accent.opacity(0.18) }
-        return accent.opacity(0.16)
+        guard isLight else { return accent.opacity(0.14) }
+        return accent.opacity(0.08)
     }
 
     static func cardBottom(accent: Color, isLight: Bool) -> Color {
-        guard isLight else { return accent.opacity(0.06) }
-        return accent.opacity(0.05)
+        guard isLight else { return accent.opacity(0.05) }
+        return accent.opacity(0.03)
     }
 }

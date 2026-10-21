@@ -2,7 +2,10 @@ import Foundation
 import WeekFitPlanner
 
 /// Priority for the Coach surface (higher wins):
-/// 1. Live session · 2. Upcoming / overdue unresolved plan session · 3. Evening recap (≥20:00) · 4. Other.
+/// 1. Live session · 2. Upcoming unresolved plan session · 3. Evening recap (≥20:00) · 4. Other.
+///
+/// Overdue unfinished slots do **not** block evening recap: Coach already moves to day-closing
+/// copy when nothing is live/upcoming, and hiding the summary behind a stale Plan row felt broken.
 enum CoachEveningRecapEligibility {
 
     /// True when Coach should show the evening recap instead of the main recommendation card.
@@ -15,7 +18,7 @@ enum CoachEveningRecapEligibility {
         return !hasBlockingPlanSession(now: now, plannedActivities: plannedActivities, calendar: calendar)
     }
 
-    /// Live workout/recovery or unresolved plan session for today (not food/water).
+    /// Live workout/recovery or still-upcoming plan session for today (not food/water).
     static func hasBlockingPlanSession(
         now: Date,
         plannedActivities: [PlannedActivity],
@@ -33,15 +36,7 @@ enum CoachEveningRecapEligibility {
             }
         }
 
-        if hasUpcomingSession(now: now, today: today) {
-            return true
-        }
-
-        if hasOverdueUnresolvedSession(now: now, today: today, calendar: calendar) {
-            return true
-        }
-
-        return false
+        return hasUpcomingSession(now: now, today: today)
     }
 
     private static func hasUpcomingSession(now: Date, today: [PlannedActivity]) -> Bool {
@@ -49,24 +44,6 @@ enum CoachEveningRecapEligibility {
             let snap = CoachPlannedActivitySnapshot(from: activity)
             guard CoachCanonicalDayState.isSessionFocusCandidate(snap) else { return false }
             return activity.date >= now
-        }
-    }
-
-    /// Same idea as Plan/Today pending: overdue unfinished session slots still need confirm/skip.
-    private static func hasOverdueUnresolvedSession(
-        now: Date,
-        today: [PlannedActivity],
-        calendar: Calendar
-    ) -> Bool {
-        today.contains { activity in
-            let snap = CoachPlannedActivitySnapshot(from: activity)
-            guard CoachCanonicalDayState.isSessionFocusCandidate(snap) else { return false }
-            let end = calendar.date(
-                byAdding: .minute,
-                value: max(activity.effectiveDurationMinutes, 1),
-                to: activity.date
-            ) ?? activity.date
-            return now > end && snap.terminalState(now: now) == .planned
         }
     }
 

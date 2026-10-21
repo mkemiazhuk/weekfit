@@ -721,10 +721,7 @@ struct TodayView: View {
             .environmentObject(nutritionViewModel)
             .environmentObject(coachInputProvider)
             .environmentObject(activityCoordinator)
-            .presentationDetents([
-                .fraction(QuickActionSheetDesign.Layout.activitySheetDetentFraction),
-                .large
-            ])
+            .presentationDetents([.large])
             .presentationDragIndicator(.hidden)
             .presentationContentInteraction(.scrolls)
             .weekFitSheetChrome(
@@ -783,10 +780,8 @@ struct TodayView: View {
                     }
                 )
             }
-            .presentationDetents([
-                .fraction(QuickActionSheetDesign.Layout.sheetDetentFraction),
-                .large
-            ])
+            // Food opens full-height so AI + frequent cards aren't clipped by the mid detent.
+            .presentationDetents([.large])
             .presentationDragIndicator(.hidden)
             .presentationContentInteraction(.scrolls)
             .weekFitSheetChrome(
@@ -839,10 +834,7 @@ struct TodayView: View {
                     }
                 )
             }
-            .presentationDetents([
-                .fraction(QuickActionSheetDesign.Layout.sheetDetentFraction),
-                .large
-            ])
+            .presentationDetents([.large])
             .presentationDragIndicator(.hidden)
             .presentationContentInteraction(.scrolls)
             .weekFitSheetChrome(
@@ -2557,6 +2549,7 @@ struct TodayView: View {
     private func emptyPlanningRow(now: Date) -> some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            PendingPlanAddOpen.shared.requestOpen()
             onSelectTab(.calendar)
         } label: {
             todayPremiumCard(accent: nil, featured: false) {
@@ -2838,11 +2831,10 @@ struct TodayView: View {
         currentStartedSession(now: now)
     }
 
-    /// A session the user actually started (Quick Start / Today), not a plan slot
-    /// whose scheduled window merely overlaps `now`.
+    /// Live session for Today: Quick Start / Today-started, or a plan workout/recovery in window.
     private func currentStartedSession(now: Date = Date()) -> PlannedActivity? {
         selectedDayActivities
-            .filter { $0.isUserStartedLiveSession(now: now) }
+            .filter { $0.isTodayLiveSessionDisplay(now: now) }
             .sorted { $0.date < $1.date }
             .first
     }
@@ -3641,7 +3633,8 @@ struct TodayView: View {
             subLabel: activitySubtitle,
             color: activeSession == nil ? todayActivityColor : todayActivityColor,
             isEmphasized: priority == .activity,
-            liveIndicatorColor: activeSession == nil ? nil : todayActivityColor
+            liveIndicatorColor: activeSession == nil ? nil : todayActivityColor,
+            accessibilityIdentifier: "today.quickAction.activity"
         ) {
             if let activeSession {
                 openActiveSession(activeSession)
@@ -3689,6 +3682,7 @@ struct TodayView: View {
         isEmphasized: Bool = false,
         liveIndicatorColor: Color? = nil,
         toastMessage: String? = nil,
+        accessibilityIdentifier: String? = nil,
         action: @escaping () -> Void
     ) -> some View {
         let iconFillOpacity = isEmphasized ? (palette.isLight ? 0.18 : 0.17) : (palette.isLight ? 0.14 : 0.11)
@@ -3768,6 +3762,7 @@ struct TodayView: View {
         }
         .buttonStyle(QuickActionPressStyle())
         .accessibilityLabel("\(label), \(subLabel)")
+        .accessibilityIdentifier(accessibilityIdentifier ?? label)
     }
 
     private func coachIconOpticalYOffset(_ systemName: String) -> CGFloat {
