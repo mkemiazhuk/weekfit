@@ -44,8 +44,8 @@ enum CoachEveningSummaryPolicy {
     /// Coach surface for evening recap (Your day + AI + feeling).
     static let isCoachSurfaceEnabled = true
 
-    /// Auto path: after 20:00 local; regenerate when activity fingerprint changes.
-    /// Manual Get/Refresh is not the primary UX anymore.
+    /// Auto path: after 20:00 local; at most one AI summary per local day.
+    /// First successful answer is cached and reused — fingerprint / tab re-entry must not regenerate.
     static let enforcesOncePerDayAndEveningWindow = true
 
     static var allowsManualRefreshAnytime: Bool { !enforcesOncePerDayAndEveningWindow }

@@ -13,7 +13,7 @@ final class CoachEveningSummaryStore {
     struct LastingCache: Codable, Equatable {
         var summary: CoachEveningSummary
         var receivedAt: Date
-        /// Activity/day fingerprint that produced this summary — regenerate when it changes.
+        /// Fingerprint that produced this summary (`day:YYYY-MM-DD` in once-per-day mode).
         var inputFingerprint: String?
 
         init(summary: CoachEveningSummary, receivedAt: Date, inputFingerprint: String? = nil) {

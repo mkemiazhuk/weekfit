@@ -11,7 +11,7 @@ Client: `CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow = true`
 Server: `COACH_SUMMARY_ONCE_PER_DAY` can stay `0` while fingerprint-based client refresh is active; set `1` for hard server once-per-day.
 
 - Coach shows evening recap after 20:00 when there is no live/upcoming unresolved session.
-- AI auto-runs with cache keyed by day + activity fingerprint (new completed workout regenerates).
+- AI auto-runs at most once per local day; first successful answer is cached and reused (activity fingerprint must not regenerate).
 - Stale AI replies are discarded if Coach left the evening-recap state.
 - Numeric day metrics render without waiting for AI.
 - UI is one calm card (personal headline, hero activity, compact rows, note, feeling).
@@ -46,7 +46,7 @@ A `404 not_found` means the **running** container/commit is still photo-only (ol
    ```bash
    curl -sS https://weekfit-food-photo.onrender.com/healthz
    # expect coachSummaryConfigured:true, coachSummaryOncePerDay:false,
-   # coachSummaryPromptVersion:5  (today conclusion + tomorrow guidance; principal nutrition coach)
+   # coachSummaryPromptVersion:6  (human judgment + tomorrow recommendation; no metric dump)
    curl -sS -X POST https://weekfit-food-photo.onrender.com/v1/coach/day-summary \
      -H 'Content-Type: application/json' -d '{}'
    # expect 401 unauthorized (not 404 not_found)

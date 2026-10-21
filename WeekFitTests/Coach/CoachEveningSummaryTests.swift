@@ -93,15 +93,14 @@ final class CoachEveningSummaryTests: XCTestCase {
         XCTAssertTrue(try b.claim(owner: "local", day: "2026-10-13"))
     }
 
-    func testManualRefreshCallsAIInEveningWindow() async {
+    func testManualRefreshReusesOncePerDayAnswer() async {
         let store = temporaryStore()
-        XCTAssertTrue(try! store.claim(owner: "local", day: "2026-10-12"))
         var calls = 0
         let coordinator = CoachEveningSummaryCoordinator(store: store) { input, _ in
             calls += 1
             return self.answer(input, headline: "H\(calls)")
         }
-        let evening = date("2026-10-12T18:30:00Z")
+        let evening = date("2026-10-12T20:30:00Z")
         coordinator.refresh(input: input(), owner: "local", now: evening, calendar: calendar())
         for _ in 0..<40 { await Task.yield() }
         XCTAssertEqual(calls, 1)
@@ -110,18 +109,19 @@ final class CoachEveningSummaryTests: XCTestCase {
 
         coordinator.refresh(input: input(), owner: "local", now: evening, calendar: calendar())
         for _ in 0..<40 { await Task.yield() }
-        XCTAssertEqual(calls, 2)
-        XCTAssertEqual(coordinator.summary?.headline, "H2")
+        XCTAssertEqual(calls, 1, "once-per-day must not call AI again on Refresh")
+        XCTAssertEqual(coordinator.summary?.headline, "H1")
     }
 
-    func testEnsureUpToDateRegeneratesWhenFingerprintChanges() async {
+    func testEnsureUpToDateKeepsFirstAnswerWhenFingerprintChanges() async {
+        XCTAssertTrue(CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow)
         let store = temporaryStore()
         var calls = 0
         let coordinator = CoachEveningSummaryCoordinator(store: store) { input, _ in
             calls += 1
             return self.answer(input, headline: "H\(calls)")
         }
-        let evening = date("2026-10-12T18:30:00Z")
+        let evening = date("2026-10-12T20:30:00Z")
         coordinator.ensureUpToDate(
             input: input(),
             owner: "local",
@@ -132,8 +132,9 @@ final class CoachEveningSummaryTests: XCTestCase {
         )
         for _ in 0..<40 { await Task.yield() }
         XCTAssertEqual(calls, 1)
-        XCTAssertEqual(coordinator.cachedFingerprint, "fp1")
+        XCTAssertEqual(coordinator.summary?.headline, "H1")
 
+        // Same fingerprint — still one call.
         coordinator.ensureUpToDate(
             input: input(),
             owner: "local",
@@ -145,6 +146,7 @@ final class CoachEveningSummaryTests: XCTestCase {
         for _ in 0..<20 { await Task.yield() }
         XCTAssertEqual(calls, 1)
 
+        // Activity fingerprint churn (Root vs Coach / new workout) must not regenerate.
         coordinator.ensureUpToDate(
             input: input(),
             owner: "local",
@@ -154,8 +156,8 @@ final class CoachEveningSummaryTests: XCTestCase {
             isStillEligible: { true }
         )
         for _ in 0..<40 { await Task.yield() }
-        XCTAssertEqual(calls, 2)
-        XCTAssertEqual(coordinator.cachedFingerprint, "fp2")
+        XCTAssertEqual(calls, 1, "once-per-day must reuse first answer")
+        XCTAssertEqual(coordinator.summary?.headline, "H1")
     }
 
     func testStaleResponseDiscardedWhenNoLongerEligible() async {
@@ -191,23 +193,35 @@ final class CoachEveningSummaryTests: XCTestCase {
     func testRefreshFailureKeepsPreviousSummary() async {
         let store = temporaryStore()
         var calls = 0
+        let gate = AsyncGate()
         let coordinator = CoachEveningSummaryCoordinator(store: store) { input, _ in
             calls += 1
-            if calls == 1 { return self.answer(input, headline: "Good") }
-            throw URLError(.timedOut)
+            if calls == 1 {
+                await gate.wait()
+                throw URLError(.timedOut)
+            }
+            return self.answer(input, headline: "Good")
         }
         let evening = date("2026-10-12T18:30:00Z")
+        // First attempt fails — no cached day answer yet.
         coordinator.refresh(input: input(), owner: "local", now: evening, calendar: calendar())
-        for _ in 0..<40 { await Task.yield() }
-        XCTAssertEqual(coordinator.summary?.headline, "Good")
-        let received = coordinator.receivedAt
+        for _ in 0..<40 where !coordinator.isRefreshing {
+            await Task.yield()
+        }
+        await gate.open()
+        for _ in 0..<40 where coordinator.isRefreshing {
+            await Task.yield()
+        }
+        XCTAssertEqual(calls, 1)
+        XCTAssertNil(coordinator.summary)
+        XCTAssertTrue(coordinator.lastRefreshFailed)
 
+        // Retry after failure is allowed until the first successful day answer exists.
         coordinator.refresh(input: input(), owner: "local", now: evening, calendar: calendar())
         for _ in 0..<40 { await Task.yield() }
         XCTAssertEqual(calls, 2)
         XCTAssertEqual(coordinator.summary?.headline, "Good")
-        XCTAssertEqual(coordinator.receivedAt, received)
-        XCTAssertTrue(coordinator.lastRefreshFailed)
+        XCTAssertFalse(coordinator.lastRefreshFailed)
         XCTAssertFalse(coordinator.isRefreshing)
     }
 

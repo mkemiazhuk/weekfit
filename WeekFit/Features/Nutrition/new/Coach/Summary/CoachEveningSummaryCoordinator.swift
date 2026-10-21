@@ -92,7 +92,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         lastRefreshFailed = false
     }
 
-    /// Auto path for evening recap: restore cache, then generate when missing or fingerprint changed.
+    /// Auto path for evening recap: restore cache, generate at most once per local day.
     func ensureUpToDate(
         input: CoachEveningSummaryInput,
         owner: String,
@@ -113,12 +113,24 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             return
         }
 
+        // Once-per-day: any successful summary for this local day wins — ignore fingerprint churn
+        // (steps/distance/sessions) and Root vs Coach fingerprint mismatch that caused text jumps.
+        if CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow,
+           let summary,
+           summary.day == input.day {
+            CoachEveningSummaryDiagnostics.event(
+                "ensure.cacheFresh",
+                detail: "owner=\(tag) day=\(input.day) reason=oncePerDay"
+            )
+            return
+        }
+
         if let summary,
            summary.day == input.day,
            cachedFingerprint == fingerprint {
             CoachEveningSummaryDiagnostics.event(
                 "ensure.cacheFresh",
-                detail: "owner=\(tag) day=\(input.day)"
+                detail: "owner=\(tag) day=\(input.day) reason=fingerprintMatch"
             )
             return
         }
@@ -133,13 +145,15 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             return
         }
 
-        // Fingerprint owns freshness so a new completed workout can regenerate after 20:00.
+        let dayFingerprint = "day:\(input.day)"
         beginGeneration(
             input: input,
             owner: owner,
             now: now,
-            fingerprint: fingerprint,
-            persistClaim: false,
+            fingerprint: CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow
+                ? dayFingerprint
+                : fingerprint,
+            persistClaim: CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow,
             isStillEligible: isStillEligible
         )
     }
@@ -155,7 +169,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         lastRefreshFailed = true
     }
 
-    /// Manual Coach button: always hits AI in test mode; ignores daily claims.
+    /// Manual Coach button. Once-per-day mode reuses today's cached answer; otherwise hits AI.
     func refresh(input: CoachEveningSummaryInput, owner: String, now: Date = Date(),
                  calendar: Calendar = .current) {
         let tag = CoachEveningSummaryDiagnostics.ownerTag(owner)
@@ -167,6 +181,8 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             restore(owner: owner)
         } else {
             self.owner = owner
+            // Re-apply disk cache so once-per-day reuse sees today's answer.
+            restore(owner: owner)
         }
 
         CoachEveningSummaryDiagnostics.event(
@@ -178,13 +194,26 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             CoachEveningSummaryDiagnostics.event("refresh.blocked", detail: "owner=\(tag) reason=generationNotAllowed")
             return
         }
-        // Manual refresh always hits AI when evening window allows it.
+
+        if CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow,
+           let summary,
+           summary.day == input.day {
+            CoachEveningSummaryDiagnostics.event(
+                "refresh.reused",
+                detail: "owner=\(tag) day=\(input.day) reason=oncePerDay"
+            )
+            lastRefreshFailed = false
+            return
+        }
+
         beginGeneration(
             input: input,
             owner: owner,
             now: now,
-            fingerprint: "manual:\(UUID().uuidString)",
-            persistClaim: false,
+            fingerprint: CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow
+                ? "day:\(input.day)"
+                : "manual:\(UUID().uuidString)",
+            persistClaim: CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow,
             isStillEligible: { true }
         )
     }
