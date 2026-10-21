@@ -178,7 +178,9 @@ private struct CoachEveningSummarySectionPreviewHost: View {
             source: "ai"
         )
         try? store.saveCache(.init(summary: summary, receivedAt: Date()), owner: "preview")
-        let coordinator = CoachEveningSummaryCoordinator(store: store) { _, _ in summary }
+        let coordinator = CoachEveningSummaryCoordinator(store: store) { _, _ in
+            CoachEveningSummaryGenerationResult(summary: summary, requestId: "preview")
+        }
         coordinator.restore(owner: "preview")
         return coordinator
     }()

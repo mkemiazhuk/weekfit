@@ -97,7 +97,8 @@ export function createSummaryHandler(config, dependencies) {
   const oncePerDay=Boolean(config.summaryOncePerDay);
   return async (req,res) => {
     const requestId=randomUUID(),started=Date.now();
-    const send=(status,body)=>{if(!res.destroyed){res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify({...body,requestId}));}};
+    // Same requestId in JSON body and X-Request-Id header for client correlation.
+    const send=(status,body)=>{if(!res.destroyed){res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-Request-Id':requestId});res.end(JSON.stringify({...body,requestId}));}};
     try {
       if(!config.apiKey || !config.summaryModel || !config.summaryStoreDir) throw new ServiceError('summary_not_configured',503);
       const uid=await dependencies.authenticate(req.headers.authorization,config);
