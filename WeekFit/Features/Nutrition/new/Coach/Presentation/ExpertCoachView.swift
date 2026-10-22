@@ -52,6 +52,9 @@ struct ExpertCoachView: View {
     #endif
 
     private let coachContentHorizontalInset: CGFloat = 0
+    /// Stays at or under 19pt so the headline and body share SF Pro Text.
+    @ScaledMetric(relativeTo: .body) private var coachHeadlineSize: CGFloat = 19
+    @ScaledMetric(relativeTo: .body) private var coachCopySize: CGFloat = 17
 
     private let cardBackground = WeekFitTheme.cardBackground
     private var textPrimary: Color { palette.textPrimary }
@@ -1002,10 +1005,9 @@ struct ExpertCoachView: View {
         VStack(alignment: .leading, spacing: 0) {
             if !headline.isEmpty {
                 Text(headline)
-                    .font(WeekFitType.sectionTitle)
-                    .fontDesign(.rounded)
+                    .font(.system(size: coachHeadlineSize, weight: .semibold, design: .rounded))
                     .foregroundStyle(textPrimary)
-                    .tracking(-0.6)
+                    .tracking(-0.3)
                     .lineSpacing(1)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 22)
@@ -1015,8 +1017,7 @@ struct ExpertCoachView: View {
             if !explanation.isEmpty,
                !CoachUIPresentationDedup.isNearDuplicate(explanation, headline) {
                 Text(explanation)
-                    .font(WeekFitType.body.weight(.medium))
-                    .fontDesign(.rounded)
+                    .font(.system(size: coachCopySize, weight: .regular, design: .rounded))
                     .foregroundStyle(textPrimary.opacity(palette.isLight ? 0.68 : 0.74))
                     .lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1125,6 +1126,17 @@ struct ExpertCoachView: View {
         }
     }
 
+    /// Finished recovery, stretch, breath work, or sauna — not a training session.
+    private var isCompletedRecovery: Bool {
+        guard let scenario = coachUIPresentation?.scenario else { return false }
+        switch scenario {
+        case .postRecoveryImmediate, .postRecoverySettled, .saunaRecovery:
+            return true
+        default:
+            return false
+        }
+    }
+
     /// Evening / settled recovering chrome — RECOVERING badge + “Recovering now” family.
     private var isRecoveringCalmGuidance: Bool {
         guard !isLiveWorkoutZoneChrome, !isPostSessionGuidance else { return false }
@@ -1196,7 +1208,9 @@ struct ExpertCoachView: View {
                 return liveStateBadgeLabel
             }
             if isCompleted {
-                return WeekFitLocalizedString("coach.sessionComplete")
+                return isCompletedRecovery
+                    ? WeekFitLocalizedString("coach.recoveryComplete")
+                    : WeekFitLocalizedString("coach.sessionComplete")
             }
             return coachUIPresentation?.statusLabel ?? ""
         }()
@@ -1594,12 +1608,7 @@ struct ExpertCoachView: View {
                     .foregroundStyle(coachSectionLabelColor)
 
                 Text(text)
-                    .font(
-                        emphasis
-                            ? WeekFitType.compactCardTitle
-                            : WeekFitType.secondary.weight(.medium)
-                    )
-                    .fontDesign(.rounded)
+                    .font(.system(size: coachCopySize, weight: .medium, design: .rounded))
                     .foregroundStyle(
                         emphasis
                             ? textPrimary.opacity(0.96)
@@ -1610,8 +1619,7 @@ struct ExpertCoachView: View {
 
                 if let supporting, !supporting.isEmpty {
                     Text(supporting)
-                        .font(WeekFitType.secondary.weight(.medium))
-                        .fontDesign(.rounded)
+                        .font(.system(size: coachCopySize, weight: .medium, design: .rounded))
                         .foregroundStyle(textSecondary.opacity(0.82))
                         .lineSpacing(2)
                         .fixedSize(horizontal: false, vertical: true)

@@ -91,8 +91,28 @@ final class PlanViewModel: ObservableObject {
         availableMeals.map { plannerOption(for: $0) }
     }
 
+    /// Set when Add opens, consumed once the sheet can see the live plan history.
+    private var shouldApplyOpeningDefaults = false
+
+    /// Recent plans used to preselect type, activity, duration, and time.
+    private(set) var addHistorySamples: [PlanAddPreference.Sample] = []
+    private var addHistoryActivities: [PlannedActivity] = []
+    /// True after the user taps a time chip, so switching activity does not move the clock.
+    private var userPinnedTime = false
+
+    var rankedMeals: [Meals] {
+        PlanAddPreference.rankedMeals(availableMeals, samples: addHistorySamples)
+    }
+
     var currentOptions: [PlannerOption] {
-        selectedType == .meal ? mealPlannerOptions : selectedType.options
+        if selectedType == .meal {
+            return rankedMeals.map { plannerOption(for: $0) }
+        }
+        return PlanAddPreference.rankedOptions(
+            selectedType.options,
+            type: selectedType,
+            samples: addHistorySamples
+        )
     }
     
     func selectType(_ type: PlannerType) {
@@ -136,11 +156,11 @@ final class PlanViewModel: ObservableObject {
         applyDefaultSelection(for: type)
     }
 
-    /// Intentional product default: first catalog item for the type.
+    /// Most-used catalog item for the type, otherwise the first item in add-sheet order.
     private func applyDefaultSelection(for type: PlannerType) {
         switch type {
         case .meal:
-            if let meal = availableMeals.first {
+            if let meal = rankedMeals.first {
                 selectedMealID = meal.id
                 selectedItem = plannerOption(for: meal)
             } else {
@@ -155,7 +175,11 @@ final class PlanViewModel: ObservableObject {
             selectedDuration = 15
         case .workout, .recovery, .habit:
             selectedMealID = nil
-            if let option = type.options.first {
+            if let option = PlanAddPreference.rankedOptions(
+                type.options,
+                type: type,
+                samples: addHistorySamples
+            ).first {
                 selectedItem = option
             } else {
                 selectedItem = PlannerOption(
@@ -175,6 +199,7 @@ final class PlanViewModel: ObservableObject {
         customDuration = selectedDuration
         showCustomDuration = false
         applyDefaultDurationForSelectedItem()
+        applyHabit(forTitle: selectedItem.title, imageName: selectedItem.imageName)
     }
 
     private func clearItemSelection(for type: PlannerType) {
@@ -200,6 +225,89 @@ final class PlanViewModel: ObservableObject {
             customDuration = 480
             showCustomDuration = false
         }
+    }
+
+    /// Repeat plans keep the activity the user already uses, at the clock they used before.
+    private func applyHabit(forTitle title: String, imageName: String) {
+        guard let habit = PlanAddPreference.habit(
+            type: selectedType,
+            title: title,
+            imageName: imageName,
+            samples: addHistorySamples
+        ) else { return }
+
+        selectedDuration = habit.durationMinutes
+        customDuration = habit.durationMinutes
+        showCustomDuration = false
+        guard !userPinnedTime else { return }
+        selectedSlot = slot(
+            matchingHabit: habit.minuteOfDay,
+            durationMinutes: habit.durationMinutes,
+            blocksTime: selectedType.blocksPlannerTime,
+            fallback: selectedSlot ?? Date()
+        )
+    }
+
+    func pinSelectedTime(_ slot: Date) {
+        userPinnedTime = true
+        selectedSlot = slot
+    }
+
+    func selectCatalogOption(_ option: PlannerOption) {
+        selectedItem = option
+        applyDefaultDurationForSelectedItem()
+        applyHabit(forTitle: option.title, imageName: option.imageName)
+    }
+
+    func selectMeal(_ meal: Meals) {
+        selectedMealID = meal.id
+        selectedItem = plannerOption(for: meal)
+        applyHabit(forTitle: meal.title, imageName: meal.imageName)
+    }
+
+    private func slot(
+        matchingHabit minuteOfDay: Int,
+        durationMinutes: Int,
+        blocksTime: Bool,
+        fallback: Date
+    ) -> Date {
+        let day = calendar.startOfDay(for: selectedDate)
+        let timelineStart = calendar.date(byAdding: .hour, value: timelineStartHour, to: day) ?? day
+        let timelineEnd = calendar.date(byAdding: .hour, value: timelineEndHour, to: day) ?? day
+        let preferred = calendar.date(byAdding: .minute, value: minuteOfDay, to: day) ?? fallback
+        let dayActivities = addHistoryActivities.filter {
+            calendar.isDate($0.date, inSameDayAs: day) && !$0.isSkipped
+        }
+
+        func usable(_ candidate: Date) -> Bool {
+            guard candidate >= timelineStart, candidate <= timelineEnd else { return false }
+            if calendar.isDateInToday(selectedDate), candidate < Date() { return false }
+            return !hasTimeConflict(
+                newStart: candidate,
+                durationMinutes: durationMinutes,
+                activities: dayActivities,
+                excluding: editingActivity,
+                newEventBlocksPlannerTime: blocksTime
+            )
+        }
+
+        if usable(preferred) {
+            return clampedTimelineDate(preferred)
+        }
+
+        var forward = preferred
+        while forward < timelineEnd {
+            forward = calendar.date(byAdding: .minute, value: timelineMinuteStep, to: forward) ?? timelineEnd
+            if usable(forward) { return clampedTimelineDate(forward) }
+        }
+
+        var backward = preferred
+        while backward > timelineStart {
+            backward = calendar.date(byAdding: .minute, value: -timelineMinuteStep, to: backward) ?? timelineStart
+            if usable(backward) { return clampedTimelineDate(backward) }
+        }
+
+        return clampedTimelineDate(fallback)
     }
 
     var selectedMealForPlanner: Meals? {
@@ -424,25 +532,47 @@ final class PlanViewModel: ObservableObject {
 
     // MARK: - Sheet actions
 
-    func startAdding(at slot: Date) {
+    func startAdding(at slot: Date, history: [PlannedActivity] = []) {
         let normalizedSlot = clampedTimelineDate(roundedToNext15Minutes(slot))
 
         editingActivity = nil
+        userPinnedTime = false
+        shouldApplyOpeningDefaults = true
+        addHistorySamples = PlanAddPreference.samples(from: history, calendar: calendar)
+        addHistoryActivities = history
         selectedSlot = normalizedSlot
-        selectedType = .meal
+        let type = PlanAddPreference.preferredType(addHistorySamples)
+        selectedType = type
         resetPlannerDrafts()
-        applyDefaultSelection(for: .meal)
+        applyDefaultSelection(for: type)
 
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        ProductAnalytics.planItemCreationStarted(itemType: .meal)
+        ProductAnalytics.planItemCreationStarted(
+            itemType: PlanItemAnalyticsType(plannerTypeTitle: type.title)
+        )
 
         withAnimation(.spring(response: 0.46, dampingFraction: 0.84, blendDuration: 0.08)) {
             showAddActivity = true
         }
     }
 
+    /// Selects the most-used type and activity once the add sheet is on screen.
+    func applyOpeningSelectionIfNeeded(from activities: [PlannedActivity]) {
+        guard shouldApplyOpeningDefaults, editingActivity == nil else { return }
+        shouldApplyOpeningDefaults = false
+        userPinnedTime = false
+        addHistorySamples = PlanAddPreference.samples(from: activities, calendar: calendar)
+        addHistoryActivities = activities
+        let type = PlanAddPreference.preferredType(addHistorySamples)
+        selectedType = type
+        resetPlannerDrafts()
+        applyDefaultSelection(for: type)
+    }
+
     func startEditing(_ activity: PlannedActivity) {
         editingActivity = activity
+        shouldApplyOpeningDefaults = false
+        userPinnedTime = true
         selectedDate = calendar.startOfDay(for: activity.date)
         selectedSlot = activity.date
         selectedDuration = activity.durationMinutes
@@ -644,11 +774,12 @@ final class PlanViewModel: ObservableObject {
     }
 
     func closeAddSheet() {
-        withAnimation(.spring(response: 0.40, dampingFraction: 0.88, blendDuration: 0.06)) {
-            showAddActivity = false
-            editingActivity = nil
-        }
+        showAddActivity = false
+    }
 
+    /// Runs after the system sheet dismiss, including a drag, so the form does not jump while it is leaving.
+    func finishAddSheetDismiss() {
+        editingActivity = nil
         selectedSlot = nil
         resetPlannerDrafts()
     }

@@ -77,17 +77,12 @@ enum PlanAgendaDateCopy {
         if calendar.isDateInToday(date) {
             return WeekFitLocalizedString("planner.sheet.todayLabel")
         }
-        let formatter = DateFormatter()
-        formatter.locale = WeekFitCurrentLocale()
-        formatter.setLocalizedDateFormatFromTemplate("EEEE")
+        let formatter = weekFitDateFormatter(template: "EEEE")
         return formatter.string(from: date).capitalized(with: WeekFitCurrentLocale())
     }
 
     static func selectedDayDate(for date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = WeekFitCurrentLocale()
-        formatter.setLocalizedDateFormatFromTemplate("d MMM")
-        return formatter.string(from: date)
+        weekFitDateFormatter(template: "d MMM").string(from: date)
     }
 
     static func dayContextLine(for date: Date, calendar: Calendar = .current) -> String {
@@ -99,10 +94,21 @@ enum PlanAgendaDateCopy {
     }
 
     static func monthYear(for date: Date) -> String {
+        weekFitDateFormatter(template: "MMMM yyyy")
+            .string(from: date)
+            .capitalized(with: WeekFitCurrentLocale())
+    }
+
+    /// Locale + calendar both pinned to the in-app language (avoids RU weekdays on EN UI).
+    private static func weekFitDateFormatter(template: String) -> DateFormatter {
+        let locale = WeekFitCurrentLocale()
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = locale
         let formatter = DateFormatter()
-        formatter.locale = WeekFitCurrentLocale()
-        formatter.setLocalizedDateFormatFromTemplate("MMMM yyyy")
-        return formatter.string(from: date).capitalized(with: WeekFitCurrentLocale())
+        formatter.locale = locale
+        formatter.calendar = calendar
+        formatter.setLocalizedDateFormatFromTemplate(template)
+        return formatter
     }
 }
 
@@ -126,16 +132,21 @@ enum PlanAgendaPrimarySectionKind: Equatable {
 
 struct PlanAgendaDaySections {
     let primaryKind: PlanAgendaPrimarySectionKind
+    /// In-progress rows, kept out of Up next / Planned.
+    let liveItems: [PlanTimelineItem]
     let primaryItems: [PlanTimelineItem]
     let earlierItems: [PlanTimelineItem]
     let completedItems: [PlanTimelineItem]
 
     var hasIncomplete: Bool {
-        !primaryItems.isEmpty || !earlierItems.isEmpty
+        !liveItems.isEmpty || !primaryItems.isEmpty || !earlierItems.isEmpty
     }
 
     var isFullyComplete: Bool {
-        !completedItems.isEmpty && primaryItems.isEmpty && earlierItems.isEmpty
+        !completedItems.isEmpty
+            && liveItems.isEmpty
+            && primaryItems.isEmpty
+            && earlierItems.isEmpty
     }
 
     static func make(
@@ -148,6 +159,7 @@ struct PlanAgendaDaySections {
         let dayStart = calendar.startOfDay(for: selectedDate)
         let todayStart = calendar.startOfDay(for: now)
 
+        var live: [PlanTimelineItem] = []
         var primary: [PlanTimelineItem] = []
         var earlier: [PlanTimelineItem] = []
         var completed: [PlanTimelineItem] = []
@@ -166,7 +178,9 @@ struct PlanAgendaDaySections {
                 } else {
                     primary.append(item)
                 }
-            case .upcoming, .live:
+            case .live:
+                live.append(item)
+            case .upcoming:
                 primary.append(item)
             case .skipped:
                 continue
@@ -184,6 +198,7 @@ struct PlanAgendaDaySections {
 
         return PlanAgendaDaySections(
             primaryKind: primaryKind,
+            liveItems: live,
             primaryItems: primary,
             earlierItems: earlier,
             completedItems: completed
@@ -209,11 +224,12 @@ enum PlanAgendaCompletionControl: Equatable {
 
         case .single(let activity):
             let isDone = status == .completed || status == .logged
-            if allowsManualToggle(activity) {
-                return .interactive(isCompleted: isDone)
-            }
+            // Finished rows stay informational — no tap-to-uncomplete.
             if isDone {
                 return .informational(isCompleted: true)
+            }
+            if allowsManualToggle(activity) {
+                return .interactive(isCompleted: false)
             }
             return .none
         }
@@ -322,6 +338,7 @@ struct PlanAgendaDaySummaryCard: View {
     /// When false, recommendation line is omitted (e.g. open day with no useful tip).
     var showsRecommendation: Bool = true
 
+    @EnvironmentObject private var languageManager: AppLanguageManager
     @Environment(\.weekFitPalette) private var palette
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -338,6 +355,7 @@ struct PlanAgendaDaySummaryCard: View {
     }
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
         VStack(alignment: .leading, spacing: PlanAgendaLayout.innerSpacing) {
             Text(PlanAgendaDateCopy.dayContextLine(for: date))
                 .font(WeekFitType.secondary.weight(.medium))
@@ -408,9 +426,11 @@ struct PlanAgendaDaySummaryCard: View {
 
 /// Compact completion cue under the day summary — no card chrome.
 struct PlanAgendaAllDoneLine: View {
+    @EnvironmentObject private var languageManager: AppLanguageManager
     @Environment(\.weekFitPalette) private var palette
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 15, weight: .semibold))
@@ -431,15 +451,28 @@ struct PlanAgendaAllDoneLine: View {
 struct PlanAgendaSectionHeader: View {
     let title: String
     var trailing: AnyView? = nil
+    /// Pulsing mark for the in-progress section.
+    var showsLiveMark: Bool = false
 
     @Environment(\.weekFitPalette) private var palette
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var livePulse = false
+
+    private let liveTint = Color(red: 1.0, green: 0.706, blue: 0.341)
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
+            if showsLiveMark {
+                Circle()
+                    .fill(liveTint.opacity(livePulse ? 1 : 0.55))
+                    .frame(width: 8, height: 8)
+                    .accessibilityHidden(true)
+            }
+
             Text(title)
                 .font(WeekFitType.cardTitle)
                 .fontDesign(.rounded)
-                .foregroundStyle(palette.textPrimary)
+                .foregroundStyle(showsLiveMark ? liveTint : palette.textPrimary)
                 .lineLimit(2)
                 .minimumScaleFactor(0.88)
 
@@ -450,5 +483,11 @@ struct PlanAgendaSectionHeader: View {
             }
         }
         .accessibilityElement(children: .contain)
+        .onAppear {
+            guard showsLiveMark, !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 0.95).repeatForever(autoreverses: true)) {
+                livePulse = true
+            }
+        }
     }
 }

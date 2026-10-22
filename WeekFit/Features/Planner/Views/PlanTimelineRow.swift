@@ -220,27 +220,27 @@ struct PlanTimelineRow: View {
     @ViewBuilder
     private var trailingStatusControl: some View {
         switch completionControl {
-        case .interactive(let isCompleted):
+        case .interactive:
             Button {
                 onToggleCompletion?()
             } label: {
-                completionGlyph(isCompleted: isCompleted, interactive: true)
+                markCompleteGlyph
                     .frame(width: PlanAgendaLayout.minHitSize, height: PlanAgendaLayout.minHitSize)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(
-                isCompleted
-                    ? WeekFitLocalizedString("planner.status.completed")
-                    : WeekFitLocalizedString("planner.agenda.markComplete")
-            )
+            .accessibilityLabel(WeekFitLocalizedString("planner.agenda.markComplete"))
             .accessibilityAddTraits(.isButton)
 
-        case .informational(let isCompleted):
-            completionGlyph(isCompleted: isCompleted, interactive: false)
-                .frame(width: PlanAgendaLayout.minHitSize, height: PlanAgendaLayout.minHitSize)
-                .accessibilityLabel(status.title)
-                .accessibilityHidden(!isCompleted && status == .upcoming)
+        case .informational:
+            if let provenance = completionProvenance {
+                completionOutcomeBadge(provenance)
+                    .accessibilityLabel(provenance.title)
+            } else {
+                Color.clear
+                    .frame(width: 8, height: PlanAgendaLayout.minHitSize)
+                    .accessibilityHidden(true)
+            }
 
         case .none:
             compactStatusIndicator
@@ -248,17 +248,41 @@ struct PlanTimelineRow: View {
         }
     }
 
-    private func completionGlyph(isCompleted: Bool, interactive: Bool) -> some View {
-        Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
-            .font(.system(size: 22, weight: .semibold))
-            .foregroundStyle(
-                isCompleted
-                    ? WeekFitTheme.brandGold
-                    : (interactive
-                        ? palette.textTertiary.opacity(0.85)
-                        : palette.textTertiary.opacity(0.55))
-            )
+    private var completionProvenance: PlanActivityStatus.CompletionProvenance? {
+        PlanActivityStatus.CompletionProvenance.resolve(
+            activity: activity,
+            status: status
+        )
+    }
+
+    /// Empty circle to mark complete — kept smaller so it doesn't dominate the card.
+    private var markCompleteGlyph: some View {
+        Image(systemName: "circle")
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(palette.textTertiary.opacity(0.85))
             .accessibilityHidden(true)
+    }
+
+    private func completionOutcomeBadge(
+        _ provenance: PlanActivityStatus.CompletionProvenance
+    ) -> some View {
+        let tint = PlanActivityStatus.calmCompleted(isLight: palette.isLight)
+        return HStack(spacing: 4) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 9, weight: .bold))
+            Text(provenance.title)
+                .font(WeekFitType.caption.weight(.semibold))
+                .fontDesign(.rounded)
+                .lineLimit(1)
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background {
+            Capsule(style: .continuous)
+                .fill(tint.opacity(palette.isLight ? 0.12 : 0.16))
+        }
+        .accessibilityHidden(true)
     }
 
     private var displayedTime: String {
@@ -296,7 +320,9 @@ struct PlanTimelineRow: View {
     private var compactStatusIndicator: some View {
         switch status {
         case .completed, .logged:
-            completionGlyph(isCompleted: true, interactive: false)
+            if let provenance = completionProvenance {
+                completionOutcomeBadge(provenance)
+            }
 
         case .live:
             Circle()
@@ -311,14 +337,14 @@ struct PlanTimelineRow: View {
 
         case .pending:
             Image(systemName: "exclamationmark.circle.fill")
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(pendingAttentionColor)
                 .accessibilityHidden(true)
 
         case .skipped:
             Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Color(red: 1.0, green: 0.42, blue: 0.42).opacity(0.78))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(PlanActivityStatus.calmSkipped(isLight: palette.isLight))
                 .accessibilityHidden(true)
 
         case .upcoming:
@@ -547,6 +573,8 @@ private struct PlanTimelineNode: View {
     let emphasis: PlanTimelineVisualEmphasis
     @Binding var livePulse: Bool
 
+    @Environment(\.weekFitPalette) private var palette
+
     private var isFilled: Bool {
         status == .completed || status == .logged || status == .live || status == .skipped
     }
@@ -559,7 +587,10 @@ private struct PlanTimelineNode: View {
         ZStack {
             if isSkipped {
                 Circle()
-                    .fill(Color(red: 1.0, green: 0.42, blue: 0.42).opacity(skippedNodeFillOpacity))
+                    .fill(
+                        PlanActivityStatus.calmSkipped(isLight: palette.isLight)
+                            .opacity(skippedNodeFillOpacity)
+                    )
                     .frame(width: nodeDiameter, height: nodeDiameter)
 
                 Image(systemName: "xmark")

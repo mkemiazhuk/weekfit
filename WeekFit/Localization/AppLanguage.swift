@@ -10,7 +10,15 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var localeIdentifier: String { rawValue }
+    /// Region-qualified locale for DateFormatter / Calendar (bare `en`/`ru` can mix
+    /// device-region weekday symbols with the app language).
+    var localeIdentifier: String {
+        switch self {
+        case .english: return "en_US"
+        case .russian: return "ru_RU"
+        case .chineseSimplified: return "zh_CN"
+        }
+    }
 
     /// Stable Latin badge codes — same in every UI language (EN / RU / ZH).
     var shortCode: String {

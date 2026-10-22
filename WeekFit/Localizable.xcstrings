@@ -50692,7 +50692,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "修复工作已完成"
+            "value": "恢复已完成"
           }
         }
       }
@@ -110581,7 +110581,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Выберите восстановление"
+            "value": "Выберите ваш отдых"
           }
         },
         "zh-Hans": {
@@ -110696,7 +110696,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Выберите восстановление, чтобы продолжить"
+            "value": "Выберите ваш отдых"
           }
         },
         "zh-Hans": {
@@ -110926,7 +110926,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Добавить прием пищи"
+            "value": "Добавить еду"
           }
         },
         "zh-Hans": {
@@ -110949,7 +110949,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Добавить восстановление"
+            "value": "Добавить отдых"
           }
         },
         "zh-Hans": {
@@ -110989,19 +110989,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plan a habit"
+            "value": "Add habit"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Запланировать привычку"
+            "value": "Добавить привычку"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "计划习惯"
+            "value": "添加习惯"
           }
         }
       }
@@ -111012,19 +111012,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plan a meal"
+            "value": "Add food"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Запланировать еду"
+            "value": "Добавить еду"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "计划一餐"
+            "value": "添加餐食"
           }
         }
       }
@@ -111035,19 +111035,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plan recovery"
+            "value": "Add recovery"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Запланировать восстановление"
+            "value": "Добавить отдых"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "计划恢复"
+            "value": "添加恢复"
           }
         }
       }
@@ -111058,19 +111058,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plan a workout"
+            "value": "Add workout"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Запланировать тренировку"
+            "value": "Добавить воркаут"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "计划训练"
+            "value": "添加训练"
           }
         }
       }
@@ -111110,7 +111110,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Добавить тренировку"
+            "value": "Добавить воркаут"
           }
         },
         "zh-Hans": {
@@ -113818,19 +113818,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Add a workout, meal, or recovery."
+            "value": "Add a workout, food, or rest."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Добавьте тренировку, еду или восстановление."
+            "value": "Добавьте воркаут, еду или отдых."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "添加训练、膳食或恢复计划。"
+            "value": "添加训练、餐食或休息。"
           }
         }
       }
@@ -116216,7 +116216,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Завершена"
+            "value": "Готово"
           }
         },
         "zh-Hans": {
@@ -116331,7 +116331,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Завершена"
+            "value": "Синхр."
           }
         },
         "zh-Hans": {
@@ -117941,7 +117941,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Прием пищи"
+            "value": "Еда"
           }
         },
         "zh-Hans": {
@@ -117964,7 +117964,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Восстановление"
+            "value": "Отдых"
           }
         },
         "zh-Hans": {
@@ -117987,7 +117987,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Тренировка"
+            "value": "Воркаут"
           }
         },
         "zh-Hans": {

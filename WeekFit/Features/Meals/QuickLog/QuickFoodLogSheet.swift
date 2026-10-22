@@ -178,14 +178,12 @@ struct QuickFoodLogSheet: View {
             .padding(.horizontal, 18)
             .padding(.bottom, 10)
 
+            photoCaptureActions
+                .padding(.horizontal, 18)
+                .padding(.bottom, 14)
+
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
-                    if selectedTab == .meals {
-                        photoCaptureActions
-                    }
-
-                    QuickActionCoachRecommendationSlot()
-
                     switch selectedTab {
                     case .meals:
                         mealsContent
@@ -198,6 +196,7 @@ struct QuickFoodLogSheet: View {
                 .opacity(revealContent ? 1 : 0)
                 .offset(y: revealContent ? 0 : 10)
             }
+            .id(selectedTab)
         }
         .accessibilityIdentifier("sheet.quickFoodLog")
         .onAppear {

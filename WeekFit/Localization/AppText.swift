@@ -648,9 +648,17 @@ private func WeekFitBundleLocalizedString(_ key: String, locale: Locale) -> Stri
         }
     }
 
-    let fallback = Bundle.main.localizedString(forKey: key, value: nil, table: nil)
-    if fallback != key {
-        return fallback
+    // Never fall back to `Bundle.main` alone — it follows the *device* preferred
+    // languages and can return Russian copy while the in-app language is English.
+    for resource in ["en", "Base"] {
+        guard let path = Bundle.main.path(forResource: resource, ofType: "lproj"),
+              let bundle = Bundle(path: path) else {
+            continue
+        }
+        let localized = bundle.localizedString(forKey: key, value: nil, table: nil)
+        if localized != key {
+            return localized
+        }
     }
 
     return key
@@ -674,7 +682,15 @@ private func WeekFitLocalizationLprojResourceCandidates(for locale: Locale) -> [
     if let languageCode, let scriptCode {
         append("\(languageCode)-\(scriptCode)")
     }
-    // Prefer app language raw value when the locale matches (e.g. zh-Hans).
+    // Map region-qualified locales (en_US / ru_RU / zh_CN) back to .lproj names.
+    if let languageCode {
+        switch languageCode {
+        case "en": append(AppLanguage.english.rawValue)
+        case "ru": append(AppLanguage.russian.rawValue)
+        case "zh": append(AppLanguage.chineseSimplified.rawValue)
+        default: break
+        }
+    }
     if let appLanguage = AppLanguage(rawValue: locale.identifier)
         ?? AppLanguage(rawValue: locale.identifier.replacingOccurrences(of: "_", with: "-")) {
         append(appLanguage.rawValue)

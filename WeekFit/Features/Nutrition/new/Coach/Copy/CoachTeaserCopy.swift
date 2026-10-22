@@ -153,7 +153,7 @@ enum CoachTeaserCopy {
         case .postStrengthImmediate:
             return bi("Last set done", "Последний подход завершён")
         case .postRecoveryImmediate:
-            return bi("Nice work", "Хорошая работа")
+            return bi("Recovery", "Восстановление", chinese: "恢复")
         case .postEnduranceSettled, .postRacketSettled, .postStrengthSettled, .postRecoverySettled:
             return bi("Recovering now", "Восстанавливаемся")
         case .eveningAfterEndurance, .eveningAfterRacket, .eveningAfterStrength, .eveningAfterRecovery:
@@ -574,7 +574,7 @@ enum CoachTeaserCopy {
         case .postStrengthImmediate:
             return bi("After lifting", "После силовой")
         case .postRecoveryImmediate:
-            return bi("Session complete", "Тренировка завершена")
+            return bi("Recovery", "Восстановление", chinese: "恢复")
         case .postEnduranceSettled, .postRacketSettled, .postStrengthSettled, .postRecoverySettled:
             return bi("Recovering", "Восстанавливаемся")
         case .eveningAfterEndurance, .eveningAfterRacket, .eveningAfterStrength, .eveningAfterRecovery:

@@ -151,7 +151,7 @@ private struct WeekPlannerLiveQueryView: View {
                 )
                 // Rebind when Light/Dark / Night Comfort flips — Theme.* alone can
                 // leave day-title ink stuck on the previous appearance.
-                .id(palette.appearanceInvalidationToken)
+                .id("\(palette.appearanceInvalidationToken)-\(languageManager.selectedLanguage.rawValue)")
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
         }
@@ -163,11 +163,10 @@ private struct WeekPlannerLiveQueryView: View {
         .accessibilityIdentifier("screen.plan")
         .id("planner-keepalive")
         .weekFitSettingsSheet(isPresented: $showProfile)
-        .fullScreenCover(
+        .sheet(
             isPresented: $viewModel.showAddActivity,
             onDismiss: {
-                viewModel.editingActivity = nil
-                viewModel.selectedSlot = nil
+                viewModel.finishAddSheetDismiss()
             }
         ) {
             PlanAddActivitySheet(
@@ -178,6 +177,15 @@ private struct WeekPlannerLiveQueryView: View {
                 completionCheckInsEnabled: completionCheckInsEnabled
             )
             .environmentObject(languageManager)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.hidden)
+            .presentationContentInteraction(.scrolls)
+            .weekFitSheetChrome(
+                cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
+                background: QuickActionSheetDesign.Color.sheetBackground(
+                    for: viewModel.selectedType == .meal ? .food : .activity
+                )
+            )
         }
         .sheet(item: $selectedMeal) { meal in
             MealDetailsView(meal: meal)
@@ -317,7 +325,7 @@ private struct WeekPlannerLiveQueryView: View {
     private func openPendingPlanAddIfNeeded() {
         guard PendingPlanAddOpen.shared.consume() else { return }
         viewModel.selectedDate = calendar.startOfDay(for: Date())
-        viewModel.startAdding(at: Date())
+        viewModel.startAdding(at: Date(), history: plannedActivities)
     }
     
     private func plannerConfirmationSheet(_ activity: PlannedActivity) -> some View {
@@ -629,23 +637,19 @@ private struct WeekPlannerLiveQueryView: View {
             return
         }
 
+        // Finished activities cannot be unchecked from the row — only mark complete.
+        guard !liveActivity.isCompleted else { return }
+
         withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-            if liveActivity.isCompleted {
-                try? PlannedActivityNotificationConfirmationService.markIncomplete(
-                    liveActivity,
-                    modelContext: modelContext
-                )
-            } else {
-                if (liveActivity.actualDurationMinutes ?? 0) <= 0,
-                   liveActivity.date <= Date() {
-                    let passedMinutes = max(1, Int(Date().timeIntervalSince(liveActivity.date) / 60))
-                    liveActivity.actualDurationMinutes = passedMinutes
-                }
-                try? PlannedActivityNotificationConfirmationService.markCompleted(
-                    liveActivity,
-                    modelContext: modelContext
-                )
+            if (liveActivity.actualDurationMinutes ?? 0) <= 0,
+               liveActivity.date <= Date() {
+                let passedMinutes = max(1, Int(Date().timeIntervalSince(liveActivity.date) / 60))
+                liveActivity.actualDurationMinutes = passedMinutes
             }
+            try? PlannedActivityNotificationConfirmationService.markCompleted(
+                liveActivity,
+                modelContext: modelContext
+            )
             viewModel.markPlannerDataChanged()
         }
     }
@@ -771,34 +775,48 @@ private extension WeekPlannerLiveQueryView {
         )
         let canMutateDay = allowsAgendaMutation(for: viewModel.selectedDate)
         let showsAllDoneLine = sections.isFullyComplete
+        let hasLiveSection = !sections.liveItems.isEmpty
         let hasUpcomingSection = !sections.primaryItems.isEmpty
-        /// When there is no Up next / Planned section, Add rides on Completed (even if collapsed).
-        let addOnCompleted = canMutateDay && !hasUpcomingSection && !sections.completedItems.isEmpty
+        let dayIsEmpty = selectedDayActivities.isEmpty
+        /// Add stays on Up next when that section exists; otherwise on Live, then Completed.
+        let addOnLive = canMutateDay && hasLiveSection && !hasUpcomingSection
+        let addOnCompleted = canMutateDay
+            && !hasUpcomingSection
+            && !hasLiveSection
+            && !sections.completedItems.isEmpty
 
         VStack(alignment: .leading, spacing: 0) {
             // Fixed: calendar + day summary (+ compact all-done) while schedule scrolls.
+            // Empty days skip the character card — one empty CTA is enough.
             VStack(alignment: .leading, spacing: 0) {
                 weekPickerCard(activitiesRevision: activitiesRevision)
                     .padding(.bottom, PlanAgendaLayout.calendarToSummary)
 
-                PlanAgendaDaySummaryCard(
-                    date: viewModel.selectedDate,
-                    kind: selectedDayKind
-                )
-                .padding(
-                    .bottom,
-                    showsAllDoneLine
-                        ? PlanAgendaLayout.summaryToAllDone
-                        : PlanAgendaLayout.summaryToSchedule
-                )
-
-                if showsAllDoneLine {
-                    PlanAgendaAllDoneLine()
+                if dayIsEmpty {
+                    Text(PlanAgendaDateCopy.dayContextLine(for: viewModel.selectedDate))
+                        .font(WeekFitType.secondary.weight(.medium))
+                        .foregroundStyle(palette.textSecondary)
                         .padding(.bottom, PlanAgendaLayout.summaryToSchedule)
+                } else {
+                    PlanAgendaDaySummaryCard(
+                        date: viewModel.selectedDate,
+                        kind: selectedDayKind
+                    )
+                    .padding(
+                        .bottom,
+                        showsAllDoneLine
+                            ? PlanAgendaLayout.summaryToAllDone
+                            : PlanAgendaLayout.summaryToSchedule
+                    )
+
+                    if showsAllDoneLine {
+                        PlanAgendaAllDoneLine()
+                            .padding(.bottom, PlanAgendaLayout.summaryToSchedule)
+                    }
                 }
             }
 
-            // Scrollable: Up next / Earlier / Completed (and empty states).
+            // Scrollable: Live / Up next / Earlier / Completed (and empty states).
             ScrollViewReader { proxy in
                 List {
                     Color.clear
@@ -809,7 +827,7 @@ private extension WeekPlannerLiveQueryView {
                         .id("plan.schedule.top")
                         .accessibilityHidden(true)
 
-                    if selectedDayActivities.isEmpty {
+                    if dayIsEmpty {
                         Group {
                             if canMutateDay {
                                 agendaEmptyDayBlock
@@ -821,13 +839,37 @@ private extension WeekPlannerLiveQueryView {
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                     } else {
+                        if hasLiveSection {
+                            PlanAgendaSectionHeader(
+                                title: WeekFitLocalizedString("planner.status.live"),
+                                trailing: addOnLive ? AnyView(agendaAddTrailingButton) : nil,
+                                showsLiveMark: true
+                            )
+                            .listRowInsets(EdgeInsets(
+                                top: 0,
+                                leading: 0,
+                                bottom: PlanAgendaLayout.scheduleHeaderToEvents,
+                                trailing: 0
+                            ))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+
+                            agendaEventRows(
+                                items: sections.liveItems,
+                                allTimelineItems: timelineItems,
+                                allowsCompletionToggle: canMutateDay
+                            )
+                        }
+
                         if !sections.primaryItems.isEmpty {
                             agendaPrimaryHeader(
                                 kind: sections.primaryKind,
                                 showsAdd: canMutateDay
                             )
                             .listRowInsets(EdgeInsets(
-                                top: 0,
+                                top: hasLiveSection
+                                    ? max(0, PlanAgendaLayout.summaryToSchedule - PlanTimelineLayout.rowSpacing)
+                                    : 0,
                                 leading: 0,
                                 bottom: PlanAgendaLayout.scheduleHeaderToEvents,
                                 trailing: 0
@@ -871,7 +913,7 @@ private extension WeekPlannerLiveQueryView {
                                 showsAdd: addOnCompleted
                             )
                             .listRowInsets(EdgeInsets(
-                                top: hasUpcomingSection || !sections.earlierItems.isEmpty
+                                top: hasUpcomingSection || hasLiveSection || !sections.earlierItems.isEmpty
                                     ? max(0, PlanAgendaLayout.summaryToSchedule - PlanTimelineLayout.rowSpacing)
                                     : 0,
                                 leading: 0,
@@ -1046,7 +1088,8 @@ private extension WeekPlannerLiveQueryView {
     private var agendaAddTrailingButton: some View {
         Button {
             viewModel.startAdding(
-                at: viewModel.nextAvailableSlot(from: plannedActivities)
+                at: viewModel.nextAvailableSlot(from: plannedActivities),
+                history: plannedActivities
             )
         } label: {
             HStack(spacing: 5) {
@@ -1267,7 +1310,7 @@ private extension WeekPlannerLiveQueryView {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             let slot = viewModel.nextAvailableSlot(from: selectedDayActivities)
-            viewModel.startAdding(at: slot)
+            viewModel.startAdding(at: slot, history: plannedActivities)
         } label: {
             HStack(alignment: .center, spacing: 12) {
                 ZStack {
@@ -1286,36 +1329,37 @@ private extension WeekPlannerLiveQueryView {
                 }
                 .accessibilityHidden(true)
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(WeekFitLocalizedString("planner.empty.title"))
-                        .font(WeekFitType.body.weight(.semibold))
-                        .fontDesign(.rounded)
-                        .foregroundStyle(palette.textPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(WeekFitLocalizedString("planner.empty.title"))
+                            .font(WeekFitType.body.weight(.semibold))
+                            .fontDesign(.rounded)
+                            .foregroundStyle(palette.textPrimary)
 
-                    Text(WeekFitLocalizedString("planner.empty.message"))
-                        .font(WeekFitType.secondary)
-                        .foregroundStyle(palette.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                        Text(WeekFitLocalizedString("planner.empty.message"))
+                            .font(WeekFitType.secondary)
+                            .foregroundStyle(palette.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    HStack(spacing: 5) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 13, weight: .bold))
+                        Text(WeekFitLocalizedString("planner.agenda.add"))
+                            .font(WeekFitType.secondary.weight(.semibold))
+                            .fontDesign(.rounded)
+                    }
+                    .foregroundStyle(palette.isLight ? WeekFitTheme.brandGoldDeep : WeekFitTheme.brandGold)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background {
+                        Capsule(style: .continuous)
+                            .fill(WeekFitTheme.brandGold.opacity(palette.isLight ? 0.14 : 0.20))
+                    }
+                    .frame(minHeight: PlanAgendaLayout.minHitSize)
+                    .accessibilityHidden(true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-
-                HStack(spacing: 5) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .bold))
-                    Text(WeekFitLocalizedString("planner.agenda.add"))
-                        .font(WeekFitType.secondary.weight(.semibold))
-                        .fontDesign(.rounded)
-                }
-                .foregroundStyle(palette.isLight ? WeekFitTheme.brandGoldDeep : WeekFitTheme.brandGold)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background {
-                    Capsule(style: .continuous)
-                        .fill(WeekFitTheme.brandGold.opacity(palette.isLight ? 0.14 : 0.20))
-                }
-                .frame(minHeight: PlanAgendaLayout.minHitSize)
-                .accessibilityHidden(true)
             }
             .contentShape(Rectangle())
             .planAgendaSectionSurface()
@@ -1938,11 +1982,13 @@ private struct PlanTimelineRowPressStyle: ButtonStyle {
 private struct PlanningWeekPicker: View {
     @Binding var selectedDate: Date
 
+    @EnvironmentObject private var languageManager: AppLanguageManager
     @Environment(\.weekFitPalette) private var palette
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var calendar: Calendar {
-        var calendar = Calendar.current
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = WeekFitCurrentLocale()
         calendar.firstWeekday = 2
         return calendar
     }
@@ -1968,6 +2014,7 @@ private struct PlanningWeekPicker: View {
     }
 
     var body: some View {
+        let _ = languageManager.selectedLanguage
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .center, spacing: 4) {
                 Text(PlanAgendaDateCopy.monthYear(for: selectedDate))
@@ -2168,24 +2215,15 @@ private struct DynamicDayCapsule: View {
     }
 
     private var dayLabel: String {
-        let formatter = DateFormatter()
-        formatter.locale = WeekFitCurrentLocale()
-        formatter.setLocalizedDateFormatFromTemplate("EEEEE")
-        return formatter.string(from: date)
+        weekFitDateFormatter(template: "EEEEE").string(from: date)
     }
 
     private var dayNumber: String {
-        let formatter = DateFormatter()
-        formatter.locale = WeekFitCurrentLocale()
-        formatter.setLocalizedDateFormatFromTemplate("d")
-        return formatter.string(from: date)
+        weekFitDateFormatter(template: "d").string(from: date)
     }
 
     private var accessibilityDayLabel: String {
-        let formatter = DateFormatter()
-        formatter.locale = WeekFitCurrentLocale()
-        formatter.setLocalizedDateFormatFromTemplate("EEEE d MMMM")
-        var label = formatter.string(from: date)
+        var label = weekFitDateFormatter(template: "EEEE d MMMM").string(from: date)
         if isToday {
             label += ", " + WeekFitLocalizedString("planner.sheet.todayLabel")
         }
@@ -2193,6 +2231,17 @@ private struct DynamicDayCapsule: View {
             label += ", " + WeekFitLocalizedString("common.selected")
         }
         return label
+    }
+
+    private func weekFitDateFormatter(template: String) -> DateFormatter {
+        let locale = WeekFitCurrentLocale()
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = locale
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.calendar = calendar
+        formatter.setLocalizedDateFormatFromTemplate(template)
+        return formatter
     }
 }
 
@@ -2206,6 +2255,54 @@ enum PlanActivityStatus {
     case completed
     case skipped
     case logged
+
+    /// Calm mint for completed / done glyphs (not brand gold).
+    static func calmCompleted(isLight: Bool) -> Color {
+        isLight
+            ? WeekFitLightTokens.success
+            : Color(red: 0.40, green: 0.76, blue: 0.58) // #66C294
+    }
+
+    /// Soft rose for skipped — readable, not alarm-red.
+    static func calmSkipped(isLight: Bool) -> Color {
+        isLight
+            ? WeekFitLightTokens.critical
+            : Color(red: 0.82, green: 0.50, blue: 0.48) // #D1807A
+    }
+
+    /// How a finished row got done — planned check-off vs log vs Watch sync.
+    enum CompletionProvenance: Equatable {
+        case done
+        case logged
+        case synced
+
+        var title: String {
+            switch self {
+            case .done: return WeekFitLocalizedString("planner.status.completed")
+            case .logged: return WeekFitLocalizedString("planner.status.logged")
+            case .synced: return WeekFitLocalizedString("planner.status.synced")
+            }
+        }
+
+        static func resolve(
+            activity: PlannedActivity,
+            status: PlanActivityStatus
+        ) -> CompletionProvenance? {
+            switch status {
+            case .completed:
+                return .done
+            case .logged:
+                let source = activity.source.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                let syncedSources: Set<String> = ["appleworkout", "applewatch", "healthkit"]
+                if activity.isWatchSynced || syncedSources.contains(source) {
+                    return .synced
+                }
+                return .logged
+            default:
+                return nil
+            }
+        }
+    }
 
     var title: String {
         switch self {
@@ -2223,8 +2320,8 @@ enum PlanActivityStatus {
         case .upcoming:  return Color(hex: "#7E8CFF").opacity(0.78)
         case .live: return accent
         case .pending: return Color(hex: "#FFB457")
-        case .skipped: return Color(hex: "#FF6B6B")
-        case .completed: return Color(hex: "#59D98E")      // Done
+        case .skipped: return Color(red: 0.82, green: 0.50, blue: 0.48)
+        case .completed: return Color(red: 0.40, green: 0.76, blue: 0.58)
         case .logged: return WeekFitTheme.whiteOpacity(0.42)     // Logged
         }
     }

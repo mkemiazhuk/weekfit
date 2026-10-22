@@ -48,7 +48,7 @@ private struct PlannerMealSheetHost<Library: View>: View {
         .presentationDragIndicator(step == .library ? .visible : .hidden)
         .weekFitSheetChrome(
             cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
-            background: QuickActionSheetDesign.Color.sheetBackground(for: .food)
+            background: QuickActionSheetDesign.Color.sheetBackground(for: .activity)
         )
     }
 }
@@ -75,28 +75,50 @@ struct PlanAddActivitySheet: View {
     @State private var showExpandedTimePicker = false
     /// Measured content width so exactly two library cards fit the viewport.
     @State private var libraryContentWidth: CGFloat = 0
-    @Namespace private var typePickerNamespace
 
     @Environment(\.weekFitPalette) private var palette
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var textPrimary: Color { WeekFitTheme.primaryText }
     private var textSecondary: Color {
         // Night: slightly softer secondary so labels don’t glare on charcoal.
         palette.isLight ? WeekFitTheme.secondaryText : WeekFitTheme.secondaryText.opacity(0.88)
     }
-    /// Decorative accent: Meal green, Workout blue, Recovery purple, Habit amber.
-    private var selectionAccent: Color {
-        guard !palette.isLight else { return viewModel.selectedType.color }
-        return PlanAddNightChrome.softAccent(for: viewModel.selectedType)
-    }
-    /// Light: cool gray. Dark: calm charcoal (not OLED pure black).
-    private var screenBackground: Color {
-        if palette.isLight {
-            return Color(red: 0.969, green: 0.969, blue: 0.969) // #F7F7F7
+    /// Type chrome — Food / Workout / Recovery from Today logs; Habit is dusty rose
+    /// so it never collides with Food’s warm gold/orange.
+    private var chromeAction: Color {
+        switch viewModel.selectedType {
+        case .meal:
+            return QuickFoodAccent.action(isLight: palette.isLight)
+        case .workout:
+            return QuickActivityAccent.color(for: .workout, isLight: palette.isLight)
+        case .recovery:
+            return QuickActivityAccent.color(for: .recovery, isLight: palette.isLight)
+        case .habit:
+            return PlanAddHabitAccent.action(isLight: palette.isLight)
         }
-        return PlanAddNightChrome.canvas
+    }
+    /// Canvas matches the Today log surface for that family.
+    private var screenBackground: Color {
+        switch viewModel.selectedType {
+        case .meal:
+            return QuickActionSheetDesign.Color.sheetBackground(for: .food)
+        case .workout, .recovery, .habit:
+            return QuickActionSheetDesign.Color.sheetBackground(for: .activity)
+        }
+    }
+    /// Fallback soft wash when a card doesn’t carry its own log wash.
+    private var softCardAccent: Color {
+        switch viewModel.selectedType {
+        case .meal:
+            return QuickFoodAccent.warmWash
+        case .workout:
+            return QuickActivityAccent.upperBodyWash
+        case .recovery:
+            return QuickActivityAccent.breathingWash
+        case .habit:
+            return PlanAddHabitAccent.cardWash
+        }
     }
 
     private let contentPadding: CGFloat = 16
@@ -119,11 +141,11 @@ struct PlanAddActivitySheet: View {
     private let sectionPanelPadding: CGFloat = 12
 
     private var sectionPanelFill: Color {
-        palette.isLight ? Color.white : PlanAddNightChrome.cardFill
+        QuickSheetChrome.frequentCardFill(isLight: palette.isLight)
     }
 
     private var sectionPanelStroke: Color {
-        palette.isLight ? Color.black.opacity(0.10) : WeekFitTheme.whiteOpacity(0.12)
+        QuickSheetChrome.frequentCardStroke(isLight: palette.isLight)
     }
 
     private var libraryCardWidth: CGFloat {
@@ -149,25 +171,13 @@ struct PlanAddActivitySheet: View {
         }
     }
 
-    /// Deep CTA fills for ≥4.5:1 white text; night uses muted family fills (not neon accents).
-    private var actionButtonFill: Color {
-        if palette.isLight {
-            switch viewModel.selectedType {
-            case .meal:
-                return Color(red: 0.10, green: 0.48, blue: 0.36)
-            case .workout:
-                return Color(red: 0.18, green: 0.38, blue: 0.72)
-            case .recovery:
-                return Color(red: 0.38, green: 0.28, blue: 0.68)
-            case .habit:
-                return Color(red: 0.70, green: 0.38, blue: 0.10)
-            }
-        }
-        return PlanAddNightChrome.ctaFill(for: viewModel.selectedType)
-    }
+    private var actionButtonFill: Color { chromeAction }
+
+    /// White label on saturated Food / Workout / Recovery / Habit fills (same as log CTAs).
+    private var actionButtonForeground: Color { Color.white }
 
     private var chipNeutralFill: Color {
-        palette.isLight ? Color.white : PlanAddNightChrome.elevatedSurface
+        QuickSheetChrome.frequentCardFill(isLight: palette.isLight)
     }
 
     private let timelineStartHour = 5
@@ -177,7 +187,7 @@ struct PlanAddActivitySheet: View {
     private let lightHaptic = UIImpactFeedbackGenerator(style: .light)
 
     private var calendar: Calendar { viewModel.calendar }
-    private var availableMeals: [Meals] { viewModel.availableMeals }
+    private var availableMeals: [Meals] { viewModel.rankedMeals }
     private var currentOptions: [PlannerOption] { viewModel.currentOptions }
     private var showsMealEmptyState: Bool { viewModel.selectedType == .meal && availableMeals.isEmpty }
 
@@ -203,71 +213,46 @@ struct PlanAddActivitySheet: View {
     var body: some View {
         let _ = languageManager.selectedLanguage
 
-        NavigationStack {
+        VStack(spacing: 0) {
+            planAddPremiumHeader
+
             addActivityScreen
-                .background {
-                    ZStack {
-                        screenBackground
-                        if !palette.isLight {
-                            LinearGradient(
-                                colors: PlanAddSheetPalette.sheetWash(
-                                    for: viewModel.selectedType,
-                                    isLight: false
-                                ),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                            .allowsHitTesting(false)
-                        }
-                    }
-                    .ignoresSafeArea()
-                    .animation(.easeInOut(duration: 0.28), value: viewModel.selectedType)
+        }
+        .background {
+            screenBackground
+                .ignoresSafeArea()
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+                if !showsMealEmptyState {
+                    footerBar
                 }
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    cancelToolbarItem
-
-                    ToolbarItem(placement: .principal) {
-                        Text(
-                            viewModel.editingActivity == nil
-                                ? scenarioTitle
-                                : WeekFitLocalizedString("planner.sheet.editTitle")
-                        )
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .accessibilityAddTraits(.isHeader)
-                    }
-
-                    if viewModel.editingActivity != nil {
-                        deleteToolbarItem
-                    }
-                }
-                .sheet(isPresented: $showDatePicker) {
-                    NavigationStack {
-                        DatePicker(
-                            WeekFitLocalizedString("planner.sheet.dateLabel"),
-                            selection: $viewModel.selectedDate,
-                            displayedComponents: .date
-                        )
-                        .datePickerStyle(.graphical)
-                        .tint(selectionAccent)
-                        .padding()
-                        .navigationTitle(WeekFitLocalizedString("planner.sheet.dateLabel"))
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .confirmationAction) {
-                                Button(WeekFitLocalizedString("common.action.done")) {
-                                    showDatePicker = false
-                                }
-                                .foregroundStyle(selectionAccent)
+            }
+            .sheet(isPresented: $showDatePicker) {
+                NavigationStack {
+                    DatePicker(
+                        WeekFitLocalizedString("planner.sheet.dateLabel"),
+                        selection: $viewModel.selectedDate,
+                        displayedComponents: .date
+                    )
+                    .datePickerStyle(.graphical)
+                    .tint(chromeAction)
+                    .padding()
+                    .navigationTitle(WeekFitLocalizedString("planner.sheet.dateLabel"))
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(WeekFitLocalizedString("common.action.done")) {
+                                showDatePicker = false
                             }
+                            .foregroundStyle(chromeAction)
                         }
                     }
-                    .presentationDetents([.medium])
-                    .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
                 }
+                .presentationDetents([.medium])
+                .weekFitSheetChrome(
+                    cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
+                    background: screenBackground
+                )
         }
         .preferredColorScheme(palette.isLight ? .light : .dark)
         .environment(\.weekFitPalette, palette)
@@ -324,6 +309,7 @@ struct PlanAddActivitySheet: View {
                 from: userSettings.customMealsCatalog,
                 revision: userSettings.customMealsCatalogRevision
             )
+            viewModel.applyOpeningSelectionIfNeeded(from: plannedActivities)
             viewModel.syncDefaultSelectedMeal()
         }
         .onChange(of: userSettings.customMealsCatalogRevision) { _, revision in
@@ -343,59 +329,78 @@ struct PlanAddActivitySheet: View {
 
 private extension PlanAddActivitySheet {
 
-    @ToolbarContentBuilder
-    var cancelToolbarItem: some ToolbarContent {
-        if #available(iOS 26.0, *) {
-            ToolbarItem(placement: .topBarLeading) {
-                cancelToolbarButton
-            }
-            .sharedBackgroundVisibility(.hidden)
-        } else {
-            ToolbarItem(placement: .topBarLeading) {
-                cancelToolbarButton
-            }
-        }
-    }
+    /// Same premium header language as Food / Drinks / Start Activity.
+    var planAddPremiumHeader: some View {
+        VStack(spacing: 0) {
+            Capsule()
+                .fill(
+                    palette.isLight
+                        ? WeekFitLightTokens.shadowContact.opacity(0.16)
+                        : Color.white.opacity(0.14)
+                )
+                .frame(width: 36, height: 3.5)
+                .padding(.top, 8)
+                .padding(.bottom, 14)
 
-    @ToolbarContentBuilder
-    var deleteToolbarItem: some ToolbarContent {
-        if #available(iOS 26.0, *) {
-            ToolbarItem(placement: .topBarTrailing) {
-                deleteToolbarButton
-            }
-            .sharedBackgroundVisibility(.hidden)
-        } else {
-            ToolbarItem(placement: .topBarTrailing) {
-                deleteToolbarButton
-            }
-        }
-    }
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(
+                        viewModel.editingActivity == nil
+                            ? scenarioTitle
+                            : WeekFitLocalizedString("planner.sheet.editTitle")
+                    )
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(textPrimary)
+                    .tracking(-0.4)
 
-    var cancelToolbarButton: some View {
-        Button {
-            closeAddSheet()
-        } label: {
-            Text(WeekFitLocalizedString("common.action.cancel"))
-                .font(.body)
-                .foregroundStyle(selectionAccent)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .frame(minWidth: 44, minHeight: 44, alignment: .leading)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(isSaving)
-    }
+                    Text(selectionPrompt)
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(textSecondary.opacity(0.72))
+                }
 
-    var deleteToolbarButton: some View {
-        Button(role: .destructive) {
-            showDeleteConfirmation = true
-        } label: {
-            Image(systemName: "trash")
-                .frame(minWidth: 44, minHeight: 44)
+                Spacer(minLength: 8)
+
+                HStack(spacing: 8) {
+                    if viewModel.editingActivity != nil {
+                        Button {
+                            showDeleteConfirmation = true
+                        } label: {
+                            Image(systemName: "trash")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(WeekFitTheme.secondaryText)
+                                .frame(width: 36, height: 36)
+                                .background {
+                                    Circle()
+                                        .fill(
+                                            palette.isLight
+                                                ? Color.white.opacity(0.92)
+                                                : WeekFitTheme.whiteOpacity(0.08)
+                                        )
+                                }
+                                .overlay {
+                                    Circle()
+                                        .stroke(
+                                            palette.isLight
+                                                ? WeekFitLightTokens.shadowContact.opacity(0.08)
+                                                : WeekFitTheme.whiteOpacity(0.10),
+                                            lineWidth: 1
+                                        )
+                                }
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isSaving)
+                        .accessibilityLabel(WeekFitLocalizedString("common.action.delete"))
+                    }
+
+                    WeekFitCloseButton(size: .regular, playsHaptic: false) {
+                        closeAddSheet()
+                    }
+                    .disabled(isSaving)
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.bottom, 10)
         }
-        .disabled(isSaving)
-        .accessibilityLabel(WeekFitLocalizedString("common.action.delete"))
     }
 
     var addActivityScreen: some View {
@@ -415,18 +420,13 @@ private extension PlanAddActivitySheet {
             }
         }
         .onPreferenceChange(PlanAddLibraryWidthKey.self) { libraryContentWidth = $0 }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !showsMealEmptyState {
-                footerBar
-            }
-        }
     }
 
     /// Shared body for Meal / Workout / Recovery / Habit.
     private func sheetBodyContent(fillsHeight: Bool) -> some View {
         VStack(alignment: .leading, spacing: majorSectionSpacing) {
             activityTypePickerSection
-                .padding(.top, 8)
+                .padding(.top, 2)
 
             sectionPanel {
                 dateChipButton
@@ -476,20 +476,18 @@ private extension PlanAddActivitySheet {
         )
     }
 
-    /// Elevated region chrome — white/charcoal tile + hairline so Date / Library / Time read as blocks.
+    /// Elevated region chrome — pearl tile + soft hairline (Quick Log floating-card language).
     @ViewBuilder
     private func sectionPanel<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
             .padding(sectionPanelPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                RoundedRectangle(cornerRadius: sectionPanelRadius, style: .continuous)
-                    .fill(sectionPanelFill)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: sectionPanelRadius, style: .continuous)
-                    .strokeBorder(sectionPanelStroke, lineWidth: 1)
-            }
+            .quickSheetFloatingCard(
+                cornerRadius: sectionPanelRadius,
+                fill: sectionPanelFill,
+                stroke: sectionPanelStroke,
+                isLight: palette.isLight
+            )
     }
 
     /// Protein / carbs / fats / fiber under the selected meal card.
@@ -553,7 +551,7 @@ private extension PlanAddActivitySheet {
             HStack(spacing: 8) {
                 Image(systemName: "calendar")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(selectionAccent)
+                    .foregroundStyle(chromeAction)
 
                 Text(addSheetDayChipTitle)
                     .font(.subheadline.weight(.medium))
@@ -687,12 +685,15 @@ private extension PlanAddActivitySheet {
 private extension PlanAddActivitySheet {
 
     private var categoryPickerTrackFill: Color {
-        palette.isLight ? Color(white: 0.93) : PlanAddNightChrome.trackFill
+        palette.isLight
+            ? WeekFitLightTokens.internalTile
+            : WeekFitTheme.whiteOpacity(0.034)
     }
 
     private var categoryPickerSelectedFill: Color {
-        // Night: soft elevated pill — avoid near-white glare on charcoal.
-        palette.isLight ? Color.white : PlanAddNightChrome.selectedPill
+        palette.isLight
+            ? QuickSheetChrome.frequentCardFill(isLight: true)
+            : WeekFitTheme.whiteOpacity(0.10)
     }
 
     private var usesAccessibilityCategoryLayout: Bool {
@@ -715,7 +716,7 @@ private extension PlanAddActivitySheet {
 
     private var categoryPickerSingleRow: some View {
         PlanAddEqualWidthSegmentLayout {
-            ForEach(PlannerType.allCases, id: \.segmentID) { type in
+            ForEach(PlanAddPreference.typeOrder, id: \.segmentID) { type in
                 typeSegmentButton(type, allowsMultiline: false)
             }
         }
@@ -734,7 +735,7 @@ private extension PlanAddActivitySheet {
             ],
             spacing: 4
         ) {
-            ForEach(PlannerType.allCases, id: \.segmentID) { type in
+            ForEach(PlanAddPreference.typeOrder, id: \.segmentID) { type in
                 typeSegmentButton(type, allowsMultiline: true)
             }
         }
@@ -748,16 +749,11 @@ private extension PlanAddActivitySheet {
     private func selectPlannerType(_ type: PlannerType) {
         guard viewModel.selectedType != type else { return }
         lightHaptic.impactOccurred()
-        let apply = {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
             showExpandedTimePicker = false
             viewModel.selectType(type)
-        }
-        if reduceMotion {
-            apply()
-        } else {
-            withAnimation(.easeInOut(duration: 0.22)) {
-                apply()
-            }
         }
     }
 
@@ -777,7 +773,7 @@ private extension PlanAddActivitySheet {
                     } label: {
                         Text(WeekFitLocalizedString("planner.sheet.viewAll"))
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(selectionAccent)
+                            .foregroundStyle(chromeAction)
                     }
                     .buttonStyle(.plain)
                 }
@@ -813,8 +809,8 @@ private extension PlanAddActivitySheet {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: libraryCardGap) {
                     if viewModel.selectedType == .meal {
-                        ForEach(availableMeals) { meal in
-                            mealOptionCard(meal)
+                        ForEach(Array(availableMeals.enumerated()), id: \.element.id) { index, meal in
+                            mealOptionCard(meal, washIndex: index)
                                 .id(meal.id)
                         }
                     } else {
@@ -879,7 +875,7 @@ private extension PlanAddActivitySheet {
                                 : WeekFitLocalizedString("planner.time.chooseTime")
                         )
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(selectionAccent)
+                        .foregroundStyle(chromeAction)
                     }
                     .buttonStyle(.plain)
                 }
@@ -897,7 +893,11 @@ private extension PlanAddActivitySheet {
                         .foregroundStyle(WeekFitLightTokens.critical)
                         .lineLimit(2)
                         .padding(.top, 8)
-                } else if let suggestion = suggestedTimeLine, let recommended = recommendedSlot {
+                } else if let suggestion = suggestedTimeLine,
+                          let recommended = recommendedSlot,
+                          viewModel.selectedSlot.map({
+                              !calendar.isDate($0, equalTo: recommended, toGranularity: .minute)
+                          }) ?? true {
                     Button {
                         lightHaptic.impactOccurred()
                         viewModel.selectedSlot = recommended
@@ -905,7 +905,7 @@ private extension PlanAddActivitySheet {
                         HStack(spacing: 6) {
                             Image(systemName: "sparkles")
                                 .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(selectionAccent.opacity(0.85))
+                                .foregroundStyle(chromeAction.opacity(0.85))
                             Text(suggestion)
                                 .font(.caption)
                                 .foregroundStyle(textSecondary)
@@ -1002,7 +1002,7 @@ private extension PlanAddActivitySheet {
                     } label: {
                         Text(customDurationHeaderTitle)
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(selectionAccent)
+                            .foregroundStyle(chromeAction)
                     }
                     .buttonStyle(.plain)
                 }
@@ -1076,7 +1076,7 @@ private extension PlanAddActivitySheet {
                 } label: {
                     Text(trailing)
                         .font(.system(size: 12.2, weight: .semibold))
-                        .foregroundStyle(viewModel.selectedType.color.opacity(0.78))
+                        .foregroundStyle(chromeAction.opacity(0.90))
                 }
                 .buttonStyle(.plain)
             }
@@ -1091,11 +1091,7 @@ private extension PlanAddActivitySheet {
         } label: {
             Text(localizedTitle(for: type))
                 .font(.system(size: 14.5, weight: active ? .semibold : .medium))
-                .foregroundStyle(
-                    active
-                        ? (palette.isLight ? type.color : PlanAddNightChrome.softAccent(for: type))
-                        : textSecondary
-                )
+                .foregroundStyle(active ? chromeAction : textSecondary)
                 .lineLimit(allowsMultiline ? 3 : 1)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: !allowsMultiline, vertical: false)
@@ -1107,7 +1103,6 @@ private extension PlanAddActivitySheet {
                     if active {
                         Capsule(style: .continuous)
                             .fill(categoryPickerSelectedFill)
-                            .matchedGeometryEffect(id: "planAddTypeSelection", in: typePickerNamespace)
                     }
                 }
                 .contentShape(Capsule())
@@ -1120,12 +1115,25 @@ private extension PlanAddActivitySheet {
     func optionCard(_ option: PlannerOption) -> some View {
         let active = selectedItemMatches(option)
         let thumb = activityThumbSize
+        let wash: Color = {
+            switch viewModel.selectedType {
+            case .workout, .recovery:
+                return QuickActivityAccent.frequentWash(
+                    for: option.imageName,
+                    plannerType: viewModel.selectedType,
+                    isLight: palette.isLight
+                )
+            case .habit:
+                return PlanAddHabitAccent.cardWash
+            case .meal:
+                return softCardAccent
+            }
+        }()
 
         return Button {
             lightHaptic.impactOccurred()
             withAnimation(.easeInOut(duration: 0.18)) {
-                viewModel.selectedItem = option
-                viewModel.applyDefaultDurationForSelectedItem()
+                viewModel.selectCatalogOption(option)
             }
         } label: {
             planSelectionCard(
@@ -1134,7 +1142,8 @@ private extension PlanAddActivitySheet {
                 subtitle: localizedSubtitle(for: option),
                 width: libraryCardWidth,
                 thumbSize: thumb,
-                clipsMediaToCircle: true
+                clipsMediaToCircle: true,
+                cardWash: wash
             ) {
                 activityCircularPhoto(option: option, size: thumb)
             }
@@ -1142,15 +1151,15 @@ private extension PlanAddActivitySheet {
         .buttonStyle(.plain)
     }
 
-    func mealOptionCard(_ meal: Meals) -> some View {
+    func mealOptionCard(_ meal: Meals, washIndex: Int) -> some View {
         let active = viewModel.selectedMealID == meal.id
         let thumb = mealThumbSize
+        let wash = QuickFoodAccent.frequentColor(at: washIndex, isLight: palette.isLight)
 
         return Button {
             lightHaptic.impactOccurred()
             withAnimation(.easeInOut(duration: 0.18)) {
-                viewModel.selectedMealID = meal.id
-                viewModel.selectedItem = viewModel.plannerOption(for: meal)
+                viewModel.selectMeal(meal)
             }
         } label: {
             planSelectionCard(
@@ -1159,7 +1168,8 @@ private extension PlanAddActivitySheet {
                 subtitle: "\(meal.calories) \(WeekFitLocalizedString("common.unit.kcal"))",
                 width: libraryCardWidth,
                 thumbSize: thumb,
-                clipsMediaToCircle: false
+                clipsMediaToCircle: false,
+                cardWash: wash
             ) {
                 mealPreview(meal, size: thumb)
             }
@@ -1174,6 +1184,7 @@ private extension PlanAddActivitySheet {
         width: CGFloat,
         thumbSize: CGFloat,
         clipsMediaToCircle: Bool,
+        cardWash: Color,
         @ViewBuilder thumb: () -> Thumb
     ) -> some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1211,24 +1222,27 @@ private extension PlanAddActivitySheet {
         }
         .padding(cardInnerPadding)
         .frame(width: width, alignment: .topLeading)
-        // Selection stroke drawn inset so active/inactive cards stay the same size.
+        // Soft log wash (Food warm/leaf, Activity frequent washes) + inset selection stroke.
         .background {
-            RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
-                .fill(
-                    active
-                        ? selectionAccent.opacity(palette.isLight ? 0.10 : 0.16)
-                        : (palette.isLight
-                            ? Color(white: 0.985)
-                            : PlanAddNightChrome.elevatedSurface)
-                )
+            QuickSheetChrome.elevatedTileBackground(
+                cornerRadius: cardCornerRadius,
+                accent: cardWash,
+                isLight: palette.isLight
+            )
+            .overlay {
+                if active {
+                    RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
+                        .fill(chromeAction.opacity(palette.isLight ? 0.08 : 0.12))
+                }
+            }
         }
         .overlay {
             RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
                 .strokeBorder(
                     active
-                        ? selectionAccent.opacity(palette.isLight ? 1 : 0.72)
-                        : sectionPanelStroke.opacity(palette.isLight ? 0.90 : 1),
-                    lineWidth: active ? 1.25 : 1
+                        ? chromeAction.opacity(palette.isLight ? 0.90 : 0.72)
+                        : Color.clear,
+                    lineWidth: active ? 1.25 : 0
                 )
         }
         .accessibilityAddTraits(active ? .isSelected : [])
@@ -1246,6 +1260,10 @@ private extension PlanAddActivitySheet {
         let duration = viewModel.selectedDuration
         let excluding = viewModel.editingActivity
 
+        let dayActivities = plannedActivities.filter {
+            calendar.isDate($0.date, inSameDayAs: viewModel.selectedDate)
+        }
+
         var recommendedSlot: Date?
         var states: [AddSheetTimeSlotState] = []
         states.reserveCapacity(slots.count)
@@ -1255,7 +1273,7 @@ private extension PlanAddActivitySheet {
             let occupied = !past && viewModel.hasTimeConflict(
                 newStart: slot,
                 durationMinutes: duration,
-                activities: plannedActivities,
+                activities: dayActivities,
                 excluding: excluding,
                 newEventBlocksPlannerTime: blocksTime
             )
@@ -1279,10 +1297,18 @@ private extension PlanAddActivitySheet {
             )
         }
 
-        guard let recommendedSlot else { return states }
+        guard let firstFree = recommendedSlot else { return states }
+
+        let preferred = viewModel.selectedSlot.flatMap { selected in
+            states.first { state in
+                calendar.isDate(state.slot, equalTo: selected, toGranularity: .minute)
+                    && !state.isPast
+                    && !state.isOccupied
+            }?.slot
+        } ?? firstFree
 
         return states.map { state in
-            guard calendar.isDate(state.slot, equalTo: recommendedSlot, toGranularity: .minute) else {
+            guard calendar.isDate(state.slot, equalTo: preferred, toGranularity: .minute) else {
                 return state
             }
 
@@ -1328,7 +1354,11 @@ private extension PlanAddActivitySheet {
                 viewModel.selectedSlot = targetSlot
             }
 
-            proxy.scrollTo(timeSlotID(targetSlot), anchor: .center)
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                proxy.scrollTo(timeSlotID(targetSlot), anchor: .center)
+            }
         }
     }
 
@@ -1411,7 +1441,7 @@ private extension PlanAddActivitySheet {
             guard !isPast else { return }
 
             lightHaptic.impactOccurred()
-            viewModel.selectedSlot = slot
+            viewModel.pinSelectedTime(slot)
         } label: {
             plannerControlChip(
                 title: slotTitle(slot),
@@ -1472,17 +1502,19 @@ private extension PlanAddActivitySheet {
             RoundedRectangle(cornerRadius: plannerChipCorner, style: .continuous)
                 .fill(
                     active
-                        ? selectionAccent.opacity(palette.isLight ? 0.14 : 0.18)
-                        : (palette.isLight ? Color(white: 0.97) : chipNeutralFill)
+                        ? chromeAction.opacity(palette.isLight ? 0.14 : 0.18)
+                        : (palette.isLight
+                            ? WeekFitLightTokens.internalTile
+                            : chipNeutralFill)
                 )
         }
         .overlay {
             RoundedRectangle(cornerRadius: plannerChipCorner, style: .continuous)
                 .strokeBorder(
                     active
-                        ? selectionAccent.opacity(palette.isLight ? 1 : 0.70)
-                        : sectionPanelStroke.opacity(palette.isLight ? 0.85 : 1),
-                    lineWidth: active ? 1.25 : 1
+                        ? chromeAction.opacity(palette.isLight ? 0.85 : 0.70)
+                        : sectionPanelStroke,
+                    lineWidth: active ? 1.25 : 0.75
                 )
         }
     }
@@ -1510,7 +1542,7 @@ private extension PlanAddActivitySheet {
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
             }
-            .foregroundStyle(enabled ? Color.white : textSecondary)
+            .foregroundStyle(enabled ? actionButtonForeground : textSecondary)
             .frame(maxWidth: .infinity)
             .frame(height: 50)
             .background {
@@ -1520,14 +1552,13 @@ private extension PlanAddActivitySheet {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
-        .animation(.easeInOut(duration: 0.22), value: viewModel.selectedType)
         .accessibilityLabel(title)
     }
 
     private var disabledActionFill: Color {
         palette.isLight
-            ? Color(white: 0.90)
-            : PlanAddNightChrome.elevatedSurface
+            ? WeekFitLightTokens.internalTile
+            : WeekFitTheme.whiteOpacity(0.08)
     }
 
     var primaryActionTitle: String {
@@ -1574,12 +1605,10 @@ private extension PlanAddActivitySheet {
             } label: {
                 Text(String(format: WeekFitLocalizedString("planner.duration.setMinutesFormat"), viewModel.customDuration))
                     .font(WeekFitStyle.Font.button)
-                    .foregroundStyle(palette.isLight ? Color.white : Color.black.opacity(0.84))
+                    .foregroundStyle(actionButtonForeground)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(
-                        viewModel.selectedType.color.opacity(palette.isLight ? 1.0 : 0.95)
-                    )
+                    .background(chromeAction)
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             }
             .padding(.horizontal, 20)
@@ -1594,7 +1623,7 @@ private extension PlanAddActivitySheet {
             .buttonStyle(.plain)
             .padding(.bottom, 10)
         }
-        .background(WeekFitTheme.backgroundColor.ignoresSafeArea())
+        .background(screenBackground.ignoresSafeArea())
         .presentationDetents([.height(360)])
         .presentationDragIndicator(.hidden)
     }
@@ -1606,7 +1635,7 @@ private extension PlanAddActivitySheet {
 
     var selectionCheckmark: some View {
         Circle()
-            .fill(selectionAccent)
+            .fill(chromeAction)
             .frame(width: 22, height: 22)
             .overlay {
                 Image(systemName: "checkmark")
@@ -1630,10 +1659,10 @@ private extension PlanAddActivitySheet {
             } else {
                 ZStack {
                     Circle()
-                        .fill(selectionAccent.opacity(0.12))
+                        .fill(chromeAction.opacity(0.12))
                     Image(systemName: option.icon.isEmpty ? viewModel.selectedType.icon : option.icon)
                         .font(.system(size: size * 0.34, weight: .semibold))
-                        .foregroundStyle(selectionAccent.opacity(0.78))
+                        .foregroundStyle(chromeAction.opacity(0.78))
                 }
                 .frame(width: size, height: size)
             }
@@ -1703,7 +1732,7 @@ private extension PlanAddActivitySheet {
     func mealFallbackIcon(size: CGFloat) -> some View {
         Image(systemName: PlannerType.meal.icon)
             .font(.system(size: size * 0.28, weight: .semibold))
-            .foregroundStyle(selectionAccent.opacity(0.72))
+            .foregroundStyle(chromeAction.opacity(0.72))
             .frame(width: size, height: size)
     }
 
@@ -1718,35 +1747,7 @@ private extension PlanAddActivitySheet {
     }
 
     var addSheetBackground: some View {
-        ZStack {
-            PlanAddSheetPalette.sheetBase(for: viewModel.selectedType, isLight: palette.isLight)
-
-            // Quiet type wash — depth without painting the whole sheet in accent.
-            LinearGradient(
-                colors: PlanAddSheetPalette.sheetWash(
-                    for: viewModel.selectedType,
-                    isLight: palette.isLight
-                ),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .allowsHitTesting(false)
-
-            if !palette.isLight {
-                LinearGradient(
-                    colors: [
-                        WeekFitTheme.whiteOpacity(0.045),
-                        WeekFitTheme.whiteOpacity(0.012),
-                        Color.clear
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .allowsHitTesting(false)
-            }
-        }
-        .ignoresSafeArea()
-        .animation(.easeInOut(duration: 0.28), value: viewModel.selectedType)
+        screenBackground.ignoresSafeArea()
     }
 
     var horizontalFadeMask: some View {
@@ -1912,18 +1913,6 @@ private extension PlanAddActivitySheet {
         return formatter.string(from: viewModel.selectedDate)
     }
 
-    func typeButtonActiveForeground(for type: PlannerType) -> Color {
-        if palette.isLight {
-            return WeekFitTheme.primaryText
-        }
-        switch type {
-        case .workout, .recovery, .habit:
-            return WeekFitTheme.whiteOpacity(0.90)
-        case .meal:
-            return Color.black.opacity(0.82)
-        }
-    }
-
     func selectionChipForeground(active: Bool, occupied: Bool, isPast: Bool) -> Color {
         if palette.isLight {
             if isPast { return WeekFitTheme.disabledText }
@@ -1944,13 +1933,13 @@ private extension PlanAddActivitySheet {
             if isPast { return WeekFitLightTokens.surfaceTertiary.opacity(0.70) }
             if active && occupied { return WeekFitLightTokens.critical.opacity(0.12) }
             if occupied { return busySlotColor.opacity(0.12) }
-            if active { return viewModel.selectedType.color.opacity(0.16) }
-            return PlanAddSheetPalette.chipWellFill(for: viewModel.selectedType)
+            if active { return chromeAction.opacity(0.14) }
+            return WeekFitLightTokens.internalTile
         }
         if isPast { return WeekFitTheme.whiteOpacity(0.012) }
         if active && occupied { return Color.red.opacity(0.075) }
         if occupied { return busySlotColor.opacity(0.07) }
-        if active { return viewModel.selectedType.color.opacity(0.08) }
+        if active { return chromeAction.opacity(0.16) }
         return WeekFitTheme.whiteOpacity(0.022)
     }
 
@@ -1959,13 +1948,13 @@ private extension PlanAddActivitySheet {
             if isPast { return WeekFitLightTokens.divider.opacity(0.40) }
             if active && occupied { return WeekFitLightTokens.critical.opacity(0.45) }
             if occupied { return busySlotColor.opacity(0.40) }
-            if active { return viewModel.selectedType.color.opacity(0.50) }
+            if active { return chromeAction.opacity(0.55) }
             return WeekFitLightTokens.divider.opacity(0.50)
         }
         if isPast { return WeekFitTheme.whiteOpacity(0.04) }
         if active && occupied { return Color.red.opacity(0.22) }
         if occupied { return busySlotColor.opacity(0.20) }
-        if active { return viewModel.selectedType.color.opacity(0.22) }
+        if active { return chromeAction.opacity(0.55) }
         return WeekFitTheme.whiteOpacity(0.05)
     }
 
@@ -1989,21 +1978,25 @@ private extension PlanAddActivitySheet {
 
     func scrollToSelectedOption(_ proxy: ScrollViewProxy) {
         DispatchQueue.main.async {
-            if viewModel.selectedType == .meal {
-                if let selectedMealID = viewModel.selectedMealID {
-                    let isFirst = availableMeals.first?.id == selectedMealID
-                    proxy.scrollTo(selectedMealID, anchor: isFirst ? .leading : .center)
-                } else if let firstID = availableMeals.first?.id {
-                    proxy.scrollTo(firstID, anchor: .leading)
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                if viewModel.selectedType == .meal {
+                    if let selectedMealID = viewModel.selectedMealID {
+                        let isFirst = availableMeals.first?.id == selectedMealID
+                        proxy.scrollTo(selectedMealID, anchor: isFirst ? .leading : .center)
+                    } else if let firstID = availableMeals.first?.id {
+                        proxy.scrollTo(firstID, anchor: .leading)
+                    }
+                } else if viewModel.hasValidItemSelection {
+                    let isFirst = currentOptions.first.map(selectedItemMatches) ?? false
+                    proxy.scrollTo(
+                        optionScrollID(viewModel.selectedItem),
+                        anchor: isFirst ? .leading : .center
+                    )
+                } else if let first = currentOptions.first {
+                    proxy.scrollTo(optionScrollID(first), anchor: .leading)
                 }
-            } else if viewModel.hasValidItemSelection {
-                let isFirst = currentOptions.first.map(selectedItemMatches) ?? false
-                proxy.scrollTo(
-                    optionScrollID(viewModel.selectedItem),
-                    anchor: isFirst ? .leading : .center
-                )
-            } else if let first = currentOptions.first {
-                proxy.scrollTo(optionScrollID(first), anchor: .leading)
             }
         }
     }
@@ -2020,8 +2013,7 @@ private extension PlanAddActivitySheet {
                     ForEach(currentOptions, id: \.imageName) { option in
                         Button {
                             lightHaptic.impactOccurred()
-                            viewModel.selectedItem = option
-                            viewModel.applyDefaultDurationForSelectedItem()
+                            viewModel.selectCatalogOption(option)
                             showOptionCatalogSheet = false
                         } label: {
                             optionCatalogRow(option)
@@ -2032,7 +2024,7 @@ private extension PlanAddActivitySheet {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
-            .background(screenBackground.ignoresSafeArea())
+            .background { addSheetBackground }
             .navigationTitle(libraryCatalogTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -2040,7 +2032,7 @@ private extension PlanAddActivitySheet {
                     Button(WeekFitLocalizedString("common.action.cancel")) {
                         showOptionCatalogSheet = false
                     }
-                    .foregroundStyle(selectionAccent)
+                    .foregroundStyle(chromeAction)
                 }
             }
         }
@@ -2078,17 +2070,17 @@ private extension PlanAddActivitySheet {
             if active {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(selectionAccent)
+                    .foregroundStyle(chromeAction)
             }
         }
         .padding(12)
         .background {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(active ? selectionAccent.opacity(0.10) : chipNeutralFill)
+                .fill(active ? chromeAction.opacity(0.10) : chipNeutralFill)
         }
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(active ? selectionAccent : Color.clear, lineWidth: 1.25)
+                .stroke(active ? chromeAction : Color.clear, lineWidth: 1.25)
         }
     }
 
@@ -2099,8 +2091,7 @@ private extension PlanAddActivitySheet {
                     ForEach(availableMeals) { meal in
                         Button {
                             lightHaptic.impactOccurred()
-                            viewModel.selectedMealID = meal.id
-                            viewModel.selectedItem = viewModel.plannerOption(for: meal)
+                            viewModel.selectMeal(meal)
                             showMealSheet = false
                         } label: {
                             mealLibraryRow(meal)
@@ -2111,7 +2102,7 @@ private extension PlanAddActivitySheet {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
-            .background(QuickActionSheetDesign.Color.sheetBackground(for: .food).ignoresSafeArea())
+            .background(screenBackground.ignoresSafeArea())
             .navigationTitle(WeekFitLocalizedString("planner.sheet.chooseMeal"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -2165,7 +2156,7 @@ private extension PlanAddActivitySheet {
             if viewModel.selectedMealID == meal.id {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(selectionAccent)
+                    .foregroundStyle(chromeAction)
             }
         }
         .padding(12)
@@ -2225,152 +2216,24 @@ private extension PlanAddActivitySheet {
             from: userSettings.customMealsCatalog,
             revision: userSettings.customMealsCatalogRevision
         )
-        viewModel.selectedMealID = meal.id
-        viewModel.selectedItem = viewModel.plannerOption(for: meal)
+        viewModel.selectMeal(meal)
     }
 }
 
 // MARK: - Add sheet surfaces (4 types)
 
-/// Calm night surfaces for Plan Add — charcoal canvas, muted accents, no OLED glare.
-private enum PlanAddNightChrome {
-    /// Soft charcoal canvas (~#1A1C20), lifted from pure black.
-    static let canvas = Color(red: 0.102, green: 0.110, blue: 0.125)
-    /// Quiet elevated wells for chips / idle cards.
-    static let elevatedSurface = Color.white.opacity(0.07)
-    static let cardFill = Color(red: 0.145, green: 0.152, blue: 0.168)
-    static let trackFill = Color.white.opacity(0.06)
-    /// Selected segment — soft slate, not near-white.
-    static let selectedPill = Color(red: 0.22, green: 0.23, blue: 0.255)
-
-    static func softAccent(for type: PlannerType) -> Color {
-        switch type {
-        case .meal:
-            return Color(red: 0.45, green: 0.72, blue: 0.60) // muted sage
-        case .workout:
-            return Color(red: 0.48, green: 0.62, blue: 0.88) // soft steel blue
-        case .recovery:
-            return Color(red: 0.62, green: 0.55, blue: 0.82) // quiet lilac
-        case .habit:
-            return Color(red: 0.82, green: 0.62, blue: 0.42) // warm sand
-        }
+/// Habit accent for Plan Add — dusty rose so Meal (Food gold) and Habit stay distinct.
+/// Workout green / Recovery purple already cover the cool side of the palette.
+private enum PlanAddHabitAccent {
+    /// Light: soft rose CTA. Dark: lifted rose for charcoal canvases.
+    static func action(isLight: Bool) -> Color {
+        isLight
+            ? Color(red: 0.78, green: 0.40, blue: 0.52) // #C76685
+            : Color(red: 0.90, green: 0.58, blue: 0.68) // #E694AD
     }
 
-    static func ctaFill(for type: PlannerType) -> Color {
-        switch type {
-        case .meal:
-            return Color(red: 0.22, green: 0.46, blue: 0.38)
-        case .workout:
-            return Color(red: 0.26, green: 0.38, blue: 0.62)
-        case .recovery:
-            return Color(red: 0.38, green: 0.32, blue: 0.58)
-        case .habit:
-            return Color(red: 0.55, green: 0.38, blue: 0.22)
-        }
-    }
-}
-
-/// Soft stone sheets + family-tinted ceramic cards — Quick Log depth language, per Plan type.
-/// Idle cards must never read as pure white on the sheet.
-private enum PlanAddSheetPalette {
-
-    @MainActor
-    static func sheetBase(for type: PlannerType, isLight: Bool) -> Color {
-        guard isLight else { return PlanAddNightChrome.canvas }
-        switch type {
-        case .meal:
-            return Color(red: 0.941, green: 0.922, blue: 0.890) // #F0EBE3 deeper food stone
-        case .workout:
-            return Color(red: 0.922, green: 0.929, blue: 0.941) // #EBEDF0 cool slate mist
-        case .recovery:
-            return Color(red: 0.937, green: 0.929, blue: 0.949) // #EFEDF2 lilac stone
-        case .habit:
-            return Color(red: 0.941, green: 0.933, blue: 0.906) // #F0EEE7 champagne stone
-        }
-    }
-
-    @MainActor
-    static func sheetWash(for type: PlannerType, isLight: Bool) -> [Color] {
-        let accent = isLight ? type.color : PlanAddNightChrome.softAccent(for: type)
-        if isLight {
-            return [
-                accent.opacity(0.070),
-                accent.opacity(0.022),
-                Color.clear
-            ]
-        }
-        return [
-            accent.opacity(0.05),
-            accent.opacity(0.018),
-            Color.clear
-        ]
-    }
-
-    @MainActor
-    static func optionCardFill(active: Bool, type: PlannerType, isLight: Bool) -> Color {
-        if !isLight {
-            return active ? type.color.opacity(0.07) : WeekFitTheme.whiteOpacity(0.032)
-        }
-        if active {
-            return type.color.opacity(0.16)
-        }
-        // One step lighter than the sheet, still clearly tinted — never pearl/white.
-        switch type {
-        case .meal:
-            return Color(red: 0.973, green: 0.961, blue: 0.941) // #F8F5F0
-        case .workout:
-            return Color(red: 0.957, green: 0.961, blue: 0.969) // #F4F5F7
-        case .recovery:
-            return Color(red: 0.965, green: 0.957, blue: 0.973) // #F6F4F8
-        case .habit:
-            return Color(red: 0.973, green: 0.965, blue: 0.945) // #F8F6F1
-        }
-    }
-
-    /// Shared idle well for the type row — keyed to the *current* sheet family.
-    @MainActor
-    static func typeChipIdleFill(for selectedType: PlannerType) -> Color {
-        switch selectedType {
-        case .meal:
-            return Color(red: 0.922, green: 0.906, blue: 0.875) // #EBE7DF
-        case .workout:
-            return Color(red: 0.906, green: 0.914, blue: 0.925) // #E7E9EC
-        case .recovery:
-            return Color(red: 0.918, green: 0.910, blue: 0.929) // #EAE8ED
-        case .habit:
-            return Color(red: 0.922, green: 0.914, blue: 0.890) // #EBE9E3
-        }
-    }
-
-    @MainActor
-    static func chipWellFill(for type: PlannerType) -> Color {
-        typeChipIdleFill(for: type)
-    }
-
-    @MainActor
-    static func imageWellFill(for type: PlannerType, isLight: Bool) -> Color {
-        guard isLight else { return WeekFitTheme.cardSurface.opacity(0.88) }
-        // Slightly deeper than the card body so photos sit in a quiet nest.
-        switch type {
-        case .meal:
-            return Color(red: 0.953, green: 0.941, blue: 0.918) // #F3F0EA
-        case .workout:
-            return Color(red: 0.941, green: 0.945, blue: 0.953) // #F0F1F3
-        case .recovery:
-            return Color(red: 0.949, green: 0.941, blue: 0.957) // #F2F0F4
-        case .habit:
-            return Color(red: 0.953, green: 0.945, blue: 0.925) // #F3F1EC
-        }
-    }
-
-    @MainActor
-    static func optionCardShadow(active: Bool, type: PlannerType, isLight: Bool) -> Color {
-        if active {
-            return type.color.opacity(isLight ? 0.12 : 0.014)
-        }
-        // Quiet contact only — no floating white-sticker look.
-        return Color.black.opacity(isLight ? 0.035 : 0.012)
-    }
+    /// Gentle card wash — same intensity family as Food warmWash / Activity washes.
+    static let cardWash = Color(red: 0.90, green: 0.78, blue: 0.82) // #E6C7D1
 }
 
 /// Equal-width segments sized to the longest label so titles never truncate in a single row.

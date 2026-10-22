@@ -824,18 +824,21 @@ enum CoachCopyRegistryScenarios {
             )
         case (.postImmediate, .yoga):
             return .en(
-                "Yoga just ended — let the calm linger.",
-                "Йога закончилась — пусть спокойствие останется."
+                "Let the calm from yoga linger a few more minutes.",
+                "Пусть спокойствие после йоги ещё немного останется.",
+                chinese: "让瑜伽后的平静再停留几分钟。"
             )
         case (.postImmediate, .stretching):
             return .en(
-                "Stretch block wrapped — stay soft a few minutes.",
-                "Растяжка закончилась — ещё несколько минут мягко."
+                "Stay soft for a few minutes after the stretch.",
+                "Ещё несколько минут мягкости после растяжки.",
+                chinese: "拉伸后，再放松几分钟。"
             )
         case (.postImmediate, .breathing):
             return .en(
-                "Breath work finished — keep the quiet.",
-                "Дыхание завершено — сохраните тишину."
+                "Keep the quiet after the breath work.",
+                "Сохраните тишину после дыхания.",
+                chinese: "呼吸练习后，保持这份安静。"
             )
         case (.postSettled, .yoga):
             return .en(
@@ -874,8 +877,9 @@ enum CoachCopyRegistryScenarios {
             )
         case (.postImmediate, _):
             return .en(
-                "Recovery session wrapped — calm should linger.",
-                "Восстановительная тренировка закончилась — пусть спокойствие останется с вами."
+                "Give this recovery a few more quiet minutes.",
+                "Дайте восстановлению ещё несколько спокойных минут.",
+                chinese: "让这次恢复再安静几分钟。"
             )
         case (.postSettled, _):
             return .en(

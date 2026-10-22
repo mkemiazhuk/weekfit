@@ -96,32 +96,6 @@ enum QuickDrinkAccent {
     }
 }
 
-/// Transparent PNG padding fractions for drink cutouts (measured on asset alpha).
-/// Used so badge/title spacing tracks the visible object, not the Image frame.
-enum QuickDrinkOpticalInset {
-    struct Fractions {
-        let top: CGFloat
-        let bottom: CGFloat
-    }
-
-    static func fractions(for imageName: String) -> Fractions {
-        switch imageName {
-        case "ingredient-water":
-            return Fractions(top: 0.152, bottom: 0.139)
-        case "ingredient-tea":
-            return Fractions(top: 0.098, bottom: 0.228)
-        case "ingredient-coffee":
-            return Fractions(top: 0.102, bottom: 0.128)
-        case "ingredient-iced-coffee":
-            return Fractions(top: 0.110, bottom: 0.070)
-        case "ingredient-cocoa":
-            return Fractions(top: 0.131, bottom: 0.133)
-        default:
-            return Fractions(top: 0.12, bottom: 0.14)
-        }
-    }
-}
-
 // MARK: - Design
 
 enum QuickDrinkLogDesign {
@@ -130,9 +104,11 @@ enum QuickDrinkLogDesign {
         static let sectionSpacing: CGFloat = 22
         static let sectionTitleBottom: CGFloat = 12
         static let recommendedCardWidth: CGFloat = QuickActionSheetDesign.RecommendedCard.width
+        /// Same height as Food / Activity recommended cards.
         static let recommendedCardMinHeight: CGFloat = QuickActionSheetDesign.RecommendedCard.minHeight
         static let recommendedCardRadius: CGFloat = QuickActionSheetDesign.RecommendedCard.cornerRadius
         static let recommendedCardPadding: CGFloat = QuickActionSheetDesign.RecommendedCard.padding
+        /// Same media slot as Food / Activity recommended cards.
         static let recommendedMediaHeight: CGFloat = QuickActionSheetDesign.RecommendedCard.mediaHeight
         static let recentItemWidth: CGFloat = 74
         static let listCardRadius: CGFloat = 22
@@ -439,7 +415,7 @@ struct QuickDrinkLogSheet: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 10) {   
             Image(systemName: "drop.fill")
                 .font(.system(size: 28, weight: .semibold))
                 .foregroundStyle(QuickDrinkAccent.hydration.opacity(0.55))
@@ -512,9 +488,8 @@ private enum QuickDrinkPhotoRole {
 
     var contentScale: CGFloat {
         switch self {
-        /// Must stay ≤ 1 so wide cutouts (cocoa saucer, handles) never clip.
-        /// Slight inset leaves room for optical Y nudge inside the media slot.
-        case .recommended: return 0.92
+        /// A little under the shared slot so drink cutouts sit smaller than Food / Activity photos.
+        case .recommended: return 0.88
         case .recent: return 0.78
         case .library: return 0.90
         }
@@ -615,10 +590,6 @@ private struct QuickDrinkRecommendedCard: View {
 
     private var wash: Color { QuickDrinkAccent.frequentWash(for: row.item, isLight: palette.isLight) }
     private var action: Color { QuickDrinkAccent.listAction }
-    private var optical: QuickDrinkOpticalInset.Fractions {
-        QuickDrinkOpticalInset.fractions(for: row.item.imageName)
-    }
-    private var mediaSize: CGFloat { QuickDrinkPhotoRole.recommended.size }
 
     private var recommendedMetaRow: some View {
         QuickRecommendedMetaActionRow {
@@ -713,26 +684,14 @@ private struct QuickDrinkRecommendedCard: View {
         )
     }
 
-    /// Fixed media slot. Optical Y nudge is capped so the full cutout stays inside —
-    /// never scale/clip past the slot (wide saucers / handles must remain intact).
+    /// Same media slot as Food / Activity. The cutout is scaled slightly under that slot.
     private var drinkMedia: some View {
-        let scale = min(QuickDrinkPhotoRole.recommended.contentScale, 1)
-        let contentSide = mediaSize * scale
-        let slack = max(0, mediaSize - contentSide)
-        let referenceBottom: CGFloat = 0.14
-        let bottomNudge = contentSide * (optical.bottom - referenceBottom)
-        // Mild pull toward the badge using transparent top pad (badgeToMedia keeps air).
-        let topPull = contentSide * optical.top * 0.55
-        let maxShift = slack / 2
-        let offsetY = min(max(bottomNudge - topPull, -maxShift), maxShift)
-
-        return ZStack {
+        ZStack {
             QuickDrinkPhoto(
                 row: row,
                 role: .recommended,
                 accent: wash
             )
-            .offset(y: offsetY)
         }
         .frame(maxWidth: .infinity)
         .frame(height: QuickDrinkLogDesign.Layout.recommendedMediaHeight)
