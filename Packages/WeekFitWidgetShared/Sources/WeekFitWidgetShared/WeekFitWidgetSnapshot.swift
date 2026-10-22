@@ -23,6 +23,8 @@ public struct WeekFitWidgetSnapshot: Codable, Equatable, Sendable {
         case meal
         case hydration
         case rest
+        case snowboarding
+        case downhillSkiing
         case none
     }
 

@@ -271,7 +271,9 @@ enum ActivityOptionPresentation {
         if image.contains("hiit") || title.contains("interval") || title.contains("squash") {
             return DetailChip(symbol: "heart.fill", localizationKey: "home.activityStart.chip.hrZone")
         }
-        if image.contains("hiking") || title.contains("hike") {
+        if image.contains("hiking") || title.contains("hike")
+            || image.contains("snowboard") || image.contains("skiing")
+            || title.contains("snowboard") || title.contains("skiing") {
             return DetailChip(symbol: "mountain.2.fill", localizationKey: "home.activityStart.chip.outdoor")
         }
         if image.contains("fullbody") || image.contains("running") || image.contains("swimming") {

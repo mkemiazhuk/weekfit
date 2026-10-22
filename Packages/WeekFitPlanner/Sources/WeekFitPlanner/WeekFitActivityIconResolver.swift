@@ -8,6 +8,8 @@ public enum WeekFitActivityIconResolver {
         "workout-running": "figure.run",
         "workout-swimming": "figure.pool.swim",
         "workout-hiking": "figure.hiking",
+        "workout-snowboarding": "figure.snowboarding",
+        "workout-skiing": "figure.skiing.downhill",
         "workout-strength": "dumbbell.fill",
         "workout-core": "figure.core.training",
         "workout-lowerbody": "figure.strengthtraining.traditional",
@@ -34,6 +36,9 @@ public enum WeekFitActivityIconResolver {
         "running": "figure.run",
         "swimming": "figure.pool.swim",
         "hiking": "figure.hiking",
+        "snowboarding": "figure.snowboarding",
+        "alpine skiing": "figure.skiing.downhill",
+        "downhill skiing": "figure.skiing.downhill",
         "upper body": "dumbbell.fill",
         "core": "figure.core.training",
         "core training": "figure.core.training",
@@ -43,7 +48,6 @@ public enum WeekFitActivityIconResolver {
         "hiit workout": "flame.fill",
         "tennis": "figure.tennis",
         "squash": "figure.squash",
-        "snowboarding": "figure.snowboarding",
         "stretching": "figure.cooldown",
         "walk": "figure.walk",
         "sauna": "flame.fill",
@@ -234,8 +238,12 @@ public enum WeekFitActivityIconResolver {
             return "figure.squash"
         }
 
-        if containsAny(haystack, ["snowboard"]) {
+        if containsAny(haystack, ["snowboard", "сноуборд"]) {
             return "figure.snowboarding"
+        }
+
+        if containsAny(haystack, ["skiing", "alpine ski", "downhill ski", "лыж", "горнолыж"]) {
+            return "figure.skiing.downhill"
         }
 
         if containsAny(haystack, ["core", "abs", "abdominal", "кор", "пресс"]) {

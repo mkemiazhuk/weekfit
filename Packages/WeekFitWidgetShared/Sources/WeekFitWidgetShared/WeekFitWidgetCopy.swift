@@ -80,6 +80,8 @@ public enum WeekFitWidgetCopy {
         case .meal: return "fork.knife"
         case .hydration: return "drop.fill"
         case .rest: return "moon.fill"
+        case .snowboarding: return "figure.snowboarding"
+        case .downhillSkiing: return "figure.skiing.downhill"
         case .none: return "sparkles"
         }
     }
@@ -108,6 +110,8 @@ public enum WeekFitWidgetCopy {
         case .meal: return t("Meal", "Еда", "用餐")
         case .hydration: return t("Hydrate", "Вода", "补水")
         case .rest: return t("Rest", "Отдых", "休息")
+        case .snowboarding: return t("Snowboard", "Сноуборд", "单板滑雪")
+        case .downhillSkiing: return t("Ski", "Горные лыжи", "高山滑雪")
         case .none: return t("Open", "Открыть", "打开")
         }
     }
@@ -127,6 +131,8 @@ public enum WeekFitWidgetCopy {
         case .meal: return t("Fuel up", "Подкрепиться", "补充能量")
         case .hydration: return t("Hydrate", "Вода", "补水")
         case .rest: return t("Rest", "Отдых", "休息")
+        case .snowboarding: return t("Snowboard", "Сноуборд", "单板滑雪")
+        case .downhillSkiing: return t("Ski", "Горные лыжи", "高山滑雪")
         case .none: return t("Open app", "Открыть приложение", "打开应用")
         }
     }

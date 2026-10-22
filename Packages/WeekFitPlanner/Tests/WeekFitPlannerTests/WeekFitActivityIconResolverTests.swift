@@ -48,6 +48,8 @@ final class WeekFitActivityIconResolverTests: XCTestCase {
             ("workout-running", "figure.run"),
             ("workout-swimming", "figure.pool.swim"),
             ("workout-hiking", "figure.hiking"),
+            ("workout-snowboarding", "figure.snowboarding"),
+            ("workout-skiing", "figure.skiing.downhill"),
             ("workout-strength", "dumbbell.fill"),
             ("workout-core", "figure.core.training"),
             ("workout-lowerbody", "figure.strengthtraining.traditional"),

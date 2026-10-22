@@ -359,6 +359,10 @@ enum CoachImminentSessionCopyPolicy {
             (english, russian, chinese) = ("swim", "заплыв", "游泳")
         case .hiit:
             return "HIIT"
+        case .snowboarding:
+            (english, russian, chinese) = ("snowboarding", "сноуборд", "单板滑雪")
+        case .downhillSkiing:
+            (english, russian, chinese) = ("alpine skiing", "горные лыжи", "高山滑雪")
         case .tennis:
             (english, russian, chinese) = ("tennis", "теннис", "网球")
         case .squash:
@@ -385,6 +389,10 @@ enum CoachImminentSessionCopyPolicy {
             return CoachBilingualText(english: "Before the swim", russian: "Перед плаванием", chinese: "游泳前")
         case .hiit:
             return CoachBilingualText(english: "Before HIIT", russian: "Перед HIIT", chinese: "HIIT 前")
+        case .snowboarding:
+            return CoachBilingualText(english: "Before snowboarding", russian: "Перед сноубордом", chinese: "单板滑雪前")
+        case .downhillSkiing:
+            return CoachBilingualText(english: "Before skiing", russian: "Перед горными лыжами", chinese: "高山滑雪前")
         case .tennis, .squash:
             return CoachBilingualText(english: "Before the match", russian: "Перед игрой", chinese: "比赛前")
         default:

@@ -28,6 +28,8 @@ nonisolated enum CoachActivityType: String, CaseIterable, Equatable, Sendable {
     case yoga
     case breathing
     case sauna
+    case snowboarding
+    case downhillSkiing
     case none
 }
 
@@ -282,7 +284,7 @@ enum CoachActivityClassifier {
 
     nonisolated static func family(for activity: CoachPlannedActivitySnapshot) -> CoachActivityFamily {
         switch type(for: activity) {
-        case .cycling, .running, .swimming, .hiit:
+        case .cycling, .running, .swimming, .hiit, .snowboarding, .downhillSkiing:
             return .endurance
         case .tennis, .squash:
             return .racket
@@ -336,6 +338,12 @@ enum CoachActivityClassifier {
         if containsAny(text, ["swim", "swimming", "плав"]) {
             return .swimming
         }
+        if containsAny(text, ["snowboard", "сноуборд"]) {
+            return .snowboarding
+        }
+        if containsAny(text, ["skiing", "alpine ski", "лыж", "горнолыж"]) {
+            return .downhillSkiing
+        }
         if containsAny(text, ["upper body", "upper-body", "upperbody", "push", "pull"]) {
             return .upperBody
         }
@@ -386,7 +394,7 @@ enum CoachActivityClassifier {
                 return minutes >= 180
             }
             return false
-        case .cycling, .running, .swimming, .hiit:
+        case .cycling, .running, .swimming, .hiit, .snowboarding, .downhillSkiing:
             let minutes = activity.effectiveDurationMinutes
             let load = inferredLoad(for: activity)
             let text = tokenText(for: activity)
@@ -407,7 +415,7 @@ enum CoachActivityClassifier {
     /// Broader than `isSeriousTraining` — a 45-min ride is still load, even if not a long hard session.
     nonisolated static func isElevatedTrainingLoad(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         switch type(for: activity) {
-        case .cycling, .running, .swimming, .hiit,
+        case .cycling, .running, .swimming, .hiit, .snowboarding, .downhillSkiing,
              .tennis, .squash,
              .upperBody, .lowerBody, .core, .fullBody:
             return true
@@ -504,7 +512,7 @@ enum CoachActivityClassifier {
         }
 
         switch type(for: activity) {
-        case .cycling, .running, .swimming, .hiit:
+        case .cycling, .running, .swimming, .hiit, .snowboarding, .downhillSkiing:
             return .endurance
         case .tennis, .squash, .upperBody, .lowerBody, .core, .fullBody:
             return .workout

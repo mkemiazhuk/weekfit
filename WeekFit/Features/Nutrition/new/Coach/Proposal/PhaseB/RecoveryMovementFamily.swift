@@ -68,7 +68,7 @@ enum RecoveryMovementFamilyResolver {
         case .stretching: return .mobility
         case .yoga: return .yoga
         case .breathing: return .breathing
-        case .running, .cycling, .swimming, .hiit,
+        case .running, .cycling, .swimming, .hiit, .snowboarding, .downhillSkiing,
              .tennis, .squash,
              .upperBody, .lowerBody, .core, .fullBody,
              .sauna, .none:
@@ -188,7 +188,7 @@ private extension CoachActivityClassifier {
         switch type {
         case .walk, .stretching, .yoga, .breathing, .sauna:
             return .recovery
-        case .running, .cycling, .swimming, .hiit, .tennis, .squash:
+        case .running, .cycling, .swimming, .hiit, .snowboarding, .downhillSkiing, .tennis, .squash:
             return .endurance
         case .upperBody, .lowerBody, .core, .fullBody:
             return .strength

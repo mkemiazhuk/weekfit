@@ -308,6 +308,8 @@ enum WidgetSnapshotBuilder {
         if haystack.contains("meal") || haystack.contains("food") || haystack.contains("eat") { return .meal }
         if haystack.contains("water") || haystack.contains("hydrat") || haystack.contains("drink") { return .hydration }
         if haystack.contains("rest") || haystack.contains("sleep") || haystack.contains("nap") { return .rest }
+        if haystack.contains("snowboard") || haystack.contains("сноуборд") { return .snowboarding }
+        if haystack.contains("skiing") || haystack.contains("лыж") || haystack.contains("горнолыж") { return .downhillSkiing }
         return .strength
     }
 

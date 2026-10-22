@@ -114847,6 +114847,52 @@
         }
       }
     },
+    "planner.option.alpineSkiing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alpine Skiing"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Горные лыжи"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高山滑雪"
+          }
+        }
+      }
+    },
+    "planner.option.snowboarding": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Snowboarding"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сноуборд"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单板滑雪"
+          }
+        }
+      }
+    },
     "planner.option.hiking": {
       "extractionState": "manual",
       "localizations": {

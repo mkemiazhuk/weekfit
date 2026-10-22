@@ -333,6 +333,10 @@ enum CoachPresentationResolver {
             return "wind"
         case .sauna:
             return "flame.fill"
+        case .snowboarding:
+            return "figure.snowboarding"
+        case .downhillSkiing:
+            return "figure.skiing.downhill"
         case .none:
             return nil
         }

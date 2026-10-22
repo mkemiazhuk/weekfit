@@ -206,7 +206,7 @@ enum QuickActivityAccent {
             return breathingWash
         case "recovery-walk":
             return walkWash
-        case "workout-cycling", "workout-swimming", "workout-hiking":
+        case "workout-cycling", "workout-swimming", "workout-hiking", "workout-snowboarding", "workout-skiing":
             return Color(red: 0.64, green: 0.78, blue: 0.84)
         case "workout-core", "workout-lowerbody", "workout-fullbody":
             return Color(red: 0.84, green: 0.76, blue: 0.66)

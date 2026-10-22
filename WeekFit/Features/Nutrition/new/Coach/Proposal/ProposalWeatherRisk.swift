@@ -38,7 +38,7 @@ enum ProposalOutdoorClassifier {
     /// Best-effort: endurance outdoors + hike/outdoor keywords. Gym strength is indoor.
     static func isOutdoorLikely(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         switch CoachActivityClassifier.type(for: activity) {
-        case .running, .cycling, .walk, .hiit:
+        case .running, .cycling, .walk, .hiit, .snowboarding, .downhillSkiing:
             return true
         case .swimming, .sauna, .stretching, .yoga, .breathing,
              .upperBody, .lowerBody, .core, .fullBody, .tennis, .squash, .none:
@@ -49,7 +49,8 @@ enum ProposalOutdoorClassifier {
         let outdoorTokens = [
             "hike", "hiking", "trail", "outdoor", "outside",
             "run", "jog", "bike", "cycling", "ride",
-            "прогул", "бег", "велос", "хайк", "улиц",
+            "snowboard", "skiing",
+            "прогул", "бег", "велос", "хайк", "улиц", "сноуборд", "лыж",
         ]
         return outdoorTokens.contains { blob.contains($0) }
     }

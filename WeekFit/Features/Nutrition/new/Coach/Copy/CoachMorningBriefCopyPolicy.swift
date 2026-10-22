@@ -308,7 +308,7 @@ enum CoachMorningBriefCopyPolicy {
         let farLead = CoachActivityWindowPolicy.beforeSessionCopyWindowMinutes
 
         switch activity.activityType {
-        case .cycling, .running, .swimming, .hiit:
+        case .cycling, .running, .swimming, .hiit, .snowboarding, .downhillSkiing:
             if let minutes = minutesOut, minutes > 45 {
                 return .en(
                     "Eat a light breakfast now if you haven't — \(title) at \(time).",
@@ -421,6 +421,10 @@ enum CoachMorningBriefCopyPolicy {
                 return .en("Before the swim", "Перед плаванием")
             case .hiit:
                 return .en("Before HIIT", "Перед HIIT")
+            case .snowboarding:
+                return .en("Before snowboarding", "Перед сноубордом")
+            case .downhillSkiing:
+                return .en("Before skiing", "Перед горными лыжами")
             case .tennis, .squash:
                 return .en("Before the match", "Перед игрой")
             case .upperBody, .lowerBody, .core, .fullBody:
@@ -469,6 +473,10 @@ enum CoachMorningBriefCopyPolicy {
             return russian ? "Заплыв" : "Swim"
         case .hiit:
             return "HIIT"
+        case .snowboarding:
+            return russian ? "Сноуборд" : "Snowboard"
+        case .downhillSkiing:
+            return russian ? "Горные лыжи" : "Alpine skiing"
         case .tennis:
             return russian ? "Теннис" : "Tennis"
         case .squash:

@@ -174,6 +174,8 @@ public enum ActivityReconciler {
             return "Squash"
         case .snowboarding:
             return "Snowboarding"
+        case .downhillSkiing:
+            return "Alpine Skiing"
         default:
             return "Workout"
         }
@@ -249,6 +251,7 @@ public enum ActivityReconciler {
         case squash
         case swimming
         case snowboarding
+        case downhillSkiing
         case hiit
     }
 
@@ -381,6 +384,10 @@ public enum ActivityReconciler {
             return .snowboarding
         }
 
+        if containsAny(text, ["skiing", "alpine ski", "downhill ski", "лыж", "горнолыж"]) {
+            return .downhillSkiing
+        }
+
         if containsAny(text, ["recovery", "cooldown", "cool down", "восстанов", "заминка"]) {
             return .recovery
         }
@@ -410,6 +417,8 @@ public enum ActivityReconciler {
             return .swimming
         case .snowboarding:
             return .snowboarding
+        case .downhillSkiing:
+            return .downhillSkiing
         case .traditionalStrengthTraining,
              .functionalStrengthTraining:
             return .strength

@@ -120,6 +120,30 @@ final class CoachActivityClassifierParityTests: XCTestCase {
         XCTAssertTrue(CoachTomorrowDemandResolver.isTraining(swim))
     }
 
+    func testSnowSportsMapToEnduranceNotStrength() {
+        let snowboard = makeActivity(
+            title: "Snowboarding",
+            type: "workout",
+            icon: "figure.snowboarding",
+            imageName: "workout-snowboarding"
+        )
+        XCTAssertEqual(CoachActivityClassifier.type(for: snowboard), .snowboarding)
+        XCTAssertEqual(CoachActivityClassifier.family(for: snowboard), .endurance)
+        XCTAssertEqual(CoachActivityClassifier.coachKind(for: snowboard), .endurance)
+        XCTAssertTrue(CoachActivityClassifier.isElevatedTrainingLoad(snowboard))
+
+        let skiing = makeActivity(
+            title: "Alpine Skiing",
+            type: "workout",
+            icon: "figure.skiing.downhill",
+            imageName: "workout-skiing"
+        )
+        XCTAssertEqual(CoachActivityClassifier.type(for: skiing), .downhillSkiing)
+        XCTAssertEqual(CoachActivityClassifier.family(for: skiing), .endurance)
+        XCTAssertEqual(CoachActivityClassifier.coachKind(for: skiing), .endurance)
+        XCTAssertTrue(CoachActivityClassifier.isElevatedTrainingLoad(skiing))
+    }
+
     func testSwimmingPresetMapsToEndurance() {
         let swimming = makeActivity(title: "Swimming", type: "workout", icon: "figure.pool.swim")
 
