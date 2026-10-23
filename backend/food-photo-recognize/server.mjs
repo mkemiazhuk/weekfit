@@ -1,6 +1,8 @@
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
+import { access } from 'node:fs/promises';
+import { constants } from 'node:fs';
 import { authenticate } from './auth.mjs';
 import { recognize, validateInput, ServiceError, FOOD_PROMPT_VERSION } from './recognition.mjs';
 import { createSummaryHandler, SUMMARY_PROMPT_VERSION } from './coach-summary.mjs';
@@ -72,6 +74,7 @@ export function configuration(env = process.env) {
     uploadQueueWaitMs: integer('UPLOAD_QUEUE_WAIT_MS', 2000, 0, 60000),
     bodyReadTimeoutMs: integer('BODY_READ_TIMEOUT_MS', 30000, 1000, 120000),
     globalDailyLimit: integer('GLOBAL_DAILY_SCAN_LIMIT', 200, 1, 100000),
+    freeTrialDataDir: env.DATA_DIR || env.WEEKFIT_DATA_DIR || '',
     summaryModel: env.COACH_SUMMARY_MODEL ?? 'gpt-4.1-mini',
     summaryStoreDir: env.COACH_SUMMARY_STORE_DIR ?? '',
     summaryTimeoutMs: integer('COACH_SUMMARY_TIMEOUT_MS', 15000, 1000, 60000),
@@ -120,6 +123,7 @@ export function createServer(config, dependencies = {}) {
 
   /** Async stack (202 accept + workers). Null when explicitly disabled. */
   let asyncStack = dependencies.asyncStack ?? null;
+  let asyncInitFailed = false;
   const asyncReady = (async () => {
     if (dependencies.asyncStack === null) return null;
     if (asyncStack) return asyncStack;
@@ -128,24 +132,32 @@ export function createServer(config, dependencies = {}) {
     return asyncStack;
   })();
 
+  // Attach rejection handling immediately; health/readiness reports initialization failure.
+  asyncReady.catch(() => { asyncInitFailed = true; });
+
   const freeTrialReady = (async () => {
     if (dependencies.freeTrialStore) return dependencies.freeTrialStore;
     const stack = await asyncReady.catch(() => null);
     if (stack?.freeTrialStore) return stack.freeTrialStore;
     // Durable when DATA_DIR is mounted (Render disk); otherwise process-local.
-    const dataDir = process.env.DATA_DIR?.trim();
+    const dataDir = config.asyncEnabled ? config.dataDir : config.freeTrialDataDir;
     if (dataDir) {
       try {
         return await createFileFreeTrialStore({ dataDir });
       } catch {
-        // Fall through to memory.
+        if (config.isProduction) return null;
       }
     }
-    return createMemoryFreeTrialStore();
+    return config.isProduction ? null : createMemoryFreeTrialStore();
   })();
 
   const enforceSubscriptionAccess = async (userId, headers) => {
     const freeTrialStore = await freeTrialReady;
+    if (!freeTrialStore && isFreeTrialHeader(headers['x-weekfit-photo-free-trial'])) {
+      // Paid access still works when trial persistence is unavailable.
+      try { return { access: 'paid', ...requirePaid(headers['x-weekfit-subscription-jws'], { allowDevAuth: false }) }; }
+      catch { throw new ServiceError('trial_store_unavailable', 503); }
+    }
     return requirePaidOrFreeTrial(headers['x-weekfit-subscription-jws'], {
       requirePaid: (headerValue, opts) => requirePaid(headerValue, opts),
       freeTrialStore,
@@ -293,7 +305,8 @@ export function createServer(config, dependencies = {}) {
         allowDevAuth: config.allowDevAuth,
         openAIMock: Boolean(config.openAIMock),
         asyncAnalysis: Boolean(stack),
-        photoAnalyzeMode: stack ? 'async' : 'sync_compat',
+        photoAnalyzeMode: stack ? 'async' : config.asyncEnabled ? 'unavailable' : 'sync_compat',
+        asyncInitFailed,
         stateBackend: stack?.asyncConfig?.stateBackend ?? config.stateBackend ?? null,
         objectStore: stack?.objectStore?.kind ?? config.objectStoreKind ?? null,
         globalAiSlots: stack?.asyncConfig?.globalAiSlots ?? null,
@@ -321,19 +334,28 @@ export function createServer(config, dependencies = {}) {
       });
     }
     if (req.method === 'GET' && req.url === '/readyz') {
-      return send(res, configured() ? 200 : 503, { ready: configured() });
+      let ready = configured();
+      try {
+        const stack = await asyncReady;
+        if (config.asyncEnabled && !stack) ready = false;
+        if (stack?.redis) await stack.redis.ping();
+        if (stack?.asyncConfig?.stateBackend === 'file') {
+          await access(stack.asyncConfig.dataDir, constants.R_OK | constants.W_OK);
+        }
+      } catch { ready = false; }
+      return send(res, ready ? 200 : 503, { ready });
     }
 
     // --- Async analysis API (preferred): accept fast, workers process ---
     const asyncStatusMatch = req.method === 'GET'
       && req.url
-      && /^\/v1\/food\/photo-analyze\/([0-9a-f-]{36})/i.exec(req.url.split('?')[0] ?? '');
+      && /^\/v1\/food\/photo-analyze\/([0-9a-f-]{36})$/i.exec(req.url.split('?')[0] ?? '');
     if (asyncStatusMatch) {
       inFlightHttp += 1;
       const clientAbort = new AbortController();
       const onClose = () => clientAbort.abort();
       req.on('aborted', onClose);
-      req.on('close', onClose);
+      res.on('close', onClose);
       try {
         // Stack init failure (Redis down, bad DATA_DIR, etc.) → same as disabled async.
         // iOS falls back to sync on async_not_configured; do not surface a bare 500.
@@ -361,7 +383,7 @@ export function createServer(config, dependencies = {}) {
       } finally {
         inFlightHttp = Math.max(0, inFlightHttp - 1);
         req.off('aborted', onClose);
-        req.off('close', onClose);
+        res.off('close', onClose);
       }
     }
 
@@ -387,10 +409,15 @@ export function createServer(config, dependencies = {}) {
         if (!req.headers['content-type']?.startsWith('application/json')) {
           throw new ServiceError('json_required', 415);
         }
-        const body = await readJsonBody(req, {
-          timeoutMs: config.bodyReadTimeoutMs,
-          abortSignal: clientAbort.signal,
-        });
+        // Bound memory BEFORE buffering base64, separately from provider slots.
+        uploadTicket = await uploadGate.acquire();
+        let body;
+        try {
+          body = await readJsonBody(req, {
+            timeoutMs: config.bodyReadTimeoutMs,
+            abortSignal: clientAbort.signal,
+          });
+        } finally { uploadTicket.release(); uploadTicket = undefined; }
         const outcome = await stack.submit({
           userId: user,
           headers: req.headers,
@@ -434,6 +461,7 @@ export function createServer(config, dependencies = {}) {
       } finally {
         inFlightHttp = Math.max(0, inFlightHttp - 1);
         req.off('aborted', onClientClose);
+        uploadTicket?.release();
       }
     }
 
@@ -460,10 +488,36 @@ export function createServer(config, dependencies = {}) {
 
       // 1) Auth + paid proof (or one complimentary free trial) before AI.
       const user = await auth(req.headers.authorization, config);
+      if (config.asyncEnabled && !await asyncReady.catch(() => null)) {
+        throw new ServiceError('async_not_configured', 503);
+      }
       await enforceSubscriptionAccess(user, req.headers);
 
       if (!req.headers['content-type']?.startsWith('application/json')) {
         throw new ServiceError('json_required', 415);
+      }
+
+      // Legacy clients must share the durable quota, idempotency and global AI slots.
+      // Never run an independent provider call alongside the async workers.
+      if (config.asyncEnabled) {
+        const stack = await asyncReady.catch(() => null);
+        if (!stack) throw new ServiceError('async_not_configured', 503);
+        uploadTicket = await uploadGate.acquire();
+        let body;
+        try {
+          body = await readJsonBody(req, { timeoutMs: config.bodyReadTimeoutMs, abortSignal: clientAbort.signal });
+        } finally { uploadTicket.release(); uploadTicket = undefined; }
+        const outcome = await stack.submit({ userId: user, headers: req.headers, body });
+        let payload = outcome.body;
+        const deadline = Date.now() + config.timeoutMs;
+        while (!['completed', 'failed'].includes(payload.status) && Date.now() < deadline) {
+          if (clientAbort.signal.aborted) throw new ServiceError('client_aborted', 499);
+          payload = await stack.status({ userId: user, analysisId: payload.analysisId,
+            waitMs: Math.min(25_000, deadline - Date.now()), abortSignal: clientAbort.signal });
+        }
+        if (payload.status === 'failed') throw new ServiceError(payload.error || 'recognition_failed', 502);
+        if (payload.status !== 'completed') throw new ServiceError('recognition_timeout', 504);
+        return send(res, 200, { ...payload.result, model: config.model, requestId });
       }
 
       // 2) Bounded upload concurrency (separate from AI slots) → read/validate body.
