@@ -49,6 +49,11 @@ enum AnalyticsParameterKey {
     static let estimateKind = "estimate_kind"
     /// Coarse latency bucket from Log Food open → successful log.
     static let durationBucket = "duration_bucket"
+    /// StoreKit transaction environment: `production` | `sandbox` | `xcode`.
+    /// Present on `subscription_purchase_success` only. `in_app_purchase` does not receive it.
+    static let storeEnvironment = "store_environment"
+    /// Food action: `diary` (consumed meal saved) or `library` (food definition saved).
+    static let operation = "operation"
 }
 
 /// Stable onboarding step identifiers matching `FirstRunOnboardingView.Step`.
@@ -127,7 +132,17 @@ enum FoodLoggingMethod: String, Sendable {
     case mealBuilder = "meal_builder"
     case quickLog = "quick_log"
     case photo
+    /// One-tap log from the Meals library or a library food/meal detail.
+    case library
     case other
+}
+
+/// What a food-logging event did. `method` is not enough: barcode exists for both.
+enum FoodLoggingOperation: String, Sendable {
+    /// A consumed meal or snack was saved into the diary.
+    case diary
+    /// A food definition was saved or edited in the library.
+    case library
 }
 
 enum HydrationLoggingMethod: String, Sendable {

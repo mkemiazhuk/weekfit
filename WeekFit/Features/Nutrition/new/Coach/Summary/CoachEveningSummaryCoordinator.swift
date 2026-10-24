@@ -5,6 +5,13 @@ internal import Combine
 struct CoachEveningSummaryGenerationResult: Sendable {
     let summary: CoachEveningSummary
     let requestId: String
+    let validationInput: CoachEveningSummaryInput?
+
+    init(summary: CoachEveningSummary, requestId: String, validationInput: CoachEveningSummaryInput? = nil) {
+        self.summary = summary
+        self.requestId = requestId
+        self.validationInput = validationInput
+    }
 }
 
 @MainActor
@@ -452,7 +459,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
                 )
                 return
             }
-            guard result.summary.isValid(for: input) else {
+            guard result.summary.isValid(for: result.validationInput ?? input) else {
                 throw CoachEveningSummaryServiceError.invalidResponse
             }
 

@@ -14,7 +14,9 @@ final class RecoveryHealthKitProvider {
     nonisolated deinit {}
 
     private let healthStore = HKHealthStore()
-    private let calendar = Calendar.current
+    private let calendar: Calendar
+
+    init(calendar: Calendar = .current) { self.calendar = calendar }
 
     func requestAuthorization() async -> Bool {
         guard HKHealthStore.isHealthDataAvailable() else { return false }
@@ -184,6 +186,78 @@ final class RecoveryHealthKitProvider {
             activeCalories: await activeCalories,
             workoutCount: resolvedWorkouts.count
         )
+    }
+
+    /// No authorization prompt: use only existing HealthKit read access.
+    /// Recent seven wake-days and a disjoint preceding 28-day reference window.
+    func loadCoachHistory(now: Date) async throws -> CoachWeeklyContext {
+        var days: [CoachWeeklyContext.Day] = []
+        let first = calendar.startOfDay(for: now)
+        for offset in (0..<35).reversed() {
+            try Task.checkCancellation()
+            guard let date = calendar.date(byAdding: .day, value: -offset, to: first),
+                  let end = calendar.date(byAdding: .day, value: 1, to: date) else { continue }
+            async let samples = loadSleepSamples(for: date)
+            async let hrv = loadCoachVital(.heartRateVariabilitySDNN, unit: .secondUnit(with: .milli), date: date)
+            async let rhr = loadCoachVital(.restingHeartRate, unit: HKUnit.count().unitDivided(by: .minute()), date: date)
+            async let energy = loadCoachDaySum(.activeEnergyBurned, unit: .kilocalorie(), start: date, end: min(end, now))
+            async let exercise = loadCoachDaySum(.appleExerciseTime, unit: .minute(), start: date, end: min(end, now))
+            let (sleepSamples, h, r, e, x) = await (samples, hrv, rhr, energy, exercise)
+            let snapshot = buildSnapshot(date: date, sleepSamples: sleepSamples.filter { $0.endDate <= now },
+                                         restingHeartRate: r.value, hrv: h.value)
+            days.append(.init(day: CoachEveningSummaryPolicy.dayKey(date, calendar: calendar),
+                complete: offset > 0,
+                sleepMinutes: snapshot.asleepMinutes > 0 ? snapshot.asleepMinutes : nil,
+                bedStart: snapshot.bedStart, wakeTime: snapshot.wakeTime,
+                awakeMinutes: snapshot.asleepMinutes > 0 ? snapshot.awakeMinutes : nil,
+                awakenings: snapshot.asleepMinutes > 0 ? snapshot.awakeningsCount : nil,
+                deepMinutes: snapshot.deepSleepMinutes > 0 ? snapshot.deepSleepMinutes : nil,
+                remMinutes: snapshot.remSleepMinutes > 0 ? snapshot.remSleepMinutes : nil,
+                hrv: h.value, hrvSamples: h.count, hrvMeasuredAt: h.last,
+                rhr: r.value, rhrSamples: r.count, rhrMeasuredAt: r.last,
+                activeKcal: e, exerciseMinutes: x))
+        }
+        let start = calendar.date(byAdding: .day, value: -6, to: first) ?? first
+        let workouts = await loadWorkouts(start: start, end: now)
+        var seen = Set<UUID>()
+        let sessions = workouts.filter { $0.endDate <= now && seen.insert($0.uuid).inserted }
+            .sorted { $0.startDate < $1.startDate }.map {
+                CoachWeeklyContext.Session(type: String(describing: $0.workoutActivityType),
+                    start: $0.startDate, end: $0.endDate, minutes: Int($0.duration / 60))
+            }
+        return CoachWeeklyContext(days: days, sessions: sessions, calendar: calendar)
+    }
+
+    private func loadCoachVital(_ identifier: HKQuantityTypeIdentifier, unit: HKUnit,
+                                date: Date) async -> (value: Double?, count: Int, last: Date?) {
+        guard let type = HKObjectType.quantityType(forIdentifier: identifier) else { return (nil, 0, nil) }
+        let window = sleepWindow(for: date)
+        let predicate = HKQuery.predicateForSamples(withStart: window.start, end: window.end, options: .strictStartDate)
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit,
+                                      sortDescriptors: nil) { _, samples, error in
+                guard error == nil else { continuation.resume(returning: (nil, 0, nil)); return }
+                let valid = (samples as? [HKQuantitySample] ?? []).filter { $0.quantity.doubleValue(for: unit).isFinite && $0.quantity.doubleValue(for: unit) > 0 }
+                let values = valid.map { $0.quantity.doubleValue(for: unit) }
+                continuation.resume(returning: (RecoveryScoreEngine.medianBaseline(values), values.count,
+                                                valid.map(\.endDate).max()))
+            }
+            healthStore.execute(query)
+        }
+    }
+
+    /// Missing, denied and failed queries stay nil, rather than becoming inactivity.
+    private func loadCoachDaySum(_ identifier: HKQuantityTypeIdentifier, unit: HKUnit,
+                                 start: Date, end: Date) async -> Double? {
+        guard let type = HKObjectType.quantityType(forIdentifier: identifier) else { return nil }
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate,
+                                          options: .cumulativeSum) { _, statistics, error in
+                continuation.resume(returning: error == nil ? statistics?.sumQuantity()?.doubleValue(for: unit) : nil)
+            }
+            healthStore.execute(query)
+        }
     }
 
     private func primaryBedStart(from sleepSamples: [HKCategorySample], for date: Date) -> Date? {

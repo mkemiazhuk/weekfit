@@ -17,6 +17,7 @@ final class ProductAnalyticsFlowTracker: @unchecked Sendable {
     private struct OpenFood {
         let method: FoodLoggingMethod
         let source: AnalyticsSource
+        let operation: FoodLoggingOperation
         var hasTerminal: Bool
     }
 
@@ -31,9 +32,19 @@ final class ProductAnalyticsFlowTracker: @unchecked Sendable {
         var hasTerminal: Bool
     }
 
-    func noteFoodStarted(method: FoodLoggingMethod, source: AnalyticsSource) {
+    func hasOpenFoodFlow() -> Bool {
         lock.lock()
-        food = OpenFood(method: method, source: source, hasTerminal: false)
+        defer { lock.unlock() }
+        return food?.hasTerminal == false
+    }
+
+    func noteFoodStarted(
+        method: FoodLoggingMethod,
+        source: AnalyticsSource,
+        operation: FoodLoggingOperation
+    ) {
+        lock.lock()
+        food = OpenFood(method: method, source: source, operation: operation, hasTerminal: false)
         lock.unlock()
     }
 
@@ -55,13 +66,15 @@ final class ProductAnalyticsFlowTracker: @unchecked Sendable {
         food = open
         let method = open.method
         let source = open.source
+        let operation = open.operation
         lock.unlock()
 
         analytics.track(
             .foodLoggingCancelled,
             parameters: [
                 AnalyticsParameterKey.method: method.rawValue,
-                AnalyticsParameterKey.source: source.rawValue
+                AnalyticsParameterKey.source: source.rawValue,
+                AnalyticsParameterKey.operation: operation.rawValue
             ]
         )
         return true

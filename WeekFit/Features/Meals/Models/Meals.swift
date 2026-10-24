@@ -247,6 +247,117 @@ struct Meals: Identifiable, Codable, Equatable {
 struct MealsIngredient: Codable, Equatable {
     let name: String
     let amount: String
+    /// Portion weight when the service recognized a component. Nil for manual rows.
+    var grams: Double? = nil
+    var preparation: String? = nil
+    var calories: Int? = nil
+    var protein: Int? = nil
+    var carbs: Int? = nil
+    var fats: Int? = nil
+    var fiber: Int? = nil
+
+    /// The form's single "Serving / Порция" row is not a real ingredient.
+    var isPlaceholderServing: Bool {
+        let normalized = name
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "en"))
+            .lowercased()
+        return normalized == "serving" || normalized == "порция" || normalized == "1 serving"
+    }
+
+    /// Grams from the structured field, or from an amount like "180 g" / "180г".
+    var resolvedGrams: Double? {
+        if let grams, grams > 0 { return grams }
+        return Self.leadingGramValue(in: amount)
+    }
+
+    static func leadingGramValue(in amount: String) -> Double? {
+        let trimmed = amount
+            .lowercased()
+            .replacingOccurrences(of: ",", with: ".")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        var number = ""
+        var index = trimmed.startIndex
+        while index < trimmed.endIndex {
+            let character = trimmed[index]
+            if character.isNumber || (character == "." && !number.contains(".")) {
+                number.append(character)
+                index = trimmed.index(after: index)
+            } else {
+                break
+            }
+        }
+        guard let value = Double(number), value > 0 else { return nil }
+        let suffix = trimmed[index...].trimmingCharacters(in: .whitespacesAndNewlines)
+        if suffix.hasPrefix("g") || suffix.hasPrefix("г") {
+            return value
+        }
+        return nil
+    }
+}
+
+/// One recognized component, scaled with the food's serving size.
+struct MealIngredientBreakdown: Equatable {
+    var name: String
+    var preparation: String?
+    var grams: Double
+    var calories: Int?
+    var protein: Int?
+    var carbs: Int?
+    var fats: Int?
+    var fiber: Int?
+
+    func scaled(by factor: Double) -> MealIngredientBreakdown {
+        let scale = max(factor, 0)
+        func scaledInt(_ value: Int?) -> Int? {
+            guard let value else { return nil }
+            return Int((Double(value) * scale).rounded())
+        }
+        return MealIngredientBreakdown(
+            name: name,
+            preparation: preparation,
+            grams: grams * scale,
+            calories: scaledInt(calories),
+            protein: scaledInt(protein),
+            carbs: scaledInt(carbs),
+            fats: scaledInt(fats),
+            fiber: scaledInt(fiber)
+        )
+    }
+
+    func asIngredient(gramFormat: String) -> MealsIngredient {
+        let roundedGrams = max(Int(grams.rounded()), 0)
+        return MealsIngredient(
+            name: name,
+            amount: String(format: gramFormat, roundedGrams),
+            grams: grams,
+            preparation: preparation,
+            calories: calories,
+            protein: protein,
+            carbs: carbs,
+            fats: fats,
+            fiber: fiber
+        )
+    }
+
+    static func lines(from ingredients: [MealsIngredient]) -> [MealIngredientBreakdown] {
+        ingredients.compactMap { ingredient in
+            guard !ingredient.isPlaceholderServing else { return nil }
+            guard let grams = ingredient.resolvedGrams, grams > 0 else { return nil }
+            let preparation = ingredient.preparation?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return MealIngredientBreakdown(
+                name: ingredient.name,
+                preparation: preparation?.isEmpty == false ? preparation : nil,
+                grams: grams,
+                calories: ingredient.calories,
+                protein: ingredient.protein,
+                carbs: ingredient.carbs,
+                fats: ingredient.fats,
+                fiber: ingredient.fiber
+            )
+        }
+    }
 }
 
 struct MealBuilderImageItem: Codable, Equatable, Identifiable {

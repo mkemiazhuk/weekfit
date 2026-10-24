@@ -388,7 +388,17 @@ struct MealDetailsView: View {
 
         AppReviewDemoPlannedActivityTagger.tagIfNeeded(activity)
         modelContext.insert(activity)
-        try? modelContext.save()
+        if isQuickLogMode {
+            ProductAnalytics.foodLoggingStarted(method: .library, source: .meals, operation: .diary)
+        }
+        let saved = (try? modelContext.save()) != nil
+        if isQuickLogMode {
+            if saved {
+                ProductAnalytics.foodLoggingCompleted(method: .library, source: .meals, operation: .diary)
+            } else {
+                ProductAnalytics.foodLoggingFailed(method: .library, source: .meals, operation: .diary, reason: .saveFailed)
+            }
+        }
 
         if isQuickLogMode {
             onMealLogged?()

@@ -2,14 +2,29 @@ import Foundation
 
 enum PhotoFoodAnalytics {
     private static var logFoodOpenedAt: Date?
+    /// True only when this scan opened the food-logging flow itself.
+    /// A scan inside an already-open Quick Log must not start or fail that flow.
+    private static var ownsFoodLoggingFlow = false
 
     static func noteLogFoodOpened() {
         logFoodOpenedAt = Date()
     }
 
+    #if DEBUG
+    static func resetForTests() {
+        logFoodOpenedAt = nil
+        ownsFoodLoggingFlow = false
+    }
+    #endif
+
     static func scanStarted(method: PhotoFoodCaptureMethod) {
         let loggingMethod: FoodLoggingMethod = method == .barcode ? .barcode : .photo
-        ProductAnalytics.foodLoggingStarted(method: loggingMethod, source: .today)
+        if ProductAnalytics.hasOpenFoodLoggingFlow() {
+            ownsFoodLoggingFlow = false
+        } else {
+            ownsFoodLoggingFlow = true
+            ProductAnalytics.foodLoggingStarted(method: loggingMethod, source: .today, operation: .diary)
+        }
         AppAnalytics.shared.track(
             .foodPhotoScanStarted,
             parameters: [
@@ -38,11 +53,15 @@ enum PhotoFoodAnalytics {
                 AnalyticsParameterKey.reason: reason.rawValue
             ]
         )
-        ProductAnalytics.foodLoggingFailed(
-            method: method == .barcode ? .barcode : .photo,
-            source: .today,
-            reason: reason
-        )
+        if ownsFoodLoggingFlow {
+            ownsFoodLoggingFlow = false
+            ProductAnalytics.foodLoggingFailed(
+                method: method == .barcode ? .barcode : .photo,
+                source: .today,
+                operation: .diary,
+                reason: reason
+            )
+        }
     }
 
     static func confirmationShown(method: PhotoFoodCaptureMethod) {
@@ -73,6 +92,7 @@ enum PhotoFoodAnalytics {
         }
         AppAnalytics.shared.track(.foodPhotoLogged, parameters: parameters)
         logFoodOpenedAt = nil
+        ownsFoodLoggingFlow = false
     }
 
     private static func durationBucket(seconds: TimeInterval) -> String {

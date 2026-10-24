@@ -409,7 +409,7 @@ struct MealsView: View {
     private func beginEditingLibraryMeal(_ meal: Meals) {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         if meal.isFoodProduct {
-            ProductAnalytics.foodLoggingStarted(method: .manual, source: .meals)
+            ProductAnalytics.foodLoggingStarted(method: .manual, source: .meals, operation: .library)
         } else {
             ProductAnalytics.mealBuilderStarted(mode: .edit, source: .meals)
             ProductAnalytics.trackScreen(.mealBuilder)
@@ -423,7 +423,7 @@ struct MealsView: View {
             ProductAnalytics.mealBuilderStarted(mode: .new, source: .meals)
             ProductAnalytics.trackScreen(.mealBuilder)
         case .manualFood:
-            ProductAnalytics.foodLoggingStarted(method: .manual, source: .meals)
+            ProductAnalytics.foodLoggingStarted(method: .manual, source: .meals, operation: .library)
         }
         creationStep = step
         showCreationSheet = true
@@ -1125,10 +1125,11 @@ struct MealsView: View {
 
         AppReviewDemoPlannedActivityTagger.tagIfNeeded(quickActivity)
         modelContext.insert(quickActivity)
+        ProductAnalytics.foodLoggingStarted(method: .library, source: .meals, operation: .diary)
         do {
             try modelContext.save()
             ReviewEngagement.record(.foodLogged)
-            ProductAnalytics.foodLoggingCompleted(method: .quickLog, source: .meals)
+            ProductAnalytics.foodLoggingCompleted(method: .library, source: .meals, operation: .diary)
             // Defer past Menu dismissal — otherwise the toast state can be dropped.
             let loggedMeal = meal
             DispatchQueue.main.async {
@@ -1137,7 +1138,7 @@ struct MealsView: View {
             onMealLogged?()
         } catch {
             modelContext.delete(quickActivity)
-            ProductAnalytics.foodLoggingFailed(method: .quickLog, source: .meals, reason: .saveFailed)
+            ProductAnalytics.foodLoggingFailed(method: .library, source: .meals, operation: .diary, reason: .saveFailed)
         }
     }
 
@@ -1340,6 +1341,12 @@ struct CustomFoodDetailsView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 12) {
                         foodPreviewCard
+                        if !ingredientLines.isEmpty {
+                            MealIngredientBreakdownCard(
+                                lines: ingredientLines,
+                                showsCalories: true
+                            )
+                        }
                         servingCard
                     }
                     .padding(.horizontal, 16)
@@ -1425,6 +1432,10 @@ struct CustomFoodDetailsView: View {
         .padding(.top, 12)
         .padding(.bottom, 12)
         .weekFitPremiumCard(emphasis: .elevated, accent: accent, cornerRadius: 26)
+    }
+
+    private var ingredientLines: [MealIngredientBreakdown] {
+        MealIngredientBreakdown.lines(from: food.ingredients)
     }
 
     private var servingCard: some View {
@@ -1522,14 +1533,15 @@ struct CustomFoodDetailsView: View {
         activity.isCompleted = true
         AppReviewDemoPlannedActivityTagger.tagIfNeeded(activity)
         modelContext.insert(activity)
+        ProductAnalytics.foodLoggingStarted(method: .library, source: .meals, operation: .diary)
         do {
             try modelContext.save()
             ReviewEngagement.record(.foodLogged)
-            ProductAnalytics.foodLoggingCompleted(method: .recent, source: .meals)
+            ProductAnalytics.foodLoggingCompleted(method: .library, source: .meals, operation: .diary)
             onFoodLogged?()
         } catch {
             modelContext.delete(activity)
-            ProductAnalytics.foodLoggingFailed(method: .recent, source: .meals, reason: .saveFailed)
+            ProductAnalytics.foodLoggingFailed(method: .library, source: .meals, operation: .diary, reason: .saveFailed)
         }
     }
 }

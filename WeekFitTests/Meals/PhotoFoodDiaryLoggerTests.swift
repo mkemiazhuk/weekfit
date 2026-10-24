@@ -132,10 +132,36 @@ final class PhotoFoodDiaryLoggerTests: XCTestCase {
         XCTAssertEqual(meal.title, "Boiled eggs")
         XCTAssertEqual(meal.calories, 155)
         XCTAssertEqual(meal.ingredients.count, 1)
+        XCTAssertEqual(meal.ingredients.first?.name, "Eggs")
+        XCTAssertEqual(meal.ingredients.first?.grams, 100)
+        XCTAssertEqual(meal.ingredients.first?.preparation, "boiled")
+        XCTAssertEqual(meal.ingredients.first?.calories, 155)
+        XCTAssertEqual(meal.ingredients.first?.protein, 13)
         XCTAssertEqual(meal.localPhotoThumbnailFilename, "diary_thumb.jpg")
+
+        let lines = MealIngredientBreakdown.lines(from: meal.ingredients)
+        XCTAssertEqual(lines.count, 1)
+        XCTAssertEqual(lines.first?.grams, 100)
+        let halved = lines[0].scaled(by: 0.5)
+        XCTAssertEqual(Int(halved.grams.rounded()), 50)
+        XCTAssertEqual(halved.calories, 78)
         XCTAssertEqual(activity.libraryMealId, meal.id)
         let linked = PhotoFoodNutritionCalculator.decodeSnapshot(activity.nutritionSnapshotJSON)
         XCTAssertEqual(linked?.libraryMealId, meal.id)
+    }
+
+    func testIngredientBreakdownKeepsRecognizedGramsAndSkipsServingPlaceholder() {
+        let ingredients = [
+            MealsIngredient(name: "Buckwheat", amount: "200 g"),
+            MealsIngredient(name: "Meat patties", amount: "120г", grams: 120),
+            MealsIngredient(name: "Serving", amount: "360g"),
+            MealsIngredient(name: "Порция", amount: "100г")
+        ]
+
+        let lines = MealIngredientBreakdown.lines(from: ingredients)
+        XCTAssertEqual(lines.map(\.name), ["Buckwheat", "Meat patties"])
+        XCTAssertEqual(lines.map { Int($0.grams.rounded()) }, [200, 120])
+        XCTAssertNil(MealsIngredient(name: "Banana", amount: "1").resolvedGrams)
     }
 }
 

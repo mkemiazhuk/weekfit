@@ -257,6 +257,8 @@ struct PlanAgendaSectionSurface: ViewModifier {
     @Environment(\.weekFitPalette) private var palette
     var compact: Bool = false
     var emphasizesGold: Bool = false
+    /// Day-type tint for the summary card. Wins over the gold wash.
+    var accent: Color? = nil
 
     func body(content: Content) -> some View {
         content
@@ -278,6 +280,31 @@ struct PlanAgendaSectionSurface: ViewModifier {
     }
 
     private var sectionFill: some ShapeStyle {
+        if let accent {
+            if palette.isLight {
+                return AnyShapeStyle(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.99),
+                            accent.opacity(0.34)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+            }
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [
+                        WeekFitTheme.cardBackground,
+                        accent.opacity(0.28)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+        }
+
         if emphasizesGold {
             if palette.isLight {
                 return AnyShapeStyle(
@@ -310,6 +337,9 @@ struct PlanAgendaSectionSurface: ViewModifier {
     }
 
     private var sectionStroke: Color {
+        if let accent {
+            return accent.opacity(palette.isLight ? 0.28 : 0.36)
+        }
         if emphasizesGold {
             return WeekFitTheme.brandGold.opacity(palette.isLight ? 0.12 : 0.14)
         }
@@ -322,11 +352,13 @@ struct PlanAgendaSectionSurface: ViewModifier {
 extension View {
     func planAgendaSectionSurface(
         compact: Bool = false,
-        emphasizesGold: Bool = false
+        emphasizesGold: Bool = false,
+        accent: Color? = nil
     ) -> some View {
         modifier(PlanAgendaSectionSurface(
             compact: compact,
-            emphasizesGold: emphasizesGold
+            emphasizesGold: emphasizesGold,
+            accent: accent
         ))
     }
 }
@@ -344,6 +376,11 @@ struct PlanAgendaDaySummaryCard: View {
 
     private var character: PlanAgendaDayCharacter {
         PlanAgendaDayCharacter.character(for: kind)
+    }
+
+    /// Open days stay neutral. Training days use the same color as the calendar mark.
+    private var dayAccent: Color? {
+        kind == .open ? nil : kind.color
     }
 
     private var recommendation: String? {
@@ -376,7 +413,7 @@ struct PlanAgendaDaySummaryCard: View {
                 HStack(alignment: .top, spacing: 10) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 11, style: .continuous)
-                            .fill(WeekFitTheme.brandGold.opacity(palette.isLight ? 0.14 : 0.18))
+                            .fill(iconFill)
                             .frame(
                                 width: PlanAgendaLayout.summaryIconSize,
                                 height: PlanAgendaLayout.summaryIconSize
@@ -384,7 +421,7 @@ struct PlanAgendaDaySummaryCard: View {
 
                         Image(systemName: character.systemImage)
                             .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(WeekFitTheme.brandGold.opacity(palette.isLight ? 0.95 : 0.90))
+                            .foregroundStyle(iconForeground)
                     }
                     .accessibilityHidden(true)
 
@@ -406,15 +443,31 @@ struct PlanAgendaDaySummaryCard: View {
                 }
             }
         }
-        .planAgendaSectionSurface(emphasizesGold: true)
+        .planAgendaSectionSurface(accent: dayAccent)
         .accessibilityElement(children: .combine)
+    }
+
+    private var iconFill: Color {
+        if let dayAccent {
+            return dayAccent.opacity(palette.isLight ? 0.18 : 0.24)
+        }
+        return palette.isLight
+            ? Color.black.opacity(0.05)
+            : WeekFitTheme.whiteOpacity(0.08)
+    }
+
+    private var iconForeground: Color {
+        if let dayAccent {
+            return dayAccent.opacity(palette.isLight ? 0.95 : 0.92)
+        }
+        return palette.textSecondary
     }
 
     private var characterTitleRow: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: character.systemImage)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(WeekFitTheme.brandGold.opacity(palette.isLight ? 0.94 : 0.90))
+                .foregroundStyle(iconForeground)
             Text(character.title)
                 .font(WeekFitType.body.weight(.semibold))
                 .fontDesign(.rounded)

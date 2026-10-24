@@ -6,6 +6,7 @@ enum WeekFitDeferredPurchaseStore {
     enum Keys {
         static let productID = "weekfit.storekit.deferredPurchase.productID"
         static let requestedTab = "weekfit.storekit.deferredPurchase.requestedTab"
+        static let markedAt = "weekfit.storekit.deferredPurchase.markedAt"
     }
 
     private static let lock = NSLock()
@@ -15,6 +16,7 @@ enum WeekFitDeferredPurchaseStore {
         guard WeekFitSubscriptionProductID(rawValue: productID) != nil else { return }
         lock.lock()
         defaults.set(productID, forKey: Keys.productID)
+        defaults.set(Date().timeIntervalSince1970, forKey: Keys.markedAt)
         if let requestedTab, !requestedTab.isEmpty {
             defaults.set(requestedTab, forKey: Keys.requestedTab)
         } else {
@@ -35,6 +37,15 @@ enum WeekFitDeferredPurchaseStore {
         return defaults.string(forKey: Keys.requestedTab)
     }
 
+    /// When this attempt was recorded. Missing on records written before the field existed.
+    static func pendingMarkedAt() -> Date? {
+        lock.lock()
+        defer { lock.unlock() }
+        let raw = defaults.double(forKey: Keys.markedAt)
+        guard raw > 0 else { return nil }
+        return Date(timeIntervalSince1970: raw)
+    }
+
     /// Returns and clears the pending record when `productID` matches.
     static func consumeIfMatching(productID: String) -> (productID: String, requestedTab: String?)? {
         lock.lock()
@@ -45,6 +56,7 @@ enum WeekFitDeferredPurchaseStore {
         let tab = defaults.string(forKey: Keys.requestedTab)
         defaults.removeObject(forKey: Keys.productID)
         defaults.removeObject(forKey: Keys.requestedTab)
+        defaults.removeObject(forKey: Keys.markedAt)
         return (pending, tab)
     }
 
@@ -52,6 +64,7 @@ enum WeekFitDeferredPurchaseStore {
         lock.lock()
         defaults.removeObject(forKey: Keys.productID)
         defaults.removeObject(forKey: Keys.requestedTab)
+        defaults.removeObject(forKey: Keys.markedAt)
         lock.unlock()
     }
 

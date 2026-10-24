@@ -153,8 +153,8 @@ final class SubscriptionManager: ObservableObject {
             return
         }
         hasStarted = true
-        updatesTask = store.startTransactionUpdates { [weak self] in
-            await self?.handleVerifiedTransactionUpdate()
+        updatesTask = store.startTransactionUpdates { [weak self] notice in
+            await self?.handleVerifiedTransactionUpdate(notice)
         }
         storefrontUpdatesTask = store.startStorefrontUpdates { [weak self] in
             await self?.handleStorefrontChange()
@@ -249,10 +249,15 @@ final class SubscriptionManager: ObservableObject {
             store.invalidateCachedProducts()
             await refresh(source: "purchase.timeout")
             lastOutcome = .timedOut
-            SubscriptionAnalytics.purchaseFailed(
+            // The sheet may still complete. Waiting is not a failed purchase.
+            UnresolvedPurchaseAttemptAnalytics.mark(
+                productID: productID,
+                requestedTab: requestedTab
+            )
+            SubscriptionAnalytics.purchasePending(
                 productID: productID,
                 requestedTab: requestedTab,
-                failureReason: .timeout
+                reason: .interfaceTimeout
             )
             return
         } catch {
@@ -287,9 +292,11 @@ final class SubscriptionManager: ObservableObject {
             if hasFullAccess {
                 lastOutcome = .success
                 WeekFitDeferredPurchaseStore.clear()
+                UnresolvedPurchaseAttemptAnalytics.clear()
                 SubscriptionAnalytics.purchaseSuccess(
                     productID: productID,
-                    requestedTab: requestedTab
+                    requestedTab: requestedTab,
+                    storeEnvironment: StoreKitTransactionAnalytics.latestPurchaseEnvironmentToken()
                 )
             } else {
                 lastOutcome = .entitlementNotPropagated
@@ -316,10 +323,10 @@ final class SubscriptionManager: ObservableObject {
                 productID: productID,
                 requestedTab: requestedTab
             )
-            SubscriptionAnalytics.purchaseFailed(
+            SubscriptionAnalytics.purchasePending(
                 productID: productID,
                 requestedTab: requestedTab,
-                failureReason: .pending
+                reason: .askToBuy
             )
         case .failedVerification:
             await refresh(source: "purchase.failedVerification")
@@ -337,14 +344,27 @@ final class SubscriptionManager: ObservableObject {
                 requestedTab: requestedTab,
                 failureReason: .productsUnavailable
             )
-        case .timedOut, .failed, .nothingToRestore, .entitlementNotPropagated:
-            // timedOut / entitlementNotPropagated / nothingToRestore are not store.purchase() results.
+        case .timedOut:
+            // Defensive: the wait is normally thrown above. Still not a failed purchase.
+            await refresh(source: "purchase.timeout")
+            lastOutcome = .timedOut
+            UnresolvedPurchaseAttemptAnalytics.mark(
+                productID: productID,
+                requestedTab: requestedTab
+            )
+            SubscriptionAnalytics.purchasePending(
+                productID: productID,
+                requestedTab: requestedTab,
+                reason: .interfaceTimeout
+            )
+        case .failed, .nothingToRestore, .entitlementNotPropagated:
+            // These are not store.purchase() results.
             await refresh(source: "purchase.failed")
-            lastOutcome = outcome == .timedOut ? .timedOut : .failed
+            lastOutcome = .failed
             SubscriptionAnalytics.purchaseFailed(
                 productID: productID,
                 requestedTab: requestedTab,
-                failureReason: outcome == .timedOut ? .timeout : .storekitError
+                failureReason: .storekitError
             )
         }
     }
@@ -578,21 +598,51 @@ final class SubscriptionManager: ObservableObject {
         }
     }
 
-    /// `Transaction.updates` after Ask to Buy / SCA — unlock + one deferred purchase success.
-    /// Does not treat restore / background renewals as a new purchase (no deferred store record).
-    private func handleVerifiedTransactionUpdate() async {
-        let deferredProductID = WeekFitDeferredPurchaseStore.pendingProductID()
+    /// `Transaction.updates` after Ask to Buy, SCA, or a UI wait that ended first.
+    /// One success per verified transaction id. Entitlement alone does not count.
+    /// There is no 24-hour cutoff: Ask to Buy can be approved later.
+    private func handleVerifiedTransactionUpdate(_ notice: WeekFitVerifiedTransactionNotice) async {
         await refresh(source: "transaction.updates")
-        guard let deferredProductID else { return }
-        guard hasFullAccess else { return }
-        // Consume only after unlock — matches product id so renewals of other products ignore.
-        guard let consumed = WeekFitDeferredPurchaseStore.consumeIfMatching(productID: deferredProductID)
+        guard notice.transactionID != 0, hasFullAccess else { return }
+        if emitDeferredPurchaseSuccessIfConfirmed(notice) { return }
+        emitUnresolvedPurchaseSuccessIfConfirmed(notice)
+    }
+
+    private func emitDeferredPurchaseSuccessIfConfirmed(_ notice: WeekFitVerifiedTransactionNotice) -> Bool {
+        guard let pending = WeekFitDeferredPurchaseStore.pendingProductID(),
+              pending == notice.productID,
+              WeekFitPurchaseAttemptMatch.isConfirmedPurchase(
+                purchaseDate: notice.purchaseDate,
+                attemptMarkedAt: WeekFitDeferredPurchaseStore.pendingMarkedAt()
+              ),
+              PurchaseSuccessTransactionDedup.claim(notice.transactionID),
+              let consumed = WeekFitDeferredPurchaseStore.consumeIfMatching(productID: pending)
+        else { return false }
+        UnresolvedPurchaseAttemptAnalytics.clear()
+        recordPurchaseSuccess(productID: consumed.productID, requestedTab: consumed.requestedTab)
+        return true
+    }
+
+    private func emitUnresolvedPurchaseSuccessIfConfirmed(_ notice: WeekFitVerifiedTransactionNotice) {
+        guard let pending = UnresolvedPurchaseAttemptAnalytics.pendingProductID(),
+              pending == notice.productID,
+              WeekFitPurchaseAttemptMatch.isConfirmedPurchase(
+                purchaseDate: notice.purchaseDate,
+                attemptMarkedAt: UnresolvedPurchaseAttemptAnalytics.markedAt()
+              ),
+              PurchaseSuccessTransactionDedup.claim(notice.transactionID),
+              let consumed = UnresolvedPurchaseAttemptAnalytics.consumeIfMatching(productID: pending)
         else { return }
+        recordPurchaseSuccess(productID: consumed.productID, requestedTab: consumed.requestedTab)
+    }
+
+    private func recordPurchaseSuccess(productID: String, requestedTab: String?) {
         lastOutcome = .success
         lastOutcomeSource = .purchase
         SubscriptionAnalytics.purchaseSuccess(
-            productID: consumed.productID,
-            requestedTab: consumed.requestedTab
+            productID: productID,
+            requestedTab: requestedTab,
+            storeEnvironment: StoreKitTransactionAnalytics.latestPurchaseEnvironmentToken()
         )
     }
 

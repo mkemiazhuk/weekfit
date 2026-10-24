@@ -15,8 +15,11 @@ import OSLog
 ///   no health payloads — see `StartupDiagnostics`)
 /// - Missing / never-set consent → Analytics ON
 ///
-/// Production product dashboards must filter `distribution = appstore` unless TestFlight
-/// traffic is intentionally included.
+/// `distribution` is a user property and a default event parameter (`debug`, `testflight`,
+/// `appstore`). Default parameters are attached when an event is logged, including automatic
+/// events logged after this call. `first_open` can be created inside `FirebaseApp.configure()`
+/// before this call, so an event-parameter filter can drop it. Audience cuts should use the
+/// user property. `store_environment` is not a revenue-event parameter.
 enum FirebaseEnvironment {
     private static let logger = Logger(subsystem: "com.weekfit.app", category: "Analytics")
     private static let lock = NSLock()

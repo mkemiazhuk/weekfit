@@ -118,36 +118,47 @@ enum ProductAnalytics {
         coachRecommendationViewed()
     }
 
-    static func foodLoggingStarted(method: FoodLoggingMethod, source: AnalyticsSource) {
-        ProductAnalyticsFlowTracker.shared.noteFoodStarted(method: method, source: source)
+    static func hasOpenFoodLoggingFlow() -> Bool {
+        ProductAnalyticsFlowTracker.shared.hasOpenFoodFlow()
+    }
+
+    static func foodLoggingStarted(
+        method: FoodLoggingMethod,
+        source: AnalyticsSource,
+        operation: FoodLoggingOperation
+    ) {
+        ProductAnalyticsFlowTracker.shared.noteFoodStarted(
+            method: method,
+            source: source,
+            operation: operation
+        )
         analytics.track(
             .foodLoggingStarted,
-            parameters: [
-                AnalyticsParameterKey.method: method.rawValue,
-                AnalyticsParameterKey.source: source.rawValue
-            ]
+            parameters: foodLoggingParameters(method: method, source: source, operation: operation)
         )
     }
 
-    static func foodLoggingCompleted(method: FoodLoggingMethod, source: AnalyticsSource) {
+    static func foodLoggingCompleted(
+        method: FoodLoggingMethod,
+        source: AnalyticsSource,
+        operation: FoodLoggingOperation
+    ) {
         ProductAnalyticsFlowTracker.shared.noteFoodTerminal()
         analytics.track(
             .foodLoggingCompleted,
-            parameters: [
-                AnalyticsParameterKey.method: method.rawValue,
-                AnalyticsParameterKey.source: source.rawValue
-            ]
+            parameters: foodLoggingParameters(method: method, source: source, operation: operation)
         )
     }
 
-    static func foodLoggingCancelled(method: FoodLoggingMethod, source: AnalyticsSource) {
+    static func foodLoggingCancelled(
+        method: FoodLoggingMethod,
+        source: AnalyticsSource,
+        operation: FoodLoggingOperation
+    ) {
         ProductAnalyticsFlowTracker.shared.noteFoodTerminal()
         analytics.track(
             .foodLoggingCancelled,
-            parameters: [
-                AnalyticsParameterKey.method: method.rawValue,
-                AnalyticsParameterKey.source: source.rawValue
-            ]
+            parameters: foodLoggingParameters(method: method, source: source, operation: operation)
         )
     }
 
@@ -157,16 +168,28 @@ enum ProductAnalytics {
         ProductAnalyticsFlowTracker.shared.cancelFoodIfNeeded(analytics: analytics)
     }
 
-    static func foodLoggingFailed(method: FoodLoggingMethod, source: AnalyticsSource, reason: SafeAnalyticsFailureReason) {
+    static func foodLoggingFailed(
+        method: FoodLoggingMethod,
+        source: AnalyticsSource,
+        operation: FoodLoggingOperation,
+        reason: SafeAnalyticsFailureReason
+    ) {
         ProductAnalyticsFlowTracker.shared.noteFoodTerminal()
-        analytics.track(
-            .foodLoggingFailed,
-            parameters: [
-                AnalyticsParameterKey.method: method.rawValue,
-                AnalyticsParameterKey.source: source.rawValue,
-                AnalyticsParameterKey.reason: reason.rawValue
-            ]
-        )
+        var parameters = foodLoggingParameters(method: method, source: source, operation: operation)
+        parameters[AnalyticsParameterKey.reason] = reason.rawValue
+        analytics.track(.foodLoggingFailed, parameters: parameters)
+    }
+
+    private static func foodLoggingParameters(
+        method: FoodLoggingMethod,
+        source: AnalyticsSource,
+        operation: FoodLoggingOperation
+    ) -> [String: String] {
+        [
+            AnalyticsParameterKey.method: method.rawValue,
+            AnalyticsParameterKey.source: source.rawValue,
+            AnalyticsParameterKey.operation: operation.rawValue
+        ]
     }
 
     static func hydrationLoggingStarted(method: HydrationLoggingMethod, source: AnalyticsSource) {

@@ -25,7 +25,7 @@ final class RecordingWeekFitStoreKitService: WeekFitStoreKitServicing {
     var invalidateCachedProductsCount = 0
     var cachedProductIDs: Set<String> = []
     var storefrontUpdateHandler: (@Sendable () async -> Void)?
-    var transactionUpdateHandler: (@Sendable () async -> Void)?
+    var transactionUpdateHandler: (@Sendable (WeekFitVerifiedTransactionNotice) async -> Void)?
     private var deferredGrantRemainingLoads: Int?
 
     func loadAppTransaction() async -> WeekFitAppTransactionStatus { appTransaction }
@@ -107,7 +107,9 @@ final class RecordingWeekFitStoreKitService: WeekFitStoreKitServicing {
         subscription = makeRestoredSubscription()
     }
 
-    func startTransactionUpdates(_ onChange: @escaping @Sendable () async -> Void) -> Task<Void, Never> {
+    func startTransactionUpdates(
+        _ onChange: @escaping @Sendable (WeekFitVerifiedTransactionNotice) async -> Void
+    ) -> Task<Void, Never> {
         transactionUpdateHandler = onChange
         return Task { }
     }
@@ -124,13 +126,21 @@ final class RecordingWeekFitStoreKitService: WeekFitStoreKitServicing {
         }
     }
 
-    /// Simulates Ask to Buy / external approval arriving through Transaction.updates.
-    func emitVerifiedTransactionUpdate() async {
-        subscription = makeActiveSubscription(
-            productID: WeekFitSubscriptionProductID.annual.rawValue
-        )
+    /// Simulates a verified transaction arriving through Transaction.updates.
+    func emitVerifiedTransactionUpdate(
+        productID: String = WeekFitSubscriptionProductID.annual.rawValue,
+        transactionID: UInt64 = 1,
+        purchaseDate: Date = Date()
+    ) async {
+        subscription = makeActiveSubscription(productID: productID)
         if let transactionUpdateHandler {
-            await transactionUpdateHandler()
+            await transactionUpdateHandler(
+                WeekFitVerifiedTransactionNotice(
+                    productID: productID,
+                    transactionID: transactionID,
+                    purchaseDate: purchaseDate
+                )
+            )
         }
     }
 
@@ -177,6 +187,10 @@ final class SubscriptionManagerTests: XCTestCase {
         deferredDefaults.removePersistentDomain(forName: deferredSuite)
         WeekFitDeferredPurchaseStore.setDefaultsForTests(deferredDefaults)
         WeekFitDeferredPurchaseStore.clearForTests()
+        UnresolvedPurchaseAttemptAnalytics.setDefaultsForTests(deferredDefaults)
+        UnresolvedPurchaseAttemptAnalytics.resetForTests()
+        UnresolvedPurchaseAttemptAnalytics.setDefaultsForTests(deferredDefaults)
+        PurchaseSuccessTransactionDedup.resetForTests()
         fallbackSuite = "weekfit.tests.entitlement.\(UUID().uuidString)"
         fallbackDefaults = UserDefaults(suiteName: fallbackSuite)
         fallbackDefaults.removePersistentDomain(forName: fallbackSuite)
@@ -222,6 +236,8 @@ final class SubscriptionManagerTests: XCTestCase {
         SubscriptionAnalytics.resetPaywallViewDedupForTests()
         WeekFitDeferredPurchaseStore.clearForTests()
         WeekFitDeferredPurchaseStore.resetForTests()
+        UnresolvedPurchaseAttemptAnalytics.resetForTests()
+        PurchaseSuccessTransactionDedup.resetForTests()
         AppAnalytics.resetSharedForTests()
         if let deferredSuite {
             deferredDefaults?.removePersistentDomain(forName: deferredSuite)
@@ -505,9 +521,90 @@ final class SubscriptionManagerTests: XCTestCase {
         )
         XCTAssertEqual(recording.events(named: .subscriptionPurchaseStarted).count, 1)
         XCTAssertTrue(recording.events(named: .subscriptionPurchaseSuccess).isEmpty)
-        let failed = try! XCTUnwrap(recording.events(named: .subscriptionPurchaseFailed).first)
-        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.failureReason], "timeout")
-        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.result], "timeout")
+        XCTAssertTrue(recording.events(named: .subscriptionPurchaseFailed).isEmpty)
+        let pending = try! XCTUnwrap(recording.events(named: .subscriptionPurchasePending).first)
+        XCTAssertEqual(pending.parameters[AnalyticsParameterKey.reason], "interface_timeout")
+    }
+
+    func testAskToBuyConfirmedAfter24HoursEmitsOneSuccess() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "test"
+        )
+        store.purchaseOutcome = .pending
+        await manager.start()
+        await manager.purchaseSelected()
+        XCTAssertEqual(recording.events(named: .subscriptionPurchasePending).count, 1)
+        XCTAssertTrue(recording.events(named: .subscriptionPurchaseFailed).isEmpty)
+
+        let approval = Date().addingTimeInterval(25 * 60 * 60)
+        await store.emitVerifiedTransactionUpdate(transactionID: 9001, purchaseDate: approval)
+        XCTAssertTrue(manager.hasFullAccess)
+        XCTAssertEqual(recording.events(named: .subscriptionPurchaseSuccess).count, 1)
+        XCTAssertTrue(recording.events(named: .subscriptionPurchaseFailed).isEmpty)
+
+        await store.emitVerifiedTransactionUpdate(transactionID: 9001, purchaseDate: approval)
+        XCTAssertEqual(recording.events(named: .subscriptionPurchaseSuccess).count, 1)
+    }
+
+    func testOldEntitlementTransactionDoesNotCountAsPurchase() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "test"
+        )
+        store.purchaseHangForever = true
+        let timedManager = SubscriptionManager(
+            store: store,
+            bypassProvider: { .none },
+            fallbackStore: WeekFitEntitlementFallbackStore(defaults: fallbackDefaults),
+            purchaseTimeout: .milliseconds(80)
+        )
+        await timedManager.start()
+        await timedManager.purchaseSelected()
+        XCTAssertEqual(recording.events(named: .subscriptionPurchasePending).count, 1)
+
+        await store.emitVerifiedTransactionUpdate(
+            transactionID: 7,
+            purchaseDate: Date().addingTimeInterval(-86_400 * 30)
+        )
+        XCTAssertTrue(timedManager.hasFullAccess)
+        XCTAssertTrue(recording.events(named: .subscriptionPurchaseSuccess).isEmpty)
+        await timedManager.refresh()
+        XCTAssertTrue(recording.events(named: .subscriptionPurchaseSuccess).isEmpty)
+
+        await store.emitVerifiedTransactionUpdate(
+            transactionID: 8,
+            purchaseDate: Date().addingTimeInterval(30 * 60 * 60)
+        )
+        XCTAssertEqual(recording.events(named: .subscriptionPurchaseSuccess).count, 1)
+        XCTAssertTrue(recording.events(named: .subscriptionPurchaseFailed).isEmpty)
+    }
+
+    func testPurchaseTimeoutLaterUnlockEmitsOneSuccessAndNoFailure() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "test"
+        )
+        store.purchaseHangForever = true
+        let timedManager = SubscriptionManager(
+            store: store,
+            bypassProvider: { .none },
+            fallbackStore: WeekFitEntitlementFallbackStore(defaults: fallbackDefaults),
+            purchaseTimeout: .milliseconds(80)
+        )
+        await timedManager.start()
+        await timedManager.purchaseSelected()
+        XCTAssertEqual(recording.events(named: .subscriptionPurchasePending).count, 1)
+        XCTAssertTrue(recording.events(named: .subscriptionPurchaseFailed).isEmpty)
+
+        await store.emitVerifiedTransactionUpdate()
+        XCTAssertTrue(timedManager.hasFullAccess)
+        XCTAssertEqual(recording.events(named: .subscriptionPurchaseSuccess).count, 1)
+        XCTAssertTrue(recording.events(named: .subscriptionPurchaseFailed).isEmpty)
+
+        await store.emitVerifiedTransactionUpdate()
+        XCTAssertEqual(recording.events(named: .subscriptionPurchaseSuccess).count, 1)
+        XCTAssertEqual(recording.events(named: .subscriptionPurchasePending).count, 1)
     }
 
     func testSecondPurchaseTapAbandonsHungAttempt() async {
@@ -592,8 +689,9 @@ final class SubscriptionManagerTests: XCTestCase {
         XCTAssertEqual(recording.events(named: .subscriptionPurchaseStarted).count, 1)
         XCTAssertTrue(recording.events(named: .subscriptionPurchaseSuccess).isEmpty)
         XCTAssertTrue(recording.events(named: .subscriptionPurchaseCancelled).isEmpty)
-        let failed = try! XCTUnwrap(recording.events(named: .subscriptionPurchaseFailed).first)
-        XCTAssertEqual(failed.parameters[AnalyticsParameterKey.failureReason], "pending")
+        XCTAssertTrue(recording.events(named: .subscriptionPurchaseFailed).isEmpty)
+        let pending = try! XCTUnwrap(recording.events(named: .subscriptionPurchasePending).first)
+        XCTAssertEqual(pending.parameters[AnalyticsParameterKey.reason], "ask_to_buy")
     }
 
     func testPurchaseAfterNothingToRestoreStillWorks() async {
@@ -709,7 +807,8 @@ final class SubscriptionManagerTests: XCTestCase {
         await manager.purchaseSelected()
         XCTAssertEqual(manager.lastOutcome, .pending)
         XCTAssertFalse(manager.hasFullAccess)
-        XCTAssertEqual(recording.events(named: .subscriptionPurchaseFailed).count, 1)
+        XCTAssertEqual(recording.events(named: .subscriptionPurchasePending).count, 1)
+        XCTAssertTrue(recording.events(named: .subscriptionPurchaseFailed).isEmpty)
         XCTAssertTrue(recording.events(named: .subscriptionPurchaseSuccess).isEmpty)
         XCTAssertEqual(
             WeekFitDeferredPurchaseStore.pendingProductID(),

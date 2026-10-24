@@ -117,7 +117,7 @@ enum PhotoFoodDiaryLogger {
         }
 
         ReviewEngagement.record(.foodLogged)
-        ProductAnalytics.foodLoggingCompleted(method: method, source: analyticsSource)
+        ProductAnalytics.foodLoggingCompleted(method: method, source: analyticsSource, operation: .diary)
         PhotoFoodAnalytics.logged(
             method: method,
             savedToLibrary: libraryMealId != nil,
@@ -229,9 +229,19 @@ enum PhotoFoodDiaryLogger {
         )
 
         let ingredients: [MealsIngredient] = components.map { component in
-            MealsIngredient(
+            let roundedGrams = max(Int(component.grams.rounded()), 0)
+            let preparation = component.preparation?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return MealsIngredient(
                 name: component.displayName,
-                amount: "\(Int(component.grams.rounded())) g"
+                amount: "\(roundedGrams) g",
+                grams: component.grams,
+                preparation: preparation?.isEmpty == false ? preparation : nil,
+                calories: component.calories,
+                protein: component.protein,
+                carbs: component.carbs,
+                fats: component.fats,
+                fiber: component.fiber
             )
         }
 

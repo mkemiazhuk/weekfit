@@ -127,7 +127,7 @@ enum QuickLogActivitySync {
             )
         case .meal, .snack:
             ReviewEngagement.record(.foodLogged)
-            ProductAnalytics.foodLoggingCompleted(method: method, source: source)
+            ProductAnalytics.foodLoggingCompleted(method: method, source: source, operation: .diary)
         }
     }
 
@@ -145,7 +145,7 @@ enum QuickLogActivitySync {
                 reason: .saveFailed
             )
         case .meal, .snack:
-            ProductAnalytics.foodLoggingFailed(method: method, source: source, reason: .saveFailed)
+            ProductAnalytics.foodLoggingFailed(method: method, source: source, operation: .diary, reason: .saveFailed)
         }
     }
 

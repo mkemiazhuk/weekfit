@@ -151,6 +151,7 @@ struct FirstRunOnboardingView: View {
         }
         .id(languageManager.selectedLanguage)
         .onAppear {
+            ProductAnalytics.trackScreen(.onboarding)
             if step == .goal { applySuggestedGoalIfNeeded() }
         }
     }

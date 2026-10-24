@@ -26,11 +26,34 @@ enum StoreKitTransactionAnalytics {
     private static var defaults: UserDefaults = .standard
     private static let maxStoredIDs = 64
     private static var logHandler: ((Transaction) -> Void)?
+    /// Last verified purchase environment, for the custom purchase funnel only.
+    /// Not a user id and not attached to restore or renewal processing.
+    private static var latestPurchaseEnvironment: String?
+
+    static func latestPurchaseEnvironmentToken() -> String? {
+        lock.lock()
+        defer { lock.unlock() }
+        return latestPurchaseEnvironment
+    }
+
+    static func environmentToken(_ environment: AppStore.Environment) -> String {
+        if environment == .production { return "production" }
+        if environment == .sandbox { return "sandbox" }
+        if environment == .xcode { return "xcode" }
+        return "unknown"
+    }
 
     /// Logs a verified StoreKit 2 transaction for Firebase `in_app_purchase` revenue.
     /// Safe to call multiple times for the same id — only the first succeeds.
     static func logVerifiedPurchaseTransactionIfNeeded(_ transaction: Transaction) {
         guard WeekFitSubscriptionProductID(rawValue: transaction.productID) != nil else { return }
+        let environment = environmentToken(transaction.environment)
+        lock.lock()
+        latestPurchaseEnvironment = environment
+        lock.unlock()
+        // Xcode StoreKit Testing is local-only. Sandbox still logs.
+        // `logTransaction` does not accept custom parameters, so `store_environment`
+        // is recorded on `subscription_purchase_success`, not on `in_app_purchase`.
         if transaction.environment == .xcode { return }
 
         let idKey = String(transaction.id)
@@ -73,6 +96,7 @@ enum StoreKitTransactionAnalytics {
         defaults.removeObject(forKey: Keys.loggedTransactionIDs)
         defaults = .standard
         logHandler = nil
+        latestPurchaseEnvironment = nil
         lock.unlock()
     }
 

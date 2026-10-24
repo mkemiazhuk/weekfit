@@ -14,6 +14,7 @@ enum CoachEveningSummaryService {
     private static let workspaceOwnerKey = "weekfit.ai.firebaseWorkspaceOwner"
 
     static func generate(_ input: CoachEveningSummaryInput, owner: String) async throws -> CoachEveningSummaryGenerationResult {
+        var input = input
         let tag = CoachEveningSummaryDiagnostics.ownerTag(owner)
         let clientRequestId = UUID().uuidString
         try Task.checkCancellation()
@@ -81,6 +82,24 @@ enum CoachEveningSummaryService {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue(clientRequestId, forHTTPHeaderField: "X-Request-Id")
+        // Enrich only inside the shared flight: Root and Coach cannot each query/generate.
+        // Do not request new permissions or read real health data when access is unavailable.
+        if AccountSessionController.shared.mode != .reviewDemo,
+           input.facts["sleep"]?.contains(where: { $0.id == "sleep.unavailable" }) == false,
+           let context = await weeklyFacts(for: input) {
+            var facts = input.facts
+            facts.merge(context) { _, new in new }
+            if let cache = try? CoachEveningSummaryStore().loadCache(owner: owner),
+               cache.summary.day < input.day {
+                facts["recentRecaps"] = [.init(id: "history.previousRecap",
+                    text: String(("Previous recap on " + cache.summary.day + ": "
+                        + cache.summary.today.text + " " + cache.summary.tomorrow.text).prefix(500)))]
+            }
+            input = CoachEveningSummaryInput(schemaVersion: input.schemaVersion, day: input.day,
+                timezone: input.timezone, locale: input.locale, phase: input.phase, facts: facts)
+        }
+        try Task.checkCancellation()
+        guard WorkspaceOwnerStore.currentIdentityToken() == owner else { throw CancellationError() }
         let body = try JSONEncoder().encode(input)
         request.httpBody = body
 
@@ -191,7 +210,31 @@ enum CoachEveningSummaryService {
                 extra: "locale=\(summary.locale) headlineLen=\(summary.headline.count)"
             )
         )
-        return CoachEveningSummaryGenerationResult(summary: summary, requestId: requestId)
+        return CoachEveningSummaryGenerationResult(summary: summary, requestId: requestId, validationInput: input)
+    }
+
+    private static func weeklyFacts(for input: CoachEveningSummaryInput) async -> [String: [CoachEveningSummaryInput.Fact]]? {
+        var calendar = Calendar(identifier: .gregorian)
+        guard let timezone = TimeZone(identifier: input.timezone) else { return nil }
+        calendar.timeZone = timezone
+        let now = Date()
+        guard CoachEveningSummaryPolicy.dayKey(now, calendar: calendar) == input.day else { return nil }
+        do {
+            var facts = try await RecoveryHealthKitProvider(calendar: calendar).loadCoachHistory(now: now).facts()
+            var feelings: [CoachEveningSummaryInput.Fact] = []
+            for offset in 0..<7 {
+                guard let date = calendar.date(byAdding: .day, value: -offset, to: now),
+                      let checkIn = CoachFeelingCheckInStore.latest(on: date, calendar: calendar) else { continue }
+                let day = CoachEveningSummaryPolicy.dayKey(date, calendar: calendar)
+                feelings.append(.init(id: "history.feeling.\(day)",
+                    text: "Local day \(day): subjective self-report=\(checkIn.feeling.rawValue); clarification=\(checkIn.clarification?.rawValue ?? "none"). Not a physiological measurement."))
+            }
+            facts["recentFeeling"] = feelings
+            return facts
+        } catch {
+            // Fall back to honest daily context on cancellation/query failure, without inventing history.
+            return nil
+        }
     }
 
     private static func firstNonEmpty(_ values: String?...) -> String? {

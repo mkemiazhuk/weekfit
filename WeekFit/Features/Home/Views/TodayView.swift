@@ -3622,7 +3622,7 @@ struct TodayView: View {
             ProductAnalytics.todayPrimaryActionTapped(.food)
             ProductAnalytics.quickLogOpened(category: .food)
             presentExclusiveTodayActionSheet {
-                ProductAnalytics.foodLoggingStarted(method: .quickLog, source: .today)
+                ProductAnalytics.foodLoggingStarted(method: .quickLog, source: .today, operation: .diary)
                 showDirectMealLogSheet = true
             }
         }

@@ -143,6 +143,8 @@ enum AnalyticsEvent: String, Sendable {
     case subscriptionPurchaseSuccess = "subscription_purchase_success"
     case subscriptionPurchaseCancelled = "subscription_purchase_cancelled"
     case subscriptionPurchaseFailed = "subscription_purchase_failed"
+    /// StoreKit `.pending` or the purchase sheet outlived the UI wait. Not a failure.
+    case subscriptionPurchasePending = "subscription_purchase_pending"
     case subscriptionRestoreStarted = "subscription_restore_started"
     case subscriptionRestoreSuccess = "subscription_restore_success"
     /// Neutral restore terminal: `no_purchases` or `cancelled` (not access success, not technical failure).

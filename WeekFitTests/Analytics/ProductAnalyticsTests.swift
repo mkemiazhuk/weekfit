@@ -25,7 +25,8 @@ final class ProductAnalyticsTests: XCTestCase {
         let expected: Set<String> = [
             "today", "coach", "meals", "plan", "settings", "onboarding",
             "recovery_details", "activity_details", "nutrition_details",
-            "meal_builder", "help_weekfit", "feedback_form", "paywall"
+            "meal_builder", "help_weekfit", "feedback_form", "paywall",
+            "recovery_challenge"
         ]
         XCTAssertEqual(Set(AnalyticsScreen.allCases.map(\.rawValue)), expected)
     }
@@ -79,7 +80,7 @@ final class ProductAnalyticsTests: XCTestCase {
         ProductAnalytics.coachRecommendationViewed()
         ProductAnalytics.mealBuilderStarted(mode: .new, source: .meals)
         ProductAnalytics.mealBuilderCompleted(mode: .new, source: .meals)
-        ProductAnalytics.foodLoggingCompleted(method: .quickLog, source: .today)
+        ProductAnalytics.foodLoggingCompleted(method: .quickLog, source: .today, operation: .diary)
 
         XCTAssertEqual(recording.events(named: .coachRecommendationViewed).count, 1)
         XCTAssertEqual(recording.events(named: .mealBuilderStarted).count, 1)
@@ -88,8 +89,8 @@ final class ProductAnalyticsTests: XCTestCase {
     }
 
     func testFoodLoggingCompletedEmitsOnceAfterPersistenceSemantics() {
-        ProductAnalytics.foodLoggingStarted(method: .quickLog, source: .today)
-        ProductAnalytics.foodLoggingCompleted(method: .quickLog, source: .today)
+        ProductAnalytics.foodLoggingStarted(method: .quickLog, source: .today, operation: .diary)
+        ProductAnalytics.foodLoggingCompleted(method: .quickLog, source: .today, operation: .diary)
 
         XCTAssertEqual(recording.events(named: .foodLoggingStarted).count, 1)
         XCTAssertEqual(recording.events(named: .foodLoggingCompleted).count, 1)
@@ -101,8 +102,8 @@ final class ProductAnalyticsTests: XCTestCase {
     }
 
     func testFoodLoggingCancelledDoesNotEmitCompletionOrFailure() {
-        ProductAnalytics.foodLoggingStarted(method: .manual, source: .meals)
-        ProductAnalytics.foodLoggingCancelled(method: .manual, source: .meals)
+        ProductAnalytics.foodLoggingStarted(method: .manual, source: .meals, operation: .library)
+        ProductAnalytics.foodLoggingCancelled(method: .manual, source: .meals, operation: .library)
 
         XCTAssertEqual(recording.events(named: .foodLoggingCancelled).count, 1)
         XCTAssertTrue(recording.events(named: .foodLoggingCompleted).isEmpty)
@@ -227,7 +228,7 @@ final class ProductAnalyticsTests: XCTestCase {
     func testNoSensitiveTokensInProductEventParameters() {
         ProductAnalytics.todayPrimaryActionTapped(.food)
         ProductAnalytics.todaySectionOpened(.recovery)
-        ProductAnalytics.foodLoggingCompleted(method: .barcode, source: .meals)
+        ProductAnalytics.foodLoggingCompleted(method: .barcode, source: .meals, operation: .library)
         ProductAnalytics.mealBuilderCompleted(mode: .new, source: .meals)
         ProductAnalytics.barcodeScanFailed(source: .meals, reason: .productNotFound)
         ProductAnalytics.languageChanged(.en)

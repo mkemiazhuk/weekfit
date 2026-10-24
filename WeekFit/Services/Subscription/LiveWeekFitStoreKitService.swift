@@ -4,6 +4,66 @@ import StoreKit
 import OSLog
 #endif
 
+/// Verified StoreKit transaction delivered through `Transaction.updates`.
+/// `transactionID == 0` means the update is not a confirmed purchase.
+struct WeekFitVerifiedTransactionNotice: Sendable, Equatable {
+    var productID: String
+    var transactionID: UInt64
+    var purchaseDate: Date
+
+    static let unverified = WeekFitVerifiedTransactionNotice(
+        productID: "",
+        transactionID: 0,
+        purchaseDate: .distantPast
+    )
+
+    init(productID: String, transactionID: UInt64, purchaseDate: Date) {
+        self.productID = productID
+        self.transactionID = transactionID
+        self.purchaseDate = purchaseDate
+    }
+
+    init(_ transaction: Transaction) {
+        self.init(
+            productID: transaction.productID,
+            transactionID: transaction.id,
+            purchaseDate: transaction.purchaseDate
+        )
+    }
+}
+
+/// A confirmed purchase is a verified transaction for the open attempt, not an entitlement flip.
+enum WeekFitPurchaseAttemptMatch {
+    /// Covers the gap between purchase start and the moment the attempt is recorded.
+    static let clockLeeway: TimeInterval = 5 * 60
+
+    static func isConfirmedPurchase(purchaseDate: Date, attemptMarkedAt: Date?) -> Bool {
+        guard let attemptMarkedAt else { return true }
+        return purchaseDate.timeIntervalSince(attemptMarkedAt) >= -clockLeeway
+    }
+}
+
+/// One `subscription_purchase_success` per StoreKit transaction id. The id is not sent to Analytics.
+enum PurchaseSuccessTransactionDedup {
+    private static let lock = NSLock()
+    private static var claimed: Set<UInt64> = []
+
+    static func claim(_ transactionID: UInt64) -> Bool {
+        guard transactionID != 0 else { return false }
+        lock.lock()
+        defer { lock.unlock() }
+        return claimed.insert(transactionID).inserted
+    }
+
+    #if DEBUG
+    static func resetForTests() {
+        lock.lock()
+        claimed = []
+        lock.unlock()
+    }
+    #endif
+}
+
 @MainActor
 protocol WeekFitStoreKitServicing: AnyObject {
     func loadAppTransaction() async -> WeekFitAppTransactionStatus
@@ -17,7 +77,9 @@ protocol WeekFitStoreKitServicing: AnyObject {
     func restorePurchases() async throws
     /// Drops cached `Product` instances so the next load/purchase cannot use a prior storefront.
     func invalidateCachedProducts()
-    func startTransactionUpdates(_ onChange: @escaping @Sendable () async -> Void) -> Task<Void, Never>
+    func startTransactionUpdates(
+        _ onChange: @escaping @Sendable (_ notice: WeekFitVerifiedTransactionNotice) async -> Void
+    ) -> Task<Void, Never>
     /// Observes StoreKit storefront changes so paywall prices can refresh with the catalog.
     func startStorefrontUpdates(_ onChange: @escaping @Sendable () async -> Void) -> Task<Void, Never>
 }
@@ -300,19 +362,19 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
     }
 
     func startTransactionUpdates(
-        _ onChange: @escaping @Sendable () async -> Void
+        _ onChange: @escaping @Sendable (_ notice: WeekFitVerifiedTransactionNotice) async -> Void
     ) -> Task<Void, Never> {
         Task.detached { [weak self] in
             for await result in Transaction.updates {
                 switch result {
                 case .verified(let transaction):
                     // Same strategy as direct purchase: deliver entitlements, then finish.
-                    await onChange()
+                    await onChange(WeekFitVerifiedTransactionNotice(transaction))
                     await self?.completeVerifiedTransactionUpdate(transaction)
                 case .unverified:
                     #if DEBUG
                     // Local StoreKit may emit unverified updates; re-evaluate without granting access.
-                    await onChange()
+                    await onChange(.unverified)
                     #endif
                 }
             }
@@ -322,10 +384,7 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
     private func completeVerifiedTransactionUpdate(_ transaction: Transaction) async {
         // Revenue only for Ask-to-Buy / deferred completions we initiated — never restore,
         // unverified, or ordinary renewals (Firebase SK1 observer / server-side renewals).
-        let isDeferred =
-            awaitingPendingPurchaseProductIDs.contains(transaction.productID)
-            || WeekFitDeferredPurchaseStore.pendingProductID() == transaction.productID
-        if isDeferred {
+        if shouldLogPurchaseRevenue(transaction) {
             StoreKitTransactionAnalytics.logVerifiedPurchaseTransactionIfNeeded(transaction)
             awaitingPendingPurchaseProductIDs.remove(transaction.productID)
             // Funnel consume happens in SubscriptionManager after entitlement refresh.
@@ -334,6 +393,21 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
         if pendingVerifiedPurchase?.id == transaction.id {
             pendingVerifiedPurchase = nil
         }
+    }
+
+    /// Revenue follows the verified purchase transaction, not a later entitlement refresh.
+    private func shouldLogPurchaseRevenue(_ transaction: Transaction) -> Bool {
+        let productID = transaction.productID
+        let openAttemptProduct = WeekFitDeferredPurchaseStore.pendingProductID()
+            ?? UnresolvedPurchaseAttemptAnalytics.pendingProductID()
+        let awaitingThisProduct = awaitingPendingPurchaseProductIDs.contains(productID)
+        guard openAttemptProduct == productID || awaitingThisProduct else { return false }
+        let markedAt = WeekFitDeferredPurchaseStore.pendingMarkedAt()
+            ?? UnresolvedPurchaseAttemptAnalytics.markedAt()
+        return WeekFitPurchaseAttemptMatch.isConfirmedPurchase(
+            purchaseDate: transaction.purchaseDate,
+            attemptMarkedAt: markedAt
+        )
     }
 
     private func finishTransactionIfNeeded(_ transaction: Transaction) async {

@@ -175,7 +175,7 @@ final class AnalyticsPrivacyHardeningTests: XCTestCase {
     }
 
     func testFoodLoggingOmitsNutritionValues() {
-        ProductAnalytics.foodLoggingCompleted(method: .manual, source: .today)
+        ProductAnalytics.foodLoggingCompleted(method: .manual, source: .today, operation: .diary)
         let event = try! XCTUnwrap(recording.events(named: .foodLoggingCompleted).first)
         assertNoSensitiveTelemetry(event.parameters)
         XCTAssertEqual(Set(event.parameters.keys), Set(["method", "source"]))

@@ -72,6 +72,11 @@ struct CustomMealBuilderView: View {
     /// Density used to rescale macros when serving grams change (photo/barcode baseline).
     @State private var nutritionDensity: CustomMealNutritionDensity?
     @State private var isScalingNutritionFromGrams = false
+    /// Recognized components at the serving size stored on the meal.
+    @State private var ingredientBaseline: [MealIngredientBreakdown]
+    @State private var ingredientBaselineServingGrams: Int
+    /// Manual nutrient edits no longer match the service's per-ingredient calories.
+    @State private var didManuallyEditNutrition = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -144,6 +149,11 @@ struct CustomMealBuilderView: View {
             _nutritionDensity = State(initialValue: nil)
             _barcodeImportResult = State(initialValue: nil)
         }
+        let baselineLines = MealIngredientBreakdown.lines(from: editingMeal?.ingredients ?? [])
+        _ingredientBaseline = State(initialValue: baselineLines)
+        _ingredientBaselineServingGrams = State(
+            initialValue: max(editingMeal?.servingGrams ?? 100, 1)
+        )
     }
 
     private var labels: Labels {
@@ -237,6 +247,12 @@ struct CustomMealBuilderView: View {
                     barcodeLookupBanner
                     foodNameSection
                         .id("foodName")
+                    if !scaledIngredientLines.isEmpty {
+                        MealIngredientBreakdownCard(
+                            lines: scaledIngredientLines,
+                            showsCalories: !didManuallyEditNutrition
+                        )
+                    }
                     MealLibraryPeriodPicker(selection: $selectedLibraryPeriod)
                     nutritionSection
 
@@ -1086,7 +1102,15 @@ struct CustomMealBuilderView: View {
     private func captureDensityAfterManualNutrientEdit(focused expected: FocusedField) {
         guard !isScalingNutritionFromGrams else { return }
         guard focusedField == expected else { return }
+        didManuallyEditNutrition = true
         captureNutritionDensityFromFields()
+    }
+
+    private var scaledIngredientLines: [MealIngredientBreakdown] {
+        guard !ingredientBaseline.isEmpty else { return [] }
+        let currentGrams = max(intValue(servingGrams), 1)
+        let factor = Double(currentGrams) / Double(max(ingredientBaselineServingGrams, 1))
+        return ingredientBaseline.map { $0.scaled(by: factor) }
     }
 
     private func captureNutritionDensityFromFields() {
@@ -1188,7 +1212,7 @@ struct CustomMealBuilderView: View {
         guard isSaveEnabled else {
             validationMessage = labels.requiredFieldsValidation
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-            ProductAnalytics.foodLoggingFailed(method: .manual, source: .meals, reason: .invalidInput)
+            ProductAnalytics.foodLoggingFailed(method: .manual, source: .meals, operation: .library, reason: .invalidInput)
             Self.debugEnd("save.invalidDisabled", start: saveStart)
             return
         }
@@ -1241,7 +1265,7 @@ struct CustomMealBuilderView: View {
             } catch {
                 await MainActor.run {
                     validationMessage = labels.photoSaveFailedValidation
-                    ProductAnalytics.foodLoggingFailed(method: .manual, source: .meals, reason: .saveFailed)
+                    ProductAnalytics.foodLoggingFailed(method: .manual, source: .meals, operation: .library, reason: .saveFailed)
                     Self.debugEnd("save.photoFailed", start: saveStart)
                 }
                 return
@@ -1268,12 +1292,7 @@ struct CustomMealBuilderView: View {
                         labels.customMealBenefit,
                         labels.manualEntryBenefit
                     ],
-                    ingredients: [
-                        MealsIngredient(
-                            name: labels.servingIngredient,
-                            amount: String(format: labels.gramValueFormat, input.servingGrams)
-                        )
-                    ],
+                    ingredients: savedIngredients(for: input),
                     suggestedTime: selectedLibraryPeriod.defaultSuggestedTime,
                     builderImageItems: nil,
                     libraryKind: editingMeal?.libraryKind ?? .product,
@@ -1292,12 +1311,26 @@ struct CustomMealBuilderView: View {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 ProductAnalytics.foodLoggingCompleted(
                     method: scannedBarcode == nil ? .manual : .barcode,
-                    source: .meals
+                    source: .meals,
+                    operation: .library
                 )
                 Self.debugEnd("save.success", start: saveStart)
                 dismiss()
             }
         }
+    }
+
+    private func savedIngredients(for input: CustomMealFormInput) -> [MealsIngredient] {
+        let lines = scaledIngredientLines
+        guard !lines.isEmpty else {
+            return [
+                MealsIngredient(
+                    name: labels.servingIngredient,
+                    amount: String(format: labels.gramValueFormat, input.servingGrams)
+                )
+            ]
+        }
+        return lines.map { $0.asIngredient(gramFormat: labels.gramValueFormat) }
     }
 
     private func intValue(_ value: String) -> Int {
@@ -1513,6 +1546,78 @@ private struct CreateFoodOrDivider: View {
                 .frame(height: 1)
         }
         .accessibilityHidden(true)
+    }
+}
+
+struct MealIngredientBreakdownCard: View {
+    let lines: [MealIngredientBreakdown]
+    var showsCalories: Bool = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(WeekFitLocalizedString("meals.section.ingredients"))
+                .font(.system(size: 14.5, weight: .bold, design: .rounded))
+                .foregroundStyle(WeekFitTheme.primaryText)
+                .tracking(-0.15)
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                .padding(.bottom, 8)
+
+            ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
+                ingredientRow(line)
+
+                if index != lines.count - 1 {
+                    Rectangle()
+                        .fill(WeekFitTheme.whiteOpacity(0.055))
+                        .frame(height: 1)
+                        .padding(.leading, 16)
+                        .padding(.trailing, 16)
+                }
+            }
+            .padding(.bottom, 6)
+        }
+        .weekFitPremiumCard(emphasis: .standard, cornerRadius: 22)
+    }
+
+    private func ingredientRow(_ line: MealIngredientBreakdown) -> some View {
+        let preparation = line.preparation?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let grams = max(Int(line.grams.rounded()), 0)
+        let gramText = String(
+            format: WeekFitLocalizedString("common.unit.gramValueFormat"),
+            grams
+        )
+
+        return HStack(alignment: .firstTextBaseline, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(line.name)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.primaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !preparation.isEmpty {
+                    Text(preparation)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.76))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            Text(gramText)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.88))
+
+            if showsCalories, let calories = line.calories, calories > 0 {
+                Text("\(calories) \(WeekFitLocalizedString("common.unit.kcal"))")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.7))
+                    .frame(minWidth: 64, alignment: .trailing)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .accessibilityElement(children: .combine)
     }
 }
 

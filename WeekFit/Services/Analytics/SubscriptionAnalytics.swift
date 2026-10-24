@@ -78,16 +78,38 @@ enum SubscriptionAnalytics {
     static func purchaseSuccess(
         productID: String,
         requestedTab: String? = nil,
-        paywallInstanceID: String? = nil
+        paywallInstanceID: String? = nil,
+        storeEnvironment: String? = nil
     ) {
+        var parameters = productParameters(
+            productID: productID,
+            requestedTab: requestedTab,
+            paywallInstanceID: paywallInstanceID
+        )
+        if let storeEnvironment, !storeEnvironment.isEmpty {
+            parameters[AnalyticsParameterKey.storeEnvironment] = storeEnvironment
+        }
         analytics.track(
             .subscriptionPurchaseSuccess,
-            parameters: productParameters(
-                productID: productID,
-                requestedTab: requestedTab,
-                paywallInstanceID: paywallInstanceID
-            )
+            parameters: parameters
         )
+    }
+
+    /// StoreKit has not finished the attempt. A later `subscription_purchase_success`,
+    /// `subscription_purchase_cancelled`, or `subscription_purchase_failed` is the result.
+    static func purchasePending(
+        productID: String,
+        requestedTab: String? = nil,
+        reason: SubscriptionPurchasePendingReason,
+        paywallInstanceID: String? = nil
+    ) {
+        var parameters = productParameters(
+            productID: productID,
+            requestedTab: requestedTab,
+            paywallInstanceID: paywallInstanceID
+        )
+        parameters[AnalyticsParameterKey.reason] = reason.rawValue
+        analytics.track(.subscriptionPurchasePending, parameters: parameters)
     }
 
     static func purchaseCancelled(
@@ -353,8 +375,12 @@ enum SubscriptionPurchaseFailureReason: String, Sendable {
     /// StoreKit returned a verified transaction, but entitlement refresh never unlocked access.
     case entitlementNotPropagated = "entitlement_not_propagated"
     case productsUnavailable = "products_unavailable"
-    /// Ask to Buy / deferred — closes the started→terminal funnel for this attempt.
-    case pending
-    /// `Product.purchase()` did not return within the purchase timeout (often stale Product after sleep).
-    case timeout
+}
+
+/// Why a purchase is waiting. Neither value is a failed purchase.
+enum SubscriptionPurchasePendingReason: String, Sendable {
+    /// StoreKit `.pending` (Ask to Buy / SCA).
+    case askToBuy = "ask_to_buy"
+    /// The UI stopped waiting before StoreKit returned. The attempt can still complete.
+    case interfaceTimeout = "interface_timeout"
 }
