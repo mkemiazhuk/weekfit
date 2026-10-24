@@ -35,7 +35,7 @@ test('cannot generate before 20:00 or backdate requests',async t=>{let calls=0;c
 test('next local day permits one new request',async t=>{let calls=0;const dir=await directory(t);const generate=async()=>{calls++;return {result:result()};};const a=await server(t,dir,generate);await a.post(input());const b=await server(t,dir,generate,{dependencies:{summaryNow:()=>new Date('2026-10-13T18:00:00Z')}});assert.equal((await b.post({...input(),day:'2026-10-13'})).status,200);assert.equal(calls,2);});
 test('storage misconfiguration fails closed without AI',async t=>{let calls=0;const {post}=await server(t,'',async()=>{calls++;return {result:result()};});assert.equal((await post(input())).status,503);assert.equal(calls,0);});
 test('concurrency limit is acquired before asynchronous reservation',async t=>{let running=0,peak=0;const {post}=await server(t,await directory(t),async()=>{running++;peak=Math.max(peak,running);await new Promise(r=>setTimeout(r,40));running--;return {result:result()};},{config:{summaryConcurrency:1}});const rs=await Promise.all([post(input(),'Bearer a'),post(input(),'Bearer b'),post(input(),'Bearer c')]);assert.equal(peak,1);assert.equal(rs.filter(r=>r.status===200).length,1);assert.equal(rs.filter(r=>r.status===503).length,2);});
-test('structured output has bounded tokens, no photo and no storage',async()=>{let sent;const r=await generateSummary(validateDay(input()),{apiKey:'test',summaryModel:'test-model'},async(url,opts)=>{sent=JSON.parse(opts.body);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(result())}]}]})};});assert.equal(sent.store,false);assert.equal(sent.max_output_tokens,1200);assert.equal(sent.text.format.strict,true);assert.equal(sent.reasoning,undefined);assert.equal(r.result.headline,'Итог дня');assert.match(sent.instructions,/40.65 words/);assert.equal(SUMMARY_PROMPT_VERSION,7);assert.match(sent.instructions,/principal nutrition coach assistant/);assert.match(sent.instructions,/WHAT TO DO TONIGHT/);assert.match(sent.instructions,/Do NOT recite/);});
+test('structured output has bounded tokens, no photo and no storage',async()=>{let sent;const r=await generateSummary(validateDay(input()),{apiKey:'test',summaryModel:'test-model'},async(url,opts)=>{sent=JSON.parse(opts.body);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(result())}]}]})};});assert.equal(sent.store,false);assert.equal(sent.max_output_tokens,1200);assert.equal(sent.text.format.strict,true);assert.equal(sent.reasoning,undefined);assert.equal(r.result.headline,'Итог дня');assert.match(sent.instructions,/40.65 words/);assert.equal(SUMMARY_PROMPT_VERSION,8);assert.match(sent.instructions,/personal activity, sleep and recovery coach/);assert.match(sent.instructions,/SEVEN days/);assert.match(sent.instructions,/Do NOT recite/);});
 test('unrestricted mode allows before 20:00 and always calls AI',async t=>{
   let calls=0;
   const {post}=await server(t,await directory(t),async()=>{calls++;return {result:result()};},{
@@ -58,4 +58,33 @@ test('unrestricted mode ignores prior daily claim files',async t=>{
   });
   assert.equal((await open.post(input())).status,200);
   assert.equal(calls,2);
+});
+
+test('weekly evidence accepted without breaking legacy snapshots or evidence validation',()=>{
+  const b=input();
+  b.facts.recentSleep=[{id:'history.sleep.2026-10-12',text:'Wake-day 2026-10-12: asleep=505 min.'}];
+  b.facts.recentActivity=[{id:'history.activity.2026-10-11',text:'Local day 2026-10-11: active energy=1747 kcal; day complete=true.'}];
+  b.facts.baseline=[{id:'baseline.hrvSDNN',text:'Prior 28-day reference: insufficient baseline.'}];
+  const validated=validateDay(b);
+  const answer=result();
+  answer.today.evidenceIds=['history.sleep.2026-10-12','history.activity.2026-10-11'];
+  assert.doesNotThrow(()=>validateSummary(answer,validated));
+  assert.throws(()=>validateSummary(answer,validateDay(input())),/invalid_summary_result/);
+});
+
+test('history remains bounded and cannot introduce duplicate evidence IDs',()=>{
+  const b=input(); b.facts.recentSleep=Array.from({length:21},(_,i)=>({id:`h.${i}`,text:'Sleep history'}));
+  assert.throws(()=>validateDay(b),/invalid_day_snapshot/);
+  b.facts.recentSleep=[b.facts.sleep[0]];
+  assert.throws(()=>validateDay(b),/invalid_day_snapshot/);
+});
+
+test('weekly context reaches provider unchanged and outputs must cite supplied facts',async()=>{
+  const b=input(); b.facts.recentVitals=[{id:'history.vitals.2026-10-12',text:'HRV unknown; RHR unknown; sparse readings.'}];
+  let sent;
+  await generateSummary(validateDay(b),{apiKey:'test',summaryModel:'mock'},async(_,opts)=>{
+    sent=JSON.parse(opts.body);
+    return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(result())}]}]})};
+  });
+  assert.deepEqual(JSON.parse(sent.input[0].content[0].text).facts.recentVitals,b.facts.recentVitals);
 });
