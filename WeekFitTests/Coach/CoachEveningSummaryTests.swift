@@ -136,6 +136,53 @@ final class CoachEveningSummaryTests: XCTestCase {
     }
 #endif
 
+    func testValidationFailuresReportPreciseReasons() {
+        let base = input(locale: "pl")
+        let good = CoachEveningSummary(
+            headline: "Spokojny wieczór bez ostrych sygnałów",
+            today: .init(
+                text: "Dziś pomiary HRV są rzadkie, więc nie da się pewnie ocenić gotowości do obciążenia.",
+                evidenceIds: ["sleep.duration"]
+            ),
+            now: .init(
+                text: "Dziś pomiary są rzadkie, więc wniosek pozostaje ostrożny.",
+                evidenceIds: ["sleep.duration"]
+            ),
+            tomorrow: .init(
+                text: "Jeśli chcesz, zaznacz wieczorem jak się czujesz.",
+                evidenceIds: []
+            ),
+            limitations: ["Rzadkie pomiary HRV."],
+            day: base.day,
+            locale: "pl",
+            generatedAt: "2026-10-12T18:00:00Z",
+            source: "ai"
+        )
+        XCTAssertEqual(good.validationFailures(for: base), [])
+
+        var bad = good
+        bad = CoachEveningSummary(
+            headline: good.headline,
+            today: .init(text: good.today.text, evidenceIds: ["missing.fact"]),
+            now: good.now,
+            tomorrow: good.tomorrow,
+            limitations: good.limitations,
+            day: "2099-01-01",
+            locale: "en",
+            generatedAt: good.generatedAt,
+            source: "ai"
+        )
+        let reasons = bad.validationFailures(for: base)
+        XCTAssertTrue(reasons.contains("day_mismatch"))
+        XCTAssertTrue(reasons.contains("locale_mismatch"))
+        XCTAssertTrue(reasons.contains { $0.hasPrefix("today_unknown_evidence:") })
+    }
+
+    func testPolishNoteWithMetricTokensStillMatchesLocale() {
+        let text = "Dziś pomiary HRV SDNN są rzadkie, więc nie da się pewnie mówić o regeneracji względem RHR."
+        XCTAssertTrue(CoachEveningSummaryPolicy.textMatchesRequestedLocale(text, locale: "pl"))
+    }
+
     func testFallbackSourceIsAcceptedWhenFactsAreEmpty() {
         let emptyInput = CoachEveningSummaryInput(
             schemaVersion: 1,

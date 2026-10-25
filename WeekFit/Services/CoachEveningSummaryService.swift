@@ -96,19 +96,34 @@ enum CoachEveningSummaryService {
            let context = await weeklyFacts(for: input) {
             var facts = input.facts
             facts.merge(context) { _, new in new }
-            if let cache = try? CoachEveningSummaryStore().loadCache(owner: owner),
-               cache.summary.day < input.day {
+            let store = CoachEveningSummaryStore()
+            let priorRecaps = (try? store.loadRecentRecaps(owner: owner, beforeDay: input.day, limit: 5)) ?? []
+            if !priorRecaps.isEmpty {
+                facts["recentRecaps"] = priorRecaps
+            } else if let cache = try? store.loadCache(owner: owner),
+                      cache.summary.day < input.day {
                 facts["recentRecaps"] = [.init(id: "history.previousRecap",
                     text: String(("Previous recap on " + cache.summary.day + ": "
                         + cache.summary.today.text + " " + cache.summary.tomorrow.text).prefix(500)))]
             }
             input = CoachEveningSummaryInput(schemaVersion: input.schemaVersion, day: input.day,
                 timezone: input.timezone, locale: input.locale, phase: input.phase, facts: facts)
+        } else {
+            CoachEveningSummaryDiagnostics.event(
+                "weeklyFacts.skipped",
+                detail: CoachEveningSummaryDiagnostics.flightDetail(
+                    owner: owner, day: input.day, source: "http",
+                    requestId: clientRequestId,
+                    extra: "reason=unavailableOrReviewDemo"
+                )
+            )
         }
         try Task.checkCancellation()
         guard WorkspaceOwnerStore.currentIdentityToken() == owner else { throw CancellationError() }
         let body = try JSONEncoder().encode(input)
         request.httpBody = body
+        let factCounts = input.facts.mapValues(\.count)
+        let factTotal = factCounts.values.reduce(0, +)
         #if DEBUG
         // Log the exact HTTP body after weekly enrichment — do not rebuild a parallel payload.
         CoachEveningSummaryDebugTape.logInput(clientRequestId: clientRequestId, httpBody: body)
@@ -119,7 +134,7 @@ enum CoachEveningSummaryService {
             detail: CoachEveningSummaryDiagnostics.flightDetail(
                 owner: owner, day: input.day, source: "http",
                 requestId: clientRequestId,
-                extra: "path=/v1/coach/day-summary locale=\(input.locale) bodyBytes=\(body.count)"
+                extra: "path=/v1/coach/day-summary locale=\(input.locale) bodyBytes=\(body.count) factTotal=\(factTotal) factGroups=\(factCounts.keys.sorted().joined(separator: ","))"
             )
         )
         let started = ContinuousClock.now
@@ -233,13 +248,14 @@ enum CoachEveningSummaryService {
             )
             throw CoachEveningSummaryServiceError.invalidResponse
         }
-        guard summary.isValid(for: input) else {
+        let validationFailures = summary.validationFailures(for: input)
+        guard validationFailures.isEmpty else {
             CoachEveningSummaryDiagnostics.error(
                 "decode.invalid",
                 detail: CoachEveningSummaryDiagnostics.flightDetail(
                     owner: owner, day: summary.day, source: "http",
                     requestId: requestId,
-                    extra: "locale=\(summary.locale) source=\(summary.source)"
+                    extra: "locale=\(summary.locale) source=\(summary.source) reasons=\(validationFailures.joined(separator: "|")) inputDay=\(input.day) inputLocale=\(input.locale) factIds=\(input.facts.values.flatMap { $0.map(\.id) }.count)"
                 )
             )
             throw CoachEveningSummaryServiceError.invalidResponse

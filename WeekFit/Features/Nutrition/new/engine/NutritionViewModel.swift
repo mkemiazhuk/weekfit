@@ -123,13 +123,24 @@ final class NutritionViewModel: ObservableObject {
         let hasLoggedMeals = plannedActivities.contains { $0.type.lowercased() == "meal" && $0.isCompleted }
         
         let completedMeals = CoachCanonicalDayState.completedMeals(from: plannedActivities)
+        let completedDrinks = plannedActivities.filter {
+            CoachCanonicalDayState.isHydrationLog($0) && $0.isCompleted && !$0.isSkipped
+        }
         let mealCalories = Double(completedMeals.reduce(0) { $0 + $1.calories })
         let mealProtein = Double(completedMeals.reduce(0) { $0 + $1.protein })
         let mealCarbs = Double(completedMeals.reduce(0) { $0 + $1.carbs })
         let mealFats = Double(completedMeals.reduce(0) { $0 + $1.fats })
         let mealFiber = Double(completedMeals.reduce(0) { $0 + $1.fiber })
+        let drinkCalories = Double(completedDrinks.reduce(0) { $0 + $1.calories })
+        let drinkProtein = Double(completedDrinks.reduce(0) { $0 + $1.protein })
+        let drinkCarbs = Double(completedDrinks.reduce(0) { $0 + $1.carbs })
+        let drinkFats = Double(completedDrinks.reduce(0) { $0 + $1.fats })
+        let journalCalories = mealCalories + drinkCalories
+        let journalProtein = mealProtein + drinkProtein
+        let journalCarbs = mealCarbs + drinkCarbs
+        let journalFats = mealFats + drinkFats
 
-        if isEarlyMorning && !hasLoggedMeals && completedMeals.isEmpty {
+        if isEarlyMorning && !hasLoggedMeals && completedMeals.isEmpty && completedDrinks.isEmpty {
             updatedMetrics.calories = 0.0
             updatedMetrics.protein = 0.0
             updatedMetrics.carbs = 0.0
@@ -138,12 +149,12 @@ final class NutritionViewModel: ObservableObject {
         } else {
             let loggedWaterLiters = QuickLogActivityPortions.totalWaterLiters(from: plannedActivities) + manualWaterLiters
 
-            // Incoming metrics are HealthKit-only dietary intake. Planned meal/drink logs are
-            // recomputed every pass so add/delete moves consumed totals in both directions.
-            updatedMetrics.calories = max(metrics.calories, mealCalories)
-            updatedMetrics.protein = max(metrics.protein, mealProtein)
-            updatedMetrics.carbs = max(metrics.carbs, mealCarbs)
-            updatedMetrics.fats = max(metrics.fats, mealFats)
+            // Incoming metrics are HealthKit-only dietary intake. Planned meal + caloric drink logs
+            // are recomputed every pass so add/delete moves consumed totals in both directions.
+            updatedMetrics.calories = max(metrics.calories, journalCalories)
+            updatedMetrics.protein = max(metrics.protein, journalProtein)
+            updatedMetrics.carbs = max(metrics.carbs, journalCarbs)
+            updatedMetrics.fats = max(metrics.fats, journalFats)
             updatedMetrics.fiber = max(metrics.fiber, mealFiber)
             updatedMetrics.waterLiters = max(metrics.waterLiters, loggedWaterLiters)
         }

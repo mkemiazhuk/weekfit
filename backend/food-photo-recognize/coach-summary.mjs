@@ -178,7 +178,8 @@ export function validateDay(body, options = {}) {
   const ids = new Set(), facts = {};
   for (const group of groups) {
     const rows = rawFacts[group] ?? [];
-    if (!Array.isArray(rows) || rows.length > 20) bad();
+    // Raised from 20 → 40 so clients can send full day summaries + session budgets without silent drops.
+    if (!Array.isArray(rows) || rows.length > 40) bad();
     facts[group] = rows.map(row => {
       if (!row || Object.keys(row).some(k => !['id', 'text'].includes(k)) || typeof row.id !== 'string' || !/^[a-zA-Z0-9_.-]{1,80}$/.test(row.id) || ids.has(row.id) || typeof row.text !== 'string' || !row.text.trim() || row.text.length > 500) bad();
       ids.add(row.id); return {id: row.id, text: row.text.trim()};
@@ -407,7 +408,7 @@ export function createSummaryHandler(config, dependencies) {
       const uid = await dependencies.authenticate(req.headers.authorization, config);
       if (!req.headers['content-type']?.startsWith('application/json')) throw new ServiceError('json_required', 415);
       let size = 0; const chunks = [];
-      for await (const chunk of req) { size += chunk.length; if (size > 65536) throw new ServiceError('request_too_large', 413); chunks.push(chunk); }
+      for await (const chunk of req) { size += chunk.length; if (size > 131072) throw new ServiceError('request_too_large', 413); chunks.push(chunk); }
       let body; try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new ServiceError('invalid_json'); }
       const input = validateDay(body, {acceptLanguage: req.headers['accept-language']});
       const local = localDayAndHour(clock(), input.timezone);

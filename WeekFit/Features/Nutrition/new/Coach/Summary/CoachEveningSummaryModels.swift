@@ -30,20 +30,41 @@ struct CoachEveningSummary: Codable, Equatable, Sendable {
     let source: String
 
     func isValid(for input: CoachEveningSummaryInput) -> Bool {
+        validationFailures(for: input).isEmpty
+    }
+
+    /// Precise client-side rejection codes for diagnostics (never log personal text).
+    func validationFailures(for input: CoachEveningSummaryInput) -> [String] {
+        var failures: [String] = []
         let ids = Set(input.facts.values.flatMap { $0.map(\.id) })
         let allowedSources: Set<String> = ["ai", "fallback"]
-        return day == input.day && locale == input.locale && allowedSources.contains(source)
-            && !headline.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && headline.count <= 120 && limitations.count <= 6
-            && [today, now, tomorrow].allSatisfy {
-                !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    && $0.text.count <= 700 && $0.evidenceIds.allSatisfy(ids.contains)
+
+        if day != input.day { failures.append("day_mismatch") }
+        if locale != input.locale { failures.append("locale_mismatch") }
+        if !allowedSources.contains(source) { failures.append("source_invalid") }
+        if headline.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            failures.append("headline_empty")
+        }
+        if headline.count > 120 { failures.append("headline_too_long") }
+        if limitations.count > 6 { failures.append("limitations_too_many") }
+
+        for (name, passage) in [("today", today), ("now", now), ("tomorrow", tomorrow)] {
+            let text = passage.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if text.isEmpty { failures.append("\(name)_empty") }
+            if passage.text.count > 700 { failures.append("\(name)_too_long") }
+            let unknown = passage.evidenceIds.filter { !ids.contains($0) }
+            if !unknown.isEmpty {
+                failures.append("\(name)_unknown_evidence:\(unknown.sorted().joined(separator: ","))")
             }
-            && (source == "fallback"
-                || CoachEveningSummaryPolicy.textMatchesRequestedLocale(
-                    [today.text, tomorrow.text, now.text].joined(separator: " "),
-                    locale: locale
-                ))
+        }
+
+        if source != "fallback" {
+            let visible = [today.text, tomorrow.text, now.text].joined(separator: " ")
+            if !CoachEveningSummaryPolicy.textMatchesRequestedLocale(visible, locale: locale) {
+                failures.append("locale_text_mismatch")
+            }
+        }
+        return failures
     }
 }
 
@@ -146,8 +167,12 @@ enum CoachEveningSummaryPolicy {
         guard trimmed.count >= 24 else { return true }
         guard let expected = nlLanguage(for: locale) else { return true }
 
+        // Strip Latin tech tokens so HRV/kcal/etc. do not tip Polish/Russian notes to English.
+        let normalized = localeCheckNormalized(trimmed)
+        guard normalized.count >= 18 else { return true }
+
         let recognizer = NLLanguageRecognizer()
-        recognizer.processString(trimmed)
+        recognizer.processString(normalized)
         let hypotheses = recognizer.languageHypotheses(withMaximum: 4)
         if let score = hypotheses[expected], score >= 0.22 {
             return true
@@ -161,6 +186,22 @@ enum CoachEveningSummaryPolicy {
             return false
         }
         return dominant == expected
+    }
+
+    /// Removes metric acronyms/units that are language-neutral Latin noise for NL detection.
+    private static func localeCheckNormalized(_ text: String) -> String {
+        let tokens = [
+            "HRV", "SDNN", "RHR", "REM", "kcal", "bpm", "ms", "min", "km",
+            "HealthKit", "Apple", "Exercise", "WeekFit", "VO2", "Zone"
+        ]
+        var result = text
+        for token in tokens {
+            result = result.replacingOccurrences(of: token, with: " ", options: .caseInsensitive)
+        }
+        return result
+            .replacingOccurrences(of: #"\d+([.,]\d+)?"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func nlLanguage(for locale: String) -> NLLanguage? {

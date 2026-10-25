@@ -1,5 +1,6 @@
 import SwiftUI
 import HealthKit
+import WeekFitHealthKit
 internal import Combine
 
 struct RecoveryScoreContext: Equatable {
@@ -222,10 +223,14 @@ final class RecoveryHealthKitProvider {
         var seen = Set<UUID>()
         let sessions = workouts.filter { $0.endDate <= now && seen.insert($0.uuid).inserted }
             .sorted { $0.startDate < $1.startDate }.map {
-                CoachWeeklyContext.Session(type: String(describing: $0.workoutActivityType),
-                    start: $0.startDate, end: $0.endDate, minutes: Int($0.duration / 60))
+                CoachWeeklyContext.Session(
+                    type: ActivityReconciler.title(for: $0.workoutActivityType),
+                    start: $0.startDate,
+                    end: $0.endDate,
+                    minutes: Int($0.duration / 60)
+                )
             }
-        return CoachWeeklyContext(days: days, sessions: sessions, calendar: calendar)
+        return CoachWeeklyContext(days: days, sessions: sessions, calendar: calendar, assembledAt: now)
     }
 
     private func loadCoachVital(_ identifier: HKQuantityTypeIdentifier, unit: HKUnit,

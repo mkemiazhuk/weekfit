@@ -221,8 +221,10 @@ test('weekly evidence accepted without breaking legacy snapshots or evidence val
 });
 
 test('history remains bounded and cannot introduce duplicate evidence IDs',()=>{
-  const b=input(); b.facts.recentSleep=Array.from({length:21},(_,i)=>({id:`h.${i}`,text:'Sleep history'}));
+  const b=input(); b.facts.recentSleep=Array.from({length:41},(_,i)=>({id:`h.${i}`,text:'Sleep history'}));
   assert.throws(()=>validateDay(b),/invalid_day_snapshot/);
+  const ok=input(); ok.facts.recentSleep=Array.from({length:40},(_,i)=>({id:`h.${i}`,text:'Sleep history'}));
+  assert.doesNotThrow(()=>validateDay(ok));
   b.facts.recentSleep=[b.facts.sleep[0]];
   assert.throws(()=>validateDay(b),/invalid_day_snapshot/);
 });

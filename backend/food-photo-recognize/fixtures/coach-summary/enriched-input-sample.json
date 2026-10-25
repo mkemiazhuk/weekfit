@@ -1,0 +1,271 @@
+{
+  "schemaVersion": 1,
+  "day": "2026-10-25",
+  "timezone": "Europe/Warsaw",
+  "locale": "pl",
+  "phase": "evening",
+  "facts": {
+    "sleep": [
+      {
+        "id": "sleep.duration",
+        "text": "Sleep recorded for today: 7.1 hours. Source: HealthKit."
+      },
+      {
+        "id": "coverage.today",
+        "text": "Local day 2026-10-25 still in progress until local midnight. Health access granted=true."
+      },
+      {
+        "id": "coverage.sleep",
+        "text": "Last-night sleep: samples_present for wake-day."
+      }
+    ],
+    "nutrition": [
+      {
+        "id": "nutrition.completeness",
+        "text": "Food log completeness is unknown."
+      },
+      {
+        "id": "nutrition.totals",
+        "text": "Journal intake totals today (meals + caloric drinks): 5 kcal; ... Meal-only journal kcal=0; drink journal kcal=5."
+      },
+      {
+        "id": "nutrition.drink.0",
+        "text": "Logged drink: Coffee; 5 kcal...."
+      }
+    ],
+    "activity": [
+      {
+        "id": "activity.item.0",
+        "text": "Spacer, type walking, status completed; duration 28 min; subjective intensity unknown."
+      },
+      {
+        "id": "activity.load",
+        "text": "Today's HealthKit active energy: 410 kcal. Expenditure estimate only."
+      }
+    ],
+    "feeling": [
+      {
+        "id": "feeling.none",
+        "text": "No evening feeling check-in recorded yet for today."
+      }
+    ],
+    "tomorrow": [
+      {
+        "id": "tomorrow.none",
+        "text": "No activities or meals planned for tomorrow yet."
+      }
+    ],
+    "coachDecision": [
+      {
+        "id": "profile.nutritionGoal",
+        "text": "User-selected nutrition goal: maintenance."
+      }
+    ],
+    "recentSleep": [
+      {
+        "id": "history.sleep.2026-10-19",
+        "text": "Wake-day 2026-10-19: asleep=426 min; sleepStart=...; coverage=samples_present. Prefer Apple Sleep source when mixed; overlapping sources are not summed."
+      },
+      {
+        "id": "history.sleep.2026-10-20",
+        "text": "Wake-day 2026-10-20: asleep=426 min; sleepStart=...; coverage=samples_present. Prefer Apple Sleep source when mixed; overlapping sources are not summed."
+      },
+      {
+        "id": "history.sleep.2026-10-21",
+        "text": "Wake-day 2026-10-21: asleep=426 min; sleepStart=...; coverage=samples_present. Prefer Apple Sleep source when mixed; overlapping sources are not summed."
+      },
+      {
+        "id": "history.sleep.2026-10-22",
+        "text": "Wake-day 2026-10-22: asleep=426 min; sleepStart=...; coverage=samples_present. Prefer Apple Sleep source when mixed; overlapping sources are not summed."
+      },
+      {
+        "id": "history.sleep.2026-10-23",
+        "text": "Wake-day 2026-10-23: asleep=426 min; sleepStart=...; coverage=samples_present. Prefer Apple Sleep source when mixed; overlapping sources are not summed."
+      },
+      {
+        "id": "history.sleep.2026-10-24",
+        "text": "Wake-day 2026-10-24: asleep=426 min; sleepStart=...; coverage=samples_present. Prefer Apple Sleep source when mixed; overlapping sources are not summed."
+      },
+      {
+        "id": "history.sleep.2026-10-25",
+        "text": "Wake-day 2026-10-25: asleep=426 min; sleepStart=...; coverage=samples_present. Prefer Apple Sleep source when mixed; overlapping sources are not summed."
+      }
+    ],
+    "recentVitals": [
+      {
+        "id": "history.vitals.2026-10-19",
+        "text": "Wake-day 2026-10-19: HRV SDNN=44.0 ms, aggregation=overnight_sleep_window_median, samples=2, latest=...; resting HR=54.0 bpm, aggregation=overnight_sleep_window_median, samples=1, latest=.... RHR is not sleeping heart rate."
+      },
+      {
+        "id": "history.vitals.2026-10-20",
+        "text": "Wake-day 2026-10-20: HRV SDNN=44.0 ms, aggregation=overnight_sleep_window_median, samples=2, latest=...; resting HR=54.0 bpm, aggregation=overnight_sleep_window_median, samples=1, latest=.... RHR is not sleeping heart rate."
+      },
+      {
+        "id": "history.vitals.2026-10-21",
+        "text": "Wake-day 2026-10-21: HRV SDNN=44.0 ms, aggregation=overnight_sleep_window_median, samples=2, latest=...; resting HR=54.0 bpm, aggregation=overnight_sleep_window_median, samples=1, latest=.... RHR is not sleeping heart rate."
+      },
+      {
+        "id": "history.vitals.2026-10-22",
+        "text": "Wake-day 2026-10-22: HRV SDNN=44.0 ms, aggregation=overnight_sleep_window_median, samples=2, latest=...; resting HR=54.0 bpm, aggregation=overnight_sleep_window_median, samples=1, latest=.... RHR is not sleeping heart rate."
+      },
+      {
+        "id": "history.vitals.2026-10-23",
+        "text": "Wake-day 2026-10-23: HRV SDNN=44.0 ms, aggregation=overnight_sleep_window_median, samples=2, latest=...; resting HR=54.0 bpm, aggregation=overnight_sleep_window_median, samples=1, latest=.... RHR is not sleeping heart rate."
+      },
+      {
+        "id": "history.vitals.2026-10-24",
+        "text": "Wake-day 2026-10-24: HRV SDNN=44.0 ms, aggregation=overnight_sleep_window_median, samples=2, latest=...; resting HR=54.0 bpm, aggregation=overnight_sleep_window_median, samples=1, latest=.... RHR is not sleeping heart rate."
+      },
+      {
+        "id": "history.vitals.2026-10-25",
+        "text": "Wake-day 2026-10-25: HRV SDNN=44.0 ms, aggregation=overnight_sleep_window_median, samples=2, latest=...; resting HR=54.0 bpm, aggregation=overnight_sleep_window_median, samples=1, latest=.... RHR is not sleeping heart rate."
+      }
+    ],
+    "recentActivity": [
+      {
+        "id": "history.activity.2026-10-19",
+        "text": "Local day 2026-10-19: active energy=500.0 kcal (expenditure estimate, not intensity); Apple Exercise=30.0 min (ring minutes, not workout duration). Day complete=true."
+      },
+      {
+        "id": "history.activity.2026-10-20",
+        "text": "Local day 2026-10-20: active energy=500.0 kcal (expenditure estimate, not intensity); Apple Exercise=30.0 min (ring minutes, not workout duration). Day complete=true."
+      },
+      {
+        "id": "history.activity.2026-10-21",
+        "text": "Local day 2026-10-21: active energy=500.0 kcal (expenditure estimate, not intensity); Apple Exercise=30.0 min (ring minutes, not workout duration). Day complete=true."
+      },
+      {
+        "id": "history.activity.2026-10-22",
+        "text": "Local day 2026-10-22: active energy=500.0 kcal (expenditure estimate, not intensity); Apple Exercise=30.0 min (ring minutes, not workout duration). Day complete=true."
+      },
+      {
+        "id": "history.activity.2026-10-23",
+        "text": "Local day 2026-10-23: active energy=500.0 kcal (expenditure estimate, not intensity); Apple Exercise=30.0 min (ring minutes, not workout duration). Day complete=true."
+      },
+      {
+        "id": "history.activity.2026-10-24",
+        "text": "Local day 2026-10-24: active energy=500.0 kcal (expenditure estimate, not intensity); Apple Exercise=30.0 min (ring minutes, not workout duration). Day complete=true."
+      },
+      {
+        "id": "history.activity.2026-10-25",
+        "text": "Local day 2026-10-25: active energy=500.0 kcal (expenditure estimate, not intensity); Apple Exercise=30.0 min (ring minutes, not workout duration). Day complete=true."
+      },
+      {
+        "id": "history.sessionsCoverage",
+        "text": "Recorded sessions in recent 7 local days: total=30; included=24; truncated=true; selection=most_recent_by_start."
+      },
+      {
+        "id": "history.session.0",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.1",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.2",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.3",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.4",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.5",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.6",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.7",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.8",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.9",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.10",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.11",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.12",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.13",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.14",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.15",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.16",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.17",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.18",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.19",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.20",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.21",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.22",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      },
+      {
+        "id": "history.session.23",
+        "text": "Recorded workout type=Running; start=2026-10-25T07:00:00Z; end=2026-10-25T07:30:00Z; duration=30 min. Subjective intensity unknown."
+      }
+    ],
+    "baseline": [
+      {
+        "id": "history.coverage",
+        "text": "Recent window: 2026-10-19 through 2026-10-25. Sleep days with samples=7/7; HRV days=5/7; RHR days=5/7."
+      },
+      {
+        "id": "baseline.hrvSDNN",
+        "text": "Prior 28-day reference hrvSDNN: window=2026-09-21..2026-10-18; median=46.0; observed days=18/28; aggregation=overnight_sleep_window_median."
+      },
+      {
+        "id": "baseline.hrvSDNN.daily",
+        "text": "Prior 28 wake/local days hrvSDNN dated values (day=value): 2026-09-21=40, 2026-09-22=41, 2026-09-23=42, 2026-09-24=43, 2026-09-25=44, 2026-09-26=40, 2026-09-27=41, 2026-09-28=42, 2026-09-29=43, 2026-09-30=44, 2026-09-31=40, 2026-09-32=41, 2026-09-33=42, 2026-09-34=43, 2026-09-35=44, 2026-09-36=40, 2026-09-37=41, 2026-09-38=42"
+      }
+    ],
+    "recentFeeling": [],
+    "recentRecaps": []
+  }
+}

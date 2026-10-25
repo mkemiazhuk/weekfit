@@ -64,6 +64,46 @@ final class CoachEveningSummaryStore {
     func saveCache(_ cache: LastingCache, owner: String) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try JSONEncoder().encode(cache).write(to: cacheFile(owner: owner), options: .atomic)
+        // Also persist into the day claim so prior recaps survive when latest.json is overwritten.
+        if var claim = try? record(owner: owner, day: cache.summary.day) {
+            claim.summary = cache.summary
+            try? saveClaim(claim, owner: owner)
+        } else {
+            try? saveClaim(Record(day: cache.summary.day, summary: cache.summary), owner: owner)
+        }
+    }
+
+    /// Compact prior evening notes for the same owner (excludes `beforeDay` and newer).
+    func loadRecentRecaps(owner: String, beforeDay: String, limit: Int) throws -> [CoachEveningSummaryInput.Fact] {
+        guard limit > 0, FileManager.default.fileExists(atPath: directory.path) else { return [] }
+        let prefix = "\(ownerHash(owner))-"
+        var collected: [(day: String, summary: CoachEveningSummary)] = []
+        for file in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) {
+            let name = file.lastPathComponent
+            guard name.hasPrefix(prefix), name.hasSuffix(".json"), !name.hasSuffix("-latest.json") else { continue }
+            guard let record = try? JSONDecoder().decode(Record.self, from: Data(contentsOf: file)),
+                  let summary = record.summary,
+                  record.day < beforeDay else { continue }
+            collected.append((record.day, summary))
+        }
+        if let cache = try? loadCache(owner: owner),
+           cache.summary.day < beforeDay,
+           !collected.contains(where: { $0.day == cache.summary.day }) {
+            collected.append((cache.summary.day, cache.summary))
+        }
+        return collected
+            .sorted { $0.day > $1.day }
+            .prefix(limit)
+            .enumerated()
+            .map { index, item in
+                let theme = item.summary.headline.trimmingCharacters(in: .whitespacesAndNewlines)
+                let body = [item.summary.today.text, item.summary.tomorrow.text]
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty }
+                    .joined(separator: " ")
+                let text = String(("Previous recap \(item.day); theme=\(theme); \(body)").prefix(500))
+                return .init(id: "history.recap.\(index).\(item.day)", text: text)
+            }
     }
 
     // MARK: Once-per-day claim ledger (production flag)
