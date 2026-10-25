@@ -142,23 +142,45 @@ enum CoachEveningSummaryDebugTape {
         return text
     }
 
-    private static func printChunked(begin: String, end: String, body: String, requestId: String) {
+    private static func printChunked(
+        begin: String,
+        end: String,
+        body: String,
+        requestId: String
+    ) {
         print(begin)
-        if body.count <= chunkSize {
-            print(body)
-        } else {
-            var index = 0
-            var part = 1
-            while index < body.count {
-                let endIndex = body.index(body.startIndex, offsetBy: min(chunkSize, body.count - index), limitedBy: body.endIndex) ?? body.endIndex
-                let startIndex = body.index(body.startIndex, offsetBy: index)
-                let slice = String(body[startIndex..<endIndex])
-                print("[CoachSummary][PART \(part) requestId=\(requestId)]\n\(slice)")
-                index += chunkSize
-                part += 1
-            }
+        var start = body.startIndex
+        var part = 1
+
+        while start < body.endIndex {
+            let next = body.index(
+                start,
+                offsetBy: chunkSize,
+                limitedBy: body.endIndex
+            ) ?? body.endIndex
+
+            print("[CoachSummary][PART \(part) requestId=\(requestId)]\n\(body[start..<next])")
+            start = next
+            part += 1
         }
+
         print(end)
+    }
+
+    /// Test helper: split without printing; concatenating parts must equal `body`.
+    static func chunkPartsForTesting(_ body: String, chunkSize: Int = chunkSize) -> [String] {
+        var parts: [String] = []
+        var start = body.startIndex
+        while start < body.endIndex {
+            let next = body.index(
+                start,
+                offsetBy: chunkSize,
+                limitedBy: body.endIndex
+            ) ?? body.endIndex
+            parts.append(String(body[start..<next]))
+            start = next
+        }
+        return parts
     }
 }
 #endif

@@ -1,0 +1,144 @@
+{
+  "meta": {
+    "id": "unconfirmed-conclusions-v11",
+    "title": "v11 technically valid but overconfident recovery/readiness claims",
+    "caughtAtPromptVersion": 11,
+    "fixedAtPromptVersion": 13,
+    "notes": [
+      "Schema-valid Polish evening reply that still overclaims readiness from thin vitals.",
+      "Sparse HRV coverage only appears in limitations, not today.text.",
+      "Personal-norm wording without citing baseline evidence.",
+      "Weekly load story from two extreme active-kcal days only.",
+      "Past feeling check-in treated as today's state.",
+      "Skip-training advice from a single HRV value.",
+      "Intensity inferred from active calories.",
+      "now.text stronger than today.text and adds a new recommendation."
+    ]
+  },
+  "input": {
+    "schemaVersion": 1,
+    "day": "2026-10-25",
+    "timezone": "Europe/Warsaw",
+    "locale": "pl",
+    "phase": "evening",
+    "facts": {
+      "sleep": [
+        {
+          "id": "sleep.duration",
+          "text": "Sleep recorded for today: 7.1 hours. Source: HealthKit."
+        }
+      ],
+      "activity": [
+        {
+          "id": "activity.item.0",
+          "text": "Spacer, type walking, status completed; duration 28 min."
+        },
+        {
+          "id": "activity.load",
+          "text": "Today's HealthKit active energy: 410 kcal. Day still in progress until local midnight."
+        }
+      ],
+      "nutrition": [
+        {
+          "id": "nutrition.meals.none",
+          "text": "No completed meal/food logs for today."
+        }
+      ],
+      "feeling": [
+        {
+          "id": "feeling.none",
+          "text": "No feeling check-in recorded for today."
+        }
+      ],
+      "recentSleep": [
+        {
+          "id": "history.sleep.2026-10-25",
+          "text": "Wake-day 2026-10-25: asleep=426 min."
+        },
+        {
+          "id": "history.sleep.2026-10-24",
+          "text": "Wake-day 2026-10-24: asleep=448 min."
+        },
+        {
+          "id": "history.sleep.2026-10-23",
+          "text": "Wake-day 2026-10-23: asleep=unknown."
+        }
+      ],
+      "recentVitals": [
+        {
+          "id": "history.vitals.2026-10-25",
+          "text": "Wake-day 2026-10-25: HRV SDNN=31.0 ms; resting HR=unknown. Sparse week: only 2 of last 7 wake-days have HRV."
+        },
+        {
+          "id": "history.vitals.2026-10-22",
+          "text": "Wake-day 2026-10-22: HRV SDNN=44.0 ms; resting HR=54.0 bpm."
+        }
+      ],
+      "recentActivity": [
+        {
+          "id": "history.activity.2026-10-24",
+          "text": "Local day 2026-10-24: active energy=1480.0 kcal; Day complete=true."
+        },
+        {
+          "id": "history.activity.2026-10-23",
+          "text": "Local day 2026-10-23: active energy=390.0 kcal; Day complete=true."
+        },
+        {
+          "id": "history.activity.2026-10-22",
+          "text": "Local day 2026-10-22: active energy=410.0 kcal; Day complete=true."
+        },
+        {
+          "id": "history.activity.2026-10-21",
+          "text": "Local day 2026-10-21: active energy=1520.0 kcal; Day complete=true."
+        },
+        {
+          "id": "history.activity.2026-10-20",
+          "text": "Local day 2026-10-20: active energy=405.0 kcal; Day complete=true."
+        }
+      ],
+      "baseline": [
+        {
+          "id": "baseline.hrvSDNN",
+          "text": "Prior 28-day reference hrvSDNN: median=46.0; observed days=9/28."
+        },
+        {
+          "id": "baseline.activeKcal",
+          "text": "Prior 28-day reference activeKcal: median=620.0; observed days=24/28."
+        }
+      ],
+      "recentFeeling": [
+        {
+          "id": "history.feeling.2026-10-22",
+          "text": "Local evening 2026-10-22 self-report: feeling=good; clarification=none. Historical only — not today's state."
+        }
+      ]
+    }
+  },
+  "badResponse": {
+    "headline": "Organizm dobrze zniósł dzień",
+    "today": {
+      "text": "Ciało sobie poradziło i odzyskiwanie wygląda dobrze. Czujesz się dziś dobrze, HRV jest poniżej normy, a w tygodniu aktywność była intensywna przez wysokie kcal.",
+      "evidenceIds": [
+        "history.activity.2026-10-24",
+        "history.activity.2026-10-21",
+        "history.feeling.2026-10-22",
+        "history.vitals.2026-10-25"
+      ]
+    },
+    "now": {
+      "text": "Jesteś w pełni gotowy do intensywnego treningu jutro mimo niższego HRV.",
+      "evidenceIds": [
+        "history.vitals.2026-10-25"
+      ]
+    },
+    "tomorrow": {
+      "text": "Opuść trening — HRV jest niskie.",
+      "evidenceIds": [
+        "history.vitals.2026-10-25"
+      ]
+    },
+    "limitations": [
+      "Pomiary HRV są rzadkie w tym tygodniu."
+    ]
+  }
+}

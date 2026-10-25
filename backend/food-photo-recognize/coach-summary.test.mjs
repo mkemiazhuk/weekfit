@@ -6,7 +6,9 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {createServer} from './server.mjs';
 import {ServiceError} from './recognition.mjs';
-import {validateDay,validateSummary,generateSummary,localDayAndHour,normalizeLocale,hasEnglishLanguageLeak,emptyFactsFallbackSummary,countFacts,SUMMARY_PROMPT_VERSION} from './coach-summary.mjs';
+import {readFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import {validateDay,validateSummary,generateSummary,localDayAndHour,normalizeLocale,hasEnglishLanguageLeak,emptyFactsFallbackSummary,countFacts,buildInstructions,unconfirmedConclusionIssues,SUMMARY_PROMPT_VERSION} from './coach-summary.mjs';
 
 const input=()=>({schemaVersion:1,day:'2026-10-12',timezone:'Europe/Warsaw',locale:'ru',phase:'evening',facts:{sleep:[{id:'sleep.duration',text:'Last night: 6 hours sleep.'}],nutrition:[{id:'nutrition.completeness',text:'Food log completeness unknown.'}],coachDecision:[{id:'coach.priority',text:'One priority: wind down for sleep.'}]}});
 const result=()=>({headline:'Итог дня',today:{text:'Сон был коротким.',evidenceIds:['sleep.duration']},now:{text:'Пора готовиться ко сну.',evidenceIds:['coach.priority']},tomorrow:{text:'План на завтра пока неизвестен.',evidenceIds:[]},limitations:['Питание записано не полностью.']});
@@ -105,7 +107,7 @@ test('cannot generate before 20:00 or backdate requests',async t=>{let calls=0;c
 test('next local day permits one new request',async t=>{let calls=0;const dir=await directory(t);const generate=async()=>{calls++;return {result:result()};};const a=await server(t,dir,generate);await a.post(input());const b=await server(t,dir,generate,{dependencies:{summaryNow:()=>new Date('2026-10-13T18:00:00Z')}});assert.equal((await b.post({...input(),day:'2026-10-13'})).status,200);assert.equal(calls,2);});
 test('storage misconfiguration fails closed without AI',async t=>{let calls=0;const {post}=await server(t,'',async()=>{calls++;return {result:result()};});assert.equal((await post(input())).status,503);assert.equal(calls,0);});
 test('concurrency limit is acquired before asynchronous reservation',async t=>{let running=0,peak=0;const {post}=await server(t,await directory(t),async()=>{running++;peak=Math.max(peak,running);await new Promise(r=>setTimeout(r,40));running--;return {result:result()};},{config:{summaryConcurrency:1}});const rs=await Promise.all([post(input(),'Bearer a'),post(input(),'Bearer b'),post(input(),'Bearer c')]);assert.equal(peak,1);assert.equal(rs.filter(r=>r.status===200).length,1);assert.equal(rs.filter(r=>r.status===503).length,2);});
-test('structured output has bounded tokens, no photo and no storage',async()=>{let sent;const r=await generateSummary(validateDay(input()),{apiKey:'test',summaryModel:'test-model'},async(url,opts)=>{sent=JSON.parse(opts.body);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(result())}]}]})};});assert.equal(sent.store,false);assert.equal(sent.max_output_tokens,1200);assert.equal(sent.text.format.strict,true);assert.equal(sent.reasoning,undefined);assert.equal(r.result.headline,'Итог дня');assert.match(sent.instructions,/40.65 words/);assert.equal(SUMMARY_PROMPT_VERSION,11);assert.match(sent.instructions,/personal activity, sleep and recovery coach/);assert.match(sent.instructions,/LANGUAGE LOCK/);assert.match(sent.instructions,/Russian/);assert.match(sent.instructions,/SEVEN days/);assert.match(sent.instructions,/Hard bans/);assert.match(sent.instructions,/At most ONE next-step/);});
+test('structured output has bounded tokens, no photo and no storage',async()=>{let sent;const r=await generateSummary(validateDay(input()),{apiKey:'test',summaryModel:'test-model'},async(url,opts)=>{sent=JSON.parse(opts.body);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(result())}]}]})};});assert.equal(sent.store,false);assert.equal(sent.max_output_tokens,1200);assert.equal(sent.text.format.strict,true);assert.equal(sent.reasoning,undefined);assert.equal(r.result.headline,'Итог дня');assert.match(sent.instructions,/40.65 words/);assert.equal(SUMMARY_PROMPT_VERSION,13);assert.match(sent.instructions,/personal activity, sleep and recovery coach/);assert.match(sent.instructions,/LANGUAGE LOCK/);assert.match(sent.instructions,/Russian/);assert.match(sent.instructions,/SEVEN days/);assert.match(sent.instructions,/Hard bans/);assert.match(sent.instructions,/At most ONE next-step/);assert.match(sent.instructions,/ready for load/);assert.match(sent.instructions,/single HRV/);assert.match(sent.instructions,/active calories/);assert.match(sent.instructions,/SAME cautious conclusion/);assert.match(sent.instructions,/several days/);assert.match(sent.instructions,/principal personal fitness assistant/);assert.match(sent.instructions,/30 years of experience/);assert.match(sent.instructions,/silently verify/);assert.match(sent.instructions,/Never claim professional credentials/);});
 test('empty facts return fallback without calling the provider',async t=>{
   let calls=0;
   const {post}=await server(t,await directory(t),async()=>{calls++;return {result:result()};},{
@@ -116,11 +118,40 @@ test('empty facts return fallback without calling the provider',async t=>{
   assert.equal(res.status,200);
   const body=await res.json();
   assert.equal(body.source,'fallback');
-  assert.equal(body.promptVersion,11);
+  assert.equal(body.promptVersion,13);
   assert.equal(body.factTotal,0);
   assert.equal(body.reused,false);
   assert.match(body.today.text,/brakuje danych/i);
   assert.equal(calls,0);
+});
+test('unconfirmed-conclusions v11 fixture is schema-valid yet fails quality lint; prompt hardens claims',async()=>{
+  const fixturePath=path.join(path.dirname(fileURLToPath(import.meta.url)),'fixtures/coach-summary/unconfirmed-conclusions-v11.json');
+  const fixture=JSON.parse(await readFile(fixturePath,'utf8'));
+  const validated=validateDay(fixture.input);
+  assert.doesNotThrow(()=>validateSummary(fixture.badResponse,validated));
+  const issues=unconfirmedConclusionIssues(fixture.badResponse);
+  for (const required of [
+    'unconfirmed_readiness_or_recovery_praise',
+    'sparse_coverage_only_in_limitations',
+    'norm_compare_without_baseline_evidence',
+    'skip_training_from_single_hrv',
+    'intensity_from_active_calories',
+    'past_feeling_as_today',
+    'now_stronger_than_today'
+  ]) assert.ok(issues.includes(required),`expected ${required}, got ${issues.join(',')}`);
+  const instructions=buildInstructions(validated);
+  assert.match(instructions,/ready for load/);
+  assert.match(instructions,/sparse\/rare measurements/);
+  assert.match(instructions,/matching baseline fact ID/);
+  assert.match(instructions,/several days across the window/);
+  assert.match(instructions,/Past self-reported feeling/);
+  assert.match(instructions,/single HRV reading/);
+  assert.match(instructions,/active calories \/ active energy/);
+  assert.match(instructions,/SAME cautious conclusion as today/);
+  assert.equal(SUMMARY_PROMPT_VERSION,13);
+  assert.match(instructions,/principal personal fitness assistant/);
+  assert.match(instructions,/Before returning JSON, silently verify/);
+  assert.match(instructions,/Never claim professional credentials/);
 });
 test('malformed day and unauthorized still fail',async t=>{
   let calls=0;

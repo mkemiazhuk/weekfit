@@ -98,8 +98,46 @@ final class CoachEveningSummaryTests: XCTestCase {
         )
     }
 
+#if DEBUG
+    func testDebugTapeChunkingRoundTripsExactString() {
+        func assertRoundTrip(_ body: String, chunkSize: Int, file: StaticString = #filePath, line: UInt = #line) {
+            let parts = CoachEveningSummaryDebugTape.chunkPartsForTesting(body, chunkSize: chunkSize)
+            XCTAssertEqual(parts.joined(), body, file: file, line: line)
+            if body.isEmpty {
+                XCTAssertTrue(parts.isEmpty, file: file, line: line)
+            } else {
+                XCTAssertFalse(parts.isEmpty, file: file, line: line)
+                XCTAssertLessThanOrEqual(parts.first?.count ?? 0, chunkSize, file: file, line: line)
+            }
+        }
+
+        assertRoundTrip("", chunkSize: 2400)
+        assertRoundTrip(String(repeating: "a", count: 2399), chunkSize: 2400)
+        assertRoundTrip(String(repeating: "b", count: 2400), chunkSize: 2400)
+        assertRoundTrip(String(repeating: "c", count: 2401), chunkSize: 2400)
+        assertRoundTrip(String(repeating: "d", count: 4801), chunkSize: 2400)
+
+        let polish = String(repeating: "Spacer: 7,7 km mniej niż zwykle. 🙂 ", count: 200)
+        assertRoundTrip(polish, chunkSize: 2400)
+
+        let json = #"{"today":{"text":"Dziś spokojniej — sen nieznany. 🌙"},"emoji":"🏃‍♂️"}"#
+            + String(repeating: "x", count: 3000)
+        assertRoundTrip(json, chunkSize: 2400)
+
+        // Exercise live printChunked path (same index walk as console tape).
+        let largeJSON = Data((#"{"facts":{"note":"Spacer: 7,7 km mniej. 🙂"},"pad":""# + String(repeating: "ąęć", count: 2000) + #""}"#).utf8)
+        CoachEveningSummaryDebugTape.logInput(clientRequestId: "chunk-smoke", httpBody: largeJSON)
+        CoachEveningSummaryDebugTape.logUI(
+            source: "test",
+            requestId: "chunk-smoke",
+            generatedAt: "2026-10-25T21:00:00Z",
+            displayedNote: polish
+        )
+    }
+#endif
+
     func testFallbackSourceIsAcceptedWhenFactsAreEmpty() {
-        let input = CoachEveningSummaryInput(
+        let emptyInput = CoachEveningSummaryInput(
             schemaVersion: 1,
             day: "2026-10-12",
             timezone: "Europe/Warsaw",
@@ -113,12 +151,12 @@ final class CoachEveningSummaryTests: XCTestCase {
             now: .init(text: "Dziś brakuje danych, by przygotować osobistą obserwację.", evidenceIds: []),
             tomorrow: .init(text: "Jeśli chcesz, oceń, jak się dziś wieczorem czujesz.", evidenceIds: []),
             limitations: ["Brak faktów dnia."],
-            day: input.day,
-            locale: input.locale,
+            day: emptyInput.day,
+            locale: emptyInput.locale,
             generatedAt: "2026-10-12T18:00:00Z",
             source: "fallback"
         )
-        XCTAssertTrue(summary.isValid(for: input))
+        XCTAssertTrue(summary.isValid(for: emptyInput))
         XCTAssertFalse(summary.isValid(for: input(locale: "en")), "locale mismatch must still fail")
     }
 
