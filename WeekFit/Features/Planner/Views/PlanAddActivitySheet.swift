@@ -352,11 +352,16 @@ private extension PlanAddActivitySheet {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(textPrimary)
                     .tracking(-0.4)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
 
                     Text(selectionPrompt)
                         .font(.system(size: 14, weight: .medium, design: .rounded))
                         .foregroundStyle(textSecondary.opacity(0.72))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 Spacer(minLength: 8)
 
@@ -705,11 +710,9 @@ private extension PlanAddActivitySheet {
             if usesAccessibilityCategoryLayout {
                 categoryPickerGrid
             } else {
-                // Ideal width = 4 × longest title; otherwise fall back to wrapping grid.
-                ViewThatFits(in: .horizontal) {
-                    categoryPickerSingleRow
-                    categoryPickerGrid
-                }
+                // Always keep Recovery / Workout / Meal / Habit on one row;
+                // long locales shrink via minimumScaleFactor instead of wrapping to a 2×2 grid.
+                categoryPickerSingleRow
             }
         }
     }
@@ -1090,14 +1093,14 @@ private extension PlanAddActivitySheet {
             selectPlannerType(type)
         } label: {
             Text(localizedTitle(for: type))
-                .font(.system(size: 14.5, weight: active ? .semibold : .medium))
+                .font(.system(size: allowsMultiline ? 14.5 : 13.5, weight: active ? .semibold : .medium))
                 .foregroundStyle(active ? chromeAction : textSecondary)
                 .lineLimit(allowsMultiline ? 3 : 1)
+                .minimumScaleFactor(allowsMultiline ? 0.85 : 0.62)
                 .multilineTextAlignment(.center)
-                .fixedSize(horizontal: !allowsMultiline, vertical: false)
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: allowsMultiline ? 40 : 34)
-                .padding(.horizontal, 2)
+                .padding(.horizontal, allowsMultiline ? 2 : 1)
                 .padding(.vertical, allowsMultiline ? 4 : 0)
                 .background {
                     if active {
@@ -2244,21 +2247,16 @@ private struct PlanAddEqualWidthSegmentLayout: Layout {
         }
 
         let ideals = subviews.map { $0.sizeThatFits(.unspecified) }
-        // Slack covers medium → semibold width shift when selection changes.
-        let segmentWidth = ceil((ideals.map(\.width).max() ?? 0) + 2)
         let height = max(ideals.map(\.height).max() ?? 0, 38)
         let count = CGFloat(subviews.count)
-        let idealWidth = segmentWidth * count
-
+        // Prefer filling the proposed width so four segments stay on one row;
+        // labels shrink inside each equal-width cell when space is tight.
         if let proposedWidth = proposal.width, proposedWidth.isFinite, proposedWidth > 0 {
-            // Report ideal when proposed space is too narrow so ViewThatFits can fall back.
-            if proposedWidth + 0.5 < idealWidth {
-                return CGSize(width: idealWidth, height: height)
-            }
             return CGSize(width: proposedWidth, height: height)
         }
 
-        return CGSize(width: idealWidth, height: height)
+        let segmentWidth = ceil((ideals.map(\.width).max() ?? 0) + 2)
+        return CGSize(width: segmentWidth * count, height: height)
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {

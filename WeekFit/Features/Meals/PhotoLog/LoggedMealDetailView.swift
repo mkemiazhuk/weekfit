@@ -239,7 +239,7 @@ struct LoggedMealDetailView: View {
                         Text("\(Int(component.grams.rounded())) g")
                             .font(.system(size: 13, weight: .medium, design: .rounded))
                             .foregroundStyle(palette.textSecondary)
-                        Text("\(component.calories) kcal")
+                        Text(String(format: WeekFitLocalizedString("common.unit.caloriesFormat"), component.calories))
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
                             .foregroundStyle(palette.textSecondary)
                             .frame(minWidth: 64, alignment: .trailing)

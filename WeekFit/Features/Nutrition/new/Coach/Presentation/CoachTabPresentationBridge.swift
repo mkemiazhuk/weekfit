@@ -6,7 +6,8 @@ enum CoachTabPresentationBridge {
     /// Returns UI presentation when `copyPack` exists; otherwise `nil` (registry gap).
     static func build(
         from engineResult: CoachEngine.Result,
-        showsLimitedConfidenceBadge: Bool = false
+        showsLimitedConfidenceBadge: Bool = false,
+        usesNeutralMissingSleepCopy: Bool = false
     ) -> CoachUIPresentation? {
         guard let pack = engineResult.copyPack else { return nil }
 
@@ -17,7 +18,9 @@ enum CoachTabPresentationBridge {
         let nextAction = localizedText(pack.nextAction)
         let supportingSignals = pack.supportingSignals.lines.map(localizedText)
         let warningMessage = pack.warningLayer.map { localizedText($0.message) }
-        let teaser = CoachTeaserCopy.resolve(from: engineResult, localizedAssessment: assessment)
+        let teaser = usesNeutralMissingSleepCopy
+            ? CoachLimitedRecoveryCopyPolicy.teaser(for: engineResult.context)
+            : CoachTeaserCopy.resolve(from: engineResult, localizedAssessment: assessment)
         let semanticColor = insight.semanticColor
         let coachTitle = localizedText(teaser.coachHeadline)
         let compactHero = CoachUIPresentationDedup.compact(

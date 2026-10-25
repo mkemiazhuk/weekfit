@@ -210,6 +210,8 @@ struct RecoverySleepSnapshot: Hashable {
     let coreSleepMinutes: Int
     let bedStart: Date?
     let wakeTime: Date?
+    /// True when the sleep query failed. Empty samples with `false` mean the read succeeded and found nothing.
+    let readFailed: Bool
 
     static let empty = RecoverySleepSnapshot(
         sleepMinutes: 0,
@@ -220,7 +222,21 @@ struct RecoverySleepSnapshot: Hashable {
         remSleepMinutes: 0,
         coreSleepMinutes: 0,
         bedStart: nil,
-        wakeTime: nil
+        wakeTime: nil,
+        readFailed: false
+    )
+
+    static let failed = RecoverySleepSnapshot(
+        sleepMinutes: 0,
+        timeInBedMinutes: 0,
+        awakeMinutes: 0,
+        awakeningsCount: 0,
+        deepSleepMinutes: 0,
+        remSleepMinutes: 0,
+        coreSleepMinutes: 0,
+        bedStart: nil,
+        wakeTime: nil,
+        readFailed: true
     )
 }
 
@@ -247,6 +263,8 @@ final class HealthManager: ObservableObject {
     @Published var steps: Int = 0
     @Published var exerciseMinutes: Int = 0
     @Published var sleepMinutes: Int = 0
+    /// True after a successful sleep-sample read for the current load, including a confirmed empty night.
+    @Published private(set) var sleepSampleReadConfirmed = false
     @Published var distanceKm: Double = 0
     
     @Published var standHours: Int = 0
@@ -1271,6 +1289,7 @@ final class HealthManager: ObservableObject {
         calculateHeaderMetrics()
         await loadNutritionMetrics(for: date, plannedActivities: plannedActivities)
         lastHealthKitSyncTime = Date()
+        sleepSampleReadConfirmed = true
         markDisplayMetricsSettled(for: date)
         notifyHealthChanged()
     }
@@ -1457,6 +1476,7 @@ final class HealthManager: ObservableObject {
         self.exerciseMinutes = hkExercise
 
         self.sleepMinutes = loadedSleepSnapshot.sleepMinutes
+        self.sleepSampleReadConfirmed = !loadedSleepSnapshot.readFailed
         self.timeInBedMinutes = loadedSleepSnapshot.timeInBedMinutes
         self.awakeMinutes = loadedSleepSnapshot.awakeMinutes
         self.awakeningsCount = loadedSleepSnapshot.awakeningsCount
@@ -1835,6 +1855,7 @@ final class HealthManager: ObservableObject {
         exerciseMinutes = 0
         sleepMinutes = 0
         sleepHours = 0
+        sleepSampleReadConfirmed = false
         
         standHours = 0
         cardioFitnessVO2 = 0
@@ -2086,7 +2107,7 @@ final class HealthManager: ObservableObject {
                 sortDescriptors: [sort]
             ) { _, samples, error in
                 guard error == nil else {
-                    continuation.resume(returning: .empty)
+                    continuation.resume(returning: .failed)
                     return
                 }
 
@@ -2179,7 +2200,8 @@ final class HealthManager: ObservableObject {
                         remSleepMinutes: rem,
                         coreSleepMinutes: core,
                         bedStart: bedStart,
-                        wakeTime: sessionEnd
+                        wakeTime: sessionEnd,
+                        readFailed: false
                     )
                 )
             }

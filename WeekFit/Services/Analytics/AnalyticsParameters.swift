@@ -63,6 +63,7 @@ enum OnboardingAnalyticsStep: String, Sendable, CaseIterable {
     case units
     case health
     case understanding
+    case photoMeals = "photo_meals"
     case ready
 }
 
@@ -240,6 +241,13 @@ enum AppLanguageAnalyticsCode: String, Sendable {
     case en
     case ru
     case zhHans = "zh-Hans"
+    case fr
+    case pl
+    case es
+    case de
+    case ja
+    case it
+    case ko
     case other
 
     init(languageCode: String) {
@@ -248,6 +256,13 @@ enum AppLanguageAnalyticsCode: String, Sendable {
         case "ru": self = .ru
         case "zh-hans", "zh_hans", "zh-cn", "zh_cn", "zh":
             self = .zhHans
+        case "fr": self = .fr
+        case "pl": self = .pl
+        case "es": self = .es
+        case "de": self = .de
+        case "ja": self = .ja
+        case "it": self = .it
+        case "ko": self = .ko
         default: self = .other
         }
     }

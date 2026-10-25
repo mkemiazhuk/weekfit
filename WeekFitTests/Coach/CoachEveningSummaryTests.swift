@@ -3,6 +3,17 @@ import XCTest
 
 @MainActor
 final class CoachEveningSummaryTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        // Tests assert production once-per-day behavior even though DEBUG app defaults to unrestricted.
+        UserDefaults.standard.set(true, forKey: CoachEveningSummaryPolicy.oncePerDayOverrideKey)
+    }
+
+    override func tearDown() {
+        UserDefaults.standard.removeObject(forKey: CoachEveningSummaryPolicy.oncePerDayOverrideKey)
+        super.tearDown()
+    }
+
     private func calendar(_ zone: String = "Europe/Warsaw") -> Calendar {
         var c = Calendar(identifier: .gregorian)
         c.timeZone = TimeZone(identifier: zone)!
@@ -50,7 +61,7 @@ final class CoachEveningSummaryTests: XCTestCase {
     }
 
     func testDisplayCommentaryPrefersTodayAndTomorrow() {
-        let input = input()
+        let input = input(locale: "en")
         let summary = CoachEveningSummary(
             headline: "Recap",
             today: .init(text: "Today takeaway about the whole day.", evidenceIds: ["sleep.duration"]),
@@ -69,7 +80,7 @@ final class CoachEveningSummaryTests: XCTestCase {
     }
 
     func testDisplayCommentaryFallsBackToNow() {
-        let input = input()
+        let input = input(locale: "en")
         let summary = CoachEveningSummary(
             headline: "Recap",
             today: .init(text: " ", evidenceIds: ["sleep.duration"]),
@@ -85,6 +96,42 @@ final class CoachEveningSummaryTests: XCTestCase {
             CoachEveningSummaryPolicy.displayCommentary(from: summary),
             "Keep your evening easy and wind down."
         )
+    }
+
+    func testDisplayCommentaryBlanksEnglishLeakUnderPolishLocale() {
+        let summary = CoachEveningSummary(
+            headline: "Notatka",
+            today: .init(
+                text: "You have logged only one meal so far today and your food log completeness is unknown.",
+                evidenceIds: ["sleep.duration"]
+            ),
+            now: .init(text: "You have logged only one meal so far today.", evidenceIds: ["sleep.duration"]),
+            tomorrow: .init(text: "How do you feel this evening?", evidenceIds: ["sleep.duration"]),
+            limitations: [],
+            day: "2026-10-12",
+            locale: "pl",
+            generatedAt: "2026-10-12T18:00:00Z",
+            source: "ai"
+        )
+        XCTAssertEqual(CoachEveningSummaryPolicy.displayCommentary(from: summary), "")
+        XCTAssertFalse(
+            CoachEveningSummaryPolicy.textMatchesRequestedLocale(
+                summary.today.text,
+                locale: "pl"
+            )
+        )
+    }
+
+    func testNoteTextDropsEnglishTakeawayWhenMergingPolishComparison() {
+        let note = CoachEveningRecapCopy.noteText(
+            commentary: "You have logged only one meal so far today and your food log completeness is unknown.",
+            comparison: "Spacer: 7,7 km mniej niż zwykle.",
+            feelingReaction: nil,
+            isLoading: false,
+            failed: false,
+            locale: "pl"
+        )
+        XCTAssertEqual(note, "Spacer: 7,7 km mniej niż zwykle.")
     }
 
     func testPersistedClaimSurvivesStoreRecreationAndIsScopedToOwner() throws {

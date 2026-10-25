@@ -146,9 +146,6 @@ struct CoachState: Identifiable {
 
         let v6Result = CoachEngine.evaluate(input: input)
         var copyPack = v6Result.copyPack
-        if readiness.dataReadinessState == .limitedRecovery, let pack = copyPack {
-            copyPack = CoachLimitedRecoveryCopyPolicy.apply(to: pack)
-        }
         if let pack = copyPack {
             copyPack = CoachDiscoveryAdaptCopyPolicy.apply(
                 to: pack,
@@ -164,8 +161,7 @@ struct CoachState: Identifiable {
             morningBriefFacts: v6Result.morningBriefFacts
         )
         let coachUIPresentation = CoachTabPresentationBridge.build(
-            from: engineResultForPresentation,
-            showsLimitedConfidenceBadge: readiness.dataReadinessState == .limitedRecovery
+            from: engineResultForPresentation
         )
         let coachIntegrationDebug = CoachIntegrationDebug.resolve(
             from: v6Result,

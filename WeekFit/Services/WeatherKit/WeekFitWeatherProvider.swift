@@ -572,7 +572,12 @@ private final class LocationProvider: NSObject, CLLocationManagerDelegate {
         guard let coordinate = cachedCoordinateIfAvailable() else { return nil }
         let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
         return await withCheckedContinuation { (cont: CheckedContinuation<String?, Never>) in
-            CLGeocoder().reverseGeocodeLocation(location) { placemarks, _ in
+            let geocoder = CLGeocoder()
+            // Match app language so city labels aren't stuck in English.
+            geocoder.reverseGeocodeLocation(
+                location,
+                preferredLocale: WeekFitCurrentLocale()
+            ) { placemarks, _ in
                 let place = placemarks?.first
                 let name = place?.locality ?? place?.subAdministrativeArea ?? place?.name
                 cont.resume(returning: name)

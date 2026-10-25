@@ -822,6 +822,20 @@ enum MealBuilderTitleComposer {
             return remapStoredTitle(title, targetLanguage: .russian)
         case .chineseSimplified:
             return remapStoredTitle(title, targetLanguage: .chineseSimplified)
+        case .french:
+            return remapStoredTitle(title, targetLanguage: .french)
+        case .polish:
+            return remapStoredTitle(title, targetLanguage: .polish)
+        case .spanish:
+            return remapStoredTitle(title, targetLanguage: .spanish)
+        case .german:
+            return remapStoredTitle(title, targetLanguage: .german)
+        case .japanese:
+            return remapStoredTitle(title, targetLanguage: .japanese)
+        case .italian:
+            return remapStoredTitle(title, targetLanguage: .italian)
+        case .korean:
+            return remapStoredTitle(title, targetLanguage: .korean)
         case .english:
             return remapStoredTitle(title, targetLanguage: .english)
         }
@@ -845,6 +859,13 @@ enum MealBuilderTitleComposer {
             switch language {
             case .russian: return ingredient.russianTitle
             case .chineseSimplified: return ingredient.chineseTitle
+            case .french: return MealLocalizedTitles.french[ingredient.id] ?? ingredient.title
+            case .polish: return MealLocalizedTitles.polish[ingredient.id] ?? ingredient.title
+            case .spanish: return MealLocalizedTitles.spanish[ingredient.id] ?? ingredient.title
+            case .german: return MealLocalizedTitles.german[ingredient.id] ?? ingredient.title
+            case .japanese: return MealLocalizedTitles.japanese[ingredient.id] ?? ingredient.title
+            case .italian: return MealLocalizedTitles.italian[ingredient.id] ?? ingredient.title
+            case .korean: return MealLocalizedTitles.korean[ingredient.id] ?? ingredient.title
             case .english: return ingredient.title
             }
         }

@@ -185,7 +185,7 @@ final class WeekFitWeatherAdaptiveThemeTests: XCTestCase {
             uvIndex: 1,
             precipitationChance: 80
         )
-        let content = WeekFitWeatherRelevance.content(for: summary, period: .day, isRussian: false)
+        let content = WeekFitWeatherRelevance.content(for: summary, period: .day)
         XCTAssertTrue(content.badge.lowercased().contains("indoor") || content.badge.lowercased().contains("stay"))
     }
 

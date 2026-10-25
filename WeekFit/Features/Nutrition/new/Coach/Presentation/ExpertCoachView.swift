@@ -260,7 +260,7 @@ struct ExpertCoachView: View {
             HStack(spacing: 6) {
                 Text("✦")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
-                Text("Beliefs")
+                Text(WeekFitLocalizedString("coach.debug.beliefs"))
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
             }
             .foregroundStyle(textPrimary.opacity(0.88))
@@ -283,7 +283,7 @@ struct ExpertCoachView: View {
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity, alignment: .trailing)
         .accessibilityIdentifier("coach.beliefDebug")
-        .accessibilityLabel("Beliefs")
+        .accessibilityLabel(WeekFitLocalizedString("coach.debug.beliefs"))
     }
     #endif
 
@@ -356,6 +356,19 @@ struct ExpertCoachView: View {
     private var coachContent: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .center, spacing: WeekFitScreenLayout.rootSpacing) {
+                MissingSleepMorningNoticeHost(
+                    surface: .coach,
+                    now: Date(),
+                    isHealthAccessGranted: healthManager.isHealthAccessGranted,
+                    hasSettledMetrics: healthManager.hasSettledMetrics(for: Date()),
+                    isLoadingMetrics: healthManager.isLoadingDisplayDayMetrics,
+                    sleepReadConfirmed: healthManager.sleepSampleReadConfirmed,
+                    hasSleepRecords: healthManager.sleepMinutes > 0 || healthManager.timeInBedMinutes > 0,
+                    isScreenActive: tabIsActive,
+                    onCheckConnection: { appSession.presentHealthAccess() }
+                )
+                .padding(.horizontal, 16)
+
                 if !coachIntroDismissed {
                     OnboardingContextualIntroCard(
                         title: WeekFitLocalizedString("onboarding.intro.coach.title"),
@@ -654,18 +667,28 @@ struct ExpertCoachView: View {
             return
         }
 
-        eveningSummary.ensureUpToDate(
-            input: request,
-            owner: owner,
-            fingerprint: fingerprint,
-            now: Date(),
-            isStillEligible: { [plannedActivities] in
-                CoachEveningRecapEligibility.shouldShowEveningRecap(
-                    now: Date(),
-                    plannedActivities: Array(plannedActivities)
-                )
-            }
-        )
+        if CoachEveningSummaryPolicy.allowsManualRefreshAnytime {
+            // DEBUG unrestricted: always mint a new cloud summary for prompt/locale testing.
+            eveningSummary.refresh(
+                input: request,
+                owner: owner,
+                now: Date(),
+                source: "coach.\(source).unrestricted"
+            )
+        } else {
+            eveningSummary.ensureUpToDate(
+                input: request,
+                owner: owner,
+                fingerprint: fingerprint,
+                now: Date(),
+                isStillEligible: { [plannedActivities] in
+                    CoachEveningRecapEligibility.shouldShowEveningRecap(
+                        now: Date(),
+                        plannedActivities: Array(plannedActivities)
+                    )
+                }
+            )
+        }
     }
 
     /// Synchronous shell so Coach doesn't sit empty while HK settles.
@@ -1182,6 +1205,7 @@ struct ExpertCoachView: View {
         return coachUIPresentation?.accentColor
     }
 
+    @ViewBuilder
     private var stateBadge: some View {
         let isLimitedRecovery = coachUIPresentation?.showsLimitedConfidenceBadge == true
         let isLiveChrome = isLiveWorkoutZoneChrome
@@ -1202,7 +1226,12 @@ struct ExpertCoachView: View {
 
         let label: String = {
             if isLimitedRecovery {
-                return coachUIPresentation?.statusLabel ?? ""
+                let status = coachUIPresentation?.statusLabel ?? ""
+                let title = coachUIPresentation?.coachTitle ?? ""
+                if status.compare(title, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame {
+                    return ""
+                }
+                return status
             }
             if isLiveChrome {
                 return liveStateBadgeLabel
@@ -1221,7 +1250,8 @@ struct ExpertCoachView: View {
             return coachUIPresentation?.icon ?? "sparkles"
         }()
 
-        return HStack(spacing: isRecovering ? 6 : 7) {
+        if !label.isEmpty {
+        HStack(spacing: isRecovering ? 6 : 7) {
             Image(systemName: iconName)
                 .font(.system(size: isLimitedRecovery ? 9 : (isRecovering ? 10 : 10.5), weight: .semibold))
 
@@ -1250,6 +1280,7 @@ struct ExpertCoachView: View {
                 )
         )
         .accessibilityLabel(Text(label))
+        }
     }
 
     private func coachWarningBanner(_ message: String) -> some View {

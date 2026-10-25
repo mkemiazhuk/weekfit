@@ -375,7 +375,7 @@ enum CoachImminentSessionCopyPolicy {
         switch language {
         case .russian: return russian
         case .chineseSimplified: return chinese
-        case .english: return english
+        case .english, .french, .polish, .spanish, .german, .japanese, .italian, .korean: return english
         }
     }
 
@@ -406,7 +406,7 @@ enum CoachImminentSessionCopyPolicy {
             return "через \(minutes) мин"
         case .chineseSimplified:
             return "还有 \(minutes) 分钟"
-        case .english:
+        case .english, .french, .polish, .spanish, .german, .japanese, .italian, .korean:
             return "in \(minutes) min"
         }
     }
@@ -427,7 +427,7 @@ enum CoachImminentSessionCopyPolicy {
             if remainder == 0 { return "\(hours) 小时" }
             if remainder == 30 { return "\(hours).5 小时" }
             return "\(hours) 小时 \(remainder) 分钟"
-        case .english:
+        case .english, .french, .polish, .spanish, .german, .japanese, .italian, .korean:
             if remainder == 0 { return "\(hours) h" }
             if remainder == 30 { return "\(hours).5 h" }
             return "\(hours) h \(remainder) min"

@@ -91,7 +91,7 @@ struct TodayAtmosphereBackground: View {
     private var darkSkyCanvas: some View {
         ZStack {
             skyGradient
-            // Quiet sky only — decorative stars / strong glows stay off on Today & Meals.
+            // Optional weather sky (stars / lunar glow / clouds). Meals usually hides this.
             if showsStarField {
                 lunarGlow
                 TodayAtmosphereStarField(

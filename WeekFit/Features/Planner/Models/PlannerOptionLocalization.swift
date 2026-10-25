@@ -7,7 +7,7 @@ enum PlannerOptionLocalization {
         case "Cycling": return WeekFitLocalizedString("planner.option.cycling")
         case "Running": return WeekFitLocalizedString("planner.option.running")
         case "Swimming": return WeekFitLocalizedString("planner.option.swimming")
-        case "Hiking": return WeekFitLocalizedString("planner.option.hiking")
+        case "Hiking", "Trekking", "Tracking": return WeekFitLocalizedString("planner.option.hiking")
         case "Snowboarding": return WeekFitLocalizedString("planner.option.snowboarding")
         case "Alpine Skiing": return WeekFitLocalizedString("planner.option.alpineSkiing")
         case "Upper Body": return WeekFitLocalizedString("planner.option.upperBody")

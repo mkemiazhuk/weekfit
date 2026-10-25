@@ -1453,6 +1453,18 @@ struct TodayView: View {
                     .accessibilityHint(WeekFitLocalizedString("today.session.saveFailedRetryHint"))
                 }
 
+                MissingSleepMorningNoticeHost(
+                    surface: .today,
+                    now: todayViewModel.now,
+                    isHealthAccessGranted: healthManager.isHealthAccessGranted,
+                    hasSettledMetrics: healthManager.hasSettledMetrics(for: selectedDate),
+                    isLoadingMetrics: healthManager.isLoadingDisplayDayMetrics,
+                    sleepReadConfirmed: healthManager.sleepSampleReadConfirmed,
+                    hasSleepRecords: healthManager.sleepMinutes > 0 || healthManager.timeInBedMinutes > 0,
+                    isScreenActive: tabIsActive,
+                    onCheckConnection: { appSession.presentHealthAccess() }
+                )
+
                 if !todayIntroDismissed {
                     let _ = TodayStartupDiagnostics.child("OnboardingContextualIntroCard")
                     OnboardingContextualIntroCard(
@@ -2021,7 +2033,14 @@ struct TodayView: View {
         let sleepValueInfoText = sleepDurationDisplayText(minutes: healthManager.sleepMinutes)
 
         // Mockup order: status (accent) then sleep (meta).
+        let confirmedMissingSleep = recoveryRingMode == .sleepNotRecorded
+            && healthManager.hasSettledMetrics(for: selectedDate)
+            && !healthManager.isLoadingDisplayDayMetrics
+            && healthManager.sleepSampleReadConfirmed
         let recoveryStatusRingText: String = {
+            if confirmedMissingSleep {
+                return WeekFitLocalizedString("today.missingSleepNotice.title")
+            }
             switch recoveryRingMode {
             case .hasData:
                 return recoveryStatusLabel(for: recoveryPercent)
@@ -2033,6 +2052,7 @@ struct TodayView: View {
         }()
 
         let recoverySleepRingText: String = {
+            if confirmedMissingSleep { return "" }
             switch recoveryRingMode {
             case .sleepNotRecorded:
                 return WeekFitLocalizedString("today.recovery.sleepNotRecorded")
@@ -2320,7 +2340,7 @@ struct TodayView: View {
                     .fontDesign(.rounded)
                     .foregroundStyle(textPrimary.opacity(palette.isLight ? 0.88 : 0.94))
                     .lineLimit(ringCaptionLineLimit)
-                    .minimumScaleFactor(0.85)
+                    .minimumScaleFactor(0.68)
 
                 Text(valueText)
                     .font(.caption2.weight(.bold))
@@ -2882,7 +2902,6 @@ struct TodayView: View {
             insightIcon: insightIcon,
             insightColor: insightColor,
             iconYOffset: coachIconOpticalYOffset(insightIcon),
-            showsLimitedConfidenceBadge: presentation.showsLimitedConfidenceBadge,
             challengeCue: challengeCue,
             textPrimary: textPrimary,
             textSecondary: todaySecondaryReadable,
@@ -4255,7 +4274,6 @@ private struct TodayCoachInsightCardBody: View {
     let insightIcon: String
     let insightColor: Color
     let iconYOffset: CGFloat
-    let showsLimitedConfidenceBadge: Bool
     let challengeCue: TodayRecoveryChallengeCue?
     let textPrimary: Color
     let textSecondary: Color
@@ -4299,20 +4317,8 @@ private struct TodayCoachInsightCardBody: View {
                             .foregroundStyle(textSecondary)
                             .lineSpacing(1)
                             .multilineTextAlignment(.leading)
-                            .lineLimit(5)
+                            .lineLimit(3)
                             .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    if showsLimitedConfidenceBadge {
-                        Text(AppText.Today.coachChipLimitedRecovery)
-                            .font(WeekFitType.captionEmphasized)
-                            .fontDesign(.rounded)
-                            .foregroundStyle(textSecondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Capsule().fill(WeekFitTheme.whiteOpacity(0.05)))
-                            .overlay(Capsule().stroke(WeekFitTheme.whiteOpacity(0.08), lineWidth: 1))
-                            .padding(.top, 2)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

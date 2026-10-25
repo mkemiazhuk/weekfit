@@ -2325,6 +2325,8 @@ private struct RecommendedTodayMealCard: View {
                     .foregroundStyle(textSecondary.opacity(0.88))
                     .monospacedDigit()
                     .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                    .truncationMode(.tail)
 
                 Text(recommendation.heroSummary)
                     .font(WeekFitType.secondary.weight(.medium))

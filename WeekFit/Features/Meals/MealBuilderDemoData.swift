@@ -127,6 +127,20 @@ struct MealBuilderIngredient: Identifiable, Codable, Equatable, Hashable {
             return russianTitle
         case .chineseSimplified:
             return Self.chineseTitles[id] ?? title
+        case .french:
+            return MealLocalizedTitles.french[id] ?? title
+        case .polish:
+            return MealLocalizedTitles.polish[id] ?? title
+        case .spanish:
+            return MealLocalizedTitles.spanish[id] ?? title
+        case .german:
+            return MealLocalizedTitles.german[id] ?? title
+        case .japanese:
+            return MealLocalizedTitles.japanese[id] ?? title
+        case .italian:
+            return MealLocalizedTitles.italian[id] ?? title
+        case .korean:
+            return MealLocalizedTitles.korean[id] ?? title
         case .english:
             return title
         }

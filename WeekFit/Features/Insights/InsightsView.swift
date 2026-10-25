@@ -2507,7 +2507,7 @@ final class InsightsViewModel: ObservableObject {
             return compact([
                 InsightsWhyItem(
                     title: waterGoal > 0 && gap < 0 ? "Hydration is behind target" : "Hydration is the clearest lever",
-                    value: waterGoal > 0 ? targetGapText(value: waterLiters, target: waterGoal, unit: "L") : formatLiters(waterLiters),
+                    value: waterGoal > 0 ? targetGapText(value: waterLiters, target: waterGoal, unit: literUnitShort()) : formatLiters(waterLiters),
                     detail: waterGoal > 0 && gap < 0 ? "Fluid intake is below the recent target pattern." : "Fluids matter most after harder sessions.",
                     icon: "drop.fill",
                     domain: .hydration
@@ -2532,7 +2532,9 @@ final class InsightsViewModel: ObservableObject {
             return compact([
                 InsightsWhyItem(
                     title: proteinGoal > 0 && averageProtein < proteinGoal * 0.8 ? "Fueling is under target" : "Fueling supports the next session",
-                    value: averageProtein > 0 ? "\(Int(averageProtein.rounded()))g" : "\(mealRecords.count) meals",
+                    value: averageProtein > 0
+                        ? String(format: WeekFitLocalizedString("common.unit.gramFormat"), Int(averageProtein.rounded()))
+                        : "\(mealRecords.count) meals",
                     detail: proteinGoal > 0 && averageProtein < proteinGoal * 0.8 ? "Protein is low enough to slow recovery from harder work." : "Consistent meals make recovery easier to interpret.",
                     icon: "fork.knife",
                     domain: .nutrition
@@ -4317,7 +4319,15 @@ final class InsightsViewModel: ObservableObject {
 
     private func formatLiters(_ liters: Double) -> String {
         guard liters > 0 else { return "—" }
-        return "\(String(format: "%.1f", liters))L"
+        let value = String(format: "%.1f", liters)
+        return String(format: WeekFitLocalizedString("common.unit.decimalLiter"), value)
+    }
+
+    private func literUnitShort() -> String {
+        // Derive unit label from localized liter format (`%@L` / `%@ л` / `%@リットル`).
+        let sample = String(format: WeekFitLocalizedString("common.unit.decimalLiter"), "")
+        let trimmed = sample.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "L" : trimmed
     }
 
     private func formatOneDecimal(_ value: Double) -> String {

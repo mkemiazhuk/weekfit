@@ -31,25 +31,19 @@ enum CoachRecoveryRingMode: Equatable {
 
 enum CoachInputReadiness {
 
-    /// Local hour (inclusive) after which missing sleep/recovery stops blocking Coach.
-    static let missingSleepCutoffHour = 10
-
     static func recoveryRingMode(
         isHealthAccessGranted: Bool,
         hasRecoverySignals: Bool,
         now: Date = Date()
     ) -> CoachRecoveryRingMode {
+        _ = now
         if hasRecoverySignals {
             return .hasData
         }
         guard isHealthAccessGranted else {
             return .awaitingMorningSync
         }
-        let hour = Calendar.current.component(.hour, from: now)
-        if hour >= missingSleepCutoffHour {
-            return .sleepNotRecorded
-        }
-        return .awaitingMorningSync
+        return .sleepNotRecorded
     }
 
     static func assessment(_ input: CoachInputSnapshot) -> CoachInputReadinessAssessment {
@@ -72,19 +66,8 @@ enum CoachInputReadiness {
                 blocked: &blocked
             )
         } else if input.isHealthAccessGranted {
-            let hour = Calendar.current.component(.hour, from: input.now)
-            if hour < missingSleepCutoffHour {
-                blocked.append("recoveryAwaitingMorningSync")
-                blocked.append("recoveryPlaceholder")
-                blocked.append("sleepPlaceholder")
-                blocked.append("sleepUnknown")
-                if readinessLooksPlaceholder(input) {
-                    blocked.append("readinessPlaceholder:\(input.brain.readiness)")
-                }
-            } else {
-                satisfied.append("limitedRecoveryMode")
-                dataReadinessState = .limitedRecovery
-            }
+            satisfied.append("limitedRecoveryMode")
+            dataReadinessState = .limitedRecovery
         } else {
             blocked.append("healthNotConnected")
             blocked.append("recoveryPlaceholder")

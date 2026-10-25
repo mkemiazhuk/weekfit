@@ -23,6 +23,18 @@ enum CoachWorkoutTitleLocalization {
                 return override
             }
             return WeekFitCoachRuntimeLocalizedString(trimmed)
+        case .french, .polish, .spanish, .german, .japanese, .italian, .korean:
+            if let localized = CoachStringOverrideResolver.resolved(
+                english: trimmed,
+                table: CoachExtraLanguageTables.entries(for: language),
+                cacheKey: "workoutTitle.\(language.rawValue)"
+            ), !localized.isEmpty, localized != trimmed {
+                return localized
+            }
+            if let fromPlanner = localizedFromPlannerOption(trimmed, language: language) {
+                return fromPlanner
+            }
+            return trimmed
         case .english:
             return trimmed
         }
@@ -139,34 +151,43 @@ enum CoachWorkoutTitleLocalization {
         return first.lowercased() + title.dropFirst()
     }
 
+    private static let plannerOptionKeyByTitle: [String: String] = [
+        "Cycling": "planner.option.cycling",
+        "Running": "planner.option.running",
+        "Swimming": "planner.option.swimming",
+        "Hiking": "planner.option.hiking",
+        "Trekking": "planner.option.hiking",
+        "Tracking": "planner.option.hiking",
+        "Snowboarding": "planner.option.snowboarding",
+        "Alpine Skiing": "planner.option.alpineSkiing",
+        "Upper Body": "planner.option.upperBody",
+        "Core": "planner.option.core",
+        "Lower Body": "planner.option.lowerBody",
+        "Full Body": "planner.option.fullBody",
+        "Tennis": "planner.option.tennis",
+        "Squash": "planner.option.squash",
+        "High Intensity Interval Training": "planner.option.hiit",
+        "HIIT": "planner.option.hiit",
+        "Stretching": "planner.option.stretching",
+        "Walk": "planner.option.walk",
+        "Sauna": "planner.option.sauna",
+        "Yoga": "planner.option.yoga",
+        "Breathing": "planner.option.breathing",
+        "Drink Water": "planner.option.drinkWater",
+        "Sleep Routine": "planner.option.sleepRoutine",
+        "No Screens": "planner.option.noScreens",
+        "Morning Routine": "planner.option.morningRoutine"
+    ]
+
     private static func chineseFromPlannerOption(_ title: String) -> String? {
-        let keyMap: [String: String] = [
-            "Cycling": "planner.option.cycling",
-            "Running": "planner.option.running",
-            "Swimming": "planner.option.swimming",
-            "Hiking": "planner.option.hiking",
-            "Snowboarding": "planner.option.snowboarding",
-            "Alpine Skiing": "planner.option.alpineSkiing",
-            "Upper Body": "planner.option.upperBody",
-            "Core": "planner.option.core",
-            "Lower Body": "planner.option.lowerBody",
-            "Full Body": "planner.option.fullBody",
-            "Tennis": "planner.option.tennis",
-            "Squash": "planner.option.squash",
-            "High Intensity Interval Training": "planner.option.hiit",
-            "HIIT": "planner.option.hiit",
-            "Stretching": "planner.option.stretching",
-            "Walk": "planner.option.walk",
-            "Sauna": "planner.option.sauna",
-            "Yoga": "planner.option.yoga",
-            "Breathing": "planner.option.breathing",
-            "Drink Water": "planner.option.drinkWater",
-            "Sleep Routine": "planner.option.sleepRoutine",
-            "No Screens": "planner.option.noScreens",
-            "Morning Routine": "planner.option.morningRoutine"
-        ]
-        guard let key = keyMap[title] else { return nil }
-        return WeekFitLocalizedString(key, locale: Locale(identifier: AppLanguage.chineseSimplified.rawValue))
+        localizedFromPlannerOption(title, language: .chineseSimplified)
+    }
+
+    private static func localizedFromPlannerOption(_ title: String, language: AppLanguage) -> String? {
+        guard let key = plannerOptionKeyByTitle[title] else { return nil }
+        let localized = WeekFitLocalizedString(key, locale: Locale(identifier: language.localeIdentifier))
+        guard !localized.isEmpty, localized != key else { return nil }
+        return localized
     }
 
     private static let chineseTitles: [String: String] = [

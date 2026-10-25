@@ -6,9 +6,50 @@ final class LocalizationRegressionTests: XCTestCase {
 
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: AppLanguage.storageKey)
+        UserDefaults.standard.removeObject(forKey: AppLanguage.explicitSelectionKey)
         WeekFitSetCurrentLanguage(.english)
         WeekFitWarmLocalizationCache()
         super.tearDown()
+    }
+
+    func testDeviceLanguageDetectsFrenchPolishAndSpanish() {
+        XCTAssertEqual(AppLanguage.detectedFromDevice(languageCode: "fr"), .french)
+        XCTAssertEqual(AppLanguage.detectedFromDevice(languageCode: "pl"), .polish)
+        XCTAssertEqual(AppLanguage.detectedFromDevice(languageCode: "es"), .spanish)
+        XCTAssertEqual(AppLanguage.detectedFromDevice(languageCode: "de"), .german)
+        XCTAssertEqual(AppLanguage.detectedFromDevice(languageCode: "ja"), .japanese)
+        XCTAssertEqual(AppLanguage.detectedFromDevice(languageCode: "it"), .italian)
+        XCTAssertEqual(AppLanguage.detectedFromDevice(languageCode: "ko"), .korean)
+        XCTAssertEqual(AppLanguage.french.localeIdentifier, "fr_FR")
+        XCTAssertEqual(AppLanguage.polish.shortCode, "PL")
+        XCTAssertEqual(AppLanguage.spanish.rawValue, "es")
+        XCTAssertEqual(AppLanguage.german.flagEmoji, "🇩🇪")
+        XCTAssertEqual(AppLanguage.japanese.flagEmoji, "🇯🇵")
+        XCTAssertEqual(AppLanguage.italian.flagEmoji, "🇮🇹")
+        XCTAssertEqual(AppLanguage.korean.flagEmoji, "🇰🇷")
+    }
+
+    func testPreferredLanguagesPicksFirstSupportedThenEnglish() {
+        XCTAssertEqual(
+            AppLanguage.detectedFromDevice(preferredLanguages: ["pt-BR", "ru-RU", "en-US"]),
+            .russian
+        )
+        XCTAssertEqual(
+            AppLanguage.detectedFromDevice(preferredLanguages: ["nl-NL", "de-DE"]),
+            .german
+        )
+        XCTAssertEqual(
+            AppLanguage.detectedFromDevice(preferredLanguages: ["pt-BR", "nl-NL"]),
+            .english
+        )
+        XCTAssertEqual(
+            AppLanguage.detectedFromDevice(preferredLanguages: ["zh-Hans-CN"]),
+            .chineseSimplified
+        )
+        XCTAssertEqual(
+            AppLanguage.detectedFromDevice(preferredLanguages: ["ko-KR"]),
+            .korean
+        )
     }
 
     func testExplicitEnglishRussianAndChineseLookup() {

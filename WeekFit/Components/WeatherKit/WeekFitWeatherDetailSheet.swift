@@ -332,15 +332,24 @@ private extension WeekFitWeatherDetailSheet {
         }
         if system == .us {
             let miles = km * 0.621371
+            let mileUnit = WeekFitLocalizedString("common.unit.mile")
             if miles < 1 {
-                return String(format: "%.1f mi", miles)
+                return String(format: "%.1f %@", miles, mileUnit)
             }
-            return String(format: "%.0f mi", miles.rounded())
+            return String(format: "%.0f %@", miles.rounded(), mileUnit)
         }
         if km < 1 {
-            return String(format: "%.0f m", km * 1000)
+            return String(
+                format: "%.0f %@",
+                km * 1000,
+                WeekFitLocalizedString("common.unit.meter")
+            )
         }
-        return String(format: "%.1f km", km)
+        return String(
+            format: "%.1f %@",
+            km,
+            WeekFitLocalizedString("common.unit.kilometer")
+        )
     }
 
     var sunTimesLabel: String {

@@ -319,6 +319,13 @@
 				en,
 				ru,
 				"zh-Hans",
+				fr,
+				pl,
+				es,
+				de,
+				ja,
+				it,
+				ko,
 				Base,
 			);
 			mainGroup = 55E7BBDC2FB2403E006A4D20;

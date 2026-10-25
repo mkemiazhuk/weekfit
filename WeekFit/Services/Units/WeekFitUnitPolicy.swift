@@ -86,23 +86,16 @@ enum WeekFitUnitPolicy {
         _ speed: Measurement<UnitSpeed>,
         system: WeekFitResolvedUnitSystem
     ) -> String {
-        let unit = speedUnit(for: system)
-        let converted = speed.converted(to: unit)
-
-        let formatter = MeasurementFormatter()
-        formatter.locale = .autoupdatingCurrent
-        formatter.unitOptions = .providedUnit
-        formatter.unitStyle = .short
-
-        // Prefer one decimal if not whole number; for whole numbers, keep it clean.
-        if abs(converted.value.rounded() - converted.value) < 0.0001 {
-            let rounded = Measurement(value: converted.value.rounded(), unit: unit)
-            return formatter.string(from: rounded)
+        // Use app-language unit labels (not MeasurementFormatter / device locale),
+        // so JA/KO/RU don't stay stuck on Latin "km/h".
+        let converted = speed.converted(to: speedUnit(for: system)).value
+        let valueText: String
+        if abs(converted.rounded() - converted) < 0.0001 {
+            valueText = String(Int(converted.rounded()))
         } else {
-            // Keep one decimal for a “premium” feel.
-            let rounded = Measurement(value: (converted.value * 10).rounded() / 10, unit: unit)
-            return formatter.string(from: rounded)
+            valueText = String(format: "%.1f", (converted * 10).rounded() / 10)
         }
+        return "\(valueText) \(speedUnitLabel(for: system))"
     }
 
     static func unitSymbol(for system: WeekFitResolvedUnitSystem) -> String {

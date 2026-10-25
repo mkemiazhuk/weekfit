@@ -169,7 +169,10 @@ struct RecoveryDetailsView: View {
         let formatter = DateFormatter()
         formatter.locale = WeekFitCurrentLocale()
         formatter.setLocalizedDateFormatFromTemplate("EEEE MMMM d")
-        return formatter.string(from: activeDate)
+        let raw = formatter.string(from: activeDate)
+        // Some locales (e.g. Italian) emit lowercase weekdays — keep sentence case.
+        guard let first = raw.first else { return raw }
+        return String(first).uppercased() + raw.dropFirst()
     }
 }
 

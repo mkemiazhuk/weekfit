@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "WeekFit-AppIcon-Bold-1024.png",
+      "filename" : "WeekFit-Icon-Light-1024.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "ChatGPT Image Aug 3, 2026, 03_00_08 PM.png",
+      "filename" : "WeekFit-AppIcon-Open-Ribbon-1024.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"

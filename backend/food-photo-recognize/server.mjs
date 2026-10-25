@@ -79,6 +79,8 @@ export function configuration(env = process.env) {
     // Production: COACH_SUMMARY_ONCE_PER_DAY=1 → after 20:00, one AI attempt per UID+local day.
     // Unset/0 for unrestricted testing (manual Coach refresh always calls AI).
     summaryOncePerDay: env.COACH_SUMMARY_ONCE_PER_DAY === '1',
+    // Staging: honor DEBUG client header X-WeekFit-Coach-Summary-Unrestricted for any auth user.
+    summaryAllowUnrestrictedHeader: env.COACH_SUMMARY_ALLOW_UNRESTRICTED_HEADER === '1',
     ...asyncConfiguration(env),
   };
 }

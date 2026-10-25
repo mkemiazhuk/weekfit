@@ -79,7 +79,7 @@ private extension LanguageSettingsView {
 
     func languageRow(_ language: AppLanguage) -> some View {
         Button {
-            languageManager.selectedLanguage = language
+            languageManager.selectLanguage(language)
             ProductAnalytics.languageChanged(
                 AppLanguageAnalyticsCode(languageCode: language.rawValue)
             )
@@ -111,10 +111,9 @@ private extension LanguageSettingsView {
             RoundedRectangle(cornerRadius: 13, style: .continuous)
                 .fill(WeekFitTheme.coachSoftSurface)
 
-            Text(verbatim: language.shortCode)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(accentGreen.opacity(0.95))
-                .tracking(0.4)
+            Text(verbatim: language.flagEmoji)
+                .font(.system(size: 22))
+                .minimumScaleFactor(0.8)
         }
         .frame(width: 40, height: 40)
         .accessibilityHidden(true)

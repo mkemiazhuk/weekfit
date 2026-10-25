@@ -19,7 +19,8 @@ public enum WeekFitWidgetCopy {
         public static let nextHeader = WeekFitWidgetTextFitting.Slot.smallNextHeader.limit
     }
 
-    /// Snapshot language (`en` / `ru` / `zh-Hans`). Widget chrome follows this, not the system locale.
+    /// Snapshot language. Widget chrome follows this, not the system locale.
+    /// French, Polish, and Spanish currently use the English widget strings.
     public static var languageCode = "en"
 
     public static var usesRussian: Bool { languageCode == "ru" }
@@ -30,6 +31,20 @@ public enum WeekFitWidgetCopy {
             languageCode = "ru"
         } else if lower.hasPrefix("zh") {
             languageCode = "zh-Hans"
+        } else if lower.hasPrefix("fr") {
+            languageCode = "fr"
+        } else if lower.hasPrefix("pl") {
+            languageCode = "pl"
+        } else if lower.hasPrefix("es") {
+            languageCode = "es"
+        } else if lower.hasPrefix("de") {
+            languageCode = "de"
+        } else if lower.hasPrefix("ja") {
+            languageCode = "ja"
+        } else if lower.hasPrefix("it") {
+            languageCode = "it"
+        } else if lower.hasPrefix("ko") {
+            languageCode = "ko"
         } else {
             languageCode = "en"
         }
@@ -39,6 +54,13 @@ public enum WeekFitWidgetCopy {
         switch languageCode {
         case "ru": return ru
         case "zh-Hans": return zh
+        case "fr": return WeekFitWidgetLanguageTables.french[en] ?? en
+        case "pl": return WeekFitWidgetLanguageTables.polish[en] ?? en
+        case "es": return WeekFitWidgetLanguageTables.spanish[en] ?? en
+        case "de": return WeekFitWidgetLanguageTables.german[en] ?? en
+        case "ja": return WeekFitWidgetLanguageTables.japanese[en] ?? en
+        case "it": return WeekFitWidgetLanguageTables.italian[en] ?? en
+        case "ko": return WeekFitWidgetLanguageTables.korean[en] ?? en
         default: return en
         }
     }
@@ -169,11 +191,33 @@ public enum WeekFitWidgetCopy {
     public static func prepareDayLabel() -> String { t("Prepare your day.", "Соберите день.", "安排好今天。") }
 
     public static func duringLabel(eventTitle: String) -> String {
-        t("During \(eventTitle)", "Сейчас: \(eventTitle)", "进行中：\(eventTitle)")
+        switch languageCode {
+        case "ru": return "Сейчас: \(eventTitle)"
+        case "zh-Hans": return "进行中：\(eventTitle)"
+        case "fr": return "Pendant \(eventTitle)"
+        case "pl": return "Podczas: \(eventTitle)"
+        case "es": return "Durante \(eventTitle)"
+        case "de": return "Während \(eventTitle)"
+        case "ja": return "\(eventTitle)中"
+        case "it": return "Durante \(eventTitle)"
+        case "ko": return "\(eventTitle) 중"
+        default: return "During \(eventTitle)"
+        }
     }
 
     public static func beforeLabel(eventTitle: String) -> String {
-        t("Before \(eventTitle)", "Перед: \(eventTitle)", "开始前：\(eventTitle)")
+        switch languageCode {
+        case "ru": return "Перед: \(eventTitle)"
+        case "zh-Hans": return "开始前：\(eventTitle)"
+        case "fr": return "Avant \(eventTitle)"
+        case "pl": return "Przed: \(eventTitle)"
+        case "es": return "Antes de \(eventTitle)"
+        case "de": return "Vor \(eventTitle)"
+        case "ja": return "\(eventTitle)の前"
+        case "it": return "Prima di \(eventTitle)"
+        case "ko": return "\(eventTitle) 전"
+        default: return "Before \(eventTitle)"
+        }
     }
 
     /// Text-agnostic fit into a character budget. Prefer `fit(_:to:fallback:)` / slots.

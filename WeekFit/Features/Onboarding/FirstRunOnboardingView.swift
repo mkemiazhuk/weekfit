@@ -1,8 +1,8 @@
 import SwiftUI
 import HealthKit
 
-/// Guided product experience — promise → goal → units → health → understanding → ready.
-/// Flow: Goal → Context → Adaptive Coach → Today's Plan.
+/// Guided product experience — promise → goal → units → health → understanding → photo meals → ready.
+/// Flow: Goal → Context → Adaptive Coach → Photo logging → Today's Plan.
 struct FirstRunOnboardingView: View {
 
     @EnvironmentObject private var appSession: AppSessionState
@@ -33,6 +33,7 @@ struct FirstRunOnboardingView: View {
         case units
         case health
         case understanding
+        case photoMeals
         case ready
 
         var id: Int { rawValue }
@@ -44,6 +45,7 @@ struct FirstRunOnboardingView: View {
             case .units: return "units"
             case .health: return "health"
             case .understanding: return "understanding"
+            case .photoMeals: return "photo_meals"
             case .ready: return "ready"
             }
         }
@@ -151,6 +153,7 @@ struct FirstRunOnboardingView: View {
         }
         .id(languageManager.selectedLanguage)
         .onAppear {
+            languageManager.syncWithDeviceLanguageIfNeeded()
             ProductAnalytics.trackScreen(.onboarding)
             if step == .goal { applySuggestedGoalIfNeeded() }
         }
@@ -218,6 +221,7 @@ struct FirstRunOnboardingView: View {
         case .units: unitsStep
         case .health: healthStep
         case .understanding: understandingStep
+        case .photoMeals: photoMealsStep
         case .ready: readyStep
         }
     }
@@ -245,7 +249,7 @@ struct FirstRunOnboardingView: View {
                 startRadius: 10,
                 endRadius: 320
             )
-        case .goal, .units, .understanding:
+        case .goal, .units, .understanding, .photoMeals:
             RadialGradient(
                 colors: [
                     WeekFitTheme.brandGold.opacity(palette.isLight ? 0.04 : 0.06),
@@ -381,6 +385,15 @@ private extension FirstRunOnboardingView {
             subtitle: WeekFitLocalizedString("onboarding.v12.understanding.body")
         ) {
             OnboardingAdaptationStage()
+        }
+    }
+
+    var photoMealsStep: some View {
+        OnboardingPage(
+            title: WeekFitLocalizedString("onboarding.v13.photo.title"),
+            subtitle: WeekFitLocalizedString("onboarding.v13.photo.body")
+        ) {
+            OnboardingPhotoMealStage()
         }
     }
 
@@ -554,13 +567,13 @@ private extension FirstRunOnboardingView {
             return WeekFitLocalizedString("onboarding.v10.promise.cta")
         case .goal:
             return WeekFitLocalizedString("onboarding.v12.cta.createPlan")
-        case .units:
+        case .units, .understanding:
             return WeekFitLocalizedString("onboarding.action.continue")
         case .health:
             return healthManager.isHealthAccessGranted
                 ? WeekFitLocalizedString("onboarding.action.continue")
                 : WeekFitLocalizedString("onboarding.v10.health.connect")
-        case .understanding:
+        case .photoMeals:
             return WeekFitLocalizedString("onboarding.v12.cta.meetCoach")
         case .ready:
             return WeekFitLocalizedString("onboarding.v12.cta.openToday")
@@ -584,6 +597,8 @@ private extension FirstRunOnboardingView {
                 connectHealth()
             }
         case .understanding:
+            advance(to: .photoMeals)
+        case .photoMeals:
             advance(to: .ready)
         case .ready:
             finish()
@@ -729,9 +744,9 @@ private extension FirstRunOnboardingView {
     }
 }
 
-#Preview("Onboarding") {
-    FirstRunOnboardingView()
-        .environmentObject(AppSessionState())
-        .environmentObject(HealthManager())
-        .environmentObject(AppLanguageManager())
-}
+//#Preview("Onboarding") {
+//    FirstRunOnboardingView()
+//        .environmentObject(AppSessionState())
+//        .environmentObject(HealthManager())
+//        .environmentObject(AppLanguageManager())
+//}

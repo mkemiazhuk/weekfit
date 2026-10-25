@@ -93,25 +93,36 @@ enum CoachEveningRecapCopy {
         comparison: String?,
         feelingReaction: String?,
         isLoading: Bool,
-        failed: Bool
+        failed: Bool,
+        locale: String = WeekFitCurrentAppLanguage().rawValue
     ) -> String? {
         if let feelingReaction, !feelingReaction.isEmpty {
             return feelingReaction
         }
-        if let commentary, !commentary.isEmpty {
-            return mergeComparison(into: commentary, comparison: comparison)
+        let safeCommentary = commentary.flatMap { raw -> String? in
+            let filtered = CoachEveningSummaryPolicy.filteringToRequestedLocale(raw, locale: locale)
+            return filtered.isEmpty ? nil : filtered
+        }
+        if let safeCommentary {
+            return mergeComparison(into: safeCommentary, comparison: comparison, locale: locale)
         }
         if isLoading { return nil }
         let fallback = WeekFitLocalizedString("coach.eveningRecap.forEvening.fallback")
-        if failed || commentary == nil {
-            return mergeComparison(into: fallback, comparison: comparison)
-        }
-        return fallback
+        return mergeComparison(into: fallback, comparison: comparison, locale: locale)
     }
 
-    private static func mergeComparison(into commentary: String, comparison: String?) -> String {
-        guard let comparison, !comparison.isEmpty else { return commentary }
-        let trimmed = commentary.trimmingCharacters(in: .whitespacesAndNewlines)
+    private static func mergeComparison(
+        into commentary: String,
+        comparison: String?,
+        locale: String
+    ) -> String {
+        let safeCommentary = CoachEveningSummaryPolicy.filteringToRequestedLocale(
+            commentary,
+            locale: locale
+        )
+        guard let comparison, !comparison.isEmpty else { return safeCommentary }
+        let trimmed = safeCommentary.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return comparison }
         // Avoid duplicating if the model already used the comparison.
         if trimmed.localizedCaseInsensitiveContains(comparison)
             || sharesSignificantToken(trimmed, comparison) {
@@ -119,8 +130,12 @@ enum CoachEveningRecapCopy {
         }
         // Comparison first, then one short takeaway sentence from commentary.
         let takeaway = firstSentence(trimmed)
-        if takeaway.isEmpty { return comparison }
-        return "\(comparison) \(takeaway)"
+        let safeTakeaway = CoachEveningSummaryPolicy.filteringToRequestedLocale(
+            takeaway,
+            locale: locale
+        )
+        if safeTakeaway.isEmpty { return comparison }
+        return "\(comparison) \(safeTakeaway)"
     }
 
     private static func firstSentence(_ text: String) -> String {

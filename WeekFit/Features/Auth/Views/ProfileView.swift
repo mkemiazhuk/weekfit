@@ -1044,6 +1044,20 @@ private extension ProfileView {
             return WeekFitLocalizedString("settings.language.option.russian")
         case .chineseSimplified:
             return WeekFitLocalizedString("settings.language.option.chineseSimplified")
+        case .french:
+            return WeekFitLocalizedString("settings.language.option.french")
+        case .polish:
+            return WeekFitLocalizedString("settings.language.option.polish")
+        case .spanish:
+            return WeekFitLocalizedString("settings.language.option.spanish")
+        case .german:
+            return WeekFitLocalizedString("settings.language.option.german")
+        case .japanese:
+            return WeekFitLocalizedString("settings.language.option.japanese")
+        case .italian:
+            return WeekFitLocalizedString("settings.language.option.italian")
+        case .korean:
+            return WeekFitLocalizedString("settings.language.option.korean")
         }
     }
 

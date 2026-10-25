@@ -82,6 +82,12 @@ enum CoachEveningSummaryService {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue(clientRequestId, forHTTPHeaderField: "X-Request-Id")
+        #if DEBUG
+        if CoachDebugSettings.eveningSummaryUnrestrictedEnabled {
+            // Dev-only: ask the service to skip once-per-day reuse (honored for local-developer).
+            request.setValue("1", forHTTPHeaderField: "X-WeekFit-Coach-Summary-Unrestricted")
+        }
+        #endif
         // Enrich only inside the shared flight: Root and Coach cannot each query/generate.
         // Do not request new permissions or read real health data when access is unavailable.
         if AccountSessionController.shared.mode != .reviewDemo,

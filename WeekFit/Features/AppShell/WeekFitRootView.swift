@@ -630,7 +630,8 @@ struct WeekFitRootView: View {
             TodayAtmosphereBackground(
                 snapshot: sharedAtmosphereSnapshot,
                 ambientOpacity: palette.ambientOpacity,
-                showsStarField: selectedTab != .meals && selectedTab != .today
+                // Meals stays a clean navy canvas; Today keeps the weather sky.
+                showsStarField: selectedTab != .meals
             )
         } else {
             ZStack {

@@ -145,6 +145,7 @@ final class LocalDataResetService {
                 CoachAssistantConversationStore.storageKey,
                 CoachAssistantMemoryStore.storageKey,
                 AppLanguage.storageKey,
+                AppLanguage.explicitSelectionKey,
                 "coach_log_level",
                 "weekfit_quick_item_usage_v1",
                 "weekfit.healthAccessRequested",

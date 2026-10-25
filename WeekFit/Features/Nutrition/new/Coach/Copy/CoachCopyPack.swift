@@ -54,6 +54,15 @@ struct CoachBilingualText: Codable, Equatable, Sendable, Hashable {
                 return override
             }
             return chinese
+        case .french, .polish, .spanish, .german, .japanese, .italian, .korean:
+            if let translated = CoachStringOverrideResolver.resolved(
+                english: english,
+                table: CoachExtraLanguageTables.entries(for: language),
+                cacheKey: language.rawValue
+            ), !translated.isEmpty {
+                return translated
+            }
+            return english
         case .english:
             return english
         }

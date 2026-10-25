@@ -27,13 +27,14 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
     private let timeoutSeconds: TimeInterval
     private var owner: String?
 
-    /// Single in-flight HTTP generation keyed by (owner, localDay). Waiter cancel / UI timeout must not clear this.
+    /// Single in-flight HTTP generation keyed by (owner, localDay, locale). Waiter cancel / UI timeout must not clear this.
     private var inFlight: InFlight?
     private var deadline: Task<Void, Never>?
 
     private struct FlightKey: Hashable {
         let owner: String
         let day: String
+        let locale: String
     }
 
     private final class InFlight {
@@ -180,10 +181,31 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             return
         }
 
-        // Once-per-day: any successful summary for this local day wins — ignore fingerprint churn.
+        // Drop a same-day answer stamped for another app language so we can request a matching one.
+        // (Wrong-language *text* with the correct locale stamp is blanked in displayCommentary instead —
+        // regenerating would only reuse the same once-per-day server answer.)
+        if let summary,
+           summary.day == input.day,
+           summary.locale != input.locale {
+            CoachEveningSummaryDiagnostics.event(
+                "ensure.localeMismatch",
+                detail: CoachEveningSummaryDiagnostics.flightDetail(
+                    owner: owner,
+                    day: input.day,
+                    source: source,
+                    extra: "cachedLocale=\(summary.locale) requestLocale=\(input.locale) cleared=true"
+                )
+            )
+            self.summary = nil
+            receivedAt = nil
+            cachedFingerprint = nil
+        }
+
+        // Once-per-day: successful summary for this local day+locale wins — ignore fingerprint churn.
         if CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow,
            let summary,
-           summary.day == input.day {
+           summary.day == input.day,
+           summary.locale == input.locale {
             CoachEveningSummaryDiagnostics.event(
                 "ensure.cacheFresh",
                 detail: CoachEveningSummaryDiagnostics.flightDetail(
@@ -195,6 +217,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
 
         if let summary,
            summary.day == input.day,
+           summary.locale == input.locale,
            cachedFingerprint == fingerprint {
             CoachEveningSummaryDiagnostics.event(
                 "ensure.cacheFresh",
@@ -217,7 +240,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             return
         }
 
-        let dayFingerprint = "day:\(input.day)"
+        let dayFingerprint = "day:\(input.day):\(input.locale)"
         beginOrJoinGeneration(
             input: input,
             owner: owner,
@@ -277,7 +300,8 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
 
         if CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow,
            let summary,
-           summary.day == input.day {
+           summary.day == input.day,
+           summary.locale == input.locale {
             CoachEveningSummaryDiagnostics.event(
                 "refresh.reused",
                 detail: CoachEveningSummaryDiagnostics.flightDetail(
@@ -292,7 +316,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             input: input,
             owner: owner,
             fingerprint: CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow
-                ? "day:\(input.day)"
+                ? "day:\(input.day):\(input.locale)"
                 : "manual:\(UUID().uuidString)",
             source: source,
             isStillEligible: { true }
@@ -311,7 +335,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         ensureUpToDate(
             input: input,
             owner: owner,
-            fingerprint: "day:\(input.day)",
+            fingerprint: "day:\(input.day):\(input.locale)",
             now: now,
             calendar: calendar,
             source: source,
@@ -328,7 +352,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         source: String,
         isStillEligible: @escaping () -> Bool
     ) {
-        let key = FlightKey(owner: owner, day: input.day)
+        let key = FlightKey(owner: owner, day: input.day, locale: input.locale)
 
         if let flight = inFlight {
             if flight.key == key {
@@ -342,13 +366,13 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
                         day: input.day,
                         source: source,
                         requestId: flight.clientRequestId,
-                        extra: "waiters=\(flight.waiterSources.count)"
+                        extra: "waiters=\(flight.waiterSources.count) locale=\(input.locale)"
                     )
                 )
                 return
             }
-            // Different owner/day — abandon previous flight's UI claim; underlying task still
-            // checks key before applying so a late response cannot cross owners/days.
+            // Different owner/day/locale — abandon previous flight's UI claim; underlying task still
+            // checks key before applying so a late response cannot cross owners/days/languages.
             CoachEveningSummaryDiagnostics.event(
                 "generation.superseded",
                 detail: CoachEveningSummaryDiagnostics.flightDetail(
@@ -356,7 +380,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
                     day: input.day,
                     source: source,
                     requestId: flight.clientRequestId,
-                    extra: "previousDay=\(flight.key.day) previousOwner=\(CoachEveningSummaryDiagnostics.ownerTag(flight.key.owner))"
+                    extra: "previousDay=\(flight.key.day) previousLocale=\(flight.key.locale) previousOwner=\(CoachEveningSummaryDiagnostics.ownerTag(flight.key.owner))"
                 )
             )
             cancelInFlight(reason: "superseded")
@@ -444,6 +468,17 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
                     detail: CoachEveningSummaryDiagnostics.flightDetail(
                         owner: key.owner, day: key.day, source: "flight",
                         requestId: requestId, extra: "reason=dayMismatch responseDay=\(result.summary.day)"
+                    )
+                )
+                return
+            }
+            guard result.summary.locale == key.locale, result.summary.locale == input.locale else {
+                CoachEveningSummaryDiagnostics.event(
+                    "generation.discarded",
+                    detail: CoachEveningSummaryDiagnostics.flightDetail(
+                        owner: key.owner, day: key.day, source: "flight",
+                        requestId: requestId,
+                        extra: "reason=localeMismatch responseLocale=\(result.summary.locale) expected=\(input.locale)"
                     )
                 )
                 return

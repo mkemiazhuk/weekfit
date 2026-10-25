@@ -464,30 +464,47 @@ enum CoachMorningBriefCopyPolicy {
     }
 
     private static func activityTypeLabel(_ type: CoachActivityType, russian: Bool) -> String {
-        switch type {
-        case .cycling:
-            return russian ? "Заезд" : "Ride"
-        case .running:
-            return russian ? "Пробежка" : "Run"
-        case .swimming:
-            return russian ? "Заплыв" : "Swim"
-        case .hiit:
-            return "HIIT"
-        case .snowboarding:
-            return russian ? "Сноуборд" : "Snowboard"
-        case .downhillSkiing:
-            return russian ? "Горные лыжи" : "Alpine skiing"
-        case .tennis:
-            return russian ? "Теннис" : "Tennis"
-        case .squash:
-            return russian ? "Сквош" : "Squash"
-        case .upperBody, .lowerBody, .core, .fullBody:
-            return russian ? "Силовая" : "Strength"
-        case .walk:
-            return russian ? "Прогулка" : "Walk"
-        default:
-            return russian ? "Активность" : "Activity"
+        if russian {
+            switch type {
+            case .cycling: return "Заезд"
+            case .running: return "Пробежка"
+            case .swimming: return "Заплыв"
+            case .hiit: return "HIIT"
+            case .snowboarding: return "Сноуборд"
+            case .downhillSkiing: return "Горные лыжи"
+            case .tennis: return "Теннис"
+            case .squash: return "Сквош"
+            case .upperBody, .lowerBody, .core, .fullBody: return "Силовая"
+            case .walk: return "Прогулка"
+            default: return "Активность"
+            }
         }
+
+        let key: String?
+        switch type {
+        case .cycling: key = "planner.option.cycling"
+        case .running: key = "planner.option.running"
+        case .swimming: key = "planner.option.swimming"
+        case .hiit: key = "planner.option.hiit"
+        case .snowboarding: key = "planner.option.snowboarding"
+        case .downhillSkiing: key = "planner.option.alpineSkiing"
+        case .tennis: key = "planner.option.tennis"
+        case .squash: key = "planner.option.squash"
+        case .upperBody: key = "planner.option.upperBody"
+        case .lowerBody: key = "planner.option.lowerBody"
+        case .core: key = "planner.option.core"
+        case .fullBody: key = "planner.option.fullBody"
+        case .walk: key = "planner.option.walk"
+        case .stretching: key = "planner.option.stretching"
+        case .yoga: key = "planner.option.yoga"
+        case .breathing: key = "planner.option.breathing"
+        case .sauna: key = "planner.option.sauna"
+        case .none: key = nil
+        }
+        if let key {
+            return WeekFitLocalizedString(key)
+        }
+        return WeekFitLocalizedString("planner.type.workout")
     }
 
     private static func formatSleepHours(_ hours: Double, russian: Bool) -> String {

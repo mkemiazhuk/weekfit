@@ -72,6 +72,16 @@ enum CoachDebugSettings {
     static let lifecycleDiagnosticsKey = "weekfit_lifecycle_diagnostics_enabled"
     static let nightComfortDiagnosticsKey = "weekfit_night_comfort_diagnostics_enabled"
 
+    /// DEBUG: when true (default), evening summary may call the cloud service repeatedly.
+    /// Set `weekfit.coach.eveningSummary.oncePerDay` = true to mimic production.
+    static var eveningSummaryUnrestrictedEnabled: Bool {
+        #if DEBUG
+        !CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow
+        #else
+        false
+        #endif
+    }
+
     static var tabSwitchDiagnosticsEnabled: Bool {
         #if DEBUG
         UserDefaults.standard.bool(forKey: tabSwitchDiagnosticsKey) ||

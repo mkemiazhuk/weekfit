@@ -19,18 +19,11 @@ struct PhotoFoodRecognitionClient: PhotoFoodRecognizing {
     static let acceptTimeoutSeconds: TimeInterval = 90
     static let pollTimeoutSeconds: TimeInterval = 10
 
-    /// App language for recognition copy (`en` / `ru` / `zh-Hans`) — not device region.
+    /// App language for recognition copy — not device region.
     static func recognitionLocaleIdentifier() -> String {
         // Refresh in case recognition runs before AppLanguageManager has synced cache.
         WeekFitWarmLocalizationCache()
-        switch WeekFitCurrentAppLanguage() {
-        case .russian:
-            return AppLanguage.russian.rawValue
-        case .chineseSimplified:
-            return AppLanguage.chineseSimplified.rawValue
-        case .english:
-            return AppLanguage.english.rawValue
-        }
+        return WeekFitCurrentAppLanguage().rawValue
     }
 
     private static let sharedUploadSession = PhotoFoodUploadSession()

@@ -15,13 +15,13 @@ final class CoachMissingSleepReadinessTests: XCTestCase {
 
     // MARK: - CoachInputReadiness
 
-    func testNoSleepAtSevenAMWithHealthConnectedStaysSettling() {
+    func testNoSleepAtSevenAMWithHealthConnectedShowsNeutralGuidance() {
         let input = makeMissingSleepInput(hour: 7, healthGranted: true)
         let assessment = CoachInputReadiness.assessment(input)
 
-        XCTAssertFalse(assessment.allowed)
-        XCTAssertEqual(assessment.dataReadinessState, .settling)
-        XCTAssertTrue(assessment.blockingReasons.contains("recoveryAwaitingMorningSync"))
+        XCTAssertTrue(assessment.allowed)
+        XCTAssertEqual(assessment.dataReadinessState, .limitedRecovery)
+        XCTAssertTrue(assessment.satisfiedConditions.contains("limitedRecoveryMode"))
     }
 
     func testNoSleepAtTenAMWithHealthConnectedAllowsLimitedRecovery() {
@@ -44,10 +44,11 @@ final class CoachMissingSleepReadinessTests: XCTestCase {
         XCTAssertEqual(state.status, .ready)
         XCTAssertTrue(state.canRenderTodayCoachInsight)
         XCTAssertNotNil(state.coachUIPresentation)
-        XCTAssertTrue(state.coachUIPresentation?.showsLimitedConfidenceBadge == true)
+        XCTAssertFalse(state.coachUIPresentation?.showsLimitedConfidenceBadge == true)
+        XCTAssertNotEqual(state.coachUIPresentation?.todayTitle, "Check your watch")
     }
 
-    func testNoSleepBeforeCutoffProducesSettlingCoachState() {
+    func testNoSleepBeforeMorningStillShowsStandardFocus() throws {
         let input = makeMissingSleepInput(hour: 7, healthGranted: true)
         let state = CoachState.ready(
             input: input,
@@ -55,13 +56,20 @@ final class CoachMissingSleepReadinessTests: XCTestCase {
             reason: "test"
         )
 
-        XCTAssertFalse(state.canRenderTodayCoachInsight)
-        XCTAssertNil(state.coachUIPresentation)
+        let presentation = try XCTUnwrap(state.coachUIPresentation)
+        XCTAssertTrue(state.canRenderTodayCoachInsight)
+        XCTAssertFalse(presentation.showsLimitedConfidenceBadge)
+        XCTAssertNotEqual(presentation.todayTitle, "Check your watch")
+        XCTAssertNotEqual(presentation.coachTitle, "Drink water")
+        XCTAssertFalse(presentation.todayMessage.localizedCaseInsensitiveContains("either it died"))
+        let display = CoachTodayCardCopy.display(from: presentation, nextActivityTitle: nil)
+        XCTAssertNotEqual(display.title, "Check your watch")
+        XCTAssertFalse(display.title.isEmpty)
     }
 
     func testLanguageChangeBypassesReadinessGateAndSwitchesCopy() {
         let input = makeMissingSleepInput(hour: 7, healthGranted: true)
-        XCTAssertFalse(CoachInputReadiness.assessment(input).allowed)
+        XCTAssertTrue(CoachInputReadiness.assessment(input).allowed)
 
         WeekFitSetCurrentLanguage(.english)
         let englishState = CoachState.ready(
@@ -135,11 +143,64 @@ final class CoachMissingSleepReadinessTests: XCTestCase {
             presentation.todayMessage
         ].joined(separator: " ").lowercased()
 
-        XCTAssertTrue(presentation.assessment.contains("plan and activity") || presentation.assessment.contains("плане и активности"))
+        XCTAssertFalse(presentation.showsLimitedConfidenceBadge)
+        XCTAssertNotEqual(presentation.todayTitle, "Check your watch")
         XCTAssertFalse(combined.contains("0%"))
         XCTAssertFalse(combined.contains("recovery 0"))
         XCTAssertFalse(combined.contains("short night"))
         XCTAssertFalse(combined.contains("коротк"))
+    }
+
+    func testNoSleepLowWaterRecommendsDrinking() throws {
+        let input = makeMissingSleepInput(hour: 14, healthGranted: true, waterCurrent: 0.2)
+        let state = CoachState.ready(
+            input: input,
+            fingerprint: CoachInputFingerprint(snapshot: input),
+            reason: "test"
+        )
+        let presentation = try XCTUnwrap(state.coachUIPresentation)
+        XCTAssertFalse(presentation.showsLimitedConfidenceBadge)
+        XCTAssertNotEqual(presentation.recommendation, "Drink some water and keep the day easy.")
+    }
+
+    func testNoSleepLowFuelRecommendsAMeal() throws {
+        let input = makeMissingSleepInput(
+            hour: 14,
+            healthGranted: true,
+            caloriesCurrent: 400,
+            proteinCurrent: 20
+        )
+        let state = CoachState.ready(
+            input: input,
+            fingerprint: CoachInputFingerprint(snapshot: input),
+            reason: "test"
+        )
+        let presentation = try XCTUnwrap(state.coachUIPresentation)
+        XCTAssertFalse(presentation.showsLimitedConfidenceBadge)
+        XCTAssertNotEqual(presentation.recommendation, "Eat a normal meal and keep the day easy.")
+    }
+
+    func testNoSleepUpcomingSessionKeepsThePlan() throws {
+        let now = makeDate(hour: 13)
+        let ride = PlannedActivity(
+            date: now.addingTimeInterval(60 * 60),
+            type: "workout",
+            title: "Afternoon Ride",
+            durationMinutes: 90,
+            icon: "figure.outdoor.cycle",
+            colorRed: 0.2,
+            colorGreen: 0.6,
+            colorBlue: 0.9
+        )
+        let input = makeMissingSleepInput(hour: 13, healthGranted: true, activities: [ride])
+        let state = CoachState.ready(
+            input: input,
+            fingerprint: CoachInputFingerprint(snapshot: input),
+            reason: "test"
+        )
+        let presentation = try XCTUnwrap(state.coachUIPresentation)
+        XCTAssertFalse(presentation.showsLimitedConfidenceBadge)
+        XCTAssertNotEqual(presentation.todayTitle, "Check your watch")
     }
 
     func testNoSleepHeavyYesterdayDoesNotTriggerLowRecoveryPrep() {
@@ -172,7 +233,7 @@ final class CoachMissingSleepReadinessTests: XCTestCase {
             fingerprint: CoachInputFingerprint(snapshot: missingInput),
             reason: "test-limited"
         )
-        XCTAssertTrue(limitedState.coachUIPresentation?.showsLimitedConfidenceBadge == true)
+        XCTAssertFalse(limitedState.coachUIPresentation?.showsLimitedConfidenceBadge == true)
 
         let syncedInput = makeMissingSleepInput(
             hour: 11,
@@ -192,13 +253,13 @@ final class CoachMissingSleepReadinessTests: XCTestCase {
         XCTAssertTrue(syncedState.canRenderTodayCoachInsight)
     }
 
-    func testRecoveryRingModeBeforeCutoffAwaitingSync() {
+    func testRecoveryRingModeWithoutSleepShowsNotRecorded() {
         let mode = CoachInputReadiness.recoveryRingMode(
             isHealthAccessGranted: true,
             hasRecoverySignals: false,
             now: makeDate(hour: 7)
         )
-        XCTAssertEqual(mode, .awaitingMorningSync)
+        XCTAssertEqual(mode, .sleepNotRecorded)
     }
 
     func testRecoveryRingModeAfterCutoffSleepNotRecorded() {
@@ -218,19 +279,22 @@ final class CoachMissingSleepReadinessTests: XCTestCase {
             reason: "test"
         )
 
-        XCTAssertEqual(state.coachUIPresentation?.statusLabel, "No sleep data")
+        XCTAssertFalse(state.coachUIPresentation?.showsLimitedConfidenceBadge == true)
+        XCTAssertNotEqual(state.coachUIPresentation?.statusLabel, "No sleep data")
     }
 
-    func testLimitedRecoveryAssessmentUsesConversationalCopy() {
+    func testLimitedRecoveryAssessmentUsesConversationalCopy() throws {
         let input = makeMissingSleepInput(hour: 11, healthGranted: true)
         let state = CoachState.ready(
             input: input,
             fingerprint: CoachInputFingerprint(snapshot: input),
             reason: "test"
         )
-        let assessment = state.coachUIPresentation?.assessment ?? ""
-        XCTAssertTrue(assessment.contains("plan and activity") || assessment.contains("плане и активности"))
-        XCTAssertFalse(assessment.lowercased().contains("not recorded last night"))
+        let presentation = try XCTUnwrap(state.coachUIPresentation)
+        XCTAssertNotEqual(presentation.todayTitle, "Check your watch")
+        XCTAssertFalse(presentation.todayMessage.localizedCaseInsensitiveContains("either it died"))
+        XCTAssertFalse(presentation.showsLimitedConfidenceBadge)
+        XCTAssertNotEqual(presentation.statusLabel, "No sleep data")
     }
 
     func testRecoveryContextSleepSatisfiesReadinessWhenBrainMetricsSleepMissing() {
@@ -280,7 +344,10 @@ final class CoachMissingSleepReadinessTests: XCTestCase {
         hadHeavyYesterday: Bool = false,
         recoveryPercent: Int = 0,
         sleepHours: Double = 0,
-        activities: [PlannedActivity] = []
+        activities: [PlannedActivity] = [],
+        caloriesCurrent: Double = 1_800,
+        proteinCurrent: Double = 90,
+        waterCurrent: Double = 1.8
     ) -> CoachInputSnapshot {
         let now = makeDate(hour: hour, minute: minute)
 
@@ -322,11 +389,11 @@ final class CoachMissingSleepReadinessTests: XCTestCase {
                 sleepHours: sleepHours
             ),
             nutritionContext: CoachNutritionContext(
-                caloriesCurrent: 1_800,
+                caloriesCurrent: caloriesCurrent,
                 caloriesGoal: 2_800,
-                proteinCurrent: 90,
+                proteinCurrent: proteinCurrent,
                 proteinGoal: 140,
-                waterCurrent: 1.8,
+                waterCurrent: waterCurrent,
                 waterGoal: 2.5
             ),
             isHealthAccessGranted: healthGranted,

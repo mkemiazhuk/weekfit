@@ -66,10 +66,50 @@ final class CoachCopyLanguageAuditTests: XCTestCase {
     func testLimitedRecoveryOverlayHasNoLanguageMixing() {
         let input = CoachCopyQualityTests.baselineInput(for: .morningReadiness)
         let basePack = CoachCopyRegistry.resolve(input)!
-        let pack = CoachLimitedRecoveryCopyPolicy.apply(to: basePack)
-        let report = CoachCopyLanguageAudit.audit(pack: pack)
+        let contexts: [(String, CoachContext)] = [
+            ("water", limitedRecoveryContext(hydration: .behind, fuel: .adequate, state: .none)),
+            ("food", limitedRecoveryContext(hydration: .adequate, fuel: .behind, state: .none)),
+            ("walk", limitedRecoveryContext(hydration: .adequate, fuel: .adequate, state: .none)),
+            ("plan", limitedRecoveryContext(hydration: .adequate, fuel: .adequate, state: .upcoming))
+        ]
 
-        XCTAssertTrue(report.isClean, format(report))
+        var failures: [String] = []
+        for (label, context) in contexts {
+            let pack = CoachLimitedRecoveryCopyPolicy.apply(to: basePack, context: context)
+            let report = CoachCopyLanguageAudit.audit(pack: pack)
+            if !report.isClean {
+                failures.append("\(label): \(format(report))")
+            }
+        }
+
+        XCTAssertTrue(failures.isEmpty, failures.joined(separator: "\n"))
+    }
+
+    private func limitedRecoveryContext(
+        hydration: CoachHydrationState,
+        fuel: CoachFuelState,
+        state: CoachActivityState
+    ) -> CoachContext {
+        CoachContext(
+            activityFamily: .none,
+            activityType: .none,
+            activityState: state,
+            sessionPhase: .idle,
+            durationBand: .short,
+            dayLoadBand: .fresh,
+            completedSeriousActivities: .none,
+            fuelState: fuel,
+            hydrationState: hydration,
+            tomorrowDemand: .none,
+            timeOfDay: .midday,
+            tomorrowWorkout: nil,
+            focusActivityID: nil,
+            focusSource: .idle,
+            minutesUntilStart: nil,
+            minutesSinceEnd: nil,
+            dayReadiness: .unknown,
+            lastCompletedSeriousActivityType: .none
+        )
     }
 
     private func format(_ report: CoachCopyLanguageAudit.Report) -> String {

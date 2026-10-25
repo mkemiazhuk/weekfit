@@ -538,6 +538,13 @@ enum AppText {
                 static let english: LocalizedStringResource = "settings.language.option.english"
                 static let russian: LocalizedStringResource = "settings.language.option.russian"
                 static let chineseSimplified: LocalizedStringResource = "settings.language.option.chineseSimplified"
+                static let french: LocalizedStringResource = "settings.language.option.french"
+                static let polish: LocalizedStringResource = "settings.language.option.polish"
+                static let spanish: LocalizedStringResource = "settings.language.option.spanish"
+                static let german: LocalizedStringResource = "settings.language.option.german"
+                static let japanese: LocalizedStringResource = "settings.language.option.japanese"
+                static let italian: LocalizedStringResource = "settings.language.option.italian"
+                static let korean: LocalizedStringResource = "settings.language.option.korean"
             }
         }
 
@@ -688,6 +695,13 @@ private func WeekFitLocalizationLprojResourceCandidates(for locale: Locale) -> [
         case "en": append(AppLanguage.english.rawValue)
         case "ru": append(AppLanguage.russian.rawValue)
         case "zh": append(AppLanguage.chineseSimplified.rawValue)
+        case "fr": append(AppLanguage.french.rawValue)
+        case "pl": append(AppLanguage.polish.rawValue)
+        case "es": append(AppLanguage.spanish.rawValue)
+        case "de": append(AppLanguage.german.rawValue)
+        case "ja": append(AppLanguage.japanese.rawValue)
+        case "it": append(AppLanguage.italian.rawValue)
+        case "ko": append(AppLanguage.korean.rawValue)
         default: break
         }
     }
@@ -724,6 +738,16 @@ func WeekFitTrilingual(_ english: String, _ russian: String, _ chinese: String) 
         return russian
     case .chineseSimplified:
         return chinese
+    case .french, .polish, .spanish, .german, .japanese, .italian, .korean:
+        let language = WeekFitCurrentAppLanguage()
+        if let translated = CoachStringOverrideResolver.resolved(
+            english: english,
+            table: CoachExtraLanguageTables.entries(for: language),
+            cacheKey: language.rawValue
+        ), !translated.isEmpty {
+            return translated
+        }
+        return english
     case .english:
         return english
     }
@@ -770,7 +794,7 @@ func WeekFitCoachRuntimeLocalizedString(_ value: String, russian: Bool? = nil) -
                 return CoachChineseOverrides.resolved(english: pair.en)
                     ?? CoachChineseOverrides.resolved(english: trimmed)
                     ?? pair.en
-            case .english:
+            case .english, .french, .polish, .spanish, .german, .japanese, .italian, .korean:
                 return pair.en
             }
         }()
@@ -1440,9 +1464,15 @@ private enum WeekFitLocalizationCache {
     }
 
     static func refreshFromStorage() {
-        let storedLanguageCode = UserDefaults.standard.string(forKey: AppLanguage.storageKey) ?? AppLanguage.english.rawValue
-
-        let resolvedLanguage = AppLanguage(rawValue: storedLanguageCode) ?? .english
+        let resolvedLanguage: AppLanguage
+        if AppLanguage.shouldFollowDeviceLanguage {
+            resolvedLanguage = AppLanguage.detectedFromDevice()
+        } else if let storedLanguageCode = UserDefaults.standard.string(forKey: AppLanguage.storageKey),
+                  let storedLanguage = AppLanguage(rawValue: storedLanguageCode) {
+            resolvedLanguage = storedLanguage
+        } else {
+            resolvedLanguage = AppLanguage.detectedFromDevice()
+        }
         update(language: resolvedLanguage)
     }
 

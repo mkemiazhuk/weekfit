@@ -229,7 +229,8 @@ enum AppReviewDemoDatasetGenerator {
             remSleepMinutes: remSleepMinutes,
             coreSleepMinutes: coreSleepMinutes,
             bedStart: bedStart,
-            wakeTime: wakeTime
+            wakeTime: wakeTime,
+            readFailed: false
         )
     }
 

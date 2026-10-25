@@ -115,10 +115,10 @@ struct PhotoFoodConfirmationSheet: View {
 
     private var macrosRow: some View {
         HStack(spacing: 8) {
-            macroChip("kcal", value: "\(totals.calories)")
-            macroChip("P", value: "\(totals.protein)g")
-            macroChip("C", value: "\(totals.carbs)g")
-            macroChip("F", value: "\(totals.fats)g")
+            macroChip(WeekFitLocalizedString("common.unit.kcal"), value: "\(totals.calories)")
+            macroChip("P", value: String(format: WeekFitLocalizedString("common.unit.gramFormat"), totals.protein))
+            macroChip("C", value: String(format: WeekFitLocalizedString("common.unit.gramFormat"), totals.carbs))
+            macroChip("F", value: String(format: WeekFitLocalizedString("common.unit.gramFormat"), totals.fats))
         }
     }
 

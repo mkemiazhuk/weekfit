@@ -1,4 +1,5 @@
 import Foundation
+import NaturalLanguage
 
 struct CoachEveningSummaryInput: Codable, Sendable {
     struct Fact: Codable, Sendable {
@@ -37,6 +38,10 @@ struct CoachEveningSummary: Codable, Equatable, Sendable {
                 !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     && $0.text.count <= 700 && $0.evidenceIds.allSatisfy(ids.contains)
             }
+            && CoachEveningSummaryPolicy.textMatchesRequestedLocale(
+                [today.text, tomorrow.text, now.text].joined(separator: " "),
+                locale: locale
+            )
     }
 }
 
@@ -44,9 +49,22 @@ enum CoachEveningSummaryPolicy {
     /// Coach surface for evening recap (Your day + AI + feeling).
     static let isCoachSurfaceEnabled = true
 
+    /// UserDefaults override (DEBUG). `true` = production once-per-day; unset/`false` = repeat AI calls.
+    static let oncePerDayOverrideKey = "weekfit.coach.eveningSummary.oncePerDay"
+
     /// Auto path: after 20:00 local; at most one AI summary per local day.
     /// First successful answer is cached and reused — fingerprint / tab re-entry must not regenerate.
-    static let enforcesOncePerDayAndEveningWindow = true
+    /// DEBUG defaults to unrestricted so local prompt/locale iteration can re-hit the service.
+    static var enforcesOncePerDayAndEveningWindow: Bool {
+        #if DEBUG
+        if UserDefaults.standard.object(forKey: oncePerDayOverrideKey) != nil {
+            return UserDefaults.standard.bool(forKey: oncePerDayOverrideKey)
+        }
+        return false
+        #else
+        true
+        #endif
+    }
 
     static var allowsManualRefreshAnytime: Bool { !enforcesOncePerDayAndEveningWindow }
 
@@ -77,7 +95,86 @@ enum CoachEveningSummaryPolicy {
         if !today.isEmpty { parts.append(today) }
         if !tomorrow.isEmpty { parts.append(tomorrow) }
         if parts.isEmpty, !now.isEmpty { parts.append(now) }
-        return clampCommentary(parts.joined(separator: " "), maxSentences: 3)
+        let joined = clampCommentary(parts.joined(separator: " "), maxSentences: 3)
+        // Drop English (or otherwise mismatched) sentences under a non-matching UI language.
+        return filteringToRequestedLocale(joined, locale: summary.locale)
+    }
+
+    /// Rejects clear language leaks (e.g. English under `pl`) while staying permissive on short/ambiguous text.
+    /// Checks sentence-by-sentence so a Polish comparison cannot mask an English AI takeaway.
+    static func textMatchesRequestedLocale(_ text: String, locale: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return true }
+        guard nlLanguage(for: locale) != nil else { return true }
+
+        let sentences = trimmed
+            .components(separatedBy: CharacterSet(charactersIn: ".!?。！？"))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        let parts = sentences.isEmpty ? [trimmed] : sentences
+        return parts.allSatisfy { sentenceMatchesRequestedLocale($0, locale: locale) }
+    }
+
+    /// Keep only sentences that match the requested locale (drops English leaks under PL/RU/…).
+    static func filteringToRequestedLocale(_ text: String, locale: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+        guard nlLanguage(for: locale) != nil else { return trimmed }
+
+        let sentences = trimmed
+            .components(separatedBy: CharacterSet(charactersIn: ".!?。！？"))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard !sentences.isEmpty else {
+            return sentenceMatchesRequestedLocale(trimmed, locale: locale) ? trimmed : ""
+        }
+
+        let kept = sentences.filter { sentenceMatchesRequestedLocale($0, locale: locale) }
+        guard !kept.isEmpty else { return "" }
+        var joined = kept.joined(separator: ". ")
+        if !joined.hasSuffix(".") && !joined.hasSuffix("!") && !joined.hasSuffix("?") {
+            joined += "."
+        }
+        return joined
+    }
+
+    private static func sentenceMatchesRequestedLocale(_ text: String, locale: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Short fragments (names, numbers) are too ambiguous to reject.
+        guard trimmed.count >= 24 else { return true }
+        guard let expected = nlLanguage(for: locale) else { return true }
+
+        let recognizer = NLLanguageRecognizer()
+        recognizer.processString(trimmed)
+        let hypotheses = recognizer.languageHypotheses(withMaximum: 4)
+        if let score = hypotheses[expected], score >= 0.22 {
+            return true
+        }
+        guard let dominant = recognizer.dominantLanguage else { return true }
+        if dominant == expected { return true }
+
+        let topScore = hypotheses.values.max() ?? 0
+        if topScore < 0.5 { return true }
+        if dominant == .english, expected != .english, (hypotheses[.english] ?? 0) >= 0.55 {
+            return false
+        }
+        return dominant == expected
+    }
+
+    private static func nlLanguage(for locale: String) -> NLLanguage? {
+        switch locale {
+        case "en": return .english
+        case "ru": return .russian
+        case "zh-Hans": return .simplifiedChinese
+        case "fr": return .french
+        case "pl": return .polish
+        case "es": return .spanish
+        case "de": return .german
+        case "ja": return .japanese
+        case "it": return .italian
+        case "ko": return .korean
+        default: return nil
+        }
     }
 
     private static func clampCommentary(_ text: String, maxSentences: Int = 2) -> String {

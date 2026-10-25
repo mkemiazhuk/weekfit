@@ -45,6 +45,13 @@ export function resolveOutputLanguage(locale) {
   ) {
     return { code: 'zh-Hans', name: 'Simplified Chinese' };
   }
+  if (raw === 'fr' || raw.startsWith('fr-')) return { code: 'fr', name: 'French' };
+  if (raw === 'pl' || raw.startsWith('pl-')) return { code: 'pl', name: 'Polish' };
+  if (raw === 'es' || raw.startsWith('es-')) return { code: 'es', name: 'Spanish' };
+  if (raw === 'de' || raw.startsWith('de-')) return { code: 'de', name: 'German' };
+  if (raw === 'ja' || raw.startsWith('ja-')) return { code: 'ja', name: 'Japanese' };
+  if (raw === 'it' || raw.startsWith('it-')) return { code: 'it', name: 'Italian' };
+  if (raw === 'ko' || raw.startsWith('ko-')) return { code: 'ko', name: 'Korean' };
   return { code: 'en', name: 'English' };
 }
 

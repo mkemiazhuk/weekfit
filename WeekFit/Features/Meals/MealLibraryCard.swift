@@ -319,6 +319,24 @@ struct MealLibraryGridCard: View {
         dynamicTypeSize.isAccessibilitySize ? 4 : 2
     }
 
+    /// Reserve a stable title band so short/long names don't change card height.
+    private var titleBlockMinHeight: CGFloat {
+        let line = UIFont.preferredFont(forTextStyle: .headline).lineHeight
+        // compactCardTitle tracks ~headline; keep 2 lines for standard Dynamic Type.
+        return ceil(line * CGFloat(min(titleLineLimit, 2)) * 1.05)
+    }
+
+    private var textBlockMinHeight: CGFloat {
+        // title + kcal + protein with fixed spacing
+        let metaLine = UIFont.preferredFont(forTextStyle: .footnote).lineHeight
+        let captionLine = UIFont.preferredFont(forTextStyle: .caption1).lineHeight
+        return titleBlockMinHeight
+            + MealLibraryCardMetrics.textBlockSpacing
+            + ceil(metaLine)
+            + 3
+            + ceil(captionLine)
+    }
+
     var body: some View {
         let _ = showsPeriodMark
         VStack(alignment: .leading, spacing: 0) {
@@ -393,23 +411,30 @@ struct MealLibraryGridCard: View {
                     .tracking(-0.18)
                     .multilineTextAlignment(.leading)
                     .lineLimit(titleLineLimit)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, minHeight: titleBlockMinHeight, alignment: .topLeading)
 
-                Text(String(format: WeekFitLocalizedString("meals.value.kcalFormat"), meal.calories))
-                    .font(WeekFitType.secondary.weight(.medium))
-                    .fontDesign(.rounded)
-                    .foregroundStyle(textSecondary)
-                    .monospacedDigit()
-                    .lineLimit(1)
+                // Fixed nutrition stack: kcal emphasized, protein quieter — same footprint on every card.
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(String(format: WeekFitLocalizedString("meals.value.kcalFormat"), meal.calories))
+                        .font(WeekFitType.secondary.weight(.semibold))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(textPrimary.opacity(0.92))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
 
-                Text(String(format: WeekFitLocalizedString("meals.value.proteinGramsFormat"), meal.protein))
-                    .font(WeekFitType.secondary.weight(.medium))
-                    .fontDesign(.rounded)
-                    .foregroundStyle(textSecondary)
-                    .monospacedDigit()
-                    .lineLimit(1)
+                    Text(String(format: WeekFitLocalizedString("meals.value.proteinGramsFormat"), meal.protein))
+                        .font(WeekFitType.caption.weight(.medium))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(textSecondary.opacity(0.82))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, minHeight: textBlockMinHeight, alignment: .topLeading)
             .padding(.horizontal, MealLibraryCardMetrics.horizontalPadding)
             .padding(.top, MealLibraryCardMetrics.textTopPadding)
             .padding(.bottom, MealLibraryCardMetrics.textBottomPadding)
@@ -580,16 +605,16 @@ struct HeroMealLibraryRow: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(String(format: WeekFitLocalizedString("meals.value.kcalFormat"), meal.calories))
-                .font(WeekFitType.secondary.weight(.medium))
+                .font(WeekFitType.secondary.weight(.semibold))
                 .fontDesign(.rounded)
-                .foregroundStyle(textSecondary)
+                .foregroundStyle(textPrimary.opacity(0.92))
                 .monospacedDigit()
                 .lineLimit(1)
 
             Text(String(format: WeekFitLocalizedString("meals.value.proteinGramsFormat"), meal.protein))
-                .font(WeekFitType.secondary.weight(.medium))
+                .font(WeekFitType.caption.weight(.medium))
                 .fontDesign(.rounded)
-                .foregroundStyle(textSecondary)
+                .foregroundStyle(textSecondary.opacity(0.82))
                 .monospacedDigit()
                 .lineLimit(1)
         }

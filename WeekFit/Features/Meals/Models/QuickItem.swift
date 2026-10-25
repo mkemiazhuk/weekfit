@@ -161,6 +161,9 @@ struct QuickItem: Codable, Identifiable, Equatable {
             return chineseTitlesByStoredTitle[lowered]
                 ?? englishTitlesByRussianTitle[lowered].map { chineseTitlesByStoredTitle[$0.lowercased()] ?? $0 }
                 ?? trimmed
+        case .french, .polish, .spanish, .german, .japanese, .italian, .korean:
+            let englishKey = (englishTitlesByRussianTitle[lowered] ?? trimmed).lowercased()
+            return QuickItemExtraCopy.title(englishKey, language: WeekFitCurrentAppLanguage()) ?? trimmed
         case .english:
             // Titles previously persisted while Russian was active (e.g. "Вода").
             return englishTitlesByRussianTitle[lowered] ?? trimmed
@@ -182,6 +185,8 @@ struct QuickItem: Codable, Identifiable, Equatable {
                 return localized
             }
             return chineseSubtitlesByStoredSubtitle[trimmed.lowercased()] ?? trimmed
+        case .french, .polish, .spanish, .german, .japanese, .italian, .korean:
+            return QuickItemExtraCopy.subtitle(trimmed.lowercased(), language: WeekFitCurrentAppLanguage()) ?? trimmed
         case .english:
             return trimmed
         }
