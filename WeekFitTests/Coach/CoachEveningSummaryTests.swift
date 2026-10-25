@@ -98,6 +98,30 @@ final class CoachEveningSummaryTests: XCTestCase {
         )
     }
 
+    func testFallbackSourceIsAcceptedWhenFactsAreEmpty() {
+        let input = CoachEveningSummaryInput(
+            schemaVersion: 1,
+            day: "2026-10-12",
+            timezone: "Europe/Warsaw",
+            locale: "pl",
+            phase: "evening",
+            facts: [:]
+        )
+        let summary = CoachEveningSummary(
+            headline: "Spokojny wieczór",
+            today: .init(text: "Dziś brakuje danych, by przygotować osobistą obserwację.", evidenceIds: []),
+            now: .init(text: "Dziś brakuje danych, by przygotować osobistą obserwację.", evidenceIds: []),
+            tomorrow: .init(text: "Jeśli chcesz, oceń, jak się dziś wieczorem czujesz.", evidenceIds: []),
+            limitations: ["Brak faktów dnia."],
+            day: input.day,
+            locale: input.locale,
+            generatedAt: "2026-10-12T18:00:00Z",
+            source: "fallback"
+        )
+        XCTAssertTrue(summary.isValid(for: input))
+        XCTAssertFalse(summary.isValid(for: input(locale: "en")), "locale mismatch must still fail")
+    }
+
     func testDisplayCommentaryBlanksEnglishLeakUnderPolishLocale() {
         let summary = CoachEveningSummary(
             headline: "Notatka",

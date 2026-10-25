@@ -21,6 +21,9 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
     @Published private(set) var isRefreshing = false
     @Published private(set) var lastRefreshFailed = false
     @Published private(set) var cachedFingerprint: String?
+    /// Last request id applied to UI (`http` / restored cache). DEBUG + diagnostics.
+    @Published private(set) var lastAppliedRequestId: String?
+    @Published private(set) var lastAppliedUISource: String?
 
     private let store: CoachEveningSummaryStore
     private let generate: (CoachEveningSummaryInput, String) async throws -> CoachEveningSummaryGenerationResult
@@ -87,6 +90,16 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
                 receivedAt = cache.receivedAt
                 cachedFingerprint = cache.inputFingerprint
                 lastRefreshFailed = false
+                lastAppliedUISource = "disk"
+                lastAppliedRequestId = nil
+                #if DEBUG
+                CoachEveningSummaryDebugTape.logUI(
+                    source: "disk",
+                    requestId: nil,
+                    generatedAt: cache.summary.generatedAt,
+                    displayedNote: CoachEveningSummaryPolicy.displayCommentary(from: cache.summary)
+                )
+                #endif
                 CoachEveningSummaryDiagnostics.event(
                     "cache.hit",
                     detail: CoachEveningSummaryDiagnostics.flightDetail(
@@ -98,6 +111,15 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
                 )
             } else if let summary, self.owner == owner {
                 // In-memory success (e.g. disk write failed earlier) — treat as session cache hit.
+                lastAppliedUISource = "memory"
+                #if DEBUG
+                CoachEveningSummaryDebugTape.logUI(
+                    source: "memory",
+                    requestId: lastAppliedRequestId,
+                    generatedAt: summary.generatedAt,
+                    displayedNote: CoachEveningSummaryPolicy.displayCommentary(from: summary)
+                )
+                #endif
                 CoachEveningSummaryDiagnostics.event(
                     "cache.hit",
                     detail: CoachEveningSummaryDiagnostics.flightDetail(
@@ -504,6 +526,16 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             receivedAt = received
             cachedFingerprint = fingerprint
             lastRefreshFailed = false
+            lastAppliedRequestId = requestId
+            lastAppliedUISource = result.summary.source == "fallback" ? "fallback" : "http"
+            #if DEBUG
+            CoachEveningSummaryDebugTape.logUI(
+                source: lastAppliedUISource ?? "http",
+                requestId: requestId,
+                generatedAt: result.summary.generatedAt,
+                displayedNote: CoachEveningSummaryPolicy.displayCommentary(from: result.summary)
+            )
+            #endif
 
             var diskSaved = true
             do {

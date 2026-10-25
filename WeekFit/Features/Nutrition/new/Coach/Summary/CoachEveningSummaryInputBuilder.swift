@@ -168,9 +168,9 @@ enum CoachEveningSummaryInputBuilder {
                 "Today's HealthKit active energy: \(Int(input.actualLoad.activeCalories)) kcal. This is energy expenditure, not food intake."
             ))
         }
-        if let dayComparisonFact, !dayComparisonFact.isEmpty {
-            facts["activity", default: []].append(fact("activity.dayComparison", dayComparisonFact))
-        }
+        // Distance vs usual is already shown on the evening card. Do not send it to the model —
+        // it reliably causes restated km and "deficit" framing of quieter days.
+        _ = dayComparisonFact
 
         // MARK: Feeling
         if let checkIn = CoachFeelingCheckInStore.latest(on: now, calendar: calendar) {

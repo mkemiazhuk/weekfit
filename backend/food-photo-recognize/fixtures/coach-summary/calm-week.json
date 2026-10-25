@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "day": "2026-10-25",
+  "timezone": "Europe/Warsaw",
+  "locale": "pl",
+  "phase": "evening",
+  "facts": {
+    "sleep": [
+      {
+        "id": "sleep.duration",
+        "text": "Sleep recorded for today: 7.4 hours. Source: HealthKit."
+      }
+    ],
+    "activity": [
+      {
+        "id": "activity.item.0",
+        "text": "Spacer, type walking, status completed; duration 35 min."
+      }
+    ],
+    "recentSleep": [
+      {
+        "id": "history.sleep.2026-10-25",
+        "text": "Wake-day 2026-10-25: asleep=444 min."
+      },
+      {
+        "id": "history.sleep.2026-10-24",
+        "text": "Wake-day 2026-10-24: asleep=450 min."
+      },
+      {
+        "id": "history.sleep.2026-10-23",
+        "text": "Wake-day 2026-10-23: asleep=438 min."
+      }
+    ],
+    "recentVitals": [
+      {
+        "id": "history.vitals.2026-10-25",
+        "text": "Wake-day 2026-10-25: HRV SDNN=45.0 ms; resting HR=54.0 bpm."
+      },
+      {
+        "id": "history.vitals.2026-10-24",
+        "text": "Wake-day 2026-10-24: HRV SDNN=47.0 ms; resting HR=53.0 bpm."
+      }
+    ],
+    "baseline": [
+      {
+        "id": "baseline.hrvSDNN",
+        "text": "Prior 28-day reference hrvSDNN: median=46.0; observed days=22/28."
+      }
+    ]
+  }
+}

@@ -89,7 +89,8 @@ enum CoachEveningSummaryService {
         }
         #endif
         // Enrich only inside the shared flight: Root and Coach cannot each query/generate.
-        // Do not request new permissions or read real health data when access is unavailable.
+        // Skip weekly HK history only when Health is unavailable (`sleep.unavailable`).
+        // `sleep.duration.unknown` must NOT block recentActivity / vitals / baseline enrichment.
         if AccountSessionController.shared.mode != .reviewDemo,
            input.facts["sleep"]?.contains(where: { $0.id == "sleep.unavailable" }) == false,
            let context = await weeklyFacts(for: input) {
@@ -108,6 +109,10 @@ enum CoachEveningSummaryService {
         guard WorkspaceOwnerStore.currentIdentityToken() == owner else { throw CancellationError() }
         let body = try JSONEncoder().encode(input)
         request.httpBody = body
+        #if DEBUG
+        // Log the exact HTTP body after weekly enrichment — do not rebuild a parallel payload.
+        CoachEveningSummaryDebugTape.logInput(clientRequestId: clientRequestId, httpBody: body)
+        #endif
 
         CoachEveningSummaryDiagnostics.event(
             "http.request",
@@ -133,6 +138,16 @@ enum CoachEveningSummaryService {
             throw CancellationError()
         } catch {
             let elapsed = durationMs(since: started)
+            #if DEBUG
+            CoachEveningSummaryDebugTape.logOutput(
+                clientRequestId: clientRequestId,
+                serverRequestId: nil,
+                status: nil,
+                durationMs: elapsed,
+                responseBody: nil,
+                transportError: String(describing: type(of: error))
+            )
+            #endif
             CoachEveningSummaryDiagnostics.error(
                 "http.transport",
                 detail: CoachEveningSummaryDiagnostics.flightDetail(
@@ -146,6 +161,16 @@ enum CoachEveningSummaryService {
 
         let elapsed = durationMs(since: started)
         guard let http = response as? HTTPURLResponse else {
+            #if DEBUG
+            CoachEveningSummaryDebugTape.logOutput(
+                clientRequestId: clientRequestId,
+                serverRequestId: nil,
+                status: nil,
+                durationMs: elapsed,
+                responseBody: data,
+                transportError: "nonHTTP"
+            )
+            #endif
             CoachEveningSummaryDiagnostics.error(
                 "http.nonHTTP",
                 detail: CoachEveningSummaryDiagnostics.flightDetail(
@@ -162,6 +187,17 @@ enum CoachEveningSummaryService {
         let bodyRequestId = extractRequestId(from: data)
         // Prefer body (server-authoritative), then header, then client-sent id.
         let requestId = firstNonEmpty(bodyRequestId, headerRequestId, clientRequestId) ?? clientRequestId
+
+        #if DEBUG
+        // Full UTF-8 response before decode — including non-200 bodies.
+        CoachEveningSummaryDebugTape.logOutput(
+            clientRequestId: clientRequestId,
+            serverRequestId: requestId,
+            status: http.statusCode,
+            durationMs: elapsed,
+            responseBody: data
+        )
+        #endif
 
         CoachEveningSummaryDiagnostics.event(
             "http.response",
@@ -213,7 +249,7 @@ enum CoachEveningSummaryService {
             detail: CoachEveningSummaryDiagnostics.flightDetail(
                 owner: owner, day: summary.day, source: "http",
                 requestId: requestId,
-                extra: "locale=\(summary.locale) headlineLen=\(summary.headline.count)"
+                extra: "locale=\(summary.locale) headlineLen=\(summary.headline.count) source=\(summary.source)"
             )
         )
         return CoachEveningSummaryGenerationResult(summary: summary, requestId: requestId, validationInput: input)

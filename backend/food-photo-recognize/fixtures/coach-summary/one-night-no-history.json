@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "day": "2026-10-25",
+  "timezone": "Europe/Warsaw",
+  "locale": "pl",
+  "phase": "evening",
+  "facts": {
+    "sleep": [
+      {
+        "id": "sleep.duration",
+        "text": "Sleep recorded for today: 6.5 hours. Source: HealthKit."
+      }
+    ],
+    "activity": [
+      {
+        "id": "activity.none",
+        "text": "No workout logged for today."
+      }
+    ],
+    "nutrition": [
+      {
+        "id": "nutrition.completeness",
+        "text": "Food log completeness is unknown."
+      }
+    ],
+    "feeling": [
+      {
+        "id": "feeling.none",
+        "text": "No evening feeling check-in recorded yet."
+      }
+    ]
+  }
+}

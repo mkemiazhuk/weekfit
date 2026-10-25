@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "day": "2026-10-25",
+  "timezone": "Europe/Warsaw",
+  "locale": "pl",
+  "phase": "evening",
+  "facts": {
+    "sleep": [
+      {
+        "id": "sleep.duration.unknown",
+        "text": "No sleep duration recorded for today in HealthKit. Treat sleep as unknown, not zero."
+      }
+    ],
+    "activity": [
+      {
+        "id": "activity.item.0",
+        "text": "Spacer, type walking, status completed; duration 40 min."
+      },
+      {
+        "id": "activity.load",
+        "text": "Today's HealthKit active energy: 320 kcal. Day still in progress until local midnight."
+      }
+    ],
+    "nutrition": [
+      {
+        "id": "nutrition.meals.none",
+        "text": "No completed meal/food logs for today."
+      }
+    ],
+    "recentActivity": [
+      {
+        "id": "history.activity.2026-10-24",
+        "text": "Local day 2026-10-24: active energy=780.0 kcal; Day complete=true."
+      },
+      {
+        "id": "history.activity.2026-10-23",
+        "text": "Local day 2026-10-23: active energy=910.0 kcal; Day complete=true."
+      }
+    ]
+  }
+}

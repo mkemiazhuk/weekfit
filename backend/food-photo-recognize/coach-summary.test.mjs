@@ -6,7 +6,7 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {createServer} from './server.mjs';
 import {ServiceError} from './recognition.mjs';
-import {validateDay,validateSummary,generateSummary,localDayAndHour,normalizeLocale,hasEnglishLanguageLeak,SUMMARY_PROMPT_VERSION} from './coach-summary.mjs';
+import {validateDay,validateSummary,generateSummary,localDayAndHour,normalizeLocale,hasEnglishLanguageLeak,emptyFactsFallbackSummary,countFacts,SUMMARY_PROMPT_VERSION} from './coach-summary.mjs';
 
 const input=()=>({schemaVersion:1,day:'2026-10-12',timezone:'Europe/Warsaw',locale:'ru',phase:'evening',facts:{sleep:[{id:'sleep.duration',text:'Last night: 6 hours sleep.'}],nutrition:[{id:'nutrition.completeness',text:'Food log completeness unknown.'}],coachDecision:[{id:'coach.priority',text:'One priority: wind down for sleep.'}]}});
 const result=()=>({headline:'Итог дня',today:{text:'Сон был коротким.',evidenceIds:['sleep.duration']},now:{text:'Пора готовиться ко сну.',evidenceIds:['coach.priority']},tomorrow:{text:'План на завтра пока неизвестен.',evidenceIds:[]},limitations:['Питание записано не полностью.']});
@@ -40,7 +40,16 @@ test('english leak detector catches store-client English notes under Polish',()=
   assert.equal(hasEnglishLanguageLeak('You walked 3.8 km today.','en'),false);
 });
 test('duplicate IDs and excessive text rejected',()=>{const b=input();b.facts.feeling=[b.facts.sleep[0]];assert.throws(()=>validateDay(b));b.facts.feeling=[{id:'feeling',text:'a'.repeat(501)}];assert.throws(()=>validateDay(b));});
-test('empty snapshot rejected',()=>assert.throws(()=>validateDay({...input(),facts:{}}),/insufficient_day_data/));
+test('empty or missing facts validate without OpenAI and produce localized fallback',()=>{
+  const empty=validateDay({...input(),facts:{}});
+  assert.equal(countFacts(empty.facts).total,0);
+  const missing=validateDay({schemaVersion:1,day:'2026-10-12',timezone:'Europe/Warsaw',locale:'pl',phase:'evening'});
+  assert.equal(countFacts(missing.facts).total,0);
+  const fb=emptyFactsFallbackSummary('pl');
+  assert.doesNotThrow(()=>validateSummary(fb,missing));
+  assert.match(fb.today.text,/brakuje danych/i);
+  assert.deepEqual(fb.today.evidenceIds,[]);
+});
 test('invented evidence rejected',()=>{const r=result();r.today.evidenceIds=['invented'];assert.throws(()=>validateSummary(r,validateDay(input())),/invalid_summary_result/);});
 test('english summary under non-english locale is rejected',()=>{
   const r=result();
@@ -96,7 +105,30 @@ test('cannot generate before 20:00 or backdate requests',async t=>{let calls=0;c
 test('next local day permits one new request',async t=>{let calls=0;const dir=await directory(t);const generate=async()=>{calls++;return {result:result()};};const a=await server(t,dir,generate);await a.post(input());const b=await server(t,dir,generate,{dependencies:{summaryNow:()=>new Date('2026-10-13T18:00:00Z')}});assert.equal((await b.post({...input(),day:'2026-10-13'})).status,200);assert.equal(calls,2);});
 test('storage misconfiguration fails closed without AI',async t=>{let calls=0;const {post}=await server(t,'',async()=>{calls++;return {result:result()};});assert.equal((await post(input())).status,503);assert.equal(calls,0);});
 test('concurrency limit is acquired before asynchronous reservation',async t=>{let running=0,peak=0;const {post}=await server(t,await directory(t),async()=>{running++;peak=Math.max(peak,running);await new Promise(r=>setTimeout(r,40));running--;return {result:result()};},{config:{summaryConcurrency:1}});const rs=await Promise.all([post(input(),'Bearer a'),post(input(),'Bearer b'),post(input(),'Bearer c')]);assert.equal(peak,1);assert.equal(rs.filter(r=>r.status===200).length,1);assert.equal(rs.filter(r=>r.status===503).length,2);});
-test('structured output has bounded tokens, no photo and no storage',async()=>{let sent;const r=await generateSummary(validateDay(input()),{apiKey:'test',summaryModel:'test-model'},async(url,opts)=>{sent=JSON.parse(opts.body);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(result())}]}]})};});assert.equal(sent.store,false);assert.equal(sent.max_output_tokens,1200);assert.equal(sent.text.format.strict,true);assert.equal(sent.reasoning,undefined);assert.equal(r.result.headline,'Итог дня');assert.match(sent.instructions,/40.65 words/);assert.equal(SUMMARY_PROMPT_VERSION,10);assert.match(sent.instructions,/personal activity, sleep and recovery coach/);assert.match(sent.instructions,/LANGUAGE LOCK/);assert.match(sent.instructions,/Russian/);assert.match(sent.instructions,/SEVEN days/);assert.match(sent.instructions,/Do NOT tell the user what the app already shows/);});
+test('structured output has bounded tokens, no photo and no storage',async()=>{let sent;const r=await generateSummary(validateDay(input()),{apiKey:'test',summaryModel:'test-model'},async(url,opts)=>{sent=JSON.parse(opts.body);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(result())}]}]})};});assert.equal(sent.store,false);assert.equal(sent.max_output_tokens,1200);assert.equal(sent.text.format.strict,true);assert.equal(sent.reasoning,undefined);assert.equal(r.result.headline,'Итог дня');assert.match(sent.instructions,/40.65 words/);assert.equal(SUMMARY_PROMPT_VERSION,11);assert.match(sent.instructions,/personal activity, sleep and recovery coach/);assert.match(sent.instructions,/LANGUAGE LOCK/);assert.match(sent.instructions,/Russian/);assert.match(sent.instructions,/SEVEN days/);assert.match(sent.instructions,/Hard bans/);assert.match(sent.instructions,/At most ONE next-step/);});
+test('empty facts return fallback without calling the provider',async t=>{
+  let calls=0;
+  const {post}=await server(t,await directory(t),async()=>{calls++;return {result:result()};},{
+    config:{summaryOncePerDay:false},
+    dependencies:{summaryNow:()=>new Date('2026-10-12T18:00:00Z')}
+  });
+  const res=await post({schemaVersion:1,day:'2026-10-12',timezone:'Europe/Warsaw',locale:'pl',phase:'evening',facts:{}});
+  assert.equal(res.status,200);
+  const body=await res.json();
+  assert.equal(body.source,'fallback');
+  assert.equal(body.promptVersion,11);
+  assert.equal(body.factTotal,0);
+  assert.equal(body.reused,false);
+  assert.match(body.today.text,/brakuje danych/i);
+  assert.equal(calls,0);
+});
+test('malformed day and unauthorized still fail',async t=>{
+  let calls=0;
+  const {post}=await server(t,await directory(t),async()=>{calls++;return {result:result()};});
+  assert.equal((await post({...input(),day:'not-a-date'})).status,400);
+  assert.equal((await post(input(),null)).status,401);
+  assert.equal(calls,0);
+});
 test('unrestricted mode allows before 20:00 and always calls AI',async t=>{
   let calls=0;
   const {post}=await server(t,await directory(t),async()=>{calls++;return {result:result()};},{

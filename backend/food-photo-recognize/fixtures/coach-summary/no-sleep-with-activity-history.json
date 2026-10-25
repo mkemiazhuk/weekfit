@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "day": "2026-10-25",
+  "timezone": "Europe/Warsaw",
+  "locale": "pl",
+  "phase": "evening",
+  "facts": {
+    "sleep": [
+      {
+        "id": "sleep.duration.unknown",
+        "text": "No sleep duration recorded for today in HealthKit. Treat sleep as unknown, not zero."
+      }
+    ],
+    "activity": [
+      {
+        "id": "activity.item.0",
+        "text": "Run, type running, status completed; duration 32 min."
+      }
+    ],
+    "recentActivity": [
+      {
+        "id": "history.activity.2026-10-24",
+        "text": "Local day 2026-10-24: active energy=850.0 kcal; Day complete=true."
+      },
+      {
+        "id": "history.activity.2026-10-23",
+        "text": "Local day 2026-10-23: active energy=620.0 kcal; Day complete=true."
+      },
+      {
+        "id": "history.activity.2026-10-22",
+        "text": "Local day 2026-10-22: active energy=740.0 kcal; Day complete=true."
+      }
+    ],
+    "baseline": [
+      {
+        "id": "baseline.activeKcal",
+        "text": "Prior 28-day reference activeKcal: median=700.0; observed days=20/28."
+      }
+    ]
+  }
+}

@@ -276,6 +276,26 @@ struct CoachEveningRecapView: View {
                 .foregroundStyle(primary.opacity(0.95))
                 .fixedSize(horizontal: false, vertical: true)
                 .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
+                #if DEBUG
+                .onAppear {
+                    // Exact card text after comparison/fallback merge — not only raw AI passages.
+                    CoachEveningSummaryDebugTape.logUI(
+                        source: "card",
+                        requestId: nil,
+                        generatedAt: nil,
+                        displayedNote: text
+                    )
+                }
+                .onLongPressGesture {
+                    // Explicit developer action: write last INPUT/OUTPUT tape to Application Support.
+                    do {
+                        let url = try CoachEveningSummaryDebugTape.exportLastToApplicationSupport()
+                        print("[CoachSummary][EXPORT] saved \(url.lastPathComponent)")
+                    } catch {
+                        print("[CoachSummary][EXPORT] failed error=\(String(describing: type(of: error)))")
+                    }
+                }
+                #endif
         } else if isLoadingCommentary, selectedFeeling == nil {
             HStack(spacing: 8) {
                 ProgressView()

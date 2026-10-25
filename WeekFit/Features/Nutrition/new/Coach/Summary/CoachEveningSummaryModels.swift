@@ -31,17 +31,19 @@ struct CoachEveningSummary: Codable, Equatable, Sendable {
 
     func isValid(for input: CoachEveningSummaryInput) -> Bool {
         let ids = Set(input.facts.values.flatMap { $0.map(\.id) })
-        return day == input.day && locale == input.locale && source == "ai"
+        let allowedSources: Set<String> = ["ai", "fallback"]
+        return day == input.day && locale == input.locale && allowedSources.contains(source)
             && !headline.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && headline.count <= 120 && limitations.count <= 6
             && [today, now, tomorrow].allSatisfy {
                 !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     && $0.text.count <= 700 && $0.evidenceIds.allSatisfy(ids.contains)
             }
-            && CoachEveningSummaryPolicy.textMatchesRequestedLocale(
-                [today.text, tomorrow.text, now.text].joined(separator: " "),
-                locale: locale
-            )
+            && (source == "fallback"
+                || CoachEveningSummaryPolicy.textMatchesRequestedLocale(
+                    [today.text, tomorrow.text, now.text].joined(separator: " "),
+                    locale: locale
+                ))
     }
 }
 

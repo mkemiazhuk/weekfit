@@ -8,7 +8,7 @@ const string = {type:'string'};
 const passage = object({text:string, evidenceIds:{type:'array',items:string}});
 export const summarySchema = object({headline:string, today:passage, now:passage, tomorrow:passage, limitations:{type:'array',items:string}});
 /** Bumped when the Coach summary instructions change — exposed on /healthz for deploy checks. */
-export const SUMMARY_PROMPT_VERSION = 10;
+export const SUMMARY_PROMPT_VERSION = 11;
 const groups = ['sleep','nutrition','activity','feeling','tomorrow','coachDecision','recentSleep','recentVitals','recentActivity','baseline','recentRecaps','recentFeeling'];
 const localeLanguageName = {
   en: 'English', ru: 'Russian', 'zh-Hans': 'Simplified Chinese', fr: 'French',
@@ -63,6 +63,101 @@ export function hasEnglishLanguageLeak(text, locale) {
   return false;
 }
 
+export function countFacts(facts) {
+  const counts = {};
+  let total = 0;
+  for (const group of groups) {
+    const n = Array.isArray(facts?.[group]) ? facts[group].length : 0;
+    counts[group] = n;
+    total += n;
+  }
+  return {counts, total};
+}
+
+/** Honest localized empty-day reply — no OpenAI, no invented observations. */
+export function emptyFactsFallbackSummary(locale) {
+  const table = {
+    en: {
+      headline: 'Quiet evening',
+      today: 'There is not enough logged information tonight for a personal observation.',
+      now: 'There is not enough logged information tonight for a personal observation.',
+      tomorrow: 'If you like, check how you feel this evening.',
+      limitations: ['No day facts were supplied.']
+    },
+    ru: {
+      headline: 'Спокойный вечер',
+      today: 'Сегодня недостаточно данных для персонального наблюдения.',
+      now: 'Сегодня недостаточно данных для персонального наблюдения.',
+      tomorrow: 'Если хотите, отметьте, как вы себя чувствуете этим вечером.',
+      limitations: ['Факты дня не переданы.']
+    },
+    pl: {
+      headline: 'Spokojny wieczór',
+      today: 'Dziś brakuje danych, by przygotować osobistą obserwację.',
+      now: 'Dziś brakuje danych, by przygotować osobistą obserwację.',
+      tomorrow: 'Jeśli chcesz, oceń, jak się dziś wieczorem czujesz.',
+      limitations: ['Brak faktów dnia.']
+    },
+    fr: {
+      headline: 'Soirée calme',
+      today: "Il n'y a pas assez d'informations ce soir pour une observation personnelle.",
+      now: "Il n'y a pas assez d'informations ce soir pour une observation personnelle.",
+      tomorrow: 'Si tu veux, indique comment tu te sens ce soir.',
+      limitations: ['Aucun fait du jour fourni.']
+    },
+    de: {
+      headline: 'Ruhiger Abend',
+      today: 'Heute fehlen genug Daten für eine persönliche Beobachtung.',
+      now: 'Heute fehlen genug Daten für eine persönliche Beobachtung.',
+      tomorrow: 'Wenn du magst, notiere, wie du dich heute Abend fühlst.',
+      limitations: ['Keine Tagesfakten übermittelt.']
+    },
+    es: {
+      headline: 'Noche tranquila',
+      today: 'Hoy no hay datos suficientes para una observación personal.',
+      now: 'Hoy no hay datos suficientes para una observación personal.',
+      tomorrow: 'Si quieres, indica cómo te sientes esta noche.',
+      limitations: ['No se enviaron hechos del día.']
+    },
+    it: {
+      headline: 'Sera tranquilla',
+      today: 'Stasera non ci sono abbastanza dati per un’osservazione personale.',
+      now: 'Stasera non ci sono abbastanza dati per un’osservazione personale.',
+      tomorrow: 'Se vuoi, indica come ti senti questa sera.',
+      limitations: ['Nessun fatto del giorno inviato.']
+    },
+    ja: {
+      headline: '静かな夜',
+      today: '今夜は個人向けの気づきを出すのに十分な記録がありません。',
+      now: '今夜は個人向けの気づきを出すのに十分な記録がありません。',
+      tomorrow: 'よければ、今の気分を記録してみてください。',
+      limitations: ['日次ファクトがありません。']
+    },
+    ko: {
+      headline: '고요한 저녁',
+      today: '오늘 저녁에는 개인 관찰을 만들 데이터가 충분하지 않습니다.',
+      now: '오늘 저녁에는 개인 관찰을 만들 데이터가 충분하지 않습니다.',
+      tomorrow: '원하면 지금 기분을 남겨 보세요.',
+      limitations: ['일일 사실이 전달되지 않았습니다.']
+    },
+    'zh-Hans': {
+      headline: '安静的夜晚',
+      today: '今晚没有足够信息给出个性化观察。',
+      now: '今晚没有足够信息给出个性化观察。',
+      tomorrow: '如果愿意，可以记录一下此刻的感受。',
+      limitations: ['未提供当日事实。']
+    }
+  };
+  const copy = table[locale] ?? table.en;
+  return {
+    headline: copy.headline,
+    today: {text: copy.today, evidenceIds: []},
+    now: {text: copy.now, evidenceIds: []},
+    tomorrow: {text: copy.tomorrow, evidenceIds: []},
+    limitations: copy.limitations
+  };
+}
+
 export function validateDay(body, options = {}) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) bad();
   // Ignore unknown top-level keys so store/legacy clients stay compatible when fields evolve.
@@ -76,18 +171,19 @@ export function validateDay(body, options = {}) {
   const locale = normalizeLocale(body.locale, options.acceptLanguage);
   const phase = ['morning', 'day', 'evening'].includes(body.phase) ? body.phase : 'evening';
 
-  if (!body.facts || typeof body.facts !== 'object' || Array.isArray(body.facts)) bad();
+  // Missing facts → empty object (honest fallback later). Explicit non-object still invalid.
+  const rawFacts = body.facts == null ? {} : body.facts;
+  if (typeof rawFacts !== 'object' || Array.isArray(rawFacts)) bad();
   // Ignore unknown fact groups (older clients omit history; newer may send extras).
   const ids = new Set(), facts = {};
   for (const group of groups) {
-    const rows = body.facts[group] ?? [];
+    const rows = rawFacts[group] ?? [];
     if (!Array.isArray(rows) || rows.length > 20) bad();
     facts[group] = rows.map(row => {
       if (!row || Object.keys(row).some(k => !['id', 'text'].includes(k)) || typeof row.id !== 'string' || !/^[a-zA-Z0-9_.-]{1,80}$/.test(row.id) || ids.has(row.id) || typeof row.text !== 'string' || !row.text.trim() || row.text.length > 500) bad();
       ids.add(row.id); return {id: row.id, text: row.text.trim()};
     }).sort((a, b) => a.id.localeCompare(b.id));
   }
-  if (!ids.size) throw new ServiceError('insufficient_day_data', 422);
   return {schemaVersion: 1, day: body.day, timezone: body.timezone, locale, phase, facts};
 }
 
@@ -116,22 +212,28 @@ function buildInstructions(input, {strictLanguage = false} = {}) {
 
 Purpose: help the user learn something useful about their own recent pattern, rather than repeat what they already see on screen. Analyze the recent SEVEN days against the disjoint PRECEDING 28-day personal reference when supplied. Prefer one meaningful connection across days, not a list of metrics or a demand to complete goals. Numbers are supporting evidence, not the message.
 
-Do NOT tell the user what the app already shows: today's distance/km, steps, workout titles already on the hero card, meal/drink counts, "you logged N meals", food-log completeness, or raw calorie totals. They already know what they walked and what they ate. The note must add a non-obvious observation (recent load vs quieter day, sleep/recovery signal, repeated timing pattern, or a calm "nothing unusual") plus at most one proportionate next step. Never expose technical journal phrases such as 'food log completeness is unknown'.
+Hard bans (visible copy):
+- Do NOT restate today's distance, km, steps, hero workout title, meal/drink counts, calorie totals, or "you logged N meals".
+- Do NOT frame a quieter or lower-distance day as a failure, deficit, or shortcoming unless comparable complete days and coverage clearly support a pattern.
+- Do NOT use missing meals or food-log completeness as the main observation, or ask the user to fill the food journal just to produce a non-empty note.
+- Do NOT invent sleep-regularity advice when sleep is unknown/missing. Unknown sleep is not proof of irregular sleep.
+- At most ONE next-step sentence total across today+tomorrow. Prefer zero actions when evidence is thin.
+- Missing data ≠ "everything is fine" and ≠ "you must change your plan". If nothing useful is supported, say so calmly.
 
 Analysis:
-- Read coverage first. Missing, denied, *.none and *.unknown are unknown, never zero. A completed calendar day does not prove full watch wear. Do not compare a partial current-day total with a complete-day average to infer a deficit.
+- Read coverage first. Missing, denied, *.none and *.unknown are unknown, never zero. A completed calendar day does not prove full watch wear. Do not compare a partial or still-open current-day total with a complete-day average to infer a deficit.
 - Keep chronology explicit: activity on D can precede sleep ending on D+1 and measurements on D+1. Morning readings cannot establish recovery from activity later that day. Use actual session timestamps; a workout after sleep onset is not an exposure for that earlier sleep.
 - Look for accumulated activity, repeated shifts in bedtime, sleep continuity, and changes in RHR/HRV relative to the user's reference. Apple Exercise minutes are not necessarily workout duration; active energy estimates are not training intensity. Do not add overlapping workouts or infer strain from calories alone.
 - Distinguish a one-off observation from a repeated association. A repeated pattern needs at least three comparable exposure-to-next-day pairs, known outcomes, and at least two comparable non-exposure pairs. Count supporting examples AND exceptions. Seven days alone often cannot establish a pattern. Do not invent a trend from a median, or claim a pattern exists just because more than one metric moved.
 - Never turn association into cause. Use 'may be related' only when timing and data support it; otherwise describe co-occurrence. Do not diagnose illness, overtraining or sleep disorders. Do not interpret HRV against universal thresholds. RHR and sleeping heart rate are different measures. Recovery scores derive from sleep/vitals and are not independent corroboration. Watch sleep stages are estimates, not proof of impaired recovery.
 - Prefer a supported new observation over repeating recentRecaps. Previous advice is not health evidence. Revisit the same topic only if new evidence materially changes it.
-- Food logs of unknown completeness cannot establish whole-day under-eating, protein deficiency or energy deficit. Do not default to asking for more food logs when sleep/activity history offers a more useful observation.
+- Food logs of unknown completeness cannot establish whole-day under-eating, protein deficiency or energy deficit. Prefer sleep/activity history when available; otherwise give a narrow honest observation without a logging homework task.
 - If there is no meaningful deviation or evidence is sparse/conflicting, say so simply. Do not manufacture a hidden problem. With legacy clients lacking history, give an honest daily observation, never a fabricated weekly pattern — still avoid restating on-screen meal counts or distance.
 
 Display contract (critical): the current app displays today.text followed by tomorrow.text, capped at THREE sentences; now.text is only a fallback. Do not rely on headline or limitations being visible.
 - headline: short human insight label, at most six words.
 - today: one or two short sentences explaining the single selected observation and its practical meaning. Tie together relevant days or domains when justified. State material uncertainty here.
-- tomorrow: one short sentence offering ONE proportionate action or small experiment, tonight or tomorrow, grounded in the observation. Do not force a second action. If there is no basis to change behavior, say the data do not suggest a change; do not prescribe rest or extra exercise from missing plans or incomplete daily totals.
+- tomorrow: one short sentence with at most ONE proportionate action or small experiment, or an explicit no-change line. Never two advice bullets.
 - now: one standalone fallback sentence conveying the same observation/action without adding a new recommendation.
 - today + tomorrow: at most THREE sentences, usually 40–65 words in English (equivalently concise in other languages), hard cap 90 words. Avoid decimal numbers and abbreviations with sentence-ending periods because older clients split sentences naively. No bullet lists, generic praise, jargon, pressure to catch up, invented targets, portions, fluid prescriptions or promises of readiness.
 
@@ -144,7 +246,8 @@ Examples of reasoning, not facts to copy:
 - Two active days followed by a quieter partial day: acknowledge recent accumulated activity; do not label today's smaller distance a failure or claim full recovery.
 - Long sleep plus RHR above personal reference and HRV below it: describe mixed signals with actual timing; do not claim long sleep proves full recovery or that training caused the changes.
 - One late workout followed by short sleep: call it a single observation, not a recurring pattern.
-- Consistent measurements without meaningful changes: a calm brief conclusion, no forced problem or logging task.`;
+- Consistent measurements without meaningful changes: a calm brief conclusion, no forced problem or logging task.
+- Unknown sleep tonight with useful activity history: comment on activity pattern only; do not prescribe "more regular sleep" from missing sleep data.`;
 }
 
 async function callProvider(input, config, fetcher, {strictLanguage = false} = {}) {
@@ -207,6 +310,15 @@ export function createSummaryHandler(config, dependencies) {
       let body; try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new ServiceError('invalid_json'); }
       const input = validateDay(body, {acceptLanguage: req.headers['accept-language']});
       const local = localDayAndHour(clock(), input.timezone);
+      const {counts: factCounts, total: factTotal} = countFacts(input.facts);
+      const meta = {
+        promptVersion: SUMMARY_PROMPT_VERSION,
+        locale: input.locale,
+        localDay: local.day,
+        factCounts,
+        factTotal
+      };
+      const logBase = {requestId, endpoint: 'coach_summary', ...meta};
       // DEBUG clients send X-WeekFit-Coach-Summary-Unrestricted: 1 so prompt/locale iteration
       // is not blocked by the production once-per-day claim (local-developer, or staging flag).
       const unrestricted = !oncePerDay
@@ -218,6 +330,23 @@ export function createSummaryHandler(config, dependencies) {
         throw new ServiceError('outside_evening_window', 422);
       }
 
+      // Authorized + valid day/timezone with no useful facts → honest fallback, no OpenAI.
+      if (factTotal === 0) {
+        const result = emptyFactsFallbackSummary(input.locale);
+        validateSummary(result, input);
+        const value = {
+          ...result,
+          day: input.day,
+          locale: input.locale,
+          generatedAt: clock().toISOString(),
+          source: 'fallback',
+          ...meta,
+          reused: false
+        };
+        console.log(JSON.stringify({...logBase, outcome: 'fallback_empty_facts', source: 'fallback', reused: false, latencyMs: Date.now() - started}));
+        return send(200, value);
+      }
+
       if (unrestricted) {
         // Unrestricted testing: ignore existing daily claim files; always invoke the provider.
         // Acquire concurrency immediately before the async provider call (no await between check and ++).
@@ -226,8 +355,15 @@ export function createSummaryHandler(config, dependencies) {
         try {
           const {result, usage} = await generate(input, config);
           validateSummary(result, input);
-          const value = {...result, day: input.day, locale: input.locale, generatedAt: clock().toISOString(), source: 'ai'};
-          console.log(JSON.stringify({requestId, endpoint: 'coach_summary', outcome: 'success', latencyMs: Date.now() - started, inputTokens: usage?.input_tokens, outputTokens: usage?.output_tokens, oncePerDay: false, unrestricted: true}));
+          const value = {
+            ...result,
+            day: input.day,
+            locale: input.locale,
+            generatedAt: clock().toISOString(),
+            source: 'ai',
+            ...meta
+          };
+          console.log(JSON.stringify({...logBase, outcome: 'success', source: 'ai', reused: false, latencyMs: Date.now() - started, inputTokens: usage?.input_tokens, outputTokens: usage?.output_tokens, oncePerDay: false, unrestricted: true}));
           return send(200, {...value, reused: false});
         } finally { active--; }
       }
@@ -252,9 +388,16 @@ export function createSummaryHandler(config, dependencies) {
       const save = async record => { const temp = `${file}.${requestId}.tmp`; await writeFile(temp, JSON.stringify(record), {mode: 0o600}); await rename(temp, file); };
       const task = Promise.resolve().then(() => generate(input, config)).then(async ({result, usage}) => {
         validateSummary(result, input);
-        const value = {...result, day: input.day, locale: input.locale, generatedAt: clock().toISOString(), source: 'ai'};
+        const value = {
+          ...result,
+          day: input.day,
+          locale: input.locale,
+          generatedAt: clock().toISOString(),
+          source: 'ai',
+          ...meta
+        };
         await save({status: 'completed', result: value});
-        console.log(JSON.stringify({requestId, endpoint: 'coach_summary', outcome: 'success', latencyMs: Date.now() - started, inputTokens: usage?.input_tokens, outputTokens: usage?.output_tokens, oncePerDay: true}));
+        console.log(JSON.stringify({...logBase, outcome: 'success', source: 'ai', reused: false, latencyMs: Date.now() - started, inputTokens: usage?.input_tokens, outputTokens: usage?.output_tokens, oncePerDay: true}));
         return value;
       }).catch(async error => {
         // If saving fails, the original reservation still prevents another provider call.
@@ -266,7 +409,7 @@ export function createSummaryHandler(config, dependencies) {
     } catch (error) {
       const timeout = ['TimeoutError', 'AbortError'].includes(error.name);
       const code = timeout ? 'summary_timeout' : error instanceof ServiceError ? error.code : 'internal_error';
-      console.log(JSON.stringify({requestId, endpoint: 'coach_summary', outcome: code, latencyMs: Date.now() - started}));
+      console.log(JSON.stringify({requestId, endpoint: 'coach_summary', outcome: code, latencyMs: Date.now() - started, promptVersion: SUMMARY_PROMPT_VERSION}));
       send(timeout ? 504 : error instanceof ServiceError ? error.status : 500, {error: code});
     }
   };
