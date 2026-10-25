@@ -4,7 +4,7 @@ import Foundation
 /// DEBUG-only evening-summary IO tape: console chunks + optional local export (no secrets).
 @MainActor
 enum CoachEveningSummaryDebugTape {
-    struct Bundle: Codable {
+    struct Snapshot: Codable {
         var clientRequestId: String
         var serverRequestId: String?
         var generatedAt: String?
@@ -21,7 +21,7 @@ enum CoachEveningSummaryDebugTape {
         var transportError: String?
     }
 
-    private(set) static var last: Bundle?
+    private(set) static var last: Snapshot?
 
     private static let chunkSize = 2_400
 
@@ -33,7 +33,7 @@ enum CoachEveningSummaryDebugTape {
             body: pretty,
             requestId: clientRequestId
         )
-        last = Bundle(
+        last = Snapshot(
             clientRequestId: clientRequestId,
             serverRequestId: nil,
             generatedAt: nil,
@@ -127,11 +127,11 @@ enum CoachEveningSummaryDebugTape {
     }
 
     private static var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "-"
+        Foundation.Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "-"
     }
 
     private static var buildNumber: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "-"
+        Foundation.Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "-"
     }
 
     private static func prettyJSON(_ data: Data) -> String? {
