@@ -5,7 +5,7 @@ import XCTest
 final class CoachEveningSummaryTests: XCTestCase {
     override func setUp() {
         super.setUp()
-        // Tests assert production once-per-day behavior even though DEBUG app defaults to unrestricted.
+        // Pin once-per-day explicitly so local UserDefaults overrides cannot leak into assertions.
         UserDefaults.standard.set(true, forKey: CoachEveningSummaryPolicy.oncePerDayOverrideKey)
     }
 
@@ -181,6 +181,60 @@ final class CoachEveningSummaryTests: XCTestCase {
     func testPolishNoteWithMetricTokensStillMatchesLocale() {
         let text = "Dziś pomiary HRV SDNN są rzadkie, więc nie da się pewnie mówić o regeneracji względem RHR."
         XCTAssertTrue(CoachEveningSummaryPolicy.textMatchesRequestedLocale(text, locale: "pl"))
+    }
+
+    func testSentenceSplitKeepsDecimalMetricsIntact() {
+        let text = "Сегодня утром зарегистрировано заметное снижение вариабельности сердечного ритма (HRV SDNN 20.5 мс) по сравнению с вашим обычным уровнем (медиана 30.9 мс), при этом частота покоя чуть ниже нормы."
+        let sentences = CoachEveningSummaryPolicy.splitIntoSentences(text)
+        XCTAssertEqual(sentences.count, 1)
+        XCTAssertTrue(sentences[0].contains("20.5"))
+        XCTAssertTrue(sentences[0].contains("30.9"))
+        XCTAssertFalse(sentences[0].contains("20. 5"))
+
+        let first = CoachEveningSummaryPolicy.firstSentence(of: text)
+        XCTAssertTrue(first.contains("20.5"))
+        XCTAssertTrue(first.contains("30.9"))
+        XCTAssertFalse(first.contains("HRV SDNN 20.") && !first.contains("20.5"))
+    }
+
+    func testDisplayCommentaryDoesNotTruncateOnDecimalPoints() {
+        let input = input(locale: "ru")
+        let summary = CoachEveningSummary(
+            headline: "Итог дня",
+            today: .init(
+                text: "Сегодня утром зарегистрировано заметное снижение вариабельности сердечного ритма (HRV SDNN 20.5 мс) по сравнению с вашим обычным уровнем (медиана 30.9 мс), при этом частота покоя чуть ниже нормы.",
+                evidenceIds: ["sleep.duration"]
+            ),
+            now: .init(text: "Держите нагрузку спокойной.", evidenceIds: []),
+            tomorrow: .init(text: "Завтра лучше не повышать интенсивность.", evidenceIds: []),
+            limitations: [],
+            day: input.day,
+            locale: "ru",
+            generatedAt: "2026-10-12T18:00:00Z",
+            source: "ai"
+        )
+        let note = CoachEveningSummaryPolicy.displayCommentary(from: summary)
+        XCTAssertTrue(note.contains("20.5"), note)
+        XCTAssertTrue(note.contains("30.9"), note)
+        XCTAssertTrue(note.contains("покоя") || note.contains("медиана"), "lost tail after decimal split: \(note)")
+        XCTAssertFalse(note.contains("20. 5"), note)
+        XCTAssertFalse(note.hasSuffix("20."), note)
+
+        let withComparison = CoachEveningRecapCopy.noteText(
+            commentary: note,
+            comparison: "Шагов меньше, чем обычно.",
+            feelingReaction: nil,
+            isLoading: false,
+            failed: false,
+            locale: "ru"
+        )
+        XCTAssertNotNil(withComparison)
+        XCTAssertTrue(withComparison!.contains("20.5"), withComparison!)
+        XCTAssertTrue(
+            withComparison!.contains("30.9") || withComparison!.contains("покоя"),
+            "UI takeaway truncated at decimal: \(withComparison!)"
+        )
+        XCTAssertFalse(withComparison!.hasSuffix("20."), withComparison!)
     }
 
     func testFallbackSourceIsAcceptedWhenFactsAreEmpty() {
@@ -439,7 +493,7 @@ final class CoachEveningSummaryTests: XCTestCase {
         XCTAssertEqual(calls, 1, "in-memory success must block same-session regeneration")
     }
 
-    func testRefreshFailureAllowsRetry() async {
+    func testFailedAttemptIsTerminalForTheDay() async {
         let store = temporaryStore()
         var calls = 0
         let gate = AsyncGate()
@@ -462,10 +516,38 @@ final class CoachEveningSummaryTests: XCTestCase {
 
         coordinator.refresh(input: input(), owner: "local", now: evening, calendar: calendar())
         for _ in 0..<40 { await Task.yield() }
-        XCTAssertEqual(calls, 2)
-        XCTAssertEqual(coordinator.summary?.headline, "Good")
-        XCTAssertFalse(coordinator.lastRefreshFailed)
+        XCTAssertEqual(calls, 1, "a failed evening attempt must not call the backend again")
+        XCTAssertNil(coordinator.summary)
+        XCTAssertTrue(coordinator.lastRefreshFailed)
         XCTAssertFalse(coordinator.isRefreshing)
+
+        let relaunch = CoachEveningSummaryCoordinator(store: store) { input, _ in
+            calls += 1
+            return self.result(input, headline: "ShouldNotRun")
+        }
+        relaunch.refresh(input: input(), owner: "local", now: evening, calendar: calendar())
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertEqual(calls, 1, "relaunch must keep the failed day claim")
+        XCTAssertTrue(relaunch.lastRefreshFailed)
+    }
+
+    func testLanguageChangeDoesNotCallBackendAgain() async {
+        let store = temporaryStore()
+        var calls = 0
+        let coordinator = CoachEveningSummaryCoordinator(store: store) { input, _ in
+            calls += 1
+            return self.result(input, headline: "H\(calls)")
+        }
+        let evening = date("2026-10-12T20:30:00Z")
+        coordinator.refresh(input: input(locale: "ru"), owner: "local", now: evening, calendar: calendar())
+        for _ in 0..<40 { await Task.yield() }
+        XCTAssertEqual(calls, 1)
+
+        coordinator.refresh(input: input(locale: "pl"), owner: "local", now: evening, calendar: calendar())
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertEqual(calls, 1, "a language switch must reuse the day's single attempt")
+        XCTAssertEqual(coordinator.summary?.headline, "H1")
+        XCTAssertEqual(coordinator.summary?.locale, "ru")
     }
 
     func testTimeoutDoesNotMintSecondHTTP() async {

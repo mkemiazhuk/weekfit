@@ -8,7 +8,7 @@
 
 Client: `CoachEveningSummaryPolicy.isCoachSurfaceEnabled = true`  
 Client: `CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow = true`  
-Server: `COACH_SUMMARY_ONCE_PER_DAY` can stay `0` while fingerprint-based client refresh is active; set `1` for hard server once-per-day.
+Server: one OpenAI start per UID per local day after 20:00, reserved on the persistent disk before the call. Production refuses to boot if `COACH_SUMMARY_ONCE_PER_DAY=0`. Keep `COACH_AI_ENABLED` off until resume is intentional. Every instance must mount the same `COACH_SUMMARY_STORE_DIR` disk; a second disk or ephemeral Redis does not share the reservation.
 
 - Coach shows evening recap after 20:00 when there is no live/upcoming unresolved session.
 - AI auto-runs at most once per local day; first successful answer is cached and reused (activity fingerprint must not regenerate).
@@ -22,51 +22,49 @@ Server: `COACH_SUMMARY_ONCE_PER_DAY` can stay `0` while fingerprint-based client
 Filter: `subsystem:com.weekfit.app category:CoachEveningSummary`  
 No tokens or personal fact/summary text are logged. Key events: `coach.enter`, `cache.hit` / `cache.miss`, `button.tap`, `refresh.blocked`, `http.request` / `http.response`, `cache.saved`, `ui.ready`.
 
-## Production once-per-day (later)
+## Do not resume yet
 
-1. Set client flag `enforcesOncePerDayAndEveningWindow = true`.
-2. Set `COACH_SUMMARY_ONCE_PER_DAY=1` on the server and redeploy.
-3. Confirm `/healthz` shows `"coachSummaryOncePerDay":true`.
+Leave the Render service `weekfit-food-photo` suspended until an explicit resume command. A push to `main` that touches `backend/food-photo-recognize/**` publishes `ghcr.io/.../weekfit-food-photo:latest` and, when the `RENDER_DEPLOY_HOOK` secret is set, POSTs that hook. Keep this change off `main` until resume is intended.
 
-## Render (or similar)
+`COACH_AI_ENABLED` defaults to off in production. A boot with the flag unset does not start new Coach generations. A saved successful summary can still be read. Food recognition does not use this switch.
 
-iOS base URL is correct: `https://weekfit-food-photo.onrender.com` → `POST /v1/coach/day-summary`.  
-A `404 not_found` means the **running** container/commit is still photo-only (old `/healthz` without `coachSummaryConfigured`).
+## Render
 
-### Ship checklist
+iOS base URL: `https://weekfit-food-photo.onrender.com` → `POST /v1/coach/day-summary`.
 
-1. Backend with the route is on `main` (image `ghcr.io/mkemiazhuk/weekfit-food-photo:latest`).
-2. In Render → `weekfit-food-photo` → **Manual Deploy** → deploy latest image/`main` (GitHub Actions does not restart Render by itself).
-3. Persistent disk (for example mount `/var/data`) and env:
-   - `COACH_SUMMARY_STORE_DIR=/var/data/coach-summary` (empty → route exists but returns **503**)
-   - `COACH_SUMMARY_MODEL=gpt-4.1-mini` (optional)
-   - `COACH_SUMMARY_ONCE_PER_DAY=0` while testing
-   - keep `OPENAI_API_KEY`, `FIREBASE_PROJECT_ID=weekfitai`, `ALLOW_DEV_AUTH=0`
-4. Confirm live health:
-   ```bash
-   curl -sS https://weekfit-food-photo.onrender.com/healthz
-   # expect coachSummaryConfigured:true, coachSummaryOncePerDay:false,
-   # coachSummaryPromptVersion:6  (human judgment + tomorrow recommendation; no metric dump)
-   curl -sS -X POST https://weekfit-food-photo.onrender.com/v1/coach/day-summary \
-     -H 'Content-Type: application/json' -d '{}'
-   # expect 401 unauthorized (not 404 not_found)
-   ```
-   GitHub Actions publishes `ghcr.io/mkemiazhuk/weekfit-food-photo:latest` but does **not** restart Render unless secret `RENDER_DEPLOY_HOOK` is set. Otherwise use Manual Deploy after each prompt/backend change.
-5. Then test Coach **Получить итог** on device; reopen Coach and confirm `cache.hit` with no second POST.
+The reservation lives on one persistent disk. Every process that can call OpenAI for Coach must mount that same `COACH_SUMMARY_STORE_DIR`. A second disk, an ephemeral container filesystem, or Redis does not share the ledger. The in-memory map only joins waiters inside one process.
+
+### Safe enablement
+
+1. Keep the service suspended.
+2. Mount the disk and set `COACH_SUMMARY_STORE_DIR` (for example `/var/data/coach-summary`). An empty value returns `503 summary_not_configured` and does not call OpenAI.
+3. Remove `COACH_SUMMARY_ONCE_PER_DAY=0` and `COACH_SUMMARY_ALLOW_UNRESTRICTED_HEADER=1`. Production refuses to boot if either is set. The day guard cannot be turned off.
+4. Leave `COACH_AI_ENABLED` unset or `0`.
+5. Confirm `/healthz`: `coachSummaryConfigured: true`, `coachSummaryOncePerDay: true`, `coachAiEnabled: false`, `coachSummaryPromptVersion: 13`.
+6. Only on a later explicit command, set `COACH_AI_ENABLED=1` and resume the service.
+
+```bash
+curl -sS https://weekfit-food-photo.onrender.com/healthz
+curl -sS -X POST https://weekfit-food-photo.onrender.com/v1/coach/day-summary \
+  -H 'Content-Type: application/json' -d '{}'
+# expect 401 unauthorized while the process is up, not 404
+```
 
 ## Local backend
 
 ```bash
 cd backend/food-photo-recognize
 mkdir -p /tmp/weekfit-coach-summary
-# in .env:
 # COACH_SUMMARY_STORE_DIR=/tmp/weekfit-coach-summary
-# COACH_SUMMARY_ONCE_PER_DAY=0
+# Do not set COACH_SUMMARY_ONCE_PER_DAY=0. It no longer disables the guard,
+# and production will not boot with that value.
 npm test
-npm start
 ```
 
-## Once-per-day guarantee (when flag on)
+## What the disk guarantees
 
-- **Client:** atomic attempt file before network; restore on launch; language/metrics/tab changes do not reclaim.
-- **Server:** exclusive create per Firebase UID + local day before OpenAI; completed duplicates return saved answer; failed attempts stay terminal.
+- Exclusive create (`O_EXCL`) of `coach-guard/users/<sha256 uid>/days/<local day>.json` before `callProvider`.
+- The same directory holds the UTC-day budget, the minute budget, inflight slots, and the circuit file, so two processes on this volume share them.
+- Existing flat day files are migrated on the next read: `completed` stays readable, `failed` and any other prior attempt become terminal. No OpenAI call during migration.
+- A lock file left by a killed process fails closed (`503 coach_store_busy`) until an operator removes `coach-guard/lock`. That does not open a new provider call.
+- After the provider timeout plus 5 seconds, a `reserved` or `provider_started` record whose owner is gone is rewritten to `unknown`. The next request returns `409 attempt_unknown` and does not call OpenAI.

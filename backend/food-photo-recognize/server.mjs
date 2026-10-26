@@ -47,6 +47,12 @@ export function configuration(env = process.env) {
   }
   const imageDetail = env.FOOD_PHOTO_IMAGE_DETAIL ?? 'auto';
   if (!['auto', 'low', 'high'].includes(imageDetail)) throw Error('Invalid FOOD_PHOTO_IMAGE_DETAIL');
+  if (env.NODE_ENV === 'production' && env.COACH_SUMMARY_ONCE_PER_DAY === '0') {
+    throw Error('COACH_SUMMARY_ONCE_PER_DAY=0 is forbidden in production');
+  }
+  if (env.NODE_ENV === 'production' && env.COACH_SUMMARY_ALLOW_UNRESTRICTED_HEADER === '1') {
+    throw Error('COACH_SUMMARY_ALLOW_UNRESTRICTED_HEADER is forbidden in production');
+  }
   return {
     apiKey: env.OPENAI_API_KEY ?? '',
     openAIMock,
@@ -75,12 +81,26 @@ export function configuration(env = process.env) {
     summaryModel: env.COACH_SUMMARY_MODEL ?? 'gpt-4.1-mini',
     summaryStoreDir: env.COACH_SUMMARY_STORE_DIR ?? '',
     summaryTimeoutMs: integer('COACH_SUMMARY_TIMEOUT_MS', 15000, 1000, 60000),
-    summaryConcurrency: integer('COACH_SUMMARY_MAX_CONCURRENT', 4, 1, 100),
-    // Production: COACH_SUMMARY_ONCE_PER_DAY=1 → after 20:00, one AI attempt per UID+local day.
-    // Unset/0 for unrestricted testing (manual Coach refresh always calls AI).
-    summaryOncePerDay: env.COACH_SUMMARY_ONCE_PER_DAY === '1',
-    // Staging: honor DEBUG client header X-WeekFit-Coach-Summary-Unrestricted for any auth user.
-    summaryAllowUnrestrictedHeader: env.COACH_SUMMARY_ALLOW_UNRESTRICTED_HEADER === '1',
+    summaryConcurrency: integer('COACH_SUMMARY_MAX_CONCURRENT', 2, 1, 8),
+    summaryMaxBodyBytes: integer('COACH_SUMMARY_MAX_BODY_BYTES', 131072, 1024, 131072),
+    // gpt-4.1-mini context is 1,047,576 tokens. 80k estimated tokens (UTF-8 bytes / 2)
+    // covers a 128 KiB body plus instructions and rejects the rest instead of truncating.
+    summaryMaxInputTokens: integer('COACH_SUMMARY_MAX_INPUT_TOKENS', 80000, 1000, 200000),
+    // Schema ceiling is about 3.4k characters. 8192 tokens covers that in CJK without
+    // using the model max (32768), so a valid summary is not cut off mid-JSON.
+    summaryMaxOutputTokens: integer('COACH_SUMMARY_MAX_OUTPUT_TOKENS', 8192, 256, 16384),
+    summaryMaxStartsPerUtcDay: integer('COACH_SUMMARY_MAX_STARTS_PER_UTC_DAY', 100, 1, 100000),
+    summaryMaxStartsPerMinute: integer('COACH_SUMMARY_MAX_STARTS_PER_MINUTE', 10, 1, 1000),
+    summaryMinIntervalMs: integer('COACH_SUMMARY_MIN_INTERVAL_HOURS', 20, 1, 48) * 60 * 60 * 1000,
+    summaryCircuitFailures: integer('COACH_SUMMARY_CIRCUIT_FAILURES', 3, 1, 20),
+    summaryCircuitOpenMs: integer('COACH_SUMMARY_CIRCUIT_OPEN_MINUTES', 30, 1, 240) * 60 * 1000,
+    // Always on. Production refuses to boot if an operator tries to turn it off.
+    summaryOncePerDay: true,
+    summaryAllowUnrestrictedHeader: false,
+    // Production stays dark until COACH_AI_ENABLED=1. Food recognition is unaffected.
+    coachAiEnabled: env.COACH_AI_ENABLED != null
+      ? env.COACH_AI_ENABLED === '1'
+      : env.NODE_ENV !== 'production',
     ...asyncConfiguration(env),
   };
 }
@@ -301,8 +321,12 @@ export function createServer(config, dependencies = {}) {
         globalAiSlots: stack?.asyncConfig?.globalAiSlots ?? null,
         targetBurstSlots: stack?.asyncConfig?.targetBurstSlots ?? null,
         coachSummaryConfigured: summaryConfigured(),
-        coachSummaryOncePerDay: Boolean(config.summaryOncePerDay),
+        coachSummaryOncePerDay: true,
         coachSummaryPromptVersion: SUMMARY_PROMPT_VERSION,
+        coachAiEnabled: Boolean(config.coachAiEnabled),
+        coachSummaryMaxConcurrent: config.summaryConcurrency,
+        coachSummaryMaxStartsPerUtcDay: config.summaryMaxStartsPerUtcDay,
+        coachSummaryMaxStartsPerMinute: config.summaryMaxStartsPerMinute,
         concurrency: gate.metrics(),
         uploads: uploadGate.metrics(),
         asyncQueueDepth: queueDepth,

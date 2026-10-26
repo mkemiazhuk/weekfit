@@ -33,6 +33,8 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
     /// Single in-flight HTTP generation keyed by (owner, localDay, locale). Waiter cancel / UI timeout must not clear this.
     private var inFlight: InFlight?
     private var deadline: Task<Void, Never>?
+    /// Days this process already sent (or refused to resend) to the backend. Survives a failed disk claim.
+    private var sessionAttemptedDays: Set<String> = []
 
     private struct FlightKey: Hashable {
         let owner: String
@@ -174,6 +176,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         CoachEveningSummaryDiagnostics.event("workspaceReset")
         cancelInFlight(reason: "workspaceReset")
         owner = nil
+        sessionAttemptedDays = []
         summary = nil
         receivedAt = nil
         cachedFingerprint = nil
@@ -203,9 +206,24 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             return
         }
 
-        // Drop a same-day answer stamped for another app language so we can request a matching one.
-        // (Wrong-language *text* with the correct locale stamp is blanked in displayCommentary instead —
-        // regenerating would only reuse the same once-per-day server answer.)
+        // Once-per-day: the first answer for this local day wins. Language, fingerprint, and
+        // tab re-entry must not call the backend again.
+        if CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow,
+           let summary,
+           summary.day == input.day {
+            CoachEveningSummaryDiagnostics.event(
+                "ensure.cacheFresh",
+                detail: CoachEveningSummaryDiagnostics.flightDetail(
+                    owner: owner,
+                    day: input.day,
+                    source: source,
+                    extra: "hit=memory reason=oncePerDay cachedLocale=\(summary.locale) requestLocale=\(input.locale)"
+                )
+            )
+            return
+        }
+
+        // Unrestricted testing only: drop a same-day answer for another language so the next call can replace it.
         if let summary,
            summary.day == input.day,
            summary.locale != input.locale {
@@ -221,20 +239,6 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             self.summary = nil
             receivedAt = nil
             cachedFingerprint = nil
-        }
-
-        // Once-per-day: successful summary for this local day+locale wins — ignore fingerprint churn.
-        if CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow,
-           let summary,
-           summary.day == input.day,
-           summary.locale == input.locale {
-            CoachEveningSummaryDiagnostics.event(
-                "ensure.cacheFresh",
-                detail: CoachEveningSummaryDiagnostics.flightDetail(
-                    owner: owner, day: input.day, source: source, extra: "hit=memory reason=oncePerDay"
-                )
-            )
-            return
         }
 
         if let summary,
@@ -322,12 +326,14 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
 
         if CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow,
            let summary,
-           summary.day == input.day,
-           summary.locale == input.locale {
+           summary.day == input.day {
             CoachEveningSummaryDiagnostics.event(
                 "refresh.reused",
                 detail: CoachEveningSummaryDiagnostics.flightDetail(
-                    owner: owner, day: input.day, source: source, extra: "hit=memory reason=oncePerDay"
+                    owner: owner,
+                    day: input.day,
+                    source: source,
+                    extra: "hit=memory reason=oncePerDay cachedLocale=\(summary.locale) requestLocale=\(input.locale)"
                 )
             )
             lastRefreshFailed = false
@@ -377,7 +383,10 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         let key = FlightKey(owner: owner, day: input.day, locale: input.locale)
 
         if let flight = inFlight {
-            if flight.key == key {
+            if flight.key == key
+                || (CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow
+                    && flight.key.owner == key.owner
+                    && flight.key.day == key.day) {
                 flight.waiterSources.append(source)
                 isRefreshing = true
                 lastRefreshFailed = false
@@ -388,13 +397,13 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
                         day: input.day,
                         source: source,
                         requestId: flight.clientRequestId,
-                        extra: "waiters=\(flight.waiterSources.count) locale=\(input.locale)"
+                        extra: "waiters=\(flight.waiterSources.count) locale=\(input.locale) flightLocale=\(flight.key.locale)"
                     )
                 )
                 return
             }
-            // Different owner/day/locale — abandon previous flight's UI claim; underlying task still
-            // checks key before applying so a late response cannot cross owners/days/languages.
+            // Different owner or local day — abandon previous flight's UI claim; underlying task still
+            // checks key before applying so a late response cannot cross owners or days.
             CoachEveningSummaryDiagnostics.event(
                 "generation.superseded",
                 detail: CoachEveningSummaryDiagnostics.flightDetail(
@@ -407,6 +416,13 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             )
             cancelInFlight(reason: "superseded")
         }
+
+        // Reserve the local day before auth or HTTP. A failure, timeout, or rejected body
+        // still consumes the attempt — the next open must not call the backend again.
+        if reuseStoredDailyAttempt(owner: owner, day: input.day, source: source) {
+            return
+        }
+        reserveDailyAttempt(owner: owner, day: input.day)
 
         let clientRequestId = UUID().uuidString
         isRefreshing = true
@@ -624,6 +640,58 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         if owner == key.owner {
             lastRefreshFailed = true
             isRefreshing = false
+        }
+    }
+
+    private func attemptKey(owner: String, day: String) -> String {
+        "\(owner)|\(day)"
+    }
+
+    /// `true` when this local day was already sent. Restores a saved answer or leaves the failure visible.
+    private func reuseStoredDailyAttempt(owner: String, day: String, source: String) -> Bool {
+        guard CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow else { return false }
+        let record = try? store.record(owner: owner, day: day)
+        let attempted = record != nil || sessionAttemptedDays.contains(attemptKey(owner: owner, day: day))
+        guard attempted else { return false }
+
+        if summary?.day != day, let cached = record?.summary {
+            summary = cached
+            receivedAt = receivedAt ?? Date()
+            cachedFingerprint = cachedFingerprint ?? "day:\(day):\(cached.locale)"
+            lastRefreshFailed = false
+            lastAppliedUISource = "disk"
+        } else if summary == nil {
+            lastRefreshFailed = true
+        }
+        isRefreshing = false
+        CoachEveningSummaryDiagnostics.event(
+            "ensure.blocked",
+            detail: CoachEveningSummaryDiagnostics.flightDetail(
+                owner: owner,
+                day: day,
+                source: source,
+                extra: "reason=alreadyAttempted hadSummary=\(summary != nil)"
+            )
+        )
+        return true
+    }
+
+    /// Writes the day claim before the network call. Disk failure still sticks for this process.
+    private func reserveDailyAttempt(owner: String, day: String) {
+        guard CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow else { return }
+        sessionAttemptedDays.insert(attemptKey(owner: owner, day: day))
+        do {
+            _ = try store.claim(owner: owner, day: day)
+        } catch {
+            CoachEveningSummaryDiagnostics.error(
+                "claim.writeError",
+                detail: CoachEveningSummaryDiagnostics.flightDetail(
+                    owner: owner,
+                    day: day,
+                    source: "flight",
+                    extra: "keepSessionClaim=true error=\(String(describing: type(of: error)))"
+                )
+            )
         }
     }
 

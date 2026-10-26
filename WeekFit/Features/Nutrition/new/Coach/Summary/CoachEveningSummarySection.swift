@@ -98,7 +98,7 @@ struct CoachEveningSummarySection: View {
             .buttonStyle(.bordered)
             .tint(WeekFitTheme.coachAccent)
             .controlSize(.small)
-            .disabled(coordinator.isRefreshing)
+            .disabled(coordinator.isRefreshing || coordinator.summary != nil || coordinator.lastRefreshFailed)
         }
         .padding(.top, 2)
     }
@@ -117,15 +117,15 @@ struct CoachEveningSummarySection: View {
     private var errorCopy: String {
         if coordinator.summary == nil {
             return copy(
-                "Couldn't prepare the summary. Try again.",
-                "Не удалось подготовить итог. Попробуйте ещё раз.",
-                "未能生成总结，请再试一次。"
+                "Today's summary wasn't ready. The next request is tomorrow evening.",
+                "Сегодняшний итог не готов. Следующий запрос — завтра вечером.",
+                "今天的总结没有生成。下次请求要到明天晚上。"
             )
         }
         return copy(
-            "Couldn't refresh. Previous summary stays on screen.",
-            "Не удалось обновить. Предыдущий итог остаётся на экране.",
-            "未能更新，仍显示上一次总结。"
+            "Today's summary stays as it is.",
+            "Сегодняшний итог остаётся без повторного запроса.",
+            "今天的总结保持不变。"
         )
     }
 

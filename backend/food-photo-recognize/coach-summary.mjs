@@ -1,7 +1,6 @@
-import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
-import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { ServiceError } from './recognition.mjs';
+import { coachUserHash, createCoachAttemptStore } from './coach-attempt-store.mjs';
 
 const object = properties => ({type:'object', additionalProperties:false, properties, required:Object.keys(properties)});
 const string = {type:'string'};
@@ -352,37 +351,51 @@ export function unconfirmedConclusionIssues(summary) {
   return issues;
 }
 
-async function callProvider(input, config, fetcher, {strictLanguage = false} = {}) {
+/** UTF-8 bytes / 2. Rejects over the cap; never truncates the snapshot or the instructions. */
+export function estimateInputTokens(input) {
+  const body = buildInstructions(input) + JSON.stringify(input);
+  return Math.ceil(Buffer.byteLength(body, 'utf8') / 2);
+}
+
+async function callProvider(input, config, fetcher) {
   const response = await fetcher('https://api.openai.com/v1/responses', {
     method: 'POST', signal: AbortSignal.timeout(config.summaryTimeoutMs ?? 15000),
     headers: {Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json'},
     body: JSON.stringify({
-      model: config.summaryModel, store: false, max_output_tokens: 1200,
-      instructions: buildInstructions(input, {strictLanguage}),
+      model: config.summaryModel, store: false,
+      max_output_tokens: config.summaryMaxOutputTokens ?? 8192,
+      instructions: buildInstructions(input),
       input: [{role: 'user', content: [{type: 'input_text', text: JSON.stringify(input)}]}],
       text: {format: {type: 'json_schema', name: 'coach_day_summary', strict: true, schema: summarySchema}}
     })
   });
-  if (!response.ok) throw new ServiceError(response.status === 429 ? 'provider_rate_limited' : 'provider_error', response.status === 429 ? 503 : 502);
+  const providerRequestId = response.headers?.get?.('x-request-id') ?? response.headers?.get?.('openai-request-id') ?? null;
+  if (!response.ok) {
+    const error = new ServiceError(response.status === 429 ? 'provider_rate_limited' : 'provider_error', response.status === 429 ? 503 : 502);
+    error.providerRequestId = providerRequestId;
+    throw error;
+  }
   const data = await response.json();
   const content = (data.output ?? []).flatMap(o => o.content ?? []);
-  if (data.status !== 'completed' || content.some(c => c.type === 'refusal')) throw new ServiceError('summary_incomplete', 502);
+  if (data.status !== 'completed' || content.some(c => c.type === 'refusal')) {
+    const error = new ServiceError('summary_incomplete', 502);
+    error.providerRequestId = providerRequestId;
+    throw error;
+  }
   let value;
   try { value = JSON.parse(content.filter(c => c.type === 'output_text').map(c => c.text).join('')); }
-  catch { throw new ServiceError('invalid_summary_result', 502); }
-  return {value, usage: data.usage ?? null};
+  catch {
+    const error = new ServiceError('invalid_summary_result', 502);
+    error.providerRequestId = providerRequestId;
+    throw error;
+  }
+  return {value, usage: data.usage ?? null, providerRequestId};
 }
 
+/** One provider HTTP call. Validation failures are not retried. */
 export async function generateSummary(input, config, fetcher = fetch) {
-  let {value, usage} = await callProvider(input, config, fetcher);
-  try {
-    return {result: validateSummary(value, input), usage};
-  } catch (error) {
-    if (!(error instanceof ServiceError) || error.code !== 'invalid_summary_result') throw error;
-    // One retry for language / schema leaks — store clients cannot filter English themselves.
-    ({value, usage} = await callProvider(input, config, fetcher, {strictLanguage: true}));
-    return {result: validateSummary(value, input), usage};
-  }
+  const {value, usage, providerRequestId} = await callProvider(input, config, fetcher);
+  return {result: validateSummary(value, input), usage, providerRequestId};
 }
 
 export function localDayAndHour(now, timezone) {
@@ -391,128 +404,214 @@ export function localDayAndHour(now, timezone) {
   return {day: `${p.year}-${p.month}-${p.day}`, hour: Number(p.hour)};
 }
 
-// Production (`summaryOncePerDay`): reserve durably BEFORE the provider call.
-// Failed/interrupted attempts are terminal for the day. Persist on a durable volume.
-// Testing (flag off): skip evening window + daily claim; every request calls AI.
+function coachLimits(config) {
+  return {
+    minIntervalMs: config.summaryMinIntervalMs ?? 20 * 60 * 60 * 1000,
+    maxStartsPerUtcDay: config.summaryMaxStartsPerUtcDay ?? 100,
+    maxStartsPerMinute: config.summaryMaxStartsPerMinute ?? 10,
+    maxConcurrent: config.summaryConcurrency ?? 2,
+    circuitFailures: config.summaryCircuitFailures ?? 3,
+    circuitOpenMs: config.summaryCircuitOpenMs ?? 30 * 60 * 1000,
+    attemptGraceMs: (config.summaryTimeoutMs ?? 15000) + 5000,
+  };
+}
+
+function isUnknownProviderResult(error) {
+  const name = error?.name;
+  if (name === 'TimeoutError' || name === 'AbortError') return true;
+  if (error instanceof ServiceError) return error.code === 'summary_timeout' || error.code === 'summary_incomplete';
+  // A thrown network error after the request left the process has no trustworthy provider outcome.
+  return !(error instanceof ServiceError);
+}
+
 export function createSummaryHandler(config, dependencies) {
-  const pending = new Map(); let active = 0;
-  const generate = dependencies.generateSummary ?? generateSummary;
   const clock = dependencies.summaryNow ?? (() => new Date());
-  const oncePerDay = Boolean(config.summaryOncePerDay);
+  const generate = dependencies.generateSummary
+    ?? ((input, runtimeConfig) => generateSummary(input, runtimeConfig, dependencies.summaryFetcher ?? fetch));
+  const store = config.summaryStoreDir
+    ? createCoachAttemptStore({
+      dir: config.summaryStoreDir,
+      clock,
+      promptVersion: SUMMARY_PROMPT_VERSION,
+      limits: coachLimits(config),
+    })
+    : null;
+  const maxBody = config.summaryMaxBodyBytes ?? 131072;
+
   return async (req, res) => {
-    const requestId = randomUUID(), started = Date.now();
-    // Same requestId in JSON body and X-Request-Id header for client correlation.
-    const send = (status, body) => { if (!res.destroyed) { res.writeHead(status, {'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'X-Request-Id': requestId}); res.end(JSON.stringify({...body, requestId})); } };
+    const requestId = randomUUID();
+    const started = Date.now();
+    const send = (status, body) => {
+      if (!res.destroyed) {
+        res.writeHead(status, {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store',
+          'X-Content-Type-Options': 'nosniff',
+          'X-Request-Id': requestId,
+        });
+        res.end(JSON.stringify({...body, requestId}));
+      }
+    };
+    const log = (event, fields = {}) => {
+      console.log(JSON.stringify({
+        event,
+        endpoint: 'coach_summary',
+        requestId,
+        promptVersion: SUMMARY_PROMPT_VERSION,
+        model: config.summaryModel,
+        latencyMs: Date.now() - started,
+        ...fields,
+      }));
+    };
+    let owned = null;
     try {
-      if (!config.apiKey || !config.summaryModel || !config.summaryStoreDir) throw new ServiceError('summary_not_configured', 503);
+      if (!config.apiKey || !config.summaryModel || !store) throw new ServiceError('summary_not_configured', 503);
       const uid = await dependencies.authenticate(req.headers.authorization, config);
       if (!req.headers['content-type']?.startsWith('application/json')) throw new ServiceError('json_required', 415);
-      let size = 0; const chunks = [];
-      for await (const chunk of req) { size += chunk.length; if (size > 131072) throw new ServiceError('request_too_large', 413); chunks.push(chunk); }
-      let body; try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new ServiceError('invalid_json'); }
+      let size = 0;
+      const chunks = [];
+      for await (const chunk of req) {
+        size += chunk.length;
+        if (size > maxBody) throw new ServiceError('request_too_large', 413);
+        chunks.push(chunk);
+      }
+      let body;
+      try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+      catch { throw new ServiceError('invalid_json'); }
       const input = validateDay(body, {acceptLanguage: req.headers['accept-language']});
       const local = localDayAndHour(clock(), input.timezone);
       const {counts: factCounts, total: factTotal} = countFacts(input.facts);
-      const meta = {
-        promptVersion: SUMMARY_PROMPT_VERSION,
-        locale: input.locale,
-        localDay: local.day,
-        factCounts,
-        factTotal
-      };
-      const logBase = {requestId, endpoint: 'coach_summary', ...meta};
-      // DEBUG clients send X-WeekFit-Coach-Summary-Unrestricted: 1 so prompt/locale iteration
-      // is not blocked by the production once-per-day claim (local-developer, or staging flag).
-      const unrestricted = !oncePerDay
-        || (req.headers['x-weekfit-coach-summary-unrestricted'] === '1'
-          && (uid === 'local-developer' || Boolean(config.summaryAllowUnrestrictedHeader)));
-      if (!unrestricted) {
-        if (input.day !== local.day || local.hour < 20 || input.phase !== 'evening') throw new ServiceError('outside_evening_window', 422);
-      } else if (input.phase !== 'evening') {
-        throw new ServiceError('outside_evening_window', 422);
+      const userHash = coachUserHash(uid).slice(0, 16);
+      if (input.day !== local.day || local.hour < 20 || input.phase !== 'evening') {
+        const error = new ServiceError('outside_evening_window', 422);
+        error.coachLogged = true;
+        log('request_received', {
+          userHash, localDay: local.day, timezone: input.timezone, locale: input.locale,
+          factTotal, factCounts, outcome: 'outside_evening_window', reason: 'outside_evening_window',
+        });
+        throw error;
       }
-
-      // Authorized + valid day/timezone with no useful facts → honest fallback, no OpenAI.
+      if (estimateInputTokens(input) > (config.summaryMaxInputTokens ?? 80000)) {
+        const error = new ServiceError('input_too_large', 413);
+        error.coachLogged = true;
+        log('request_received', {
+          userHash, localDay: local.day, timezone: input.timezone, locale: input.locale,
+          factTotal, factCounts, outcome: 'input_too_large', reason: 'input_too_large',
+        });
+        throw error;
+      }
+      log('request_received', {
+        userHash, localDay: local.day, timezone: input.timezone, locale: input.locale, factTotal, factCounts,
+      });
       if (factTotal === 0) {
         const result = emptyFactsFallbackSummary(input.locale);
         validateSummary(result, input);
-        const value = {
+        return send(200, {
           ...result,
           day: input.day,
           locale: input.locale,
           generatedAt: clock().toISOString(),
           source: 'fallback',
-          ...meta,
-          reused: false
-        };
-        console.log(JSON.stringify({...logBase, outcome: 'fallback_empty_facts', source: 'fallback', reused: false, latencyMs: Date.now() - started}));
-        return send(200, value);
+          promptVersion: SUMMARY_PROMPT_VERSION,
+          factTotal: 0,
+          reused: false,
+        });
       }
-
-      if (unrestricted) {
-        // Unrestricted testing: ignore existing daily claim files; always invoke the provider.
-        // Acquire concurrency immediately before the async provider call (no await between check and ++).
-        if (active >= (config.summaryConcurrency ?? 4)) throw new ServiceError('server_busy', 503);
-        active++;
-        try {
-          const {result, usage} = await generate(input, config);
-          validateSummary(result, input);
-          const value = {
-            ...result,
-            day: input.day,
-            locale: input.locale,
-            generatedAt: clock().toISOString(),
-            source: 'ai',
-            ...meta
-          };
-          console.log(JSON.stringify({...logBase, outcome: 'success', source: 'ai', reused: false, latencyMs: Date.now() - started, inputTokens: usage?.input_tokens, outputTokens: usage?.output_tokens, oncePerDay: false, unrestricted: true}));
-          return send(200, {...value, reused: false});
-        } finally { active--; }
-      }
-
-      // Changed meals/timezone/request UUID cannot mint another attempt for the same day+locale+prompt.
-      // Locale + prompt version are in the key so language switches and prompt fixes get a fresh answer.
-      const key = createHash('sha256').update(JSON.stringify([uid, input.day, input.locale, SUMMARY_PROMPT_VERSION])).digest('hex');
-      if (pending.has(key)) return send(200, {...await pending.get(key), reused: true});
-      await mkdir(config.summaryStoreDir, {recursive: true, mode: 0o700});
-      const file = path.join(config.summaryStoreDir, `${key}.json`);
-      const existing = async () => {
-        const record = JSON.parse(await readFile(file, 'utf8'));
-        if (record.status === 'completed') return send(200, {...record.result, reused: true});
-        throw new ServiceError(record.error ?? 'summary_already_attempted', 409);
+      const decision = await store.decide({
+        uid, localDay: local.day, timezone: input.timezone, locale: input.locale,
+        aiEnabled: config.coachAiEnabled !== false,
+      });
+      const base = {
+        userHash: decision.record.uidHash,
+        attemptId: decision.record.attemptId,
+        localDay: decision.record.localDay,
+        timezone: decision.record.timezone,
+        locale: decision.record.locale,
       };
-      try { await readFile(file); return await existing(); } catch (error) { if (error.code !== 'ENOENT') throw error; }
-      // Acquire concurrency immediately before reservation (no await between check and ++).
-      if (active >= (config.summaryConcurrency ?? 4)) throw new ServiceError('server_busy', 503);
-      active++;
-      try { await writeFile(file, JSON.stringify({status: 'attempted', day: input.day}), {flag: 'wx', mode: 0o600}); }
-      catch (error) { active--; if (error.code === 'EEXIST') return await existing(); throw error; }
-      const save = async record => { const temp = `${file}.${requestId}.tmp`; await writeFile(temp, JSON.stringify(record), {mode: 0o600}); await rename(temp, file); };
-      const task = Promise.resolve().then(() => generate(input, config)).then(async ({result, usage}) => {
-        validateSummary(result, input);
-        const value = {
-          ...result,
+      if (decision.kind === 'completed') {
+        log('cache_hit', {...base, outcome: 'completed'});
+        return send(200, {...decision.record.result, reused: true, attemptId: decision.record.attemptId});
+      }
+      if (decision.kind === 'join') {
+        log('pending_join', {...base, outcome: 'joined'});
+        try {
+          const value = await decision.promise;
+          return send(200, {...value, reused: true, attemptId: decision.record.attemptId});
+        } catch (error) {
+          error.coachLogged = true;
+          const unknown = isUnknownProviderResult(error);
+          return send(409, {
+            error: unknown ? 'attempt_unknown' : 'attempt_failed',
+            attemptId: decision.record.attemptId,
+          });
+        }
+      }
+      if (decision.kind === 'pending') {
+        log('pending_join', {...base, outcome: 'pending'});
+        return send(decision.status, {error: decision.code, attemptId: decision.record.attemptId});
+      }
+      if (decision.kind === 'terminal') {
+        log('daily_attempt_blocked', {...base, outcome: decision.record.state, reason: decision.record.reason ?? decision.code});
+        return send(decision.status, {error: decision.code, attemptId: decision.record.attemptId});
+      }
+      owned = decision;
+      log('attempt_reserved', {...base, outcome: 'reserved'});
+      const startedRecord = await store.markProviderStarted(decision.record);
+      log('provider_call_started', {...base, outcome: 'provider_started'});
+      let value;
+      try {
+        const generated = await generate(input, config);
+        value = {
+          ...generated.result,
           day: input.day,
           locale: input.locale,
           generatedAt: clock().toISOString(),
           source: 'ai',
-          ...meta
+          promptVersion: SUMMARY_PROMPT_VERSION,
         };
-        await save({status: 'completed', result: value});
-        console.log(JSON.stringify({...logBase, outcome: 'success', source: 'ai', reused: false, latencyMs: Date.now() - started, inputTokens: usage?.input_tokens, outputTokens: usage?.output_tokens, oncePerDay: true}));
-        return value;
-      }).catch(async error => {
-        // If saving fails, the original reservation still prevents another provider call.
-        await save({status: 'failed', day: input.day, error: 'summary_already_attempted'}).catch(() => {});
+        validateSummary(generated.result, input);
+        await store.markFinished(startedRecord, 'completed', {result: value});
+        log('provider_call_finished', {
+          ...base, outcome: 'completed', providerRequestId: generated.providerRequestId ?? null, usage: generated.usage ?? null,
+        });
+        log('result_saved', {...base, outcome: 'completed', providerRequestId: generated.providerRequestId ?? null});
+        store.settle(decision.record.attemptId, null, value);
+        owned.settled = true;
+        return send(200, {...value, reused: false, attemptId: decision.record.attemptId});
+      } catch (error) {
+        const unknown = isUnknownProviderResult(error);
+        const reason = error instanceof ServiceError ? error.code : (error?.name || 'provider_error');
+        await store.markFinished(startedRecord, unknown ? 'unknown' : 'failed', {reason}).catch(() => {});
+        log('provider_call_finished', {
+          ...base,
+          outcome: unknown ? 'unknown' : 'failed',
+          reason,
+          providerRequestId: error?.providerRequestId ?? null,
+        });
+        error.coachLogged = true;
+        store.settle(decision.record.attemptId, error);
+        owned.settled = true;
         throw error;
-      }).finally(() => { active--; pending.delete(key); });
-      pending.set(key, task);
-      send(200, {...await task, reused: false});
+      }
     } catch (error) {
+      if (owned && !owned.settled) {
+        store.settle(owned.record.attemptId, error);
+        owned.settled = true;
+      }
       const timeout = ['TimeoutError', 'AbortError'].includes(error.name);
       const code = timeout ? 'summary_timeout' : error instanceof ServiceError ? error.code : 'internal_error';
-      console.log(JSON.stringify({requestId, endpoint: 'coach_summary', outcome: code, latencyMs: Date.now() - started, promptVersion: SUMMARY_PROMPT_VERSION}));
-      send(timeout ? 504 : error instanceof ServiceError ? error.status : 500, {error: code});
+      const event = error.coachEvent
+        ?? (code === 'circuit_open' ? 'circuit_open'
+          : (code === 'global_daily_limit' || code === 'global_minute_limit' || code === 'coach_concurrency_limited') ? 'global_limit_blocked'
+            : (code === 'uid_interval_blocked' || code === 'attempt_failed' || code === 'attempt_unknown' || code === 'coach_ai_disabled') ? 'daily_attempt_blocked'
+              : null);
+      if (!error.coachLogged) {
+        log(event ?? 'request_received', {outcome: code, reason: code, nextEligibleAt: error.nextEligibleAt ?? null});
+      }
+      send(timeout ? 504 : error instanceof ServiceError ? error.status : 500, {
+        error: code,
+        ...(error.nextEligibleAt ? {nextEligibleAt: error.nextEligibleAt} : {}),
+      });
     }
   };
 }

@@ -15,7 +15,7 @@ iOS app (`GoogleService-Info.plist`): `PROJECT_ID=weekfitai`. Render must set `F
 1. Attach a **persistent disk** to the Render service (or equivalent volume).
 2. Set `COACH_SUMMARY_STORE_DIR` to an absolute path on that disk (example: `/var/data/coach-summary`). Empty → endpoint returns **503**; photo recognition keeps working.
 3. Keep `COACH_SUMMARY_MODEL=gpt-4.1-mini` (separate from the photo model — does not change photo cost/settings).
-4. For manual Coach testing leave `COACH_SUMMARY_ONCE_PER_DAY` unset/`0` (calls AI every time, before 20:00 allowed). Set to `1` for production once-per-day after 20:00.
+4. Coach OpenAI starts are reserved on the persistent disk before the provider call: one UID per local day, at least 20 hours apart, and no retry. `COACH_SUMMARY_ONCE_PER_DAY=0` and `COACH_SUMMARY_ALLOW_UNRESTRICTED_HEADER=1` refuse to boot in production. Leave `COACH_AI_ENABLED` unset or `0` until a resume is intentional; `1` allows new generations. Food recognition does not use this switch.
 5. Redeploy the backend, then ship the iOS build that includes evening summary.
 5. One service instance + one volume is supported; multiple instances need a shared durable store.
 
