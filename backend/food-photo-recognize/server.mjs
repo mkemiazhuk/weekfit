@@ -557,11 +557,17 @@ export function createServer(config, dependencies = {}) {
       );
       const fingerprint = fingerprintPayload(input.imageBase64);
 
-      const prior = idemKey && photoLedger ? await photoLedger.read(user, idemKey, fingerprint) : null;
-      if (prior?.providerStarted && prior.status !== 'completed') {
+      const live = idemKey ? idempotency.get(user, idemKey) : null;
+      // A sibling of an in-flight request must join that waiter. The durable
+      // marker is already written by then; treating it as a finished unknown
+      // attempt would reject the sibling instead of sharing the one call.
+      const prior = idemKey && photoLedger && live?.status !== 'inflight'
+        ? await photoLedger.read(user, idemKey, fingerprint)
+        : null;
+      if (live?.status !== 'inflight' && prior?.providerStarted && prior.status !== 'completed') {
         throw new ServiceError('attempt_unknown', 409);
       }
-      if (!(prior?.status === 'completed' && prior.result)) {
+      if (live?.status !== 'inflight' && !(prior?.status === 'completed' && prior.result)) {
         if (!photoLedger) throw new ServiceError('persistent_data_dir_required', 503, { detail: 'persistent_mount_unconfirmed' });
         const snap = await photoLedger.snapshot(user);
         if (snap.userCount >= config.dailyLimit || snap.globalCount >= config.globalDailyLimit) {
