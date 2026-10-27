@@ -1,4 +1,7 @@
 import http from 'node:http';
+import path from 'node:path';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { authenticate } from './auth.mjs';
@@ -13,6 +16,13 @@ import {
 } from './idempotency.mjs';
 import { createMockOpenAIAdapter, forbidRealOpenAIFetch } from './openai-mock.mjs';
 import { asyncConfiguration, createAsyncStack } from './async/bootstrap.mjs';
+import {
+  assertFileLedgerCanGenerate,
+  assertPersistentDataDir,
+  createPhotoCallLedger,
+  fileLedgerGenerationRefusal,
+} from './photo-call-ledger.mjs';
+import { assertDurableGeneration, probeDirectoryDurable } from './async/atomic-fs.mjs';
 import {
   createFileFreeTrialStore,
   createMemoryFreeTrialStore,
@@ -42,11 +52,25 @@ export function configuration(env = process.env) {
     throw Error('Unsupported model; explicitly update the server allowlist after evaluation');
   }
   const mockScenario = env.FOOD_PHOTO_MOCK_SCENARIO ?? 'ok';
-  if (!['ok', 'rate_limit', 'server_error', 'timeout', 'slow'].includes(mockScenario)) {
+  if (!['ok', 'rate_limit', 'server_error', 'timeout', 'slow', 'coach_invalid'].includes(mockScenario)) {
     throw Error('Invalid FOOD_PHOTO_MOCK_SCENARIO');
+  }
+  let summaryNow = null;
+  if (env.COACH_SUMMARY_NOW) {
+    if (env.NODE_ENV === 'production') throw Error('COACH_SUMMARY_NOW is forbidden in production');
+    const parsed = new Date(env.COACH_SUMMARY_NOW);
+    if (Number.isNaN(parsed.getTime())) throw Error('Invalid COACH_SUMMARY_NOW');
+    const instant = parsed.getTime();
+    summaryNow = () => new Date(instant);
   }
   const imageDetail = env.FOOD_PHOTO_IMAGE_DETAIL ?? 'auto';
   if (!['auto', 'low', 'high'].includes(imageDetail)) throw Error('Invalid FOOD_PHOTO_IMAGE_DETAIL');
+  if (env.NODE_ENV === 'production' && env.COACH_SUMMARY_ONCE_PER_DAY === '0') {
+    throw Error('COACH_SUMMARY_ONCE_PER_DAY=0 is forbidden in production');
+  }
+  if (env.NODE_ENV === 'production' && env.COACH_SUMMARY_ALLOW_UNRESTRICTED_HEADER === '1') {
+    throw Error('COACH_SUMMARY_ALLOW_UNRESTRICTED_HEADER is forbidden in production');
+  }
   return {
     apiKey: env.OPENAI_API_KEY ?? '',
     openAIMock,
@@ -75,12 +99,40 @@ export function configuration(env = process.env) {
     summaryModel: env.COACH_SUMMARY_MODEL ?? 'gpt-4.1-mini',
     summaryStoreDir: env.COACH_SUMMARY_STORE_DIR ?? '',
     summaryTimeoutMs: integer('COACH_SUMMARY_TIMEOUT_MS', 15000, 1000, 60000),
-    summaryConcurrency: integer('COACH_SUMMARY_MAX_CONCURRENT', 4, 1, 100),
-    // Production: COACH_SUMMARY_ONCE_PER_DAY=1 → after 20:00, one AI attempt per UID+local day.
-    // Unset/0 for unrestricted testing (manual Coach refresh always calls AI).
-    summaryOncePerDay: env.COACH_SUMMARY_ONCE_PER_DAY === '1',
-    // Staging: honor DEBUG client header X-WeekFit-Coach-Summary-Unrestricted for any auth user.
-    summaryAllowUnrestrictedHeader: env.COACH_SUMMARY_ALLOW_UNRESTRICTED_HEADER === '1',
+    summaryConcurrency: integer('COACH_SUMMARY_MAX_CONCURRENT', 2, 1, 8),
+    summaryMaxBodyBytes: integer('COACH_SUMMARY_MAX_BODY_BYTES', 131072, 1024, 131072),
+    // UTF-8 size of the instruction text plus the day snapshot. Not a token budget and not
+    // the whole model request: the response schema and API framing are extra.
+    // COACH_SUMMARY_MAX_INPUT_TOKENS is accepted as the same byte ceiling.
+    summaryMaxInputTextBytes: integer(
+      env.COACH_SUMMARY_MAX_INPUT_TEXT_BYTES != null
+        ? 'COACH_SUMMARY_MAX_INPUT_TEXT_BYTES'
+        : 'COACH_SUMMARY_MAX_INPUT_TOKENS',
+      80000,
+      1000,
+      200000,
+    ),
+    // Output budget only. max_output_tokens does not promise a finished JSON object.
+    // An incomplete or truncated response ends the attempt; it is not retried.
+    summaryMaxOutputTokens: integer('COACH_SUMMARY_MAX_OUTPUT_TOKENS', 8192, 256, 16384),
+    summaryMaxStartsPerUtcDay: integer('COACH_SUMMARY_MAX_STARTS_PER_UTC_DAY', 100, 1, 100000),
+    summaryMaxStartsPerMinute: integer('COACH_SUMMARY_MAX_STARTS_PER_MINUTE', 10, 1, 1000),
+    summaryMinIntervalMs: integer('COACH_SUMMARY_MIN_INTERVAL_HOURS', 20, 1, 48) * 60 * 60 * 1000,
+    summaryCircuitFailures: integer('COACH_SUMMARY_CIRCUIT_FAILURES', 3, 1, 20),
+    summaryCircuitOpenMs: integer('COACH_SUMMARY_CIRCUIT_OPEN_MINUTES', 30, 1, 240) * 60 * 1000,
+    // Always on. Production refuses to boot if an operator tries to turn it off.
+    summaryOncePerDay: true,
+    summaryAllowUnrestrictedHeader: false,
+    // Production stays dark until COACH_AI_ENABLED=1. Food recognition is unaffected.
+    coachAiEnabled: env.COACH_AI_ENABLED != null
+      ? env.COACH_AI_ENABLED === '1'
+      : env.NODE_ENV !== 'production',
+    // File ledger is one process on one disk. Production must say so explicitly.
+    // Unset in production disables new Coach generations; reads of a saved result still work.
+    coachSingleInstanceDeclared: env.NODE_ENV === 'production'
+      ? env.COACH_SUMMARY_SINGLE_INSTANCE === '1'
+      : env.COACH_SUMMARY_SINGLE_INSTANCE !== '0',
+    summaryNow,
     ...asyncConfiguration(env),
   };
 }
@@ -89,8 +141,23 @@ export function createServer(config, dependencies = {}) {
   const auth = dependencies.authenticate ?? authenticate;
   const analyze = dependencies.recognize ?? recognize;
   const requirePaid = dependencies.requirePaidSubscriptionJWS ?? requirePaidSubscriptionJWS;
-  const summary = createSummaryHandler(config, { ...dependencies, authenticate: auth });
-
+  const explicitLedger = config.photoLedgerDir
+    || (config.dataDirExplicit && config.dataDir ? config.dataDir : '');
+  // Production must not invent a temp directory. fsync of that directory would not be a persistent mount.
+  const ledgerDir = explicitLedger
+    || (config.isProduction ? null : mkdtempSync(path.join(tmpdir(), 'weekfit-photo-')));
+  const persistentDataDir = Boolean(explicitLedger);
+  const directoryDurability = dependencies.directoryDurability
+    ?? config.directoryDurability
+    ?? (ledgerDir
+      ? probeDirectoryDurable(ledgerDir)
+      : { confirmed: null, reason: null, errno: null });
+  const runtimeConfig = {
+    ...config,
+    directoryDurability,
+    persistentDataDir,
+    photoLedgerDir: config.photoLedgerDir || (persistentDataDir ? explicitLedger : ''),
+  };
   const mockAdapter = dependencies.mockAdapter
     ?? (config.openAIMock
       ? createMockOpenAIAdapter({
@@ -103,6 +170,12 @@ export function createServer(config, dependencies = {}) {
   const openaiFetcher = dependencies.openaiFetcher
     ?? mockAdapter?.fetcher
     ?? (config.openAIMock ? forbidRealOpenAIFetch() : undefined);
+  const summary = createSummaryHandler(runtimeConfig, {
+    ...dependencies,
+    authenticate: auth,
+    summaryNow: dependencies.summaryNow ?? config.summaryNow ?? undefined,
+    summaryFetcher: dependencies.summaryFetcher ?? openaiFetcher,
+  });
 
   const gate = dependencies.concurrencyGate ?? createConcurrencyGate({
     maxConcurrent: config.maxConcurrency,
@@ -119,6 +192,13 @@ export function createServer(config, dependencies = {}) {
     fullDetail: 'upload_queue_full',
   });
   const idempotency = dependencies.idempotencyStore ?? createIdempotencyStore();
+  const photoLedger = ledgerDir
+    ? createPhotoCallLedger({
+      dataDir: ledgerDir,
+      userDailyLimit: config.dailyLimit,
+      globalDailyLimit: config.globalDailyLimit,
+    })
+    : null;
 
   /** Async stack (202 accept + workers). Null when explicitly disabled. */
   let asyncStack = dependencies.asyncStack ?? null;
@@ -153,27 +233,16 @@ export function createServer(config, dependencies = {}) {
       freeTrialStore,
       freeTrialRequested: isFreeTrialHeader(headers['x-weekfit-photo-free-trial']),
       userId,
-      allowDevAuth: config.allowDevAuth && userId === 'local-developer',
+      allowDevAuth: config.allowDevAuth && (
+        userId === 'local-developer' || (typeof userId === 'string' && userId.startsWith('devuid:'))
+      ),
     });
   };
 
-  const limits = new Map();
-  /** Keys already charged against daily quota (user or user:idempotency). */
-  const chargedKeys = new Set();
-  let day = '';
   let dailyCount = 0;
+  const userCounts = new Map();
   let inFlightHttp = 0;
   let peakInFlightHttp = 0;
-
-  const resetDayIfNeeded = () => {
-    const today = new Date().toISOString().slice(0, 10);
-    if (day !== today) {
-      limits.clear();
-      chargedKeys.clear();
-      dailyCount = 0;
-      day = today;
-    }
-  };
 
   const send = (res, status, body, extraHeaders = {}) => {
     if (res.writableEnded || res.destroyed) return;
@@ -190,7 +259,9 @@ export function createServer(config, dependencies = {}) {
   const configured = () => Boolean(
     (config.openAIMock || config.apiKey) && (config.firebaseProject || config.allowDevAuth),
   );
-  const summaryConfigured = () => Boolean(config.apiKey && config.summaryStoreDir && config.summaryModel);
+  const summaryConfigured = () => Boolean(
+    (config.apiKey || config.openAIMock) && config.summaryStoreDir && config.summaryModel,
+  );
 
   /**
    * Read JSON body with size + wall-clock limits.
@@ -255,21 +326,9 @@ export function createServer(config, dependencies = {}) {
     }
   };
 
-  const chargeDailyQuota = (user, idemKey) => {
-    resetDayIfNeeded();
-    const chargeKey = idemKey ? `${user}:${idemKey}` : `${user}:${randomUUID()}`;
-    if (chargedKeys.has(chargeKey)) return { charged: false, chargeKey };
-    if ((limits.get(user) ?? 0) >= config.dailyLimit || dailyCount >= config.globalDailyLimit) {
-      throw new ServiceError('daily_scan_limit', 429, { retryAfterSeconds: 3600 });
-    }
-    chargedKeys.add(chargeKey);
-    limits.set(user, (limits.get(user) ?? 0) + 1);
-    dailyCount += 1;
-    return { charged: true, chargeKey };
-  };
-
   const server = http.createServer(async (req, res) => {
-    if (req.method === 'POST' && req.url === '/v1/coach/day-summary') {
+    const coachPath = (req.url ?? '').split('?')[0];
+    if (coachPath === '/v1/coach/day-summary' && (req.method === 'POST' || req.method === 'GET')) {
       return summary(req, res);
     }
 
@@ -301,8 +360,19 @@ export function createServer(config, dependencies = {}) {
         globalAiSlots: stack?.asyncConfig?.globalAiSlots ?? null,
         targetBurstSlots: stack?.asyncConfig?.targetBurstSlots ?? null,
         coachSummaryConfigured: summaryConfigured(),
-        coachSummaryOncePerDay: Boolean(config.summaryOncePerDay),
+        coachSummaryOncePerDay: true,
         coachSummaryPromptVersion: SUMMARY_PROMPT_VERSION,
+        coachAiEnabled: Boolean(config.coachAiEnabled),
+        directoryDurable: directoryDurability.confirmed,
+        durabilityReason: directoryDurability.reason,
+        durabilityErrno: directoryDurability.errno,
+        persistentDataDir,
+        persistentDataDirReason: persistentDataDir ? null : 'persistent_mount_unconfirmed',
+        fileLedgerGeneration: fileLedgerGenerationRefusal(runtimeConfig) ? 'refused' : 'allowed',
+        coachSingleInstanceDeclared: config.coachSingleInstanceDeclared !== false,
+        coachSummaryMaxConcurrent: config.summaryConcurrency,
+        coachSummaryMaxStartsPerUtcDay: config.summaryMaxStartsPerUtcDay,
+        coachSummaryMaxStartsPerMinute: config.summaryMaxStartsPerMinute,
         concurrency: gate.metrics(),
         uploads: uploadGate.metrics(),
         asyncQueueDepth: queueDepth,
@@ -487,12 +557,24 @@ export function createServer(config, dependencies = {}) {
       );
       const fingerprint = fingerprintPayload(input.imageBase64);
 
-      resetDayIfNeeded();
-      if ((limits.get(user) ?? 0) >= config.dailyLimit || dailyCount >= config.globalDailyLimit) {
-        throw new ServiceError('daily_scan_limit', 429, { retryAfterSeconds: 3600 });
+      const prior = idemKey && photoLedger ? await photoLedger.read(user, idemKey, fingerprint) : null;
+      if (prior?.providerStarted && prior.status !== 'completed') {
+        throw new ServiceError('attempt_unknown', 409);
+      }
+      if (!(prior?.status === 'completed' && prior.result)) {
+        if (!photoLedger) throw new ServiceError('persistent_data_dir_required', 503, { detail: 'persistent_mount_unconfirmed' });
+        const snap = await photoLedger.snapshot(user);
+        if (snap.userCount >= config.dailyLimit || snap.globalCount >= config.globalDailyLimit) {
+          throw new ServiceError('daily_scan_limit', 429, { retryAfterSeconds: 3600 });
+        }
       }
 
-      const { value, fromCache } = await idempotency.run(
+      const { value, fromCache } = prior?.status === 'completed' && prior.result
+        ? {
+          value: { result: prior.result, usage: null, queueWaitMs: 0, aiMs: 0 },
+          fromCache: true,
+        }
+        : await idempotency.run(
         user,
         idemKey,
         fingerprint,
@@ -501,19 +583,45 @@ export function createServer(config, dependencies = {}) {
           aiTicket = await gate.acquire();
           const queueWaitMs = aiTicket.queueWaitMs;
           const aiStarted = Date.now();
+          let ownedCall = false;
+          let prepared = null;
           try {
-            chargeDailyQuota(user, idemKey);
+            assertPersistentDataDir(runtimeConfig);
+            assertDurableGeneration(runtimeConfig);
+            assertFileLedgerCanGenerate(runtimeConfig);
+            if (!photoLedger) {
+              throw new ServiceError('persistent_data_dir_required', 503, { detail: 'persistent_mount_unconfirmed' });
+            }
+            prepared = await photoLedger.prepare({ userId: user, idempotencyKey: idemKey, fingerprint });
+            if (prepared.globalCount != null) dailyCount = prepared.globalCount;
+            if (prepared.userCount != null) userCounts.set(user, prepared.userCount);
+            if (prepared.record?.status === 'completed' && prepared.record.result) {
+              return {
+                result: prepared.record.result,
+                usage: null,
+                queueWaitMs,
+                aiMs: 0,
+              };
+            }
+            if (prepared.record?.providerStarted) throw new ServiceError('attempt_unknown', 409);
+            const marked = await photoLedger.markProviderStarted(prepared.analysisId, user);
+            if (!marked.startedByUs) throw new ServiceError('attempt_unknown', 409);
+            ownedCall = true;
             const analyzed = await analyze(input, {
               ...config,
               openaiFetcher,
               abortSignal,
             }, openaiFetcher);
+            await photoLedger.complete(prepared.analysisId, analyzed.result, user);
             return {
               result: analyzed.result,
               usage: analyzed.usage,
               queueWaitMs,
               aiMs: Date.now() - aiStarted,
             };
+          } catch (error) {
+            if (ownedCall) await photoLedger.fail(prepared?.analysisId, user).catch(() => {});
+            throw error;
           } finally {
             aiTicket?.release();
             aiTicket = undefined;
@@ -612,9 +720,11 @@ export function createServer(config, dependencies = {}) {
     asyncReady,
     getAsyncStack: () => asyncStack,
     getDailyCount: () => dailyCount,
-    getUserLimit: (user) => limits.get(user) ?? 0,
+    getUserLimit: (user) => userCounts.get(user) ?? 0,
+    photoLedgerDir: ledgerDir,
   };
   server.asyncReady = asyncReady;
+  server.on('close', () => summary.stop?.());
 
   return server;
 }
@@ -628,7 +738,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     model: config.model,
     configured: Boolean(config.openAIMock || config.apiKey),
     openAIMock: Boolean(config.openAIMock),
-    coachSummaryConfigured: Boolean(config.apiKey && config.summaryStoreDir),
+    coachSummaryConfigured: Boolean((config.apiKey || config.openAIMock) && config.summaryStoreDir),
     maxConcurrency: config.maxConcurrency,
     maxQueue: config.maxQueue,
     maxConcurrentUploads: config.maxConcurrentUploads,

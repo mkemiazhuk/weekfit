@@ -80,7 +80,7 @@ test('redis job store: idempotency, claim, lease recovery — no lost job', asyn
       quotaReserved: true,
     });
     assert.equal(created, true);
-    await store.enqueue(id);
+    await store.enqueue(id, 'u1');
     assert.equal(await store.queueDepth(), 1);
 
     const claimed = await store.claimNext({ workerId: 'w-dead', leaseMs: 40 });
@@ -90,14 +90,14 @@ test('redis job store: idempotency, claim, lease recovery — no lost job', asyn
     await new Promise((r) => setTimeout(r, 50));
     const { recovered } = await store.recoverExpiredLeases();
     assert.ok(recovered >= 1);
-    const job = await store.getJob(id);
+    const job = await store.getJob(id, 'u1');
     assert.equal(job.status, JOB_STATUSES.queued);
     assert.equal(await store.queueDepth(), 1);
 
     const claimed2 = await store.claimNext({ workerId: 'w-live', leaseMs: 5000 });
     assert.equal(claimed2.analysisId, id);
-    await store.completeJob(id, { result: { ok: true }, providerOutcome: 'success' });
-    const done = await store.getJob(id);
+    await store.completeJob(id, { userId: 'u1', result: { ok: true }, providerOutcome: 'success' });
+    const done = await store.getJob(id, 'u1');
     assert.equal(done.status, JOB_STATUSES.completed);
   });
 });
@@ -140,7 +140,7 @@ test('redis AI slots enforce global concurrency', async () => {
   });
 });
 
-test('multi API+worker via redis+http object store: accept survives restart, no lost job, single AI', async () => {
+test('redis with a separate data dir refuses file-ledger generations', async () => {
   await withRedis(async ({ redis, redisUrl }) => {
     const objServer = createHttpObjectStoreServer();
     const objInfo = await objServer.listen();
@@ -187,7 +187,7 @@ test('multi API+worker via redis+http object store: accept survives restart, no 
     });
 
     try {
-      const analysisId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+      const analysisId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
       const res = await fetch(`${base}/v1/food/photo-analyze`, {
         method: 'POST',
         headers: {
@@ -198,54 +198,14 @@ test('multi API+worker via redis+http object store: accept survives restart, no 
         },
         body: JSON.stringify({ imageBase64: jpegB64, mimeType: 'image/jpeg', locale: 'en_US' }),
       });
-      assert.equal(res.status, 202);
-      const accepted = await res.json();
-      assert.equal(accepted.analysisId, analysisId);
-
-      // Simulate API process restart: new server, same Redis + object store.
-      await new Promise((r) => server.close(r));
-      const stack2 = await createAsyncStack(baseConfig, { redis, objectStore });
-      const server2 = createServer(baseConfig, { asyncStack: stack2 });
-      await new Promise((r) => server2.listen(0, '127.0.0.1', r));
-      await server2.asyncReady;
-      const base2 = `http://127.0.0.1:${server2.address().port}`;
-
-      // Job still queued in Redis after API restart.
-      const job = await stack2.jobStore.getJob(analysisId);
-      assert.equal(job.status, 'queued');
-
-      let done = false;
-      for (let i = 0; i < 40 && !done; i += 1) {
-        done = await worker.tick();
-        if (!done) await new Promise((r) => setTimeout(r, 20));
-      }
-      assert.equal(done, true);
-      assert.equal(mockAdapter.metrics().calls, 1);
+      assert.equal(res.status, 503);
+      const refused = await res.json();
+      assert.equal(refused.error, 'file_ledger_unsupported');
+      assert.equal(refused.detail, 'redis_separate_data_dir');
+      assert.equal(await worker.tick(), false);
+      assert.equal(mockAdapter.metrics().calls, 0);
       assert.equal(mockAdapter.metrics().realFetchAttempts, 0);
-
-      const status = await (await fetch(`${base2}/v1/food/photo-analyze/${analysisId}`, {
-        headers: { Authorization: AUTH },
-      })).json();
-      assert.equal(status.status, 'completed');
-
-      // Idempotent replay must not charge quota again or call AI again.
-      const snap = await stack2.quota.snapshot('local-developer');
-      const replay = await fetch(`${base2}/v1/food/photo-analyze`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: AUTH,
-          'X-WeekFit-Subscription-JWS': DEV_SUB,
-          'Idempotency-Key': analysisId,
-        },
-        body: JSON.stringify({ imageBase64: jpegB64, mimeType: 'image/jpeg', locale: 'en_US' }),
-      });
-      assert.ok(replay.status === 200 || replay.status === 202);
-      assert.equal(mockAdapter.metrics().calls, 1);
-      const snap2 = await stack2.quota.snapshot('local-developer');
-      assert.equal(snap2.userCount, snap.userCount);
-
-      await new Promise((r) => server2.close(r));
+      assert.equal(await stack.jobStore.getJob(analysisId), null);
     } finally {
       await objInfo.close();
     }

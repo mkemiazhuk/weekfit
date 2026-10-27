@@ -6,6 +6,7 @@ export class ServiceError extends Error {
     this.code = code;
     this.status = status;
     this.retryAfterSeconds = meta.retryAfterSeconds;
+    this.nextEligibleAt = meta.nextEligibleAt ?? null;
     this.detail = meta.detail;
   }
 }

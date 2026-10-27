@@ -271,6 +271,60 @@ enum CoachEveningSummaryService {
         return CoachEveningSummaryGenerationResult(summary: summary, requestId: requestId, validationInput: input)
     }
 
+    /// Reads a saved attempt. This is a GET and does not reserve or generate.
+    static func read(_ input: CoachEveningSummaryInput, owner: String) async -> CoachEveningSummaryServerRead {
+        let clientRequestId = UUID().uuidString
+        guard FirebaseBootstrap.isConfigured else { return .absent }
+        guard WorkspaceOwnerStore.currentIdentityToken() == owner else { return .absent }
+        do {
+            try await bindAnonymousFirebaseSession(to: owner)
+            guard WorkspaceOwnerStore.currentIdentityToken() == owner else { return .absent }
+            let token = try await PhotoFoodFirebaseAuth.idToken(forcingRefresh: false)
+            var components = URLComponents(
+                url: WeekFitCloudAPI.foodPhotoBaseURL.appending(path: "v1/coach/day-summary"),
+                resolvingAgainstBaseURL: false
+            )
+            components?.queryItems = [
+                URLQueryItem(name: "day", value: input.day),
+                URLQueryItem(name: "timezone", value: input.timezone),
+            ]
+            guard let url = components?.url else { return .absent }
+            var request = URLRequest(url: url, timeoutInterval: 15)
+            request.httpMethod = "GET"
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.setValue(clientRequestId, forHTTPHeaderField: "X-Request-Id")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else { return .absent }
+            CoachEveningSummaryDiagnostics.event(
+                "http.statusRead",
+                detail: CoachEveningSummaryDiagnostics.flightDetail(
+                    owner: owner, day: input.day, source: "http",
+                    requestId: clientRequestId, extra: "status=\(http.statusCode)"
+                )
+            )
+            switch http.statusCode {
+            case 200:
+                guard let summary = try? JSONDecoder().decode(CoachEveningSummary.self, from: data),
+                      summary.isRecoveredDisplayable(forDay: input.day) else { return .terminal }
+                let requestId = extractRequestId(from: data) ?? clientRequestId
+                return .completed(CoachEveningSummaryGenerationResult(
+                    summary: summary, requestId: requestId, validationInput: nil
+                ))
+            case 202:
+                return .pending
+            case 404:
+                return .absent
+            case 409:
+                return .terminal
+            default:
+                return .absent
+            }
+        } catch {
+            return .absent
+        }
+    }
+
     private static func weeklyFacts(for input: CoachEveningSummaryInput) async -> [String: [CoachEveningSummaryInput.Fact]]? {
         var calendar = Calendar(identifier: .gregorian)
         guard let timezone = TimeZone(identifier: input.timezone) else { return nil }

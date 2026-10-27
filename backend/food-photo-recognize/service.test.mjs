@@ -27,8 +27,20 @@ const unsignedPaidJWS = (overrides = {}) => {
   return `${head}.${body}.c2ln`;
 };
 const DEV_SUB = 'weekfit-dev-local-subscription';
-test('default uses Astra and dev authentication is opt-in',()=>{const c=configuration({});assert.equal(c.model,'gpt-6-astra');assert.equal(c.allowDevAuth,false);});
+test('default uses Astra and dev authentication is opt-in',()=>{const c=configuration({});assert.equal(c.model,'gpt-6-astra');assert.equal(c.allowDevAuth,false);assert.equal(c.summaryOncePerDay,true);assert.equal(c.summaryAllowUnrestrictedHeader,false);assert.equal(c.coachAiEnabled,true);assert.equal(c.summaryConcurrency,2);assert.equal(c.summaryMaxStartsPerUtcDay,100);assert.equal(c.summaryMaxStartsPerMinute,10);});
+test('production refuses a disabled coach day limit or unrestricted header',()=>{assert.throws(()=>configuration({NODE_ENV:'production',COACH_SUMMARY_ONCE_PER_DAY:'0'}));assert.throws(()=>configuration({NODE_ENV:'production',COACH_SUMMARY_ALLOW_UNRESTRICTED_HEADER:'1'}));const c=configuration({NODE_ENV:'production'});assert.equal(c.summaryOncePerDay,true);assert.equal(c.coachAiEnabled,false);assert.equal(c.coachSingleInstanceDeclared,false);assert.equal(configuration({NODE_ENV:'production',COACH_SUMMARY_SINGLE_INSTANCE:'1'}).coachSingleInstanceDeclared,true);});
+test('non-production cannot opt out of the coach day guard',()=>{const c=configuration({COACH_SUMMARY_ONCE_PER_DAY:'0',COACH_SUMMARY_ALLOW_UNRESTRICTED_HEADER:'1'});assert.equal(c.summaryOncePerDay,true);assert.equal(c.summaryAllowUnrestrictedHeader,false);assert.equal(c.coachSingleInstanceDeclared,true);});
 test('production refuses developer token',()=>assert.throws(()=>configuration({NODE_ENV:'production',ALLOW_DEV_AUTH:'1',WEEKFIT_DEV_TOKEN:'weekfit-dev-local-token'})));
+test('production refuses OPENAI_MOCK',()=>assert.throws(()=>configuration({NODE_ENV:'production',OPENAI_MOCK:'1',OPENAI_API_KEY:'unused',FIREBASE_PROJECT_ID:'weekfitai'}),/OPENAI_MOCK is forbidden in production/));
+test('production refuses the coach test clock',()=>{assert.throws(()=>configuration({NODE_ENV:'production',COACH_SUMMARY_NOW:'2026-10-12T18:00:00.000Z'}),/COACH_SUMMARY_NOW is forbidden in production/);const c=configuration({COACH_SUMMARY_NOW:'2026-10-12T18:00:00.000Z'});assert.equal(c.summaryNow().toISOString(),'2026-10-12T18:00:00.000Z');});
+test('dev token suffix is a distinct non-production uid',async()=>{
+  const config=configuration({ALLOW_DEV_AUTH:'1',WEEKFIT_DEV_TOKEN:'weekfit-dev-local-token'});
+  assert.equal(await authenticate('Bearer weekfit-dev-local-token',config),'local-developer');
+  assert.equal(await authenticate('Bearer weekfit-dev-local-token.uid-a',config),'devuid:uid-a');
+  assert.equal(await authenticate('Bearer weekfit-dev-local-token.uid-b',config),'devuid:uid-b');
+  await assert.rejects(()=>authenticate('Bearer weekfit-dev-local-token.uid-a',{...config,allowDevAuth:false,firebaseProject:''}));
+  await assert.rejects(()=>authenticate('Bearer weekfit-dev-local-token.bad uid',config));
+});
 test('validates JPEG and rejects disguised or tiny images',()=>{assert.equal(validateInput(input()).locale,'en');assert.throws(()=>validateInput({...input(),imageBase64:Buffer.from('not an image').toString('base64')}));const tiny=Buffer.from(jpeg,'base64');tiny[8]=1;assert.throws(()=>validateInput({...input(),imageBase64:tiny.toString('base64')}));});
 test('normalizes app locales to en/ru/zh-Hans/fr/pl/es/de/ja/it/ko',()=>{
   assert.equal(validateInput({...input(),locale:'ru'}).locale,'ru');

@@ -18,6 +18,7 @@ import {
 import { createHttpObjectStore, createS3ObjectStore } from './http-object-store.mjs';
 import { createProviderLimits } from './provider-limits.mjs';
 import { createFileFreeTrialStore, createRedisFreeTrialStore } from './free-trial.mjs';
+import { probeDirectoryDurable } from './atomic-fs.mjs';
 
 export function asyncConfiguration(env = process.env) {
   const integer = (key, fallback, min, max) => {
@@ -59,7 +60,9 @@ export function asyncConfiguration(env = process.env) {
     isProduction,
     stateBackend: stateBackend || 'file',
     redisUrl,
+    allowSingleNode,
     dataDir: dataDir || path.join(process.cwd(), '.data'),
+    dataDirExplicit: Boolean(dataDir),
     maxAsyncQueue: integer('MAX_ASYNC_QUEUE', 2000, 1, 100_000),
     pollHintMs: integer('POLL_HINT_MS', 250, 100, 30_000),
     longPollMaxMs: integer('LONG_POLL_MAX_MS', 25_000, 0, 55_000),
@@ -85,7 +88,7 @@ export function asyncConfiguration(env = process.env) {
     photoTtlMs: integer('PHOTO_TTL_MS', 24 * 60 * 60_000, 60_000, 7 * 24 * 60 * 60_000),
     jobTtlMs: integer('JOB_TTL_MS', 24 * 60 * 60_000, 60_000, 7 * 24 * 60 * 60_000),
     maxEstimatedUsdPerDay: Number(env.MAX_ESTIMATED_USD_PER_DAY ?? 500),
-    maxProviderCallsPerDay: integer('MAX_PROVIDER_CALLS_PER_DAY', 5000, 1, 1_000_000),
+    maxProviderCallsPerDay: integer('MAX_PROVIDER_CALLS_PER_DAY', 200, 1, 1_000_000),
     objectStoreKind,
     objectStoreBaseUrl: env.OBJECT_STORE_BASE_URL || '',
     objectStoreToken: env.OBJECT_STORE_TOKEN || 'weekfit-object-dev',
@@ -99,6 +102,9 @@ export async function createAsyncStack(config, dependencies = {}) {
     ...dependencies.asyncConfig,
   };
   const merged = { ...config, ...asyncConfig };
+  merged.directoryDurability = dependencies.directoryDurability
+    ?? config.directoryDurability
+    ?? probeDirectoryDurable(merged.dataDir);
 
   let redis = dependencies.redis ?? null;
   if (!redis && asyncConfig.stateBackend === 'redis') {

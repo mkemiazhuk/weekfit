@@ -5,8 +5,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { configuration, createServer } from '../server.mjs';
 import { createAsyncStack } from './bootstrap.mjs';
+import { createQuotaStore } from './quota.mjs';
 import { createWorkerRuntime, buildWorkerMockAdapter } from './worker-runtime.mjs';
 import { makeJpegBytes } from '../extended-load.mjs';
+import { createMockOpenAIAdapter } from '../openai-mock.mjs';
 
 const DEV_SUB = 'weekfit-dev-local-subscription';
 const AUTH = 'Bearer weekfit-dev-local-token';
@@ -193,13 +195,29 @@ test('async status forbids other users', async (t) => {
   })).json();
 
   // Forge a different user by temporarily swapping job owner.
-  const job = await stack.jobStore.getJob(accepted.analysisId);
+  const job = await stack.jobStore.getJob(accepted.analysisId, 'local-developer');
   await stack.jobStore.saveJob({ ...job, userId: 'someone-else' });
 
   const statusRes = await fetch(`${base}/v1/food/photo-analyze/${accepted.analysisId}`, {
     headers: { Authorization: AUTH },
   });
   assert.equal(statusRes.status, 403);
+});
+
+test('file quota admits at most the global limit under parallel reserves', async (t) => {
+  const dataDir = await tempData();
+  t.after(async () => rm(dataDir, { recursive: true, force: true }));
+  const quota = createQuotaStore({ dataDir, userDailyLimit: 20, globalDailyLimit: 2 });
+  const results = await Promise.all(Array.from({ length: 12 }, (_, index) => quota.reserve({
+    userId: `user-${index}`,
+    analysisId: `aaaaaaaa-aaaa-4aaa-8aaa-${String(index).padStart(12, '0')}`,
+  }).then(() => 'charged').catch((error) => error.code)));
+  assert.equal(results.filter((item) => item === 'charged').length, 2);
+  const again = await quota.reserve({
+    userId: 'user-0',
+    analysisId: 'aaaaaaaa-aaaa-4aaa-8aaa-000000000000',
+  });
+  assert.equal(again.charged, false);
 });
 
 test('lease recovery requeues abandoned processing jobs', async (t) => {
@@ -221,12 +239,99 @@ test('lease recovery requeues abandoned processing jobs', async (t) => {
     maxAttempts: 3,
     quotaReserved: true,
   });
-  await stack.jobStore.enqueue(job.analysisId);
+  await stack.jobStore.enqueue(job.analysisId, job.userId);
   const claimed = await stack.jobStore.claimNext({ workerId: 'dead-worker', leaseMs: 30 });
   assert.equal(claimed.status, 'processing');
   await new Promise((r) => setTimeout(r, 40));
   const { recovered } = await stack.jobStore.recoverExpiredLeases();
   assert.ok(recovered >= 1);
-  const again = await stack.jobStore.getJob(job.analysisId);
+  const again = await stack.jobStore.getJob(job.analysisId, job.userId);
   assert.equal(again.status, 'queued');
+  assert.equal(again.providerStarted, undefined);
+});
+
+test('lease recovery does not requeue an analysis whose provider call started', async (t) => {
+  const dataDir = await tempData();
+  t.after(async () => rm(dataDir, { recursive: true, force: true }));
+  const stack = await createAsyncStack(mockConfig(dataDir));
+  const { job } = await stack.jobStore.createQueuedJob({
+    analysisId: '22222222-2222-4222-8222-222222222222',
+    userId: 'local-developer',
+    idempotencyKey: 'lease-started',
+    fingerprint: 'abc',
+    photoKey: 'x/y.jpg',
+    photoBytes: 10,
+    locale: 'en_US',
+    note: '',
+    model: 'gpt-6-astra',
+    maxAttempts: 3,
+    quotaReserved: true,
+  });
+  await stack.jobStore.enqueue(job.analysisId, job.userId);
+  const claimed = await stack.jobStore.claimNext({ workerId: 'dead-worker', leaseMs: 30 });
+  const marked = await stack.jobStore.markProviderStarted(claimed.analysisId, claimed.leaseToken, claimed.userId);
+  assert.equal(marked.providerStarted, true);
+  await new Promise((r) => setTimeout(r, 40));
+  await stack.jobStore.recoverExpiredLeases();
+  const again = await stack.jobStore.getJob(job.analysisId, job.userId);
+  assert.equal(again.status, 'failed');
+  assert.equal(again.providerOutcome, 'uncertain');
+  const queued = await stack.jobStore.claimNext({ workerId: 'other', leaseMs: 1000 });
+  assert.equal(queued, null);
+});
+
+test('one analysis id calls the provider once across sync, async, and restart', async (t) => {
+  const dataDir = await tempData();
+  t.after(async () => rm(dataDir, { recursive: true, force: true }));
+  const analysisId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: AUTH,
+    'X-WeekFit-Subscription-JWS': DEV_SUB,
+    'Idempotency-Key': analysisId,
+    'X-WeekFit-Analysis-Id': analysisId,
+  };
+  const adapter = createMockOpenAIAdapter({ delayMs: 5, scenario: 'ok' });
+  const config = mockConfig(dataDir);
+  const stack = await createAsyncStack(config, { openaiFetcher: adapter.fetcher });
+  const server = createServer(config, {
+    asyncStack: stack,
+    mockAdapter: adapter,
+    openaiFetcher: adapter.fetcher,
+  });
+  const base = await listen(server);
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+
+  const sync = await fetch(`${base}/v1/food/photo-recognize`, {
+    method: 'POST', headers, body: JSON.stringify(input()),
+  });
+  assert.equal(sync.status, 200);
+  assert.equal(adapter.metrics().calls, 1);
+
+  const asyncReplay = await fetch(`${base}/v1/food/photo-analyze`, {
+    method: 'POST', headers, body: JSON.stringify(input()),
+  });
+  assert.equal(asyncReplay.status, 200);
+  assert.equal((await asyncReplay.json()).idempotentReplay, true);
+  assert.equal(adapter.metrics().calls, 1);
+  const quota = createQuotaStore({ dataDir, userDailyLimit: 100, globalDailyLimit: 1000 });
+  assert.equal((await quota.snapshot('local-developer')).globalCount, 1);
+
+  await new Promise((resolve) => server.close(resolve));
+  const adapter2 = createMockOpenAIAdapter({ delayMs: 5, scenario: 'ok' });
+  const stack2 = await createAsyncStack(config, { openaiFetcher: adapter2.fetcher });
+  const restarted = createServer(config, {
+    asyncStack: stack2,
+    mockAdapter: adapter2,
+    openaiFetcher: adapter2.fetcher,
+  });
+  const base2 = await listen(restarted);
+  t.after(() => new Promise((resolve) => restarted.close(resolve)));
+  const again = await fetch(`${base2}/v1/food/photo-recognize`, {
+    method: 'POST', headers, body: JSON.stringify(input()),
+  });
+  assert.equal(again.status, 200);
+  assert.equal(again.headers.get('x-weekfit-idempotent-hit'), '1');
+  assert.equal(adapter2.metrics().calls, 0);
+  assert.equal((await quota.snapshot('local-developer')).globalCount, 1);
 });

@@ -2,6 +2,13 @@ import Foundation
 internal import Combine
 
 /// Result of one generation attempt (HTTP or test double).
+enum CoachEveningSummaryServerRead: Sendable {
+    case completed(CoachEveningSummaryGenerationResult)
+    case pending
+    case terminal
+    case absent
+}
+
 struct CoachEveningSummaryGenerationResult: Sendable {
     let summary: CoachEveningSummary
     let requestId: String
@@ -20,6 +27,8 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
     @Published private(set) var receivedAt: Date?
     @Published private(set) var isRefreshing = false
     @Published private(set) var lastRefreshFailed = false
+    /// The server has a reserved attempt and has not saved a result yet. This is not a new generation.
+    @Published private(set) var serverAttemptPending = false
     @Published private(set) var cachedFingerprint: String?
     /// Last request id applied to UI (`http` / restored cache). DEBUG + diagnostics.
     @Published private(set) var lastAppliedRequestId: String?
@@ -27,12 +36,16 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
 
     private let store: CoachEveningSummaryStore
     private let generate: (CoachEveningSummaryInput, String) async throws -> CoachEveningSummaryGenerationResult
+    private let readStatus: (CoachEveningSummaryInput, String) async -> CoachEveningSummaryServerRead
     private let timeoutSeconds: TimeInterval
     private var owner: String?
 
     /// Single in-flight HTTP generation keyed by (owner, localDay, locale). Waiter cancel / UI timeout must not clear this.
     private var inFlight: InFlight?
     private var deadline: Task<Void, Never>?
+    private var statusRead: Task<Void, Never>?
+    /// Days this process already sent (or refused to resend) to the backend. Survives a failed disk claim.
+    private var sessionAttemptedDays: Set<String> = []
 
     private struct FlightKey: Hashable {
         let owner: String
@@ -58,12 +71,16 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
     init(
         store: CoachEveningSummaryStore? = nil,
         timeoutSeconds: TimeInterval = 20,
+        readStatus: @escaping (CoachEveningSummaryInput, String) async -> CoachEveningSummaryServerRead = { input, owner in
+            await CoachEveningSummaryService.read(input, owner: owner)
+        },
         generate: @escaping (CoachEveningSummaryInput, String) async throws -> CoachEveningSummaryGenerationResult = { input, owner in
             try await CoachEveningSummaryService.generate(input, owner: owner)
         }
     ) {
         self.store = store ?? CoachEveningSummaryStore()
         self.timeoutSeconds = timeoutSeconds
+        self.readStatus = readStatus
         self.generate = generate
     }
 
@@ -81,6 +98,9 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
                 detail: "owner=\(tag) hadSummary=\(summary != nil) wasRefreshing=\(isRefreshing) hadFlight=\(inFlight != nil)"
             )
             cancelInFlight(reason: "ownerChange")
+            statusRead?.cancel()
+            statusRead = nil
+            serverAttemptPending = false
             lastRefreshFailed = false
             self.owner = owner
         }
@@ -174,6 +194,8 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         CoachEveningSummaryDiagnostics.event("workspaceReset")
         cancelInFlight(reason: "workspaceReset")
         owner = nil
+        sessionAttemptedDays = []
+        serverAttemptPending = false
         summary = nil
         receivedAt = nil
         cachedFingerprint = nil
@@ -203,9 +225,24 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             return
         }
 
-        // Drop a same-day answer stamped for another app language so we can request a matching one.
-        // (Wrong-language *text* with the correct locale stamp is blanked in displayCommentary instead —
-        // regenerating would only reuse the same once-per-day server answer.)
+        // Once-per-day: the first answer for this local day wins. Language, fingerprint, and
+        // tab re-entry must not call the backend again.
+        if CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow,
+           let summary,
+           summary.day == input.day {
+            CoachEveningSummaryDiagnostics.event(
+                "ensure.cacheFresh",
+                detail: CoachEveningSummaryDiagnostics.flightDetail(
+                    owner: owner,
+                    day: input.day,
+                    source: source,
+                    extra: "hit=memory reason=oncePerDay cachedLocale=\(summary.locale) requestLocale=\(input.locale)"
+                )
+            )
+            return
+        }
+
+        // Unrestricted testing only: drop a same-day answer for another language so the next call can replace it.
         if let summary,
            summary.day == input.day,
            summary.locale != input.locale {
@@ -221,20 +258,6 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             self.summary = nil
             receivedAt = nil
             cachedFingerprint = nil
-        }
-
-        // Once-per-day: successful summary for this local day+locale wins — ignore fingerprint churn.
-        if CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow,
-           let summary,
-           summary.day == input.day,
-           summary.locale == input.locale {
-            CoachEveningSummaryDiagnostics.event(
-                "ensure.cacheFresh",
-                detail: CoachEveningSummaryDiagnostics.flightDetail(
-                    owner: owner, day: input.day, source: source, extra: "hit=memory reason=oncePerDay"
-                )
-            )
-            return
         }
 
         if let summary,
@@ -322,12 +345,14 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
 
         if CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow,
            let summary,
-           summary.day == input.day,
-           summary.locale == input.locale {
+           summary.day == input.day {
             CoachEveningSummaryDiagnostics.event(
                 "refresh.reused",
                 detail: CoachEveningSummaryDiagnostics.flightDetail(
-                    owner: owner, day: input.day, source: source, extra: "hit=memory reason=oncePerDay"
+                    owner: owner,
+                    day: input.day,
+                    source: source,
+                    extra: "hit=memory reason=oncePerDay cachedLocale=\(summary.locale) requestLocale=\(input.locale)"
                 )
             )
             lastRefreshFailed = false
@@ -377,7 +402,10 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         let key = FlightKey(owner: owner, day: input.day, locale: input.locale)
 
         if let flight = inFlight {
-            if flight.key == key {
+            if flight.key == key
+                || (CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow
+                    && flight.key.owner == key.owner
+                    && flight.key.day == key.day) {
                 flight.waiterSources.append(source)
                 isRefreshing = true
                 lastRefreshFailed = false
@@ -388,13 +416,13 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
                         day: input.day,
                         source: source,
                         requestId: flight.clientRequestId,
-                        extra: "waiters=\(flight.waiterSources.count) locale=\(input.locale)"
+                        extra: "waiters=\(flight.waiterSources.count) locale=\(input.locale) flightLocale=\(flight.key.locale)"
                     )
                 )
                 return
             }
-            // Different owner/day/locale — abandon previous flight's UI claim; underlying task still
-            // checks key before applying so a late response cannot cross owners/days/languages.
+            // Different owner or local day — abandon previous flight's UI claim; underlying task still
+            // checks key before applying so a late response cannot cross owners or days.
             CoachEveningSummaryDiagnostics.event(
                 "generation.superseded",
                 detail: CoachEveningSummaryDiagnostics.flightDetail(
@@ -407,6 +435,13 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             )
             cancelInFlight(reason: "superseded")
         }
+
+        // Reserve the local day before auth or HTTP. A failure, timeout, or rejected body
+        // still consumes the attempt — the next open must not call the backend again.
+        if reuseStoredDailyAttempt(input: input, owner: owner, source: source) {
+            return
+        }
+        reserveDailyAttempt(owner: owner, day: input.day)
 
         let clientRequestId = UUID().uuidString
         isRefreshing = true
@@ -604,6 +639,13 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             if owner == key.owner {
                 lastRefreshFailed = true
             }
+            if owner == key.owner, summary == nil {
+                let readInput = input
+                let readOwner = key.owner
+                Task { @MainActor in
+                    self.beginStatusRead(input: readInput, owner: readOwner, source: "afterFailure")
+                }
+            }
         }
     }
 
@@ -624,6 +666,141 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         if owner == key.owner {
             lastRefreshFailed = true
             isRefreshing = false
+        }
+    }
+
+    /// GET only. A terminal local claim blocks POST, and this does not clear that claim.
+    private func beginStatusRead(input: CoachEveningSummaryInput, owner: String, source: String) {
+        guard statusRead == nil else { return }
+        guard summary?.day != input.day else { return }
+        isRefreshing = true
+        let task = Task { @MainActor in
+            defer {
+                if statusRead != nil {
+                    statusRead = nil
+                    if self.owner == owner {
+                        isRefreshing = false
+                    }
+                }
+            }
+            var pending = false
+            for attempt in 0..<5 {
+                if Task.isCancelled { return }
+                let status = await readStatus(input, owner)
+                if Task.isCancelled || self.owner != owner { return }
+                switch status {
+                case .completed(let result):
+                    applyRecovered(result, owner: owner, day: input.day, source: source)
+                    return
+                case .pending:
+                    pending = true
+                    serverAttemptPending = true
+                    if attempt == 4 { break }
+                    try? await Task.sleep(for: .milliseconds(300))
+                case .terminal, .absent:
+                    serverAttemptPending = false
+                    if summary == nil { lastRefreshFailed = true }
+                    return
+                }
+            }
+            serverAttemptPending = pending
+            if summary == nil, !pending { lastRefreshFailed = true }
+        }
+        statusRead = task
+    }
+
+    private func applyRecovered(
+        _ result: CoachEveningSummaryGenerationResult,
+        owner: String,
+        day: String,
+        source: String
+    ) {
+        guard self.owner == owner || self.owner == nil else { return }
+        guard result.summary.isRecoveredDisplayable(forDay: day) else {
+            serverAttemptPending = false
+            lastRefreshFailed = true
+            return
+        }
+        summary = result.summary
+        receivedAt = Date()
+        cachedFingerprint = cachedFingerprint ?? "day:\(day):\(result.summary.locale)"
+        lastRefreshFailed = false
+        serverAttemptPending = false
+        lastAppliedRequestId = result.requestId
+        lastAppliedUISource = "status"
+        do {
+            try store.saveCache(
+                .init(summary: result.summary, receivedAt: receivedAt ?? Date(), inputFingerprint: cachedFingerprint),
+                owner: owner
+            )
+        } catch {
+            CoachEveningSummaryDiagnostics.error(
+                "cache.saveError",
+                detail: CoachEveningSummaryDiagnostics.flightDetail(
+                    owner: owner, day: day, source: source, extra: "disk=fail keepMemory=true"
+                )
+            )
+        }
+        CoachEveningSummaryDiagnostics.event(
+            "status.applied",
+            detail: CoachEveningSummaryDiagnostics.flightDetail(
+                owner: owner, day: day, source: source, requestId: result.requestId
+            )
+        )
+    }
+
+    private func attemptKey(owner: String, day: String) -> String {
+        "\(owner)|\(day)"
+    }
+
+    /// `true` when this local day was already sent. Restores a saved answer or leaves the failure visible.
+    private func reuseStoredDailyAttempt(input: CoachEveningSummaryInput, owner: String, source: String) -> Bool {
+        guard CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow else { return false }
+        let day = input.day
+        let record = try? store.record(owner: owner, day: day)
+        let attempted = record != nil || sessionAttemptedDays.contains(attemptKey(owner: owner, day: day))
+        guard attempted else { return false }
+
+        if summary?.day != day, let cached = record?.summary {
+            summary = cached
+            receivedAt = receivedAt ?? Date()
+            cachedFingerprint = cachedFingerprint ?? "day:\(day):\(cached.locale)"
+            lastRefreshFailed = false
+            serverAttemptPending = false
+            lastAppliedUISource = "disk"
+        } else if summary == nil {
+            beginStatusRead(input: input, owner: owner, source: source)
+            return true
+        }
+        isRefreshing = false
+        CoachEveningSummaryDiagnostics.event(
+            "ensure.blocked",
+            detail: CoachEveningSummaryDiagnostics.flightDetail(
+                owner: owner,
+                day: day,
+                source: source,
+                extra: "reason=alreadyAttempted hadSummary=\(summary != nil)"
+            )
+        )
+        return true
+    }
+
+    /// Writes the day claim before the network call. Disk failure still sticks for this process.
+    private func reserveDailyAttempt(owner: String, day: String) {
+        guard CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow else { return }
+        sessionAttemptedDays.insert(attemptKey(owner: owner, day: day))
+        do {
+            _ = try store.claim(owner: owner, day: day)
+        } catch {
+            CoachEveningSummaryDiagnostics.error(
+                "claim.writeError",
+                detail: CoachEveningSummaryDiagnostics.flightDetail(
+                    owner: owner,
+                    day: day,
+                    source: "flight",
+                    extra: "keepSessionClaim=true error=\(String(describing: type(of: error)))"
+                )
+            )
         }
     }
 

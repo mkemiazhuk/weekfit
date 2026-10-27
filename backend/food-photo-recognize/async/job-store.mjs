@@ -1,8 +1,9 @@
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
-import { readdir, rename } from 'node:fs/promises';
+import { readFile, readdir, rename } from 'node:fs/promises';
 import { writeJsonAtomic, readJson, createExclusive, removeQuiet } from './atomic-fs.mjs';
+import { ownerKey } from './quota.mjs';
 import { dataPaths, ensureDataDirs } from './paths.mjs';
 import { notifyJobUpdated } from './job-wait.mjs';
 
@@ -30,16 +31,34 @@ export async function createFileJobStore({ dataDir, jobTtlMs = 24 * 60 * 60_000 
   const wake = new EventEmitter();
   wake.setMaxListeners(200);
 
-  const jobPath = (analysisId) => path.join(paths.jobs, `${analysisId}.json`);
-  const resultPath = (analysisId) => path.join(paths.results, `${analysisId}.json`);
+  const jobPath = (analysisId, userId) => (userId
+    ? path.join(paths.jobs, ownerKey(userId), `${analysisId}.json`)
+    : path.join(paths.jobs, `${analysisId}.json`));
+  const resultPath = (analysisId, userId) => (userId
+    ? path.join(paths.results, ownerKey(userId), `${analysisId}.json`)
+    : path.join(paths.results, `${analysisId}.json`));
 
-  const getJob = async (analysisId) => readJson(jobPath(analysisId), null);
+  const getJob = async (analysisId, userId = null) => {
+    if (userId) {
+      const scoped = await readJson(jobPath(analysisId, userId), null);
+      if (scoped) return scoped;
+      const legacy = await readJson(jobPath(analysisId), null);
+      if (legacy?.userId === userId) {
+        const migrated = { ...legacy, ownerUserId: userId };
+        await writeJsonAtomic(jobPath(analysisId, userId), migrated);
+        return migrated;
+      }
+      return null;
+    }
+    return readJson(jobPath(analysisId), null);
+  };
 
   const saveJob = async (job) => {
-    const next = { ...job, updatedAt: Date.now() };
-    await writeJsonAtomic(jobPath(job.analysisId), next);
+    const owner = job.ownerUserId || job.userId;
+    const next = { ...job, ownerUserId: owner, updatedAt: Date.now() };
+    await writeJsonAtomic(jobPath(job.analysisId, owner), next);
     if (next.status === JOB_STATUSES.completed || next.status === JOB_STATUSES.failed) {
-      await writeJsonAtomic(resultPath(job.analysisId), {
+      await writeJsonAtomic(resultPath(job.analysisId, owner), {
         analysisId: next.analysisId,
         status: next.status,
         result: next.result ?? null,
@@ -99,11 +118,36 @@ export async function createFileJobStore({ dataDir, jobTtlMs = 24 * 60 * 60_000 
       updatedAt: Date.now(),
       expiresAt: Date.now() + jobTtlMs,
     };
-    const created = await createExclusive(jobPath(record.analysisId), `${JSON.stringify(record)}\n`);
+    const owner = record.userId;
+    const stored = { ...record, ownerUserId: owner };
+    const created = await createExclusive(jobPath(record.analysisId, owner), `${JSON.stringify(stored)}\n`);
     if (!created) {
-      return { job: await getJob(record.analysisId), created: false };
+      const existing = await getJob(record.analysisId, owner);
+      if (existing && existing.userId !== record.userId) {
+        const error = new Error('analysis_owner_mismatch');
+        error.code = 'analysis_owner_mismatch';
+        throw error;
+      }
+      return { job: existing, created: false };
     }
-    return { job: record, created: true };
+    return { job: stored, created: true };
+  };
+
+  const leaseFile = (job) => {
+    const owner = job?.ownerUserId || job?.userId;
+    const name = owner ? `${ownerKey(owner)}--${job.analysisId}.json` : `${job.analysisId}.json`;
+    return path.join(paths.queueLeased, name);
+  };
+
+  const readMarker = async (file) => {
+    const raw = await readFile(file, 'utf8');
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.analysisId) return parsed;
+    } catch {
+      // Legacy markers store the analysis id as plain text.
+    }
+    return { analysisId: raw.trim(), userId: null };
   };
 
   const listReadyNames = async () => {
@@ -115,16 +159,17 @@ export async function createFileJobStore({ dataDir, jobTtlMs = 24 * 60 * 60_000 
     }
   };
 
-  /** Ready marker name: `{timestampMs}.{analysisId}` */
-  const enqueue = async (analysisId) => {
-    const name = `${Date.now()}.${analysisId}`;
+  /** Ready marker name includes the owner key when the job is bound to a UID. */
+  const enqueue = async (analysisId, userId = null) => {
+    const token = userId ? `${ownerKey(userId)}--${analysisId}` : analysisId;
+    const body = JSON.stringify({ analysisId, userId });
+    const name = `${Date.now()}.${token}`;
     const marker = path.join(paths.queueReady, name);
-    const ok = await createExclusive(marker, analysisId);
+    const ok = await createExclusive(marker, body);
     let out = name;
     if (!ok) {
-      // Same ms collision — retry with jitter suffix.
-      const alt = `${Date.now()}.${analysisId}.${Math.random().toString(16).slice(2, 8)}`;
-      await createExclusive(path.join(paths.queueReady, alt), analysisId);
+      const alt = `${Date.now()}.${token}.${Math.random().toString(16).slice(2, 8)}`;
+      await createExclusive(path.join(paths.queueReady, alt), body);
       out = alt;
     }
     wake.emit('ready');
@@ -158,8 +203,10 @@ export async function createFileJobStore({ dataDir, jobTtlMs = 24 * 60 * 60_000 
       }
 
       try {
-        const job = await getJob(claimedId);
-        if (!job || job.status === JOB_STATUSES.completed || job.status === JOB_STATUSES.failed) {
+        const marker = await readMarker(claimingPath);
+        const job = await getJob(marker.analysisId, marker.userId);
+        if (!job || job.userId !== (marker.userId ?? job.userId)
+          || job.status === JOB_STATUSES.completed || job.status === JOB_STATUSES.failed) {
           await removeQuiet(claimingPath);
           continue;
         }
@@ -174,8 +221,9 @@ export async function createFileJobStore({ dataDir, jobTtlMs = 24 * 60 * 60_000 
           processingStartedAt: Date.now(),
           attempts: (job.attempts ?? 0) + 1,
         });
-        await writeJsonAtomic(path.join(paths.queueLeased, `${claimedId}.json`), {
-          analysisId: claimedId,
+        await writeJsonAtomic(leaseFile(leased), {
+          analysisId: leased.analysisId,
+          userId: leased.userId,
           workerId,
           leaseToken,
           leaseUntil,
@@ -228,7 +276,7 @@ export async function createFileJobStore({ dataDir, jobTtlMs = 24 * 60 * 60_000 
       if (!name.endsWith('.json')) continue;
       const lease = await readJson(path.join(paths.queueLeased, name), null);
       if (!lease || lease.leaseUntil > now) continue;
-      const job = await getJob(lease.analysisId);
+      const job = await getJob(lease.analysisId, lease.userId);
       if (!job) {
         await removeQuiet(path.join(paths.queueLeased, name));
         continue;
@@ -237,21 +285,35 @@ export async function createFileJobStore({ dataDir, jobTtlMs = 24 * 60 * 60_000 
         await removeQuiet(path.join(paths.queueLeased, name));
         continue;
       }
+      if (job.providerStarted) {
+        await saveJob({
+          ...job,
+          status: JOB_STATUSES.failed,
+          error: 'lease_expired_after_provider',
+          providerOutcome: 'uncertain',
+          leaseOwner: null,
+          leaseUntil: null,
+          leaseToken: null,
+        });
+        await removeQuiet(path.join(paths.queueLeased, name));
+        recovered += 1;
+        continue;
+      }
       await saveJob({
         ...job,
         status: JOB_STATUSES.queued,
         leaseOwner: null,
         leaseUntil: null,
       });
-      await enqueue(job.analysisId);
+      await enqueue(job.analysisId, job.userId);
       await removeQuiet(path.join(paths.queueLeased, name));
       recovered += 1;
     }
     return { recovered };
   };
 
-  const completeJob = async (analysisId, { result, providerOutcome, leaseToken = null }) => {
-    const job = await getJob(analysisId);
+  const completeJob = async (analysisId, { result, providerOutcome, leaseToken = null, userId = null } = {}) => {
+    const job = await getJob(analysisId, userId);
     if (!job) return null;
     if (job.status === JOB_STATUSES.completed) return job;
     if (leaseToken && job.leaseToken && job.leaseToken !== leaseToken) return null;
@@ -265,13 +327,13 @@ export async function createFileJobStore({ dataDir, jobTtlMs = 24 * 60 * 60_000 
       leaseToken: null,
       leaseUntil: null,
     });
-    await removeQuiet(path.join(paths.queueLeased, `${analysisId}.json`));
+    await removeQuiet(leaseFile(job));
     notifyJobUpdated(analysisId);
     return next;
   };
 
-  const failJob = async (analysisId, { error, providerOutcome, requeue, softRequeue = false, leaseToken = null }) => {
-    const job = await getJob(analysisId);
+  const failJob = async (analysisId, { error, providerOutcome, requeue, softRequeue = false, leaseToken = null, userId = null } = {}) => {
+    const job = await getJob(analysisId, userId);
     if (!job) return null;
     if (leaseToken && job.leaseToken && job.leaseToken !== leaseToken && !requeue) return null;
     if (requeue) {
@@ -288,10 +350,10 @@ export async function createFileJobStore({ dataDir, jobTtlMs = 24 * 60 * 60_000 
         leaseToken: null,
         leaseUntil: null,
       });
-      await enqueue(analysisId);
-      await removeQuiet(path.join(paths.queueLeased, `${analysisId}.json`));
+      await enqueue(analysisId, job.userId);
+      await removeQuiet(leaseFile(job));
       notifyJobUpdated(analysisId);
-      return getJob(analysisId);
+      return getJob(analysisId, job.userId);
     }
     const next = await saveJob({
       ...job,
@@ -302,19 +364,32 @@ export async function createFileJobStore({ dataDir, jobTtlMs = 24 * 60 * 60_000 
       leaseToken: null,
       leaseUntil: null,
     });
-    await removeQuiet(path.join(paths.queueLeased, `${analysisId}.json`));
+    await removeQuiet(leaseFile(job));
     notifyJobUpdated(analysisId);
     return next;
   };
 
-  const renewLease = async (analysisId, workerId, leaseMs, leaseToken = null) => {
-    const job = await getJob(analysisId);
+  const markProviderStarted = async (analysisId, leaseToken = null, userId = null) => {
+    const job = await getJob(analysisId, userId);
+    if (!job || job.status !== JOB_STATUSES.processing) return null;
+    if (leaseToken && job.leaseToken && job.leaseToken !== leaseToken) return null;
+    if (job.providerStarted) return job;
+    return saveJob({
+      ...job,
+      providerStarted: true,
+      providerStartedAt: new Date().toISOString(),
+    });
+  };
+
+  const renewLease = async (analysisId, workerId, leaseMs, leaseToken = null, userId = null) => {
+    const job = await getJob(analysisId, userId);
     if (!job || job.leaseOwner !== workerId) return false;
     if (leaseToken && job.leaseToken && job.leaseToken !== leaseToken) return false;
     const leaseUntil = Date.now() + leaseMs;
     await saveJob({ ...job, leaseUntil });
-    await writeJsonAtomic(path.join(paths.queueLeased, `${analysisId}.json`), {
+    await writeJsonAtomic(leaseFile(job), {
       analysisId,
+      userId: job.userId,
       workerId,
       leaseToken: job.leaseToken,
       leaseUntil,
@@ -350,6 +425,7 @@ export async function createFileJobStore({ dataDir, jobTtlMs = 24 * 60 * 60_000 
     enqueue,
     claimNext,
     recoverExpiredLeases,
+    markProviderStarted,
     completeJob,
     failJob,
     renewLease,

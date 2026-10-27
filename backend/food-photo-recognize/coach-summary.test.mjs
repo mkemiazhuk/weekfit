@@ -4,7 +4,7 @@ import {once} from 'node:events';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {createServer} from './server.mjs';
+import {configuration, createServer} from './server.mjs';
 import {ServiceError} from './recognition.mjs';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
@@ -73,29 +73,15 @@ test('changed meals or plans cannot buy another call for the same language',asyn
   assert.equal((await post(b)).status,200);
   assert.equal(calls,1);
 });
-test('language change requests a new summary in the matching locale',async t=>{
+test('language change reuses the day reservation and does not call the provider again',async t=>{
   let calls=0;
-  const locales=[];
-  const {post}=await server(t,await directory(t),async(input)=>{
-    calls++;
-    locales.push(input.locale);
-    const r=result();
-    if(input.locale==='en'){
-      r.headline='Day wrap';
-      r.today={text:'Sleep was short.',evidenceIds:['sleep.duration']};
-      r.now={text:'Wind down for sleep.',evidenceIds:['coach.priority']};
-      r.tomorrow={text:'Tomorrow is still open.',evidenceIds:[]};
-      r.limitations=['Food logging is incomplete.'];
-    }
-    return {result:r};
-  });
+  const {post}=await server(t,await directory(t),async()=>{calls++;return {result:result()};});
   assert.equal((await post(input())).status,200);
   const en=await(await post({...input(),locale:'en'})).json();
-  assert.equal(en.reused,false);
-  assert.equal(en.locale,'en');
-  assert.equal(en.headline,'Day wrap');
-  assert.equal(calls,2);
-  assert.deepEqual(locales,['ru','en']);
+  assert.equal(en.reused,true);
+  assert.equal(en.locale,'ru');
+  assert.equal(en.headline,'Итог дня');
+  assert.equal(calls,1);
 });
 test('parallel identical requests invoke provider at most once',async t=>{let calls=0;const {post}=await server(t,await directory(t),async()=>{calls++;await new Promise(r=>setTimeout(r,40));return {result:result()};});const rs=await Promise.all([post(input()),post(input()),post(input())]);assert.equal(calls,1);assert.ok(rs.every(r=>[200,409].includes(r.status)));});
 test('restart uses stored answer without invoking AI',async t=>{const dir=await directory(t);const a=await server(t,dir,async()=>({result:result()}));await a.post(input());await new Promise(r=>a.s.close(r));let calls=0;const b=await server(t,dir,async()=>{calls++;return {result:result()};});assert.equal((await b.post(input())).status,200);assert.equal(calls,0);});
@@ -104,10 +90,10 @@ test('timeout cannot automatically or manually regenerate',async t=>{let calls=0
 test('storage scoped to authenticated UID',async t=>{let calls=0;const {post}=await server(t,await directory(t),async()=>{calls++;return {result:result()};});await post(input(),'Bearer a');await post(input(),'Bearer b');assert.equal(calls,2);});
 test('no auth means no provider call',async t=>{let calls=0;const {post}=await server(t,await directory(t),async()=>{calls++;return {result:result()};});assert.equal((await post(input(),null)).status,401);assert.equal(calls,0);});
 test('cannot generate before 20:00 or backdate requests',async t=>{let calls=0;const {post}=await server(t,await directory(t),async()=>{calls++;return {result:result()};},{dependencies:{summaryNow:()=>new Date('2026-10-12T17:59:59Z')}});assert.equal((await post(input())).status,422);assert.equal((await post({...input(),day:'2026-10-11'})).status,422);assert.equal(calls,0);});
-test('next local day permits one new request',async t=>{let calls=0;const dir=await directory(t);const generate=async()=>{calls++;return {result:result()};};const a=await server(t,dir,generate);await a.post(input());const b=await server(t,dir,generate,{dependencies:{summaryNow:()=>new Date('2026-10-13T18:00:00Z')}});assert.equal((await b.post({...input(),day:'2026-10-13'})).status,200);assert.equal(calls,2);});
+test('next local day permits one new request',async t=>{let calls=0;const dir=await directory(t);const generate=async()=>{calls++;return {result:result()};};const a=await server(t,dir,generate);await a.post(input());await new Promise(r=>a.s.close(r));const b=await server(t,dir,generate,{dependencies:{summaryNow:()=>new Date('2026-10-13T18:00:00Z')}});assert.equal((await b.post({...input(),day:'2026-10-13'})).status,200);assert.equal(calls,2);});
 test('storage misconfiguration fails closed without AI',async t=>{let calls=0;const {post}=await server(t,'',async()=>{calls++;return {result:result()};});assert.equal((await post(input())).status,503);assert.equal(calls,0);});
 test('concurrency limit is acquired before asynchronous reservation',async t=>{let running=0,peak=0;const {post}=await server(t,await directory(t),async()=>{running++;peak=Math.max(peak,running);await new Promise(r=>setTimeout(r,40));running--;return {result:result()};},{config:{summaryConcurrency:1}});const rs=await Promise.all([post(input(),'Bearer a'),post(input(),'Bearer b'),post(input(),'Bearer c')]);assert.equal(peak,1);assert.equal(rs.filter(r=>r.status===200).length,1);assert.equal(rs.filter(r=>r.status===503).length,2);});
-test('structured output has bounded tokens, no photo and no storage',async()=>{let sent;const r=await generateSummary(validateDay(input()),{apiKey:'test',summaryModel:'test-model'},async(url,opts)=>{sent=JSON.parse(opts.body);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(result())}]}]})};});assert.equal(sent.store,false);assert.equal(sent.max_output_tokens,1200);assert.equal(sent.text.format.strict,true);assert.equal(sent.reasoning,undefined);assert.equal(r.result.headline,'Итог дня');assert.match(sent.instructions,/40.65 words/);assert.equal(SUMMARY_PROMPT_VERSION,13);assert.match(sent.instructions,/personal activity, sleep and recovery coach/);assert.match(sent.instructions,/LANGUAGE LOCK/);assert.match(sent.instructions,/Russian/);assert.match(sent.instructions,/SEVEN days/);assert.match(sent.instructions,/Hard bans/);assert.match(sent.instructions,/At most ONE next-step/);assert.match(sent.instructions,/ready for load/);assert.match(sent.instructions,/single HRV/);assert.match(sent.instructions,/active calories/);assert.match(sent.instructions,/SAME cautious conclusion/);assert.match(sent.instructions,/several days/);assert.match(sent.instructions,/principal personal fitness assistant/);assert.match(sent.instructions,/30 years of experience/);assert.match(sent.instructions,/silently verify/);assert.match(sent.instructions,/Never claim professional credentials/);});
+test('structured output has bounded tokens, no photo and no storage',async()=>{let sent;const r=await generateSummary(validateDay(input()),{apiKey:'test',summaryModel:'test-model'},async(url,opts)=>{sent=JSON.parse(opts.body);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(result())}]}]})};});assert.equal(sent.store,false);assert.equal(sent.max_output_tokens,8192);assert.equal(sent.text.format.strict,true);assert.equal(sent.reasoning,undefined);assert.equal(r.result.headline,'Итог дня');assert.match(sent.instructions,/40.65 words/);assert.equal(SUMMARY_PROMPT_VERSION,13);assert.match(sent.instructions,/personal activity, sleep and recovery coach/);assert.match(sent.instructions,/LANGUAGE LOCK/);assert.match(sent.instructions,/Russian/);assert.match(sent.instructions,/SEVEN days/);assert.match(sent.instructions,/Hard bans/);assert.match(sent.instructions,/At most ONE next-step/);assert.match(sent.instructions,/ready for load/);assert.match(sent.instructions,/single HRV/);assert.match(sent.instructions,/active calories/);assert.match(sent.instructions,/SAME cautious conclusion/);assert.match(sent.instructions,/several days/);assert.match(sent.instructions,/principal personal fitness assistant/);assert.match(sent.instructions,/30 years of experience/);assert.match(sent.instructions,/silently verify/);assert.match(sent.instructions,/Never claim professional credentials/);});
 test('empty facts return fallback without calling the provider',async t=>{
   let calls=0;
   const {post}=await server(t,await directory(t),async()=>{calls++;return {result:result()};},{
@@ -160,41 +146,40 @@ test('malformed day and unauthorized still fail',async t=>{
   assert.equal((await post(input(),null)).status,401);
   assert.equal(calls,0);
 });
-test('unrestricted mode allows before 20:00 and always calls AI',async t=>{
+test('once-per-day flag and unrestricted header cannot call before 20:00 or twice',async t=>{
   let calls=0;
   const {post}=await server(t,await directory(t),async()=>{calls++;return {result:result()};},{
-    config:{summaryOncePerDay:false},
+    config:{summaryOncePerDay:false,summaryAllowUnrestrictedHeader:true},
     dependencies:{summaryNow:()=>new Date('2026-10-12T10:00:00Z')}
   });
-  assert.equal((await post(input())).status,200);
-  assert.equal((await post(input())).status,200);
-  assert.equal(calls,2);
+  assert.equal((await post(input())).status,422);
+  assert.equal((await post(input())).status,422);
+  assert.equal(calls,0);
 });
-test('dev unrestricted header bypasses once-per-day for local-developer',async t=>{
+test('dev unrestricted header does not bypass the evening window or the day claim',async t=>{
   let calls=0;
   const dir=await directory(t);
-  const config={apiKey:'test',summaryModel:'test-model',summaryStoreDir:dir,allowDevAuth:true,model:'test-photo',dailyLimit:20,maxConcurrency:4,globalDailyLimit:200,summaryOncePerDay:true};
+  const config={apiKey:'test',summaryModel:'test-model',summaryStoreDir:dir,allowDevAuth:true,model:'test-photo',dailyLimit:20,maxConcurrency:4,globalDailyLimit:200,summaryOncePerDay:true,summaryAllowUnrestrictedHeader:true};
   const s=createServer(config,{
     generateSummary:async()=>{calls++;return {result:result()};},
     authenticate:async()=>'local-developer',
-    summaryNow:()=>new Date('2026-10-12T10:00:00Z')
+    summaryNow:()=>new Date('2026-10-12T18:00:00Z')
   });
   s.listen(0,'127.0.0.1');await once(s,'listening');t.after(()=>s.close());
-  const post=async(unrestricted=false)=>fetch(`http://127.0.0.1:${s.address().port}/v1/coach/day-summary`,{
+  const post=async()=>fetch(`http://127.0.0.1:${s.address().port}/v1/coach/day-summary`,{
     method:'POST',
     headers:{
       'Content-Type':'application/json',
       Authorization:'Bearer a',
-      ...(unrestricted?{'X-WeekFit-Coach-Summary-Unrestricted':'1'}:{})
+      'X-WeekFit-Coach-Summary-Unrestricted':'1'
     },
     body:JSON.stringify(input())
   });
-  assert.equal((await post(false)).status,422,'without header evening window still enforced');
-  assert.equal((await post(true)).status,200);
-  assert.equal((await post(true)).status,200);
-  assert.equal(calls,2);
+  assert.equal((await post()).status,200);
+  assert.equal((await post()).status,200);
+  assert.equal(calls,1);
 });
-test('unrestricted mode ignores prior daily claim files',async t=>{
+test('turning the once-per-day flag off does not ignore an existing claim',async t=>{
   const dir=await directory(t);
   let calls=0;
   const once=await server(t,dir,async()=>{calls++;return {result:result()};},{config:{summaryOncePerDay:true}});
@@ -202,10 +187,12 @@ test('unrestricted mode ignores prior daily claim files',async t=>{
   await new Promise(r=>once.s.close(r));
   const open=await server(t,dir,async()=>{calls++;return {result:result()};},{
     config:{summaryOncePerDay:false},
-    dependencies:{summaryNow:()=>new Date('2026-10-12T10:00:00Z')}
+    dependencies:{summaryNow:()=>new Date('2026-10-12T18:30:00Z')}
   });
-  assert.equal((await open.post(input())).status,200);
-  assert.equal(calls,2);
+  const again=await open.post(input());
+  assert.equal(again.status,200);
+  assert.equal((await again.json()).reused,true);
+  assert.equal(calls,1);
 });
 
 test('weekly evidence accepted without breaking legacy snapshots or evidence validation',()=>{
@@ -227,6 +214,81 @@ test('history remains bounded and cannot introduce duplicate evidence IDs',()=>{
   assert.doesNotThrow(()=>validateDay(ok));
   b.facts.recentSleep=[b.facts.sleep[0]];
   assert.throws(()=>validateDay(b),/invalid_day_snapshot/);
+});
+
+test('mock clock keeps one coach call across replay, language, GET and a failed retry', async (t) => {
+  const dir = await directory(t);
+  const token = 'weekfit-dev-local-token';
+  const listen = async (extra) => {
+    const config = configuration({
+      OPENAI_MOCK: '1',
+      ALLOW_DEV_AUTH: '1',
+      WEEKFIT_DEV_TOKEN: token,
+      COACH_SUMMARY_STORE_DIR: dir,
+      COACH_SUMMARY_NOW: '2026-10-12T18:00:00.000Z',
+      FOOD_PHOTO_MOCK_DELAY_MS: '40',
+      COACH_AI_ENABLED: '1',
+      ...extra,
+    });
+    const server = createServer(config);
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    t.after(() => server.close());
+    return server;
+  };
+  const post = (server, body, bearer = token) => fetch(`http://127.0.0.1:${server.address().port}/v1/coach/day-summary`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}` },
+    body: JSON.stringify(body),
+  });
+  const calls = async (server) => (await (await fetch(`http://127.0.0.1:${server.address().port}/healthz`)).json()).mockMetrics.calls;
+
+  const first = await listen();
+  const parallel = await Promise.all([post(first, input()), post(first, input()), post(first, input())]);
+  assert.ok(parallel.every((response) => response.status === 200 || response.status === 409));
+  assert.equal(await calls(first), 1);
+  const changed = await post(first, { ...input(), locale: 'en' });
+  const changedBody = await changed.json();
+  assert.equal(changed.status, 200);
+  assert.equal(changedBody.reused, true);
+  assert.equal(changedBody.locale, 'ru');
+  assert.equal(changedBody.headline, 'Итог дня');
+  const saved = await fetch(`http://127.0.0.1:${first.address().port}/v1/coach/day-summary?day=2026-10-12&timezone=Europe%2FWarsaw`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  assert.equal((await saved.json()).headline, 'Итог дня');
+  assert.equal(await calls(first), 1);
+  await new Promise((resolve) => first.close(resolve));
+
+  const restarted = await listen();
+  const replay = await post(restarted, input());
+  assert.equal(replay.status, 200);
+  assert.equal((await replay.json()).reused, true);
+  assert.equal(await calls(restarted), 0);
+  await new Promise((resolve) => restarted.close(resolve));
+
+  const broken = await listen({ FOOD_PHOTO_MOCK_SCENARIO: 'server_error' });
+  const failed = await post(broken, input(), `${token}.uid-err`);
+  assert.equal(failed.status, 502);
+  assert.equal((await failed.json()).error, 'provider_error');
+  assert.equal((await post(broken, input(), `${token}.uid-err`)).status, 409);
+  assert.equal(await calls(broken), 1);
+  await new Promise((resolve) => broken.close(resolve));
+  const brokenAgain = await listen();
+  assert.equal((await post(brokenAgain, input(), `${token}.uid-err`)).status, 409);
+  assert.equal(await calls(brokenAgain), 0);
+  await new Promise((resolve) => brokenAgain.close(resolve));
+
+  const invalid = await listen({ FOOD_PHOTO_MOCK_SCENARIO: 'coach_invalid' });
+  const bad = await post(invalid, input(), `${token}.uid-bad`);
+  assert.equal(bad.status, 502);
+  assert.equal((await bad.json()).error, 'invalid_summary_result');
+  assert.equal((await post(invalid, input(), `${token}.uid-bad`)).status, 409);
+  assert.equal(await calls(invalid), 1);
+  await new Promise((resolve) => invalid.close(resolve));
+  const invalidAgain = await listen();
+  assert.equal((await post(invalidAgain, input(), `${token}.uid-bad`)).status, 409);
+  assert.equal(await calls(invalidAgain), 0);
 });
 
 test('weekly context reaches provider unchanged and outputs must cite supplied facts',async()=>{

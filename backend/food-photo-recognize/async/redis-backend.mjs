@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { ownerKey } from './quota.mjs';
 import { createRedisClient } from './redis-client.mjs';
 import { JOB_STATUSES } from './job-store.mjs';
 import { notifyJobUpdated } from './job-wait.mjs';
@@ -60,24 +61,42 @@ export async function createRedisJobStore({ redis, redisUrl, jobTtlMs = 24 * 60 
   await r.ping();
 
   const k = {
-    job: (id) => `${prefix}job:${id}`,
+    job: (id, userId = null) => (userId
+      ? `${prefix}job:${ownerKey(userId)}:${id}`
+      : `${prefix}job:${id}`),
+    legacyJob: (id) => `${prefix}job:${id}`,
     idem: (userId, idemKey) => `${prefix}idem:${userHash(userId)}:${keyHash(idemKey)}`,
     queue: `${prefix}queue:ready`,
     lease: (id) => `${prefix}lease:`,
     leaseZ: `${prefix}lease:z`,
   };
 
-  const getJob = async (analysisId) => {
-    const raw = await r.get(k.job(analysisId));
+  const getJob = async (analysisId, userId = null) => {
+    if (userId) {
+      const scoped = await r.get(k.job(analysisId, userId));
+      if (scoped) return JSON.parse(scoped);
+      const legacy = await r.get(k.legacyJob(analysisId));
+      if (!legacy) return null;
+      const job = JSON.parse(legacy);
+      if (job.userId !== userId) return null;
+      const migrated = { ...job, ownerUserId: userId };
+      const ttlSec = Math.max(60, Math.ceil(((migrated.expiresAt ?? (Date.now() + jobTtlMs)) - Date.now()) / 1000));
+      await r.set(k.job(analysisId, userId), JSON.stringify(migrated), { ex: ttlSec });
+      return migrated;
+    }
+    const raw = await r.get(k.legacyJob(analysisId));
     return raw ? JSON.parse(raw) : null;
   };
 
   const saveJob = async (job) => {
-    const next = { ...job, updatedAt: Date.now() };
+    const owner = job.ownerUserId || job.userId;
+    const next = { ...job, ownerUserId: owner, updatedAt: Date.now() };
     const ttlSec = Math.max(60, Math.ceil(((next.expiresAt ?? (Date.now() + jobTtlMs)) - Date.now()) / 1000));
-    await r.set(k.job(job.analysisId), JSON.stringify(next), { ex: ttlSec });
+    await r.set(k.job(job.analysisId, owner), JSON.stringify(next), { ex: ttlSec });
     return next;
   };
+
+  const leaseTokenFor = (analysisId, userId) => (userId ? `${ownerKey(userId)}:${analysisId}` : analysisId);
 
   const reserveIdempotency = async ({ userId, idempotencyKey, fingerprint, analysisId }) => {
     const key = k.idem(userId, idempotencyKey);
@@ -114,22 +133,47 @@ export async function createRedisJobStore({ redis, redisUrl, jobTtlMs = 24 * 60 
       updatedAt: Date.now(),
       expiresAt: Date.now() + jobTtlMs,
     };
-    const ok = await r.set(k.job(record.analysisId), JSON.stringify(record), {
+    const stored = { ...record, ownerUserId: record.userId };
+    const ok = await r.set(k.job(record.analysisId, record.userId), JSON.stringify(stored), {
       nx: true,
       ex: Math.ceil(jobTtlMs / 1000),
     });
-    if (ok !== 'OK') return { job: await getJob(record.analysisId), created: false };
-    return { job: record, created: true };
+    if (ok !== 'OK') {
+      const existing = await getJob(record.analysisId, record.userId);
+      if (existing && existing.userId !== record.userId) {
+        const error = new Error('analysis_owner_mismatch');
+        error.code = 'analysis_owner_mismatch';
+        throw error;
+      }
+      return { job: existing, created: false };
+    }
+    return { job: stored, created: true };
   };
 
-  const enqueue = async (analysisId) => {
-    await r.lpush(k.queue, analysisId);
+  const enqueue = async (analysisId, userId = null) => {
+    const payload = userId ? JSON.stringify({ analysisId, userId }) : analysisId;
+    await r.lpush(k.queue, payload);
     return analysisId;
   };
 
-  const attachClaim = async (id, workerId, leaseMs) => {
-    if (!id) return null;
-    const job = await getJob(id);
+  const parseQueued = (raw) => {
+    if (!raw) return null;
+    if (raw.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed?.analysisId) return parsed;
+      } catch {
+        // Legacy queue values are the analysis id.
+      }
+    }
+    return { analysisId: raw, userId: null };
+  };
+
+  const attachClaim = async (queued, workerId, leaseMs) => {
+    const parsed = typeof queued === 'string' ? parseQueued(queued) : queued;
+    if (!parsed?.analysisId) return null;
+    const { analysisId: id, userId } = parsed;
+    const job = await getJob(id, userId);
     if (!job || job.status === JOB_STATUSES.completed || job.status === JOB_STATUSES.failed) {
       await r.del(`${k.lease('')}${id}`);
       await r.zrem(k.leaseZ, id);
@@ -137,9 +181,12 @@ export async function createRedisJobStore({ redis, redisUrl, jobTtlMs = 24 * 60 
     }
     const leaseToken = randomUUID();
     const leaseUntil = Date.now() + leaseMs;
-    const leaseJson = JSON.stringify({ workerId, leaseUntil, leaseToken, claimedAt: Date.now() });
-    await r.set(`${k.lease('')}${id}`, leaseJson, { px: leaseMs });
-    await r.zadd(k.leaseZ, leaseUntil, id);
+    const leaseJson = JSON.stringify({
+      analysisId: id, userId: job.userId, workerId, leaseUntil, leaseToken, claimedAt: Date.now(),
+    });
+    const token = leaseTokenFor(id, job.userId);
+    await r.set(`${k.lease('')}${token}`, leaseJson, { px: leaseMs });
+    await r.zadd(k.leaseZ, leaseUntil, token);
     const next = await saveJob({
       ...job,
       status: JOB_STATUSES.processing,
@@ -166,26 +213,43 @@ export async function createRedisJobStore({ redis, redisUrl, jobTtlMs = 24 * 60 
   const recoverExpiredLeases = async (nowMs = Date.now()) => {
     const expired = await r.zrangebyscore(k.leaseZ, '-inf', nowMs);
     let recovered = 0;
-    for (const analysisId of expired || []) {
-      const job = await getJob(analysisId);
-      await r.del(`${k.lease('')}${analysisId}`);
-      await r.zrem(k.leaseZ, analysisId);
+    for (const token of expired || []) {
+      const raw = await r.get(`${k.lease('')}${token}`);
+      const lease = raw ? JSON.parse(raw) : null;
+      const analysisId = lease?.analysisId ?? token;
+      const userId = lease?.userId ?? null;
+      const job = await getJob(analysisId, userId);
+      await r.del(`${k.lease('')}${token}`);
+      await r.zrem(k.leaseZ, token);
       if (!job) continue;
       if (job.status === JOB_STATUSES.completed || job.status === JOB_STATUSES.failed) continue;
+      if (job.providerStarted) {
+        await saveJob({
+          ...job,
+          status: JOB_STATUSES.failed,
+          error: 'lease_expired_after_provider',
+          providerOutcome: 'uncertain',
+          leaseOwner: null,
+          leaseUntil: null,
+          leaseToken: null,
+        });
+        recovered += 1;
+        continue;
+      }
       await saveJob({
         ...job,
         status: JOB_STATUSES.queued,
         leaseOwner: null,
         leaseUntil: null,
       });
-      await enqueue(analysisId);
+      await enqueue(job.analysisId, job.userId);
       recovered += 1;
     }
     return { recovered };
   };
 
-  const completeJob = async (analysisId, { result, providerOutcome, leaseToken = null }) => {
-    const job = await getJob(analysisId);
+  const completeJob = async (analysisId, { result, providerOutcome, leaseToken = null, userId = null } = {}) => {
+    const job = await getJob(analysisId, userId);
     if (!job) return null;
     if (job.status === JOB_STATUSES.completed) return job;
     if (leaseToken && job.leaseToken && job.leaseToken !== leaseToken) return null;
@@ -199,18 +263,22 @@ export async function createRedisJobStore({ redis, redisUrl, jobTtlMs = 24 * 60 
       leaseToken: null,
       leaseUntil: null,
     });
-    await r.del(`${k.lease('')}${analysisId}`);
-    await r.zrem(k.leaseZ, analysisId);
+    const token = leaseTokenFor(analysisId, job.userId);
+    await r.del(`${k.lease('')}${token}`);
+    await r.zrem(k.leaseZ, token);
     notifyJobUpdated(analysisId);
     return next;
   };
 
-  const failJob = async (analysisId, { error, providerOutcome, requeue, softRequeue = false, leaseToken = null }) => {
-    const job = await getJob(analysisId);
+  const failJob = async (analysisId, {
+    error, providerOutcome, requeue, softRequeue = false, leaseToken = null, userId = null,
+  } = {}) => {
+    const job = await getJob(analysisId, userId);
     if (!job) return null;
     if (leaseToken && job.leaseToken && job.leaseToken !== leaseToken && !requeue) return null;
-    await r.del(`${k.lease('')}${analysisId}`);
-    await r.zrem(k.leaseZ, analysisId);
+    const token = leaseTokenFor(analysisId, job.userId);
+    await r.del(`${k.lease('')}${token}`);
+    await r.zrem(k.leaseZ, token);
     if (requeue) {
       const attempts = softRequeue
         ? Math.max(0, (job.attempts ?? 1) - 1)
@@ -225,9 +293,9 @@ export async function createRedisJobStore({ redis, redisUrl, jobTtlMs = 24 * 60 
         leaseToken: null,
         leaseUntil: null,
       });
-      await enqueue(analysisId);
+      await enqueue(analysisId, job.userId);
       notifyJobUpdated(analysisId);
-      return getJob(analysisId);
+      return getJob(analysisId, job.userId);
     }
     const next = await saveJob({
       ...job,
@@ -242,18 +310,33 @@ export async function createRedisJobStore({ redis, redisUrl, jobTtlMs = 24 * 60 
     return next;
   };
 
-  const renewLease = async (analysisId, workerId, leaseMs, leaseToken = null) => {
-    const job = await getJob(analysisId);
+  const markProviderStarted = async (analysisId, leaseToken = null, userId = null) => {
+    const job = await getJob(analysisId, userId);
+    if (!job || job.status !== JOB_STATUSES.processing) return null;
+    if (leaseToken && job.leaseToken && job.leaseToken !== leaseToken) return null;
+    if (job.providerStarted) return job;
+    return saveJob({
+      ...job,
+      providerStarted: true,
+      providerStartedAt: new Date().toISOString(),
+    });
+  };
+
+  const renewLease = async (analysisId, workerId, leaseMs, leaseToken = null, userId = null) => {
+    const job = await getJob(analysisId, userId);
     if (!job || job.leaseOwner !== workerId) return false;
     if (leaseToken && job.leaseToken && job.leaseToken !== leaseToken) return false;
     const leaseUntil = Date.now() + leaseMs;
     await saveJob({ ...job, leaseUntil });
+    const token = leaseTokenFor(analysisId, job.userId);
     await r.set(
-      `${k.lease('')}${analysisId}`,
-      JSON.stringify({ workerId, leaseUntil, leaseToken: job.leaseToken, renewedAt: Date.now() }),
+      `${k.lease('')}${token}`,
+      JSON.stringify({
+        analysisId, userId: job.userId, workerId, leaseUntil, leaseToken: job.leaseToken, renewedAt: Date.now(),
+      }),
       { px: leaseMs },
     );
-    await r.zadd(k.leaseZ, leaseUntil, analysisId);
+    await r.zadd(k.leaseZ, leaseUntil, token);
     return true;
   };
 
@@ -271,6 +354,7 @@ export async function createRedisJobStore({ redis, redisUrl, jobTtlMs = 24 * 60 
     enqueue,
     claimNext,
     recoverExpiredLeases,
+    markProviderStarted,
     completeJob,
     failJob,
     renewLease,

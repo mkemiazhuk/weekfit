@@ -33,6 +33,16 @@ struct CoachEveningSummary: Codable, Equatable, Sendable {
         validationFailures(for: input).isEmpty
     }
 
+    /// A result already stored by the server. Evidence is not re-checked against a later snapshot.
+    func isRecoveredDisplayable(forDay day: String) -> Bool {
+        self.day == day
+            && ["ai", "fallback"].contains(source)
+            && !headline.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !today.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !now.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !tomorrow.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     /// Precise client-side rejection codes for diagnostics (never log personal text).
     func validationFailures(for input: CoachEveningSummaryInput) -> [String] {
         var failures: [String] = []
@@ -72,22 +82,13 @@ enum CoachEveningSummaryPolicy {
     /// Coach surface for evening recap (Your day + AI + feeling).
     static let isCoachSurfaceEnabled = true
 
-    /// UserDefaults override (DEBUG). `true` = production once-per-day; unset/`false` = repeat AI calls.
+    /// Kept so older DEBUG defaults cannot turn the limit back off.
     static let oncePerDayOverrideKey = "weekfit.coach.eveningSummary.oncePerDay"
 
-    /// Auto path: after 20:00 local; at most one AI summary per local day.
-    /// First successful answer is cached and reused — fingerprint / tab re-entry must not regenerate.
-    /// DEBUG defaults to unrestricted so local prompt/locale iteration can re-hit the service.
-    static var enforcesOncePerDayAndEveningWindow: Bool {
-        #if DEBUG
-        if UserDefaults.standard.object(forKey: oncePerDayOverrideKey) != nil {
-            return UserDefaults.standard.bool(forKey: oncePerDayOverrideKey)
-        }
-        return false
-        #else
-        true
-        #endif
-    }
+    /// After 20:00 local, at most one backend call per local day.
+    /// The attempt is reserved before the request. Failure, timeout, language change,
+    /// and tab re-entry do not call again. A new local day after 20:00 may call once.
+    static var enforcesOncePerDayAndEveningWindow: Bool { true }
 
     static var allowsManualRefreshAnytime: Bool { !enforcesOncePerDayAndEveningWindow }
 
@@ -130,12 +131,9 @@ enum CoachEveningSummaryPolicy {
         guard !trimmed.isEmpty else { return true }
         guard nlLanguage(for: locale) != nil else { return true }
 
-        let sentences = trimmed
-            .components(separatedBy: CharacterSet(charactersIn: ".!?。！？"))
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        let parts = sentences.isEmpty ? [trimmed] : sentences
-        return parts.allSatisfy { sentenceMatchesRequestedLocale($0, locale: locale) }
+        let parts = splitIntoSentences(trimmed)
+        let sentences = parts.isEmpty ? [trimmed] : parts
+        return sentences.allSatisfy { sentenceMatchesRequestedLocale($0, locale: locale) }
     }
 
     /// Keep only sentences that match the requested locale (drops English leaks under PL/RU/…).
@@ -144,21 +142,85 @@ enum CoachEveningSummaryPolicy {
         guard !trimmed.isEmpty else { return "" }
         guard nlLanguage(for: locale) != nil else { return trimmed }
 
-        let sentences = trimmed
-            .components(separatedBy: CharacterSet(charactersIn: ".!?。！？"))
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        let sentences = splitIntoSentences(trimmed)
         guard !sentences.isEmpty else {
             return sentenceMatchesRequestedLocale(trimmed, locale: locale) ? trimmed : ""
         }
 
         let kept = sentences.filter { sentenceMatchesRequestedLocale($0, locale: locale) }
         guard !kept.isEmpty else { return "" }
-        var joined = kept.joined(separator: ". ")
-        if !joined.hasSuffix(".") && !joined.hasSuffix("!") && !joined.hasSuffix("?") {
-            joined += "."
+        return joinSentences(kept)
+    }
+
+    /// Splits on `.!?。！？` while preserving decimal points inside numbers (`20.5`, `30.9`).
+    static func splitIntoSentences(_ text: String) -> [String] {
+        let terminators = CharacterSet(charactersIn: ".!?。！？")
+        var sentences: [String] = []
+        var current = ""
+        let chars = Array(text)
+        var i = 0
+        while i < chars.count {
+            let ch = chars[i]
+            guard let scalar = ch.unicodeScalars.first, terminators.contains(scalar) else {
+                current.append(ch)
+                i += 1
+                continue
+            }
+
+            // Keep `digit.digit` (and multi-dot versions like 1.2.3) intact.
+            let prevIsDigit = i > 0 && chars[i - 1].isNumber
+            let nextIsDigit = i + 1 < chars.count && chars[i + 1].isNumber
+            if ch == "." && prevIsDigit && nextIsDigit {
+                current.append(ch)
+                i += 1
+                continue
+            }
+
+            current.append(ch)
+            var j = i + 1
+            while j < chars.count,
+                  let nextScalar = chars[j].unicodeScalars.first,
+                  terminators.contains(nextScalar) {
+                // Still protect decimal runs that somehow abut terminators.
+                let runPrevDigit = chars[j - 1].isNumber
+                let runNextDigit = j + 1 < chars.count && chars[j + 1].isNumber
+                if chars[j] == "." && runPrevDigit && runNextDigit {
+                    break
+                }
+                current.append(chars[j])
+                j += 1
+            }
+            let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                sentences.append(trimmed)
+            }
+            current = ""
+            i = j
         }
-        return joined
+        let trailing = current.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trailing.isEmpty {
+            sentences.append(trailing)
+        }
+        return sentences
+    }
+
+    static func firstSentence(of text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let first = splitIntoSentences(trimmed).first else { return "" }
+        if first.hasSuffix(".") || first.hasSuffix("!") || first.hasSuffix("?")
+            || first.hasSuffix("。") || first.hasSuffix("！") || first.hasSuffix("？") {
+            return first
+        }
+        return first + "."
+    }
+
+    private static func joinSentences(_ sentences: [String]) -> String {
+        let joined = sentences.joined(separator: " ")
+        if joined.hasSuffix(".") || joined.hasSuffix("!") || joined.hasSuffix("?")
+            || joined.hasSuffix("。") || joined.hasSuffix("！") || joined.hasSuffix("？") {
+            return joined
+        }
+        return joined + "."
     }
 
     private static func sentenceMatchesRequestedLocale(_ text: String, locale: String) -> Bool {
@@ -221,16 +283,9 @@ enum CoachEveningSummaryPolicy {
     }
 
     private static func clampCommentary(_ text: String, maxSentences: Int = 2) -> String {
-        let sentences = text
-            .components(separatedBy: CharacterSet(charactersIn: ".!?。！？"))
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        let sentences = splitIntoSentences(text)
         if sentences.isEmpty { return text }
         let kept = Array(sentences.prefix(max(1, maxSentences)))
-        var joined = kept.joined(separator: ". ")
-        if !joined.hasSuffix(".") && !joined.hasSuffix("!") && !joined.hasSuffix("?") {
-            joined += "."
-        }
-        return joined
+        return joinSentences(kept)
     }
 }
