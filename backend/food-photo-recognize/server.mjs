@@ -1,4 +1,4 @@
-import { createRuntimeMonitor } from './observability.mjs';
+import { createRuntimeMonitor, providerAttemptKey } from './observability.mjs';
 import http from 'node:http';
 import path from 'node:path';
 import { mkdtempSync } from 'node:fs';
@@ -619,6 +619,7 @@ export function createServer(config, dependencies = {}) {
             ownedCall = true;
             const analyzed = await analyze(input, {
               ...config,
+              observerAttemptKey: providerAttemptKey(user, prepared.analysisId),
               openaiFetcher,
               abortSignal,
             }, openaiFetcher);

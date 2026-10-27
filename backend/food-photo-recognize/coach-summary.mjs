@@ -501,7 +501,7 @@ async function callProvider(input, config, fetcher) {
       input: [{role: 'user', content: [{type: 'input_text', text: JSON.stringify(input)}]}],
       text: {format: {type: 'json_schema', name: 'coach_day_summary', strict: true, schema: summaryResponseSchema(Object.values(input.facts).flat().map(fact => fact.id), config.summaryModel)}}
     })
-  }, { endpoint: 'coach_summary', model: config.summaryModel, mock: config.openAIMock });
+  }, { endpoint: 'coach_summary', model: config.summaryModel, mock: config.openAIMock, attemptKey: config.observerAttemptKey });
   const providerRequestId = response.headers?.get?.('x-request-id') ?? response.headers?.get?.('openai-request-id') ?? null;
   if (!response.ok) {
     const error = new ServiceError(response.status === 429 ? 'provider_rate_limited' : 'provider_error', response.status === 429 ? 503 : 502);
@@ -775,7 +775,7 @@ export function createSummaryHandler(config, dependencies) {
       let value;
       let generated = null;
       try {
-        generated = await generate(input, config);
+        generated = await generate(input, { ...config, observerAttemptKey: decision.record.attemptId });
         value = {
           ...generated.result,
           day: input.day,

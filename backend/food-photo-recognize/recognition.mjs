@@ -189,7 +189,7 @@ export async function recognize(input, config, fetcher) {
       ] }],
       text: { format: { type: 'json_schema', name: 'food_recognition', strict: true, schema } },
     }),
-  }, { endpoint: 'food_photo', model: config.model, mock: config.openAIMock });
+  }, { endpoint: 'food_photo', model: config.model, mock: config.openAIMock, attemptKey: config.observerAttemptKey });
   if (!response.ok) throw new ServiceError(response.status === 429 ? 'provider_rate_limited' : 'provider_error', response.status === 429 ? 503 : 502);
   const data = await response.json();
   if (data.status !== 'completed') throw new ServiceError('recognition_incomplete', 502);

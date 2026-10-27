@@ -1,10 +1,11 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFile, readdir, statfs } from 'node:fs/promises';
 import path from 'node:path';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 
 const log = (row) => console.log(JSON.stringify({ ...row, at: new Date().toISOString() }));
 const numeric = (value) => Number.isFinite(value) && value >= 0 ? value : null;
+export const providerAttemptKey = (user, analysisId) => createHash('sha256').update(JSON.stringify([user, analysisId])).digest('hex');
 export function safeUsage(usage) {
   return {
     inputTokens: numeric(usage?.input_tokens),
@@ -17,10 +18,11 @@ export function safeUsage(usage) {
  * finished means HTTP/JSON transport finished, NOT validated application success.
  * Count starts for attempts, and join by callId; never sum starts and finishes.
  */
-export async function observedProviderFetch(fetcher, url, options, { endpoint, model, mock }) {
+export async function observedProviderFetch(fetcher, url, options, { endpoint, model, mock, attemptKey }) {
   const callId = randomUUID();
   const started = performance.now();
   const base = { event: 'ai_transport', callId, endpoint, model, mock: Boolean(mock) };
+  if (typeof attemptKey === 'string' && /^[a-f0-9-]{16,64}$/i.test(attemptKey)) base.attemptKey = attemptKey;
   log({ ...base, phase: 'started' });
   try {
     const response = await fetcher(url, options);

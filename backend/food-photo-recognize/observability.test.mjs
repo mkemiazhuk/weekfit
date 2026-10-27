@@ -5,13 +5,31 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createFileJobStore } from './async/job-store.mjs';
 import { createLocalObjectStore } from './async/object-store.mjs';
-import { createRuntimeMonitor, observedProviderFetch, resourceAlerts, safeUsage } from './observability.mjs';
+import { createSubmitHandler } from './async/submit.mjs';
+import { makeJpegBytes } from './extended-load.mjs';
+import { createRuntimeMonitor, observedProviderFetch, providerAttemptKey, resourceAlerts, safeUsage } from './observability.mjs';
 
 async function directory(t) {
   const dir = await mkdtemp(path.join(tmpdir(), 'weekfit-monitor-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   return dir;
 }
+
+test('async quota lock contention is a bounded 503 before any photo/provider call', async (t) => {
+  const dir = await directory(t);
+  let released = 0, photoWrites = 0;
+  const submit = createSubmitHandler({
+    config: { dataDir: dir, maxAsyncQueue: 2000, retryAfterSeconds: 5 },
+    jobStore: { queueDepth: async () => 0, reserveIdempotency: async ({analysisId}) => ({analysisId,created:true}) },
+    uploadGate: { acquire: async () => ({ release: () => { released++; } }) },
+    quota: { reserve: async () => { throw Object.assign(new Error('busy'), {code:'quota_store_busy'}); } },
+    objectStore: { putJpeg: async () => { photoWrites++; } },
+  });
+  await assert.rejects(() => submit({userId:'a',headers:{},body:{imageBase64:makeJpegBytes(128).toString('base64'),mimeType:'image/jpeg',locale:'en'}}),
+    error => error.code==='quota_store_busy' && error.status===503 && error.retryAfterSeconds===5);
+  assert.equal(released,1);
+  assert.equal(photoWrites,0);
+});
 
 test('idle claims release ready listeners after 240 timeouts, and wake releases its listener', async (t) => {
   const store = await createFileJobStore({ dataDir: await directory(t) });
@@ -73,17 +91,20 @@ test('transport telemetry counts one call and excludes payloads, credentials and
   console.log = (s) => lines.push(JSON.parse(s));
   t.after(() => { console.log = original; });
   let calls = 0;
+  const attemptKey = providerAttemptKey('secret-user', 'analysis');
+  assert.notEqual(attemptKey, providerAttemptKey('other-user', 'analysis'));
   const response = await observedProviderFetch(async () => {
     calls++;
     return new Response(JSON.stringify({ secret: 'health-body', usage: { input_tokens: 9, output_tokens: 3, secret: 'bad' } }), { headers: { 'x-request-id': 'req-safe' } });
-  }, 'https://api.openai.com/v1/responses', { headers: { Authorization: 'secret-key' }, body: 'health-input' }, { endpoint: 'food_photo', model: 'mock', mock: true });
+  }, 'https://api.openai.com/v1/responses', { headers: { Authorization: 'secret-key' }, body: 'health-input' }, { endpoint: 'food_photo', model: 'mock', mock: true, attemptKey });
   await response.json();
   assert.equal(calls, 1);
   assert.deepEqual(lines.map(x => x.phase), ['started', 'finished']);
   assert.equal(lines[0].callId, lines[1].callId);
+  assert.equal(lines[0].attemptKey, attemptKey);
   assert.equal(lines[1].inputTokens, 9);
   assert.equal(lines[1].providerRequestId, 'req-safe');
-  assert.doesNotMatch(JSON.stringify(lines), /health-body|health-input|secret-key|"bad"/);
+  assert.doesNotMatch(JSON.stringify(lines), /secret-user|health-body|health-input|secret-key|"bad"/);
   await assert.rejects(() => observedProviderFetch(async () => { calls++; throw Error('secret-error'); }, '', {}, { endpoint: 'food_photo', mock: true }));
   assert.equal(calls, 2);
   assert.equal(lines.at(-1).phase, 'network_error');

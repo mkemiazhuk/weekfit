@@ -1,4 +1,5 @@
 import { recognize, resolveOutputLanguage } from '../recognition.mjs';
+import { providerAttemptKey } from '../observability.mjs';
 
 /**
  * Single AI recognition for a durable job (worker or API inline fast-path).
@@ -23,9 +24,11 @@ export async function analyzeQueuedPhoto({
     },
     {
       ...config,
+      observerAttemptKey: providerAttemptKey(job.userId, job.analysisId),
       openaiFetcher,
       abortSignal: AbortSignal.timeout(config.timeoutMs),
     },
     openaiFetcher,
   );
 }
+

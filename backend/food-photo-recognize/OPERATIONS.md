@@ -41,6 +41,11 @@ Do not sum started + finished. `finished` means HTTP/JSON transport succeeded,
 not that the answer passed validation or was saved. Coach `provider_call_finished`
 and photo completion/failure events describe application outcomes.
 
+`attemptKey` is the durable Coach attempt UUID or a SHA-256 of the photo owner
+and analysis ID. Multiple distinct started callIds for the same endpoint/attemptKey
+must trigger an alert. Do not confuse the started and finished events for one
+call with a duplicate. The owner UID is never logged by this telemetry.
+
 Token fields are allowlisted numeric input/cached-input/output values. Sum once
 per finished callId. Null means unknown (including network failures which may
 still be billed). A restart does not regenerate a result or make an unknown
