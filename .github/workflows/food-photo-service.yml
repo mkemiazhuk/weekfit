@@ -13,6 +13,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   test:
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -23,6 +24,7 @@ jobs:
         working-directory: backend/food-photo-recognize
   publish:
     needs: test
+    timeout-minutes: 20
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -44,16 +46,8 @@ jobs:
           printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$REGISTRY_USER" --password-stdin
           docker push "$IMAGE:${GITHUB_SHA}"
           docker push "$IMAGE:latest"
-      - name: Trigger Render deploy
-        env:
-          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-        run: |
-          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
-            echo "RENDER_DEPLOY_HOOK secret not set; skip auto-redeploy"
-            exit 0
-          fi
-          curl -fsS -X POST "$RENDER_DEPLOY_HOOK"
-          echo "Render deploy hook triggered"
+      - name: Leave Render suspended
+        run: echo "Render stays suspended. The deploy hook is not called, and COACH_AI_ENABLED is not set."
       - name: Summary
         env:
           IMAGE: ghcr.io/${{ github.repository_owner }}/weekfit-food-photo
