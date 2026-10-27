@@ -1,4 +1,7 @@
 import http from 'node:http';
+import path from 'node:path';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { authenticate } from './auth.mjs';
@@ -13,6 +16,7 @@ import {
 } from './idempotency.mjs';
 import { createMockOpenAIAdapter, forbidRealOpenAIFetch } from './openai-mock.mjs';
 import { asyncConfiguration, createAsyncStack } from './async/bootstrap.mjs';
+import { createPhotoCallLedger } from './photo-call-ledger.mjs';
 import {
   createFileFreeTrialStore,
   createMemoryFreeTrialStore,
@@ -83,11 +87,19 @@ export function configuration(env = process.env) {
     summaryTimeoutMs: integer('COACH_SUMMARY_TIMEOUT_MS', 15000, 1000, 60000),
     summaryConcurrency: integer('COACH_SUMMARY_MAX_CONCURRENT', 2, 1, 8),
     summaryMaxBodyBytes: integer('COACH_SUMMARY_MAX_BODY_BYTES', 131072, 1024, 131072),
-    // gpt-4.1-mini context is 1,047,576 tokens. 80k estimated tokens (UTF-8 bytes / 2)
-    // covers a 128 KiB body plus instructions and rejects the rest instead of truncating.
-    summaryMaxInputTokens: integer('COACH_SUMMARY_MAX_INPUT_TOKENS', 80000, 1000, 200000),
-    // Schema ceiling is about 3.4k characters. 8192 tokens covers that in CJK without
-    // using the model max (32768), so a valid summary is not cut off mid-JSON.
+    // UTF-8 size of the instruction text plus the day snapshot. Not a token budget and not
+    // the whole model request: the response schema and API framing are extra.
+    // COACH_SUMMARY_MAX_INPUT_TOKENS is accepted as the same byte ceiling.
+    summaryMaxInputTextBytes: integer(
+      env.COACH_SUMMARY_MAX_INPUT_TEXT_BYTES != null
+        ? 'COACH_SUMMARY_MAX_INPUT_TEXT_BYTES'
+        : 'COACH_SUMMARY_MAX_INPUT_TOKENS',
+      80000,
+      1000,
+      200000,
+    ),
+    // Output budget only. max_output_tokens does not promise a finished JSON object.
+    // An incomplete or truncated response ends the attempt; it is not retried.
     summaryMaxOutputTokens: integer('COACH_SUMMARY_MAX_OUTPUT_TOKENS', 8192, 256, 16384),
     summaryMaxStartsPerUtcDay: integer('COACH_SUMMARY_MAX_STARTS_PER_UTC_DAY', 100, 1, 100000),
     summaryMaxStartsPerMinute: integer('COACH_SUMMARY_MAX_STARTS_PER_MINUTE', 10, 1, 1000),
@@ -101,6 +113,11 @@ export function configuration(env = process.env) {
     coachAiEnabled: env.COACH_AI_ENABLED != null
       ? env.COACH_AI_ENABLED === '1'
       : env.NODE_ENV !== 'production',
+    // File ledger is one process on one disk. Production must say so explicitly.
+    // Unset in production disables new Coach generations; reads of a saved result still work.
+    coachSingleInstanceDeclared: env.NODE_ENV === 'production'
+      ? env.COACH_SUMMARY_SINGLE_INSTANCE === '1'
+      : env.COACH_SUMMARY_SINGLE_INSTANCE !== '0',
     ...asyncConfiguration(env),
   };
 }
@@ -139,6 +156,13 @@ export function createServer(config, dependencies = {}) {
     fullDetail: 'upload_queue_full',
   });
   const idempotency = dependencies.idempotencyStore ?? createIdempotencyStore();
+  const ledgerDir = config.photoLedgerDir
+    || (config.dataDirExplicit ? config.dataDir : mkdtempSync(path.join(tmpdir(), 'weekfit-photo-')));
+  const photoLedger = createPhotoCallLedger({
+    dataDir: ledgerDir,
+    userDailyLimit: config.dailyLimit,
+    globalDailyLimit: config.globalDailyLimit,
+  });
 
   /** Async stack (202 accept + workers). Null when explicitly disabled. */
   let asyncStack = dependencies.asyncStack ?? null;
@@ -177,23 +201,10 @@ export function createServer(config, dependencies = {}) {
     });
   };
 
-  const limits = new Map();
-  /** Keys already charged against daily quota (user or user:idempotency). */
-  const chargedKeys = new Set();
-  let day = '';
   let dailyCount = 0;
+  const userCounts = new Map();
   let inFlightHttp = 0;
   let peakInFlightHttp = 0;
-
-  const resetDayIfNeeded = () => {
-    const today = new Date().toISOString().slice(0, 10);
-    if (day !== today) {
-      limits.clear();
-      chargedKeys.clear();
-      dailyCount = 0;
-      day = today;
-    }
-  };
 
   const send = (res, status, body, extraHeaders = {}) => {
     if (res.writableEnded || res.destroyed) return;
@@ -275,21 +286,9 @@ export function createServer(config, dependencies = {}) {
     }
   };
 
-  const chargeDailyQuota = (user, idemKey) => {
-    resetDayIfNeeded();
-    const chargeKey = idemKey ? `${user}:${idemKey}` : `${user}:${randomUUID()}`;
-    if (chargedKeys.has(chargeKey)) return { charged: false, chargeKey };
-    if ((limits.get(user) ?? 0) >= config.dailyLimit || dailyCount >= config.globalDailyLimit) {
-      throw new ServiceError('daily_scan_limit', 429, { retryAfterSeconds: 3600 });
-    }
-    chargedKeys.add(chargeKey);
-    limits.set(user, (limits.get(user) ?? 0) + 1);
-    dailyCount += 1;
-    return { charged: true, chargeKey };
-  };
-
   const server = http.createServer(async (req, res) => {
-    if (req.method === 'POST' && req.url === '/v1/coach/day-summary') {
+    const coachPath = (req.url ?? '').split('?')[0];
+    if (coachPath === '/v1/coach/day-summary' && (req.method === 'POST' || req.method === 'GET')) {
       return summary(req, res);
     }
 
@@ -324,6 +323,7 @@ export function createServer(config, dependencies = {}) {
         coachSummaryOncePerDay: true,
         coachSummaryPromptVersion: SUMMARY_PROMPT_VERSION,
         coachAiEnabled: Boolean(config.coachAiEnabled),
+        coachSingleInstanceDeclared: config.coachSingleInstanceDeclared !== false,
         coachSummaryMaxConcurrent: config.summaryConcurrency,
         coachSummaryMaxStartsPerUtcDay: config.summaryMaxStartsPerUtcDay,
         coachSummaryMaxStartsPerMinute: config.summaryMaxStartsPerMinute,
@@ -511,12 +511,23 @@ export function createServer(config, dependencies = {}) {
       );
       const fingerprint = fingerprintPayload(input.imageBase64);
 
-      resetDayIfNeeded();
-      if ((limits.get(user) ?? 0) >= config.dailyLimit || dailyCount >= config.globalDailyLimit) {
-        throw new ServiceError('daily_scan_limit', 429, { retryAfterSeconds: 3600 });
+      const prior = idemKey ? await photoLedger.read(user, idemKey, fingerprint) : null;
+      if (prior?.providerStarted && prior.status !== 'completed') {
+        throw new ServiceError('attempt_unknown', 409);
+      }
+      if (!(prior?.status === 'completed' && prior.result)) {
+        const snap = await photoLedger.snapshot(user);
+        if (snap.userCount >= config.dailyLimit || snap.globalCount >= config.globalDailyLimit) {
+          throw new ServiceError('daily_scan_limit', 429, { retryAfterSeconds: 3600 });
+        }
       }
 
-      const { value, fromCache } = await idempotency.run(
+      const { value, fromCache } = prior?.status === 'completed' && prior.result
+        ? {
+          value: { result: prior.result, usage: null, queueWaitMs: 0, aiMs: 0 },
+          fromCache: true,
+        }
+        : await idempotency.run(
         user,
         idemKey,
         fingerprint,
@@ -525,19 +536,39 @@ export function createServer(config, dependencies = {}) {
           aiTicket = await gate.acquire();
           const queueWaitMs = aiTicket.queueWaitMs;
           const aiStarted = Date.now();
+          let ownedCall = false;
+          let prepared = null;
           try {
-            chargeDailyQuota(user, idemKey);
+            prepared = await photoLedger.prepare({ userId: user, idempotencyKey: idemKey, fingerprint });
+            if (prepared.globalCount != null) dailyCount = prepared.globalCount;
+            if (prepared.userCount != null) userCounts.set(user, prepared.userCount);
+            if (prepared.record?.status === 'completed' && prepared.record.result) {
+              return {
+                result: prepared.record.result,
+                usage: null,
+                queueWaitMs,
+                aiMs: 0,
+              };
+            }
+            if (prepared.record?.providerStarted) throw new ServiceError('attempt_unknown', 409);
+            const marked = await photoLedger.markProviderStarted(prepared.analysisId);
+            if (!marked.startedByUs) throw new ServiceError('attempt_unknown', 409);
+            ownedCall = true;
             const analyzed = await analyze(input, {
               ...config,
               openaiFetcher,
               abortSignal,
             }, openaiFetcher);
+            await photoLedger.complete(prepared.analysisId, analyzed.result);
             return {
               result: analyzed.result,
               usage: analyzed.usage,
               queueWaitMs,
               aiMs: Date.now() - aiStarted,
             };
+          } catch (error) {
+            if (ownedCall) await photoLedger.fail(prepared?.analysisId).catch(() => {});
+            throw error;
           } finally {
             aiTicket?.release();
             aiTicket = undefined;
@@ -636,9 +667,11 @@ export function createServer(config, dependencies = {}) {
     asyncReady,
     getAsyncStack: () => asyncStack,
     getDailyCount: () => dailyCount,
-    getUserLimit: (user) => limits.get(user) ?? 0,
+    getUserLimit: (user) => userCounts.get(user) ?? 0,
+    photoLedgerDir: ledgerDir,
   };
   server.asyncReady = asyncReady;
+  server.on('close', () => summary.stop?.());
 
   return server;
 }

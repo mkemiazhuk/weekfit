@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir, writeFile, readFile, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createServer } from './server.mjs';
@@ -9,7 +9,7 @@ import { ServiceError } from './recognition.mjs';
 import {
   generateSummary, validateDay, SUMMARY_PROMPT_VERSION,
 } from './coach-summary.mjs';
-import { coachUserHash, legacyAttemptFileName } from './coach-attempt-store.mjs';
+import { coachUserHash, createCoachAttemptStore, legacyAttemptFileName } from './coach-attempt-store.mjs';
 
 const input = (overrides = {}) => ({
   schemaVersion: 1,
@@ -143,7 +143,7 @@ test('100 parallel requests for one UID call the provider once', async (t) => {
   assert.equal(bodies.filter((body) => body.reused === false).length, 1);
 });
 
-test('two instances sharing the disk call the provider once', async (t) => {
+test('two processes on one directory call the provider once', async (t) => {
   const dir = await directory(t);
   const seen = { n: 0 };
   const generateSummary = async () => {
@@ -155,7 +155,7 @@ test('two instances sharing the disk call the provider once', async (t) => {
   const b = await listen(t, dir, { generateSummary });
   const responses = await Promise.all([a.post(), b.post(), a.post(), b.post()]);
   assert.equal(seen.n, 1);
-  assert.ok(responses.every((response) => [200, 202, 409].includes(response.status)));
+  assert.ok(responses.every((response) => [200, 202, 409, 503].includes(response.status)));
 });
 
 test('locale, payload, prompt version and timezone do not buy another call', async (t) => {
@@ -194,6 +194,15 @@ test('provider timeout, 429, 500, invalid JSON, language leak and bad evidence d
     {
       name: 'invalid json',
       fetcher: async () => envelope('not-json'),
+    },
+    {
+      name: 'incomplete',
+      fetcher: async () => ({
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        json: async () => ({ status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' }, output: [] }),
+      }),
     },
     {
       name: 'language leak',
@@ -306,7 +315,7 @@ test('completed is cached and failed or unknown stays terminal without OpenAI', 
   assert.equal(seen.n, 2);
 });
 
-test('storage lock and a missing store block generation', async (t) => {
+test('a leftover lock file is not ownership, and a missing store blocks generation', async (t) => {
   const dir = await directory(t);
   await mkdir(path.join(dir, 'coach-guard'), { recursive: true });
   await writeFile(path.join(dir, 'coach-guard', 'lock'), 'stuck');
@@ -314,8 +323,8 @@ test('storage lock and a missing store block generation', async (t) => {
   const locked = await listen(t, dir, {
     generateSummary: async () => { seen.n += 1; return { result: answer() }; },
   });
-  assert.equal((await locked.post()).status, 503);
-  assert.equal(seen.n, 0);
+  assert.equal((await locked.post()).status, 200);
+  assert.equal(seen.n, 1);
 
   const fileAsDir = path.join(dir, 'not-a-directory');
   await writeFile(fileAsDir, 'x');
@@ -323,13 +332,13 @@ test('storage lock and a missing store block generation', async (t) => {
     generateSummary: async () => { seen.n += 1; return { result: answer() }; },
   });
   assert.equal((await broken.post()).status, 503);
-  assert.equal(seen.n, 0);
+  assert.equal(seen.n, 1);
 
   const missing = await listen(t, '', {
     generateSummary: async () => { seen.n += 1; return { result: answer() }; },
   });
   assert.equal((await missing.post()).status, 503);
-  assert.equal(seen.n, 0);
+  assert.equal(seen.n, 1);
 });
 
 test('legacy day file is reused and does not call the provider', async (t) => {
@@ -527,4 +536,201 @@ test('logs name the provider attempt and omit the health payload', async (t) => 
   assert.equal(events.some((row) => JSON.stringify(row).includes('Last night')), false);
   assert.equal(events.some((row) => JSON.stringify(row).includes('Bearer')), false);
   assert.equal(seen.n, 1);
+});
+
+test('GET reads a saved result and does not generate', async (t) => {
+  const dir = await directory(t);
+  const seen = { n: 0 };
+  let release = () => {};
+  const gate = new Promise((resolve) => { release = resolve; });
+  const { post, port } = await listen(t, dir, {
+    generateSummary: async () => {
+      seen.n += 1;
+      await gate;
+      return { result: answer() };
+    },
+  });
+  const hanging = fetch(`http://127.0.0.1:${port}/v1/coach/day-summary`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer a' },
+    body: JSON.stringify(input()),
+  });
+  const deadline = Date.now() + 2000;
+  while (seen.n < 1 && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  const pending = await fetch(`http://127.0.0.1:${port}/v1/coach/day-summary?day=2026-10-12&timezone=Europe/Warsaw`, {
+    headers: { Authorization: 'Bearer a' },
+  });
+  assert.equal(pending.status, 202);
+  assert.equal(seen.n, 1);
+  release();
+  assert.equal((await hanging).status, 200);
+  const saved = await fetch(`http://127.0.0.1:${port}/v1/coach/day-summary?day=2026-10-12&timezone=Europe/Warsaw`, {
+    headers: { Authorization: 'Bearer a' },
+  });
+  assert.equal(saved.status, 200);
+  assert.equal((await saved.json()).reused, true);
+  assert.equal(seen.n, 1);
+
+  const absent = await listen(t, await directory(t), {
+    generateSummary: async () => { seen.n += 1; return { result: answer() }; },
+  });
+  const missing = await fetch(`http://127.0.0.1:${absent.port}/v1/coach/day-summary?day=2026-10-12&timezone=Europe/Warsaw`, {
+    headers: { Authorization: 'Bearer a' },
+  });
+  assert.equal(missing.status, 404);
+  assert.equal(seen.n, 1);
+});
+
+test('a stale lock and inflight free technical slots without a new call for that UID', async (t) => {
+  const dir = await directory(t);
+  await mkdir(path.join(dir, 'coach-guard'), { recursive: true });
+  await writeFile(path.join(dir, 'coach-guard', 'lock'), JSON.stringify({
+    pid: 1,
+    bootId: 'dead',
+    at: new Date(Date.now() - 60_000).toISOString(),
+  }));
+  const userKey = coachUserHash('Bearer a');
+  const dayDir = path.join(dir, 'coach-guard', 'users', userKey, 'days');
+  await mkdir(dayDir, { recursive: true });
+  await writeFile(path.join(dayDir, '2026-10-12.json'), JSON.stringify({
+    state: 'provider_started',
+    attemptId: 'stuck-attempt',
+    userKey,
+    uidHash: userKey.slice(0, 16),
+    localDay: '2026-10-12',
+    timezone: 'Europe/Warsaw',
+    locale: 'ru',
+    reservedAt: '2026-10-12T17:00:00.000Z',
+    providerStartedAt: '2026-10-12T17:00:00.000Z',
+    ownerBootId: 'dead-process',
+  }));
+  await writeFile(path.join(dir, 'coach-guard', 'users', userKey, 'meta.json'), JSON.stringify({
+    lastAttemptAt: Date.parse('2026-10-12T17:00:00.000Z'),
+    lastTimezone: 'Europe/Warsaw',
+    lastLocalDay: '2026-10-12',
+  }));
+  await mkdir(path.join(dir, 'coach-guard', 'inflight'), { recursive: true });
+  await writeFile(path.join(dir, 'coach-guard', 'inflight', 'stuck-attempt.json'), JSON.stringify({
+    attemptId: 'stuck-attempt',
+    at: Date.parse('2026-10-12T17:00:00.000Z'),
+    bootId: 'dead-process',
+    userKey,
+    localDay: '2026-10-12',
+  }));
+  const seen = { n: 0 };
+  const { post } = await listen(t, dir, {
+    generateSummary: async () => { seen.n += 1; return { result: answer() }; },
+  }, { summaryConcurrency: 1 });
+  const blocked = await post(input(), 'Bearer a');
+  assert.equal(blocked.status, 409);
+  assert.equal((await blocked.json()).error, 'attempt_unknown');
+  const other = await post(input(), 'Bearer b');
+  assert.equal(other.status, 200);
+  assert.equal(seen.n, 1);
+  const { readFile } = await import('node:fs/promises');
+  const meta = JSON.parse(await readFile(path.join(dir, 'coach-guard', 'users', userKey, 'meta.json'), 'utf8'));
+  assert.equal(meta.lastAttemptAt, Date.parse('2026-10-12T17:00:00.000Z'));
+});
+
+test('a live second process does not generate for another UID', async (t) => {
+  const dir = await directory(t);
+  const seen = { n: 0 };
+  const generateSummary = async () => { seen.n += 1; return { result: answer() }; };
+  const first = await listen(t, dir, { generateSummary });
+  const second = await listen(t, dir, { generateSummary });
+  assert.equal((await first.post(input(), 'Bearer a')).status, 200);
+  const blocked = await second.post(input(), 'Bearer b');
+  assert.equal(blocked.status, 503);
+  assert.equal((await blocked.json()).error, 'coach_instance_busy');
+  assert.equal(seen.n, 1);
+  const saved = await fetch(`http://127.0.0.1:${second.port}/v1/coach/day-summary?day=2026-10-12&timezone=Europe/Warsaw`, {
+    headers: { Authorization: 'Bearer a' },
+  });
+  assert.equal(saved.status, 200);
+  assert.equal(seen.n, 1);
+});
+
+test('a stale heartbeat does not transfer ownership while the owner is alive', async (t) => {
+  const dir = await directory(t);
+  const seen = { n: 0 };
+  const generateSummary = async () => { seen.n += 1; return { result: answer() }; };
+  const first = await listen(t, dir, { generateSummary });
+  await mkdir(path.join(dir, 'coach-guard', 'instances'), { recursive: true });
+  await writeFile(path.join(dir, 'coach-guard', 'instances', 'old.json'), JSON.stringify({
+    bootId: 'old',
+    at: new Date(Date.now() - 120_000).toISOString(),
+  }));
+  const second = await listen(t, dir, { generateSummary });
+  const blocked = await second.post(input(), 'Bearer b');
+  assert.equal(blocked.status, 503);
+  assert.equal((await blocked.json()).error, 'coach_instance_busy');
+  assert.equal((await first.post(input(), 'Bearer a')).status, 200);
+  assert.equal(seen.n, 1);
+});
+
+test('a continued writer cannot overwrite the process that acquired the lock', async (t) => {
+  const dir = await directory(t);
+  const limits = {
+    minIntervalMs: 20 * 60 * 60 * 1000,
+    maxStartsPerUtcDay: 100,
+    maxStartsPerMinute: 10,
+    maxConcurrent: 2,
+    circuitFailures: 3,
+    circuitOpenMs: 30 * 60 * 1000,
+    attemptGraceMs: 20_000,
+    singleInstanceDeclared: true,
+  };
+  const clock = () => new Date('2026-10-12T18:00:00Z');
+  const a = createCoachAttemptStore({ dir, clock, promptVersion: SUMMARY_PROMPT_VERSION, limits });
+  t.after(() => a.stop());
+  const reserved = await a.decide({
+    uid: 'Bearer a', localDay: '2026-10-12', timezone: 'Europe/Warsaw', locale: 'ru', aiEnabled: true,
+  });
+  assert.equal(reserved.kind, 'owner');
+  a.dropProcessLock();
+  const b = createCoachAttemptStore({ dir, clock, promptVersion: SUMMARY_PROMPT_VERSION, limits });
+  t.after(() => b.stop());
+  assert.equal(b.ownsProcessLock(), true);
+  const other = await b.decide({
+    uid: 'Bearer b', localDay: '2026-10-12', timezone: 'Europe/Warsaw', locale: 'ru', aiEnabled: true,
+  });
+  assert.equal(other.kind, 'owner');
+  const dayFile = path.join(dir, 'coach-guard', 'users', coachUserHash('Bearer b'), 'days', '2026-10-12.json');
+  const before = await readFile(dayFile, 'utf8');
+  const marker = path.join(dir, 'coach-guard', 'lock');
+  await writeFile(marker, 'owner-b');
+  const budgetDir = path.join(dir, 'coach-guard', 'budget', 'utc-day', '2026-10-12');
+  const budgetBefore = (await readdir(budgetDir)).length;
+  await assert.rejects(
+    () => a.markProviderStarted(reserved.record),
+    (error) => error.code === 'coach_lock_lost',
+  );
+  await assert.rejects(
+    () => a.markFinished(reserved.record, 'completed', { result: answer() }),
+    (error) => error.code === 'coach_lock_lost',
+  );
+  assert.equal(await readFile(dayFile, 'utf8'), before);
+  assert.equal(await readFile(marker, 'utf8'), 'owner-b');
+  assert.equal((await readdir(budgetDir)).length, budgetBefore);
+  const aRecord = JSON.parse(await readFile(
+    path.join(dir, 'coach-guard', 'users', coachUserHash('Bearer a'), 'days', '2026-10-12.json'),
+    'utf8',
+  ));
+  assert.equal(aRecord.state, 'reserved');
+});
+
+test('providerStarted is durable before the provider call', async (t) => {
+  const seen = { n: 0 };
+  const { post } = await listen(t, await directory(t), {
+    generateSummary: async () => { seen.n += 1; return { result: answer() }; },
+  }, { summaryFailDurableWrite: 'provider_started' });
+  const res = await post();
+  assert.equal(res.status, 503);
+  assert.equal((await res.json()).error, 'coach_store_unavailable');
+  assert.equal(seen.n, 0);
+  const reserved = await post();
+  assert.equal(reserved.status, 409);
+  assert.equal(seen.n, 0);
 });

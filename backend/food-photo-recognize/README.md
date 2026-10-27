@@ -17,7 +17,7 @@ iOS app (`GoogleService-Info.plist`): `PROJECT_ID=weekfitai`. Render must set `F
 3. Keep `COACH_SUMMARY_MODEL=gpt-4.1-mini` (separate from the photo model — does not change photo cost/settings).
 4. Coach OpenAI starts are reserved on the persistent disk before the provider call: one UID per local day, at least 20 hours apart, and no retry. `COACH_SUMMARY_ONCE_PER_DAY=0` and `COACH_SUMMARY_ALLOW_UNRESTRICTED_HEADER=1` refuse to boot in production. Leave `COACH_AI_ENABLED` unset or `0` until a resume is intentional; `1` allows new generations. Food recognition does not use this switch.
 5. Redeploy the backend, then ship the iOS build that includes evening summary.
-5. One service instance + one volume is supported; multiple instances need a shared durable store.
+5. The file ledger is for one process on one disk. Production sets `COACH_SUMMARY_SINGLE_INSTANCE=1` and does not scale this service. That flag is not proof the dashboard has one instance. `GET /v1/coach/day-summary` reads a saved result and does not call OpenAI. `COACH_SUMMARY_MAX_INPUT_TEXT_BYTES` caps the UTF-8 size of the instruction text plus the day snapshot. It is not a token budget for the whole model request.
 
 Client attempt markers are written **before** auth/network. Failure/timeout also consumes the day’s attempt (no retry button).
 
@@ -46,7 +46,7 @@ Production-oriented path: `POST /v1/food/photo-analyze` returns **202** after du
 
 **Production config (multi-instance):** `STATE_BACKEND=redis`, `REDIS_URL`, `OBJECT_STORE=s3|http`. Shared `DATA_DIR` / `OBJECT_STORE=local` are rejected when `NODE_ENV=production`.
 
-**Single Render instance (current `weekfit-food-photo`):** set `ALLOW_SINGLE_NODE_ASYNC=1`, `ASYNC_ANALYSIS=1`, `DATA_DIR=/var/data` (persistent disk), `OBJECT_STORE=local`, `STATE_BACKEND=file`, `GLOBAL_AI_SLOTS=16` (not 100 until provider confirmation). The image entrypoint runs API + worker in one container. Do not scale this service above 1 instance without Redis + object store.
+**Single Render instance (current `weekfit-food-photo`):** set `ALLOW_SINGLE_NODE_ASYNC=1`, `ASYNC_ANALYSIS=1`, `DATA_DIR=/var/data` (persistent disk), `OBJECT_STORE=local`, `STATE_BACKEND=file`, `GLOBAL_AI_SLOTS=16` (not 100 until provider confirmation). The image entrypoint runs API + worker in one container. Do not scale this service above 1 instance without Redis + object store. Sync `POST /v1/food/photo-recognize` and async `POST /v1/food/photo-analyze` share `DATA_DIR/quota` and `DATA_DIR/photo-calls`. One analysis id has one provider marker, synced before the call.
 
 Distributed load (mini-Redis + HTTP object store, mock OpenAI, 0 real calls):
 

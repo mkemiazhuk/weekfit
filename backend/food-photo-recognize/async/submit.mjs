@@ -4,6 +4,7 @@ import { normalizeIdempotencyKey } from '../idempotency.mjs';
 import { JOB_STATUSES } from './job-store.mjs';
 import { analyzeQueuedPhoto } from './analyze-job.mjs';
 import { waitForJobUpdate, notifyJobUpdated } from './job-wait.mjs';
+import { claimProviderCall, readPhotoAttempt, savePhotoAttemptResult } from '../photo-call-ledger.mjs';
 
 function fingerprintBytes(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
@@ -89,6 +90,25 @@ export function createSubmitHandler({
 
       analysisId = idem.analysisId;
       mark('idempotency');
+
+      const priorCall = await readPhotoAttempt(config.dataDir, analysisId);
+      if (priorCall?.status === 'completed' && priorCall.result) {
+        return {
+          statusCode: 200,
+          body: {
+            analysisId,
+            status: JOB_STATUSES.completed,
+            requestId: analysisId,
+            idempotentReplay: true,
+            result: priorCall.result,
+            pollAfterMs: config.pollHintMs,
+            stageMs: stage,
+          },
+        };
+      }
+      if (priorCall?.providerStarted) {
+        throw new ServiceError('attempt_unknown', 409);
+      }
 
       if (!idem.created) {
         const existing = await jobStore.getJob(analysisId);
@@ -202,6 +222,26 @@ export function createSubmitHandler({
         mark('inlineStart');
 
         try {
+          const marked = await jobStore.markProviderStarted(analysisId, leaseToken);
+          if (!marked?.providerStarted) {
+            await jobStore.failJob(analysisId, {
+              error: 'provider_not_started',
+              providerOutcome: 'uncertain',
+              requeue: false,
+              leaseToken,
+            }).catch(() => {});
+            throw new ServiceError('attempt_not_owner', 409);
+          }
+          const claimed = await claimProviderCall(config.dataDir, analysisId);
+          if (!claimed) {
+            await jobStore.failJob(analysisId, {
+              error: 'provider_already_started',
+              providerOutcome: 'uncertain',
+              requeue: false,
+              leaseToken,
+            }).catch(() => {});
+            throw new ServiceError('attempt_unknown', 409);
+          }
           await budget.recordAttempt({ uncertain: false });
           const analyzed = await analyzeQueuedPhoto({
             job,
@@ -210,6 +250,7 @@ export function createSubmitHandler({
             openaiFetcher,
           });
           await circuit.recordSuccess();
+          await savePhotoAttemptResult(config.dataDir, analysisId, analyzed.result).catch(() => {});
           await jobStore.completeJob(analysisId, {
             result: analyzed.result,
             providerOutcome: 'success',
@@ -242,7 +283,7 @@ export function createSubmitHandler({
           const code = error?.code ?? error?.name ?? 'internal_error';
           await jobStore.failJob(analysisId, {
             error: code,
-            providerOutcome: 'failed',
+            providerOutcome: 'uncertain',
             requeue: false,
             leaseToken,
           }).catch(() => {});

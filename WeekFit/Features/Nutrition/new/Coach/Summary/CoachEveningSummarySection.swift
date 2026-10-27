@@ -23,7 +23,12 @@ struct CoachEveningSummarySection: View {
                 }
             }
 
-            if coordinator.lastRefreshFailed, !coordinator.isRefreshing {
+            if coordinator.serverAttemptPending, coordinator.summary == nil, !coordinator.isRefreshing {
+                Text(pendingCopy)
+                    .font(.footnote)
+                    .foregroundStyle(palette.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if coordinator.lastRefreshFailed, !coordinator.isRefreshing {
                 Text(errorCopy)
                     .font(.footnote)
                     .foregroundStyle(palette.textSecondary)
@@ -98,7 +103,7 @@ struct CoachEveningSummarySection: View {
             .buttonStyle(.bordered)
             .tint(WeekFitTheme.coachAccent)
             .controlSize(.small)
-            .disabled(coordinator.isRefreshing || coordinator.summary != nil || coordinator.lastRefreshFailed)
+            .disabled(coordinator.isRefreshing || coordinator.summary != nil || coordinator.lastRefreshFailed || coordinator.serverAttemptPending)
         }
         .padding(.top, 2)
     }
@@ -112,6 +117,14 @@ struct CoachEveningSummarySection: View {
 
     private var loadingCopy: String {
         copy("Putting together your day…", "Собираю итог дня…", "正在整理今天的总结…")
+    }
+
+    private var pendingCopy: String {
+        copy(
+            "Today's summary is still being saved. This check does not start a new one.",
+            "Сегодняшний итог ещё сохраняется. Эта проверка не запускает новый запрос.",
+            "今天的总结还在保存。这次查看不会重新生成。"
+        )
     }
 
     private var errorCopy: String {

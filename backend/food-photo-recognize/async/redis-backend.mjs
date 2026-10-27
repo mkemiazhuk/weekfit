@@ -172,6 +172,19 @@ export async function createRedisJobStore({ redis, redisUrl, jobTtlMs = 24 * 60 
       await r.zrem(k.leaseZ, analysisId);
       if (!job) continue;
       if (job.status === JOB_STATUSES.completed || job.status === JOB_STATUSES.failed) continue;
+      if (job.providerStarted) {
+        await saveJob({
+          ...job,
+          status: JOB_STATUSES.failed,
+          error: 'lease_expired_after_provider',
+          providerOutcome: 'uncertain',
+          leaseOwner: null,
+          leaseUntil: null,
+          leaseToken: null,
+        });
+        recovered += 1;
+        continue;
+      }
       await saveJob({
         ...job,
         status: JOB_STATUSES.queued,
@@ -242,6 +255,18 @@ export async function createRedisJobStore({ redis, redisUrl, jobTtlMs = 24 * 60 
     return next;
   };
 
+  const markProviderStarted = async (analysisId, leaseToken = null) => {
+    const job = await getJob(analysisId);
+    if (!job || job.status !== JOB_STATUSES.processing) return null;
+    if (leaseToken && job.leaseToken && job.leaseToken !== leaseToken) return null;
+    if (job.providerStarted) return job;
+    return saveJob({
+      ...job,
+      providerStarted: true,
+      providerStartedAt: new Date().toISOString(),
+    });
+  };
+
   const renewLease = async (analysisId, workerId, leaseMs, leaseToken = null) => {
     const job = await getJob(analysisId);
     if (!job || job.leaseOwner !== workerId) return false;
@@ -271,6 +296,7 @@ export async function createRedisJobStore({ redis, redisUrl, jobTtlMs = 24 * 60 
     enqueue,
     claimNext,
     recoverExpiredLeases,
+    markProviderStarted,
     completeJob,
     failJob,
     renewLease,

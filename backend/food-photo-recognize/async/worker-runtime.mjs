@@ -6,6 +6,7 @@ import {
   isSoftRequeueError,
 } from './provider-budget.mjs';
 import { analyzeQueuedPhoto } from './analyze-job.mjs';
+import { claimProviderCall, savePhotoAttemptResult } from '../photo-call-ledger.mjs';
 
 /**
  * Worker loop: blocking claim → global AI slot → provider limits → AI → complete.
@@ -104,6 +105,26 @@ export function createWorkerRuntime({
         throw storeError;
       }
 
+      const marked = await jobStore.markProviderStarted(job.analysisId, leaseToken);
+      if (!marked?.providerStarted) {
+        await jobStore.failJob(job.analysisId, {
+          error: 'provider_not_started',
+          providerOutcome: 'uncertain',
+          requeue: false,
+          leaseToken,
+        }).catch(() => {});
+        return { outcome: 'uncertain' };
+      }
+      const claimed = await claimProviderCall(config.dataDir, job.analysisId);
+      if (!claimed) {
+        await jobStore.failJob(job.analysisId, {
+          error: 'provider_already_started',
+          providerOutcome: 'uncertain',
+          requeue: false,
+          leaseToken,
+        }).catch(() => {});
+        return { outcome: 'uncertain' };
+      }
       enteredProvider = true;
       await budget.recordAttempt({ uncertain: false });
 
@@ -126,6 +147,7 @@ export function createWorkerRuntime({
       }
 
       await circuit.recordSuccess();
+      await savePhotoAttemptResult(config.dataDir, job.analysisId, analyzed.result).catch(() => {});
       await jobStore.completeJob(job.analysisId, {
         result: analyzed.result,
         providerOutcome: 'success',
@@ -146,6 +168,26 @@ export function createWorkerRuntime({
       const code = error instanceof ServiceError
         ? error.code
         : (error.code ?? error.name ?? 'internal_error');
+
+      // The provider call already started. A retry, including uncertain_retry, would be a second call
+      // for the same analysisId. The job stays terminal.
+      if (enteredProvider) {
+        await circuit.recordFailure().catch(() => {});
+        await jobStore.failJob(job.analysisId, {
+          error: code,
+          providerOutcome: 'uncertain',
+          requeue: false,
+          leaseToken,
+        });
+        onLog({
+          workerId,
+          analysisId: job.analysisId,
+          outcome: 'uncertain',
+          error: code,
+          openAIMock: Boolean(config.openAIMock),
+        });
+        return { outcome: 'uncertain' };
+      }
 
       // Provider 429 / rate — soft requeue, never blind duplicate while uncertain.
       if (code === 'provider_rate_limited' || code === 'provider_rpm_limited' || code === 'provider_tpm_limited') {
@@ -187,7 +229,7 @@ export function createWorkerRuntime({
         }
         await jobStore.failJob(job.analysisId, {
           error: code,
-          providerOutcome: enteredProvider ? 'uncertain_retry' : 'retryable',
+          providerOutcome: 'retryable',
           requeue: true,
           softRequeue: soft,
           leaseToken,

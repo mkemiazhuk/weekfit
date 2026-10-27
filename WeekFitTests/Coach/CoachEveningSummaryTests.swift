@@ -497,7 +497,7 @@ final class CoachEveningSummaryTests: XCTestCase {
         let store = temporaryStore()
         var calls = 0
         let gate = AsyncGate()
-        let coordinator = CoachEveningSummaryCoordinator(store: store) { input, _ in
+        let coordinator = CoachEveningSummaryCoordinator(store: store, readStatus: { _, _ in .absent }) { input, _ in
             calls += 1
             if calls == 1 {
                 await gate.wait()
@@ -521,7 +521,7 @@ final class CoachEveningSummaryTests: XCTestCase {
         XCTAssertTrue(coordinator.lastRefreshFailed)
         XCTAssertFalse(coordinator.isRefreshing)
 
-        let relaunch = CoachEveningSummaryCoordinator(store: store) { input, _ in
+        let relaunch = CoachEveningSummaryCoordinator(store: store, readStatus: { _, _ in .absent }) { input, _ in
             calls += 1
             return self.result(input, headline: "ShouldNotRun")
         }
@@ -529,6 +529,48 @@ final class CoachEveningSummaryTests: XCTestCase {
         for _ in 0..<20 { await Task.yield() }
         XCTAssertEqual(calls, 1, "relaunch must keep the failed day claim")
         XCTAssertTrue(relaunch.lastRefreshFailed)
+    }
+
+    func testRelaunchReadsSavedResultWithoutASecondGeneration() async {
+        let store = temporaryStore()
+        var generateCalls = 0
+        var readCalls = 0
+        let gate = AsyncGate()
+        let saved = result(input(), headline: "SavedOnServer")
+        let coordinator = CoachEveningSummaryCoordinator(store: store, readStatus: { _, _ in
+            readCalls += 1
+            return .absent
+        }) { input, _ in
+            generateCalls += 1
+            await gate.wait()
+            throw URLError(.networkConnectionLost)
+        }
+        let evening = date("2026-10-12T18:30:00Z")
+        coordinator.refresh(input: input(), owner: "local", now: evening, calendar: calendar())
+        for _ in 0..<40 where !coordinator.isRefreshing { await Task.yield() }
+        await gate.open()
+        for _ in 0..<40 where coordinator.isRefreshing { await Task.yield() }
+        XCTAssertEqual(generateCalls, 1)
+        XCTAssertNil(coordinator.summary)
+
+        let relaunch = CoachEveningSummaryCoordinator(store: store, readStatus: { _, _ in
+            readCalls += 1
+            return .completed(saved)
+        }) { input, _ in
+            generateCalls += 1
+            return self.result(input, headline: "ShouldNotGenerate")
+        }
+        relaunch.refresh(input: input(), owner: "local", now: evening, calendar: calendar())
+        for _ in 0..<40 where relaunch.isRefreshing { await Task.yield() }
+        XCTAssertEqual(generateCalls, 1, "relaunch must read the saved result instead of generating")
+        XCTAssertGreaterThanOrEqual(readCalls, 1)
+        XCTAssertEqual(relaunch.summary?.headline, "SavedOnServer")
+        XCTAssertFalse(relaunch.lastRefreshFailed)
+        XCTAssertFalse(relaunch.serverAttemptPending)
+
+        relaunch.refresh(input: input(), owner: "local", now: evening, calendar: calendar())
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertEqual(generateCalls, 1, "a restored summary must not generate on the next open")
     }
 
     func testLanguageChangeDoesNotCallBackendAgain() async {

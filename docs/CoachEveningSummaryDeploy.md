@@ -32,7 +32,31 @@ Leave the Render service `weekfit-food-photo` suspended until an explicit resume
 
 iOS base URL: `https://weekfit-food-photo.onrender.com` → `POST /v1/coach/day-summary`.
 
-The reservation lives on one persistent disk. Every process that can call OpenAI for Coach must mount that same `COACH_SUMMARY_STORE_DIR`. A second disk, an ephemeral container filesystem, or Redis does not share the ledger. The in-memory map only joins waiters inside one process.
+The reservation is a file ledger on one directory. Production must set `COACH_SUMMARY_SINGLE_INSTANCE=1` and keep the service at one instance. Without that flag, new Coach generations stay off and a saved result can still be read. `COACH_SUMMARY_SINGLE_INSTANCE=1` is an operator declaration. It does not prove the dashboard is scaled to one instance.
+
+Ownership is a SQLite reserved lock held until the process releases it or the process dies. A paused process still holds the lock. The age of a heartbeat or lock file does not transfer ownership. The committed fence increases only after that OS lock is acquired. A writer whose fence is stale does not publish records and does not delete another owner's files. If the lock cannot be acquired, new generation is refused.
+
+`GET /v1/coach/day-summary?day=YYYY-MM-DD&timezone=Area/City` reads status only. It does not reserve and does not call OpenAI. `200` is the saved summary, `202` is still in progress, `409` is a terminal failure or unknown outcome, `404` means this day was never reserved.
+
+The day record and `provider_started` are fsynced before the OpenAI request. A failed write does not call the provider. An inflight file older than the provider grace is closed to terminal `unknown` only by the current owner. `meta.lastAttemptAt` stays. That attempt does not call the provider again.
+
+Checked while the service was suspended, 2026-10-27 02:54:15 GMT: `GET https://weekfit-food-photo.onrender.com/healthz` returned HTTP 503 with `x-render-routing: suspend-by-user` and the body "This service has been suspended by its owner." That response does not include the disk mount, the instance count, autoscaling, or env values. `render.yaml` in this repo is a blueprint marked not applied. README text is not a reading of the live service.
+
+### Dashboard checks before any resume
+
+These were not verified from this environment. In the Render dashboard for `weekfit-food-photo`, confirm each line. Do not treat this file as the confirmation.
+
+- Service status remains suspended until a separate resume command.
+- Settings → Scaling: web instances exactly 1, autoscaling off. No second web service sharing this disk.
+- Disks: one persistent disk is attached. Note its mount path.
+- Environment: `DATA_DIR` and `COACH_SUMMARY_STORE_DIR` are absolute paths inside that mount path. `COACH_SUMMARY_STORE_DIR` is not empty.
+- After a redeploy that does not delete the disk, `coach-guard/` under `COACH_SUMMARY_STORE_DIR` is still present.
+- `COACH_AI_ENABLED` is unset or `0`.
+- `COACH_SUMMARY_ONCE_PER_DAY` is not `0`. `COACH_SUMMARY_ALLOW_UNRESTRICTED_HEADER` is not `1`.
+- `DAILY_SCAN_LIMIT=20`, `GLOBAL_DAILY_SCAN_LIMIT=200`, `MAX_PROVIDER_CALLS_PER_DAY=200`.
+- `COACH_SUMMARY_MAX_STARTS_PER_UTC_DAY=100`, `COACH_SUMMARY_MAX_STARTS_PER_MINUTE=10`, `COACH_SUMMARY_MAX_CONCURRENT=2`.
+- `COACH_SUMMARY_MAX_INPUT_TEXT_BYTES=80000` (or the legacy name `COACH_SUMMARY_MAX_INPUT_TOKENS`, which is the same byte ceiling, not a token budget).
+- `COACH_SUMMARY_MAX_OUTPUT_TOKENS=8192` is an output budget only. It does not promise a finished JSON object.
 
 ### Safe enablement
 
@@ -63,8 +87,8 @@ npm test
 
 ## What the disk guarantees
 
-- Exclusive create (`O_EXCL`) of `coach-guard/users/<sha256 uid>/days/<local day>.json` before `callProvider`.
-- The same directory holds the UTC-day budget, the minute budget, inflight slots, and the circuit file, so two processes on this volume share them.
-- Existing flat day files are migrated on the next read: `completed` stays readable, `failed` and any other prior attempt become terminal. No OpenAI call during migration.
-- A lock file left by a killed process fails closed (`503 coach_store_busy`) until an operator removes `coach-guard/lock`. That does not open a new provider call.
-- After the provider timeout plus 5 seconds, a `reserved` or `provider_started` record whose owner is gone is rewritten to `unknown`. The next request returns `409 attempt_unknown` and does not call OpenAI.
+- The day file is created and fsynced before `provider_started`. `provider_started` is fsynced before `callProvider`. A failed sync or write throws and does not call OpenAI.
+- The same directory holds the UTC-day budget, the minute budget, inflight slots, and the circuit file. The process lock is `coach-guard/owner.sqlite`. The fence is `coach-guard/fence.sqlite`.
+- Existing flat day files are migrated by the current owner: `completed` stays readable, `failed` and any other prior attempt become terminal. No OpenAI call during migration.
+- A dead process releases the OS lock. The next process may take the fence. It does not start a provider call for an attempt that is already reserved or `provider_started`.
+- After the provider timeout plus 5 seconds, the current owner rewrites a `reserved` or `provider_started` record to `unknown`. The next request returns `409 attempt_unknown`.

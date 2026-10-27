@@ -351,10 +351,15 @@ export function unconfirmedConclusionIssues(summary) {
   return issues;
 }
 
-/** UTF-8 bytes / 2. Rejects over the cap; never truncates the snapshot or the instructions. */
-export function estimateInputTokens(input) {
+/**
+ * UTF-8 size of the day snapshot plus the instruction text.
+ * This is not a token count and not the whole model request: the response schema
+ * and the Responses API framing are extra. Over the cap the request is rejected.
+ * The snapshot and instructions are never trimmed to fit.
+ */
+export function estimateInputTextBytes(input) {
   const body = buildInstructions(input) + JSON.stringify(input);
-  return Math.ceil(Buffer.byteLength(body, 'utf8') / 2);
+  return Buffer.byteLength(body, 'utf8');
 }
 
 async function callProvider(input, config, fetcher) {
@@ -377,7 +382,9 @@ async function callProvider(input, config, fetcher) {
   }
   const data = await response.json();
   const content = (data.output ?? []).flatMap(o => o.content ?? []);
-  if (data.status !== 'completed' || content.some(c => c.type === 'refusal')) {
+  // max_output_tokens does not promise a finished JSON object. Incomplete, refused,
+  // or unparseable output ends this attempt. generateSummary does not call again.
+  if (data.status !== 'completed' || data.incomplete_details || content.some(c => c.type === 'refusal')) {
     const error = new ServiceError('summary_incomplete', 502);
     error.providerRequestId = providerRequestId;
     throw error;
@@ -413,6 +420,7 @@ function coachLimits(config) {
     circuitFailures: config.summaryCircuitFailures ?? 3,
     circuitOpenMs: config.summaryCircuitOpenMs ?? 30 * 60 * 1000,
     attemptGraceMs: (config.summaryTimeoutMs ?? 15000) + 5000,
+    singleInstanceDeclared: config.coachSingleInstanceDeclared !== false,
   };
 }
 
@@ -434,11 +442,12 @@ export function createSummaryHandler(config, dependencies) {
       clock,
       promptVersion: SUMMARY_PROMPT_VERSION,
       limits: coachLimits(config),
+      failDurableWrite: config.summaryFailDurableWrite ?? null,
     })
     : null;
   const maxBody = config.summaryMaxBodyBytes ?? 131072;
 
-  return async (req, res) => {
+  const handler = async (req, res) => {
     const requestId = randomUUID();
     const started = Date.now();
     const send = (status, body) => {
@@ -467,6 +476,46 @@ export function createSummaryHandler(config, dependencies) {
     try {
       if (!config.apiKey || !config.summaryModel || !store) throw new ServiceError('summary_not_configured', 503);
       const uid = await dependencies.authenticate(req.headers.authorization, config);
+      if (req.method === 'GET') {
+        const requestUrl = new URL(req.url, 'http://127.0.0.1');
+        const day = requestUrl.searchParams.get('day') ?? '';
+        const timezone = requestUrl.searchParams.get('timezone') ?? '';
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new ServiceError('invalid_day_snapshot', 422);
+        let local;
+        try { local = localDayAndHour(clock(), timezone); }
+        catch { throw new ServiceError('invalid_day_snapshot', 422); }
+        const userHash = coachUserHash(uid).slice(0, 16);
+        const decision = await store.read({ uid, localDay: day, timezone, locale: null });
+        log('status_read', {
+          userHash,
+          localDay: day,
+          timezone,
+          outcome: decision.kind === 'absent' ? 'absent' : (decision.record?.state ?? decision.kind),
+          attemptId: decision.record?.attemptId,
+          serverLocalDay: local.day,
+        });
+        if (decision.kind === 'absent') return send(404, { error: 'attempt_absent', status: 'absent' });
+        if (decision.kind === 'completed') {
+          return send(200, {
+            ...decision.record.result,
+            reused: true,
+            attemptId: decision.record.attemptId,
+            status: 'completed',
+          });
+        }
+        if (decision.kind === 'pending' || decision.kind === 'join') {
+          return send(202, {
+            error: 'attempt_pending',
+            attemptId: decision.record.attemptId,
+            status: 'pending',
+          });
+        }
+        return send(decision.status ?? 409, {
+          error: decision.code ?? 'attempt_unknown',
+          attemptId: decision.record?.attemptId,
+          status: decision.record?.state ?? 'unknown',
+        });
+      }
       if (!req.headers['content-type']?.startsWith('application/json')) throw new ServiceError('json_required', 415);
       let size = 0;
       const chunks = [];
@@ -491,7 +540,7 @@ export function createSummaryHandler(config, dependencies) {
         });
         throw error;
       }
-      if (estimateInputTokens(input) > (config.summaryMaxInputTokens ?? 80000)) {
+      if (estimateInputTextBytes(input) > (config.summaryMaxInputTextBytes ?? 80000)) {
         const error = new ServiceError('input_too_large', 413);
         error.coachLogged = true;
         log('request_received', {
@@ -556,7 +605,13 @@ export function createSummaryHandler(config, dependencies) {
       }
       owned = decision;
       log('attempt_reserved', {...base, outcome: 'reserved'});
-      const startedRecord = await store.markProviderStarted(decision.record);
+      let startedRecord;
+      try {
+        startedRecord = await store.markProviderStarted(decision.record);
+      } catch (error) {
+        await store.markFinished(decision.record, 'unknown', { reason: 'provider_not_started' }).catch(() => {});
+        throw error;
+      }
       log('provider_call_started', {...base, outcome: 'provider_started'});
       let value;
       try {
@@ -614,4 +669,6 @@ export function createSummaryHandler(config, dependencies) {
       });
     }
   };
+  handler.stop = () => store?.stop?.();
+  return handler;
 }

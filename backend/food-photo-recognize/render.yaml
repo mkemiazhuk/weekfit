@@ -50,11 +50,11 @@ services:
       - key: DAILY_SCAN_LIMIT
         value: "20"
       - key: GLOBAL_DAILY_SCAN_LIMIT
-        value: "5000"
+        value: "200"
       - key: MAX_CONCURRENT_UPLOADS
         value: "64"
       - key: MAX_PROVIDER_CALLS_PER_DAY
-        value: "5000"
+        value: "200"
       - key: MAX_ESTIMATED_USD_PER_DAY
         value: "400"
       - key: OPENAI_API_KEY
@@ -121,7 +121,7 @@ services:
       - key: S3_ENDPOINT
         sync: false
       - key: MAX_PROVIDER_CALLS_PER_DAY
-        value: "5000"
+        value: "200"
       - key: MAX_ESTIMATED_USD_PER_DAY
         value: "400"
 

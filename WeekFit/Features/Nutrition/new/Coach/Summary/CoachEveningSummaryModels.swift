@@ -33,6 +33,16 @@ struct CoachEveningSummary: Codable, Equatable, Sendable {
         validationFailures(for: input).isEmpty
     }
 
+    /// A result already stored by the server. Evidence is not re-checked against a later snapshot.
+    func isRecoveredDisplayable(forDay day: String) -> Bool {
+        self.day == day
+            && ["ai", "fallback"].contains(source)
+            && !headline.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !today.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !now.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !tomorrow.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     /// Precise client-side rejection codes for diagnostics (never log personal text).
     func validationFailures(for input: CoachEveningSummaryInput) -> [String] {
         var failures: [String] = []

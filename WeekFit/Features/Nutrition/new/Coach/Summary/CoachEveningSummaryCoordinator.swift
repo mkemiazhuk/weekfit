@@ -2,6 +2,13 @@ import Foundation
 internal import Combine
 
 /// Result of one generation attempt (HTTP or test double).
+enum CoachEveningSummaryServerRead: Sendable {
+    case completed(CoachEveningSummaryGenerationResult)
+    case pending
+    case terminal
+    case absent
+}
+
 struct CoachEveningSummaryGenerationResult: Sendable {
     let summary: CoachEveningSummary
     let requestId: String
@@ -20,6 +27,8 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
     @Published private(set) var receivedAt: Date?
     @Published private(set) var isRefreshing = false
     @Published private(set) var lastRefreshFailed = false
+    /// The server has a reserved attempt and has not saved a result yet. This is not a new generation.
+    @Published private(set) var serverAttemptPending = false
     @Published private(set) var cachedFingerprint: String?
     /// Last request id applied to UI (`http` / restored cache). DEBUG + diagnostics.
     @Published private(set) var lastAppliedRequestId: String?
@@ -27,12 +36,14 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
 
     private let store: CoachEveningSummaryStore
     private let generate: (CoachEveningSummaryInput, String) async throws -> CoachEveningSummaryGenerationResult
+    private let readStatus: (CoachEveningSummaryInput, String) async -> CoachEveningSummaryServerRead
     private let timeoutSeconds: TimeInterval
     private var owner: String?
 
     /// Single in-flight HTTP generation keyed by (owner, localDay, locale). Waiter cancel / UI timeout must not clear this.
     private var inFlight: InFlight?
     private var deadline: Task<Void, Never>?
+    private var statusRead: Task<Void, Never>?
     /// Days this process already sent (or refused to resend) to the backend. Survives a failed disk claim.
     private var sessionAttemptedDays: Set<String> = []
 
@@ -60,12 +71,16 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
     init(
         store: CoachEveningSummaryStore? = nil,
         timeoutSeconds: TimeInterval = 20,
+        readStatus: @escaping (CoachEveningSummaryInput, String) async -> CoachEveningSummaryServerRead = { input, owner in
+            await CoachEveningSummaryService.read(input, owner: owner)
+        },
         generate: @escaping (CoachEveningSummaryInput, String) async throws -> CoachEveningSummaryGenerationResult = { input, owner in
             try await CoachEveningSummaryService.generate(input, owner: owner)
         }
     ) {
         self.store = store ?? CoachEveningSummaryStore()
         self.timeoutSeconds = timeoutSeconds
+        self.readStatus = readStatus
         self.generate = generate
     }
 
@@ -83,6 +98,9 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
                 detail: "owner=\(tag) hadSummary=\(summary != nil) wasRefreshing=\(isRefreshing) hadFlight=\(inFlight != nil)"
             )
             cancelInFlight(reason: "ownerChange")
+            statusRead?.cancel()
+            statusRead = nil
+            serverAttemptPending = false
             lastRefreshFailed = false
             self.owner = owner
         }
@@ -177,6 +195,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         cancelInFlight(reason: "workspaceReset")
         owner = nil
         sessionAttemptedDays = []
+        serverAttemptPending = false
         summary = nil
         receivedAt = nil
         cachedFingerprint = nil
@@ -419,7 +438,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
 
         // Reserve the local day before auth or HTTP. A failure, timeout, or rejected body
         // still consumes the attempt — the next open must not call the backend again.
-        if reuseStoredDailyAttempt(owner: owner, day: input.day, source: source) {
+        if reuseStoredDailyAttempt(input: input, owner: owner, source: source) {
             return
         }
         reserveDailyAttempt(owner: owner, day: input.day)
@@ -620,6 +639,13 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             if owner == key.owner {
                 lastRefreshFailed = true
             }
+            if owner == key.owner, summary == nil {
+                let readInput = input
+                let readOwner = key.owner
+                Task { @MainActor in
+                    self.beginStatusRead(input: readInput, owner: readOwner, source: "afterFailure")
+                }
+            }
         }
     }
 
@@ -643,13 +669,94 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         }
     }
 
+    /// GET only. A terminal local claim blocks POST, and this does not clear that claim.
+    private func beginStatusRead(input: CoachEveningSummaryInput, owner: String, source: String) {
+        guard statusRead == nil else { return }
+        guard summary?.day != input.day else { return }
+        isRefreshing = true
+        let task = Task { @MainActor in
+            defer {
+                if statusRead != nil {
+                    statusRead = nil
+                    if self.owner == owner {
+                        isRefreshing = false
+                    }
+                }
+            }
+            var pending = false
+            for attempt in 0..<5 {
+                if Task.isCancelled { return }
+                let status = await readStatus(input, owner)
+                if Task.isCancelled || self.owner != owner { return }
+                switch status {
+                case .completed(let result):
+                    applyRecovered(result, owner: owner, day: input.day, source: source)
+                    return
+                case .pending:
+                    pending = true
+                    serverAttemptPending = true
+                    if attempt == 4 { break }
+                    try? await Task.sleep(for: .milliseconds(300))
+                case .terminal, .absent:
+                    serverAttemptPending = false
+                    if summary == nil { lastRefreshFailed = true }
+                    return
+                }
+            }
+            serverAttemptPending = pending
+            if summary == nil, !pending { lastRefreshFailed = true }
+        }
+        statusRead = task
+    }
+
+    private func applyRecovered(
+        _ result: CoachEveningSummaryGenerationResult,
+        owner: String,
+        day: String,
+        source: String
+    ) {
+        guard self.owner == owner || self.owner == nil else { return }
+        guard result.summary.isRecoveredDisplayable(forDay: day) else {
+            serverAttemptPending = false
+            lastRefreshFailed = true
+            return
+        }
+        summary = result.summary
+        receivedAt = Date()
+        cachedFingerprint = cachedFingerprint ?? "day:\(day):\(result.summary.locale)"
+        lastRefreshFailed = false
+        serverAttemptPending = false
+        lastAppliedRequestId = result.requestId
+        lastAppliedUISource = "status"
+        do {
+            try store.saveCache(
+                .init(summary: result.summary, receivedAt: receivedAt ?? Date(), inputFingerprint: cachedFingerprint),
+                owner: owner
+            )
+        } catch {
+            CoachEveningSummaryDiagnostics.error(
+                "cache.saveError",
+                detail: CoachEveningSummaryDiagnostics.flightDetail(
+                    owner: owner, day: day, source: source, extra: "disk=fail keepMemory=true"
+                )
+            )
+        }
+        CoachEveningSummaryDiagnostics.event(
+            "status.applied",
+            detail: CoachEveningSummaryDiagnostics.flightDetail(
+                owner: owner, day: day, source: source, requestId: result.requestId
+            )
+        )
+    }
+
     private func attemptKey(owner: String, day: String) -> String {
         "\(owner)|\(day)"
     }
 
     /// `true` when this local day was already sent. Restores a saved answer or leaves the failure visible.
-    private func reuseStoredDailyAttempt(owner: String, day: String, source: String) -> Bool {
+    private func reuseStoredDailyAttempt(input: CoachEveningSummaryInput, owner: String, source: String) -> Bool {
         guard CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow else { return false }
+        let day = input.day
         let record = try? store.record(owner: owner, day: day)
         let attempted = record != nil || sessionAttemptedDays.contains(attemptKey(owner: owner, day: day))
         guard attempted else { return false }
@@ -659,9 +766,11 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             receivedAt = receivedAt ?? Date()
             cachedFingerprint = cachedFingerprint ?? "day:\(day):\(cached.locale)"
             lastRefreshFailed = false
+            serverAttemptPending = false
             lastAppliedUISource = "disk"
         } else if summary == nil {
-            lastRefreshFailed = true
+            beginStatusRead(input: input, owner: owner, source: source)
+            return true
         }
         isRefreshing = false
         CoachEveningSummaryDiagnostics.event(

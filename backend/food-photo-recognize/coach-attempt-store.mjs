@@ -1,24 +1,77 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, open, readdir, unlink } from 'node:fs/promises';
+import { mkdirSync } from 'node:fs';
+import { mkdir, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { ServiceError } from './recognition.mjs';
-import { createExclusive, readJson, removeQuiet, writeJsonAtomic } from './async/atomic-fs.mjs';
+import { createExclusive, readJson, removeQuiet, writeJsonAtomic as durableWrite } from './async/atomic-fs.mjs';
 
 /**
- * Durable Coach attempt ledger.
+ * Durable Coach attempt ledger on one directory.
  *
- * The live service already stores coach state on a Render persistent disk
- * (COACH_SUMMARY_STORE_DIR). Exclusive create is atomic for every process that
- * mounts that same volume, so a restart, redeploy, or second instance on the
- * volume cannot mint a second provider call. The in-memory map only lets the
- * same process wait for a call it already started.
+ * Process ownership is a SQLite RESERVED lock held until this process releases
+ * it or dies. A paused owner still holds that lock. File age and a heartbeat
+ * timestamp are not proof that the owner died, so they never transfer the lock.
+ * The committed fence increases only after the OS lock is acquired. A writer
+ * whose fence is no longer current does not publish records and does not remove
+ * another owner's files.
  *
- * The lock file is not deleted because of age. If its holder dies, later
- * requests fail closed and do not call OpenAI. Two instances on two different
- * disks, or an ephemeral Redis, are not this guarantee.
+ * An inflight file older than the provider grace is closed to terminal unknown
+ * only by the current owner. That does not clear meta.lastAttemptAt and does
+ * not allow another provider call for that attempt.
+ *
+ * Two processes on this directory share the files. That is not a multi-instance
+ * deployment guarantee: a second disk does not.
  */
 
 const LEGACY_PROMPT_VERSIONS = [6, 7, 8, 9, 10, 11, 12, 13];
+
+function openProcessLock(file) {
+  mkdirSync(path.dirname(file), { recursive: true });
+  const db = new DatabaseSync(file);
+  db.exec('PRAGMA busy_timeout = 0');
+  try {
+    db.exec('BEGIN IMMEDIATE');
+  } catch {
+    db.close();
+    return { held: false, release() {} };
+  }
+  let released = false;
+  return {
+    held: true,
+    release() {
+      if (released) return;
+      released = true;
+      try { db.exec('ROLLBACK'); } catch { /* already closed */ }
+      try { db.close(); } catch { /* already closed */ }
+    },
+  };
+}
+
+function bumpFence(file) {
+  mkdirSync(path.dirname(file), { recursive: true });
+  const db = new DatabaseSync(file);
+  db.exec('PRAGMA synchronous = FULL');
+  db.exec('PRAGMA journal_mode = DELETE');
+  db.exec('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value INTEGER NOT NULL)');
+  db.exec(`INSERT OR IGNORE INTO meta(key, value) VALUES ('fence', 0)`);
+  db.exec('BEGIN IMMEDIATE');
+  const row = db.prepare(`UPDATE meta SET value = value + 1 WHERE key = 'fence' RETURNING value`).get();
+  db.exec('COMMIT');
+  db.close();
+  return Number(row.value);
+}
+
+function readFence(file) {
+  try {
+    const db = new DatabaseSync(file);
+    const row = db.prepare(`SELECT value FROM meta WHERE key = 'fence'`).get();
+    db.close();
+    return Number(row?.value ?? 0);
+  } catch {
+    return 0;
+  }
+}
 
 export function coachUserHash(uid) {
   return createHash('sha256').update(String(uid)).digest('hex');
@@ -30,8 +83,6 @@ export function legacyAttemptFileName(uid, day, locale = null, promptVersion = n
     : JSON.stringify([uid, day, locale, promptVersion]);
   return `${createHash('sha256').update(key).digest('hex')}.json`;
 }
-
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function deferred() {
   let resolve;
@@ -45,11 +96,45 @@ export function createCoachAttemptStore({
   clock = () => new Date(),
   promptVersion,
   limits,
+  failDurableWrite = null,
 }) {
   const root = path.join(dir, 'coach-guard');
+  const fencePath = path.join(root, 'fence.sqlite');
   const bootId = randomUUID();
   const waiters = new Map();
   const nowMs = () => clock().getTime();
+  let processLock = { held: false, release() {} };
+  let storeBroken = false;
+  try {
+    processLock = openProcessLock(path.join(root, 'owner.sqlite'));
+  } catch {
+    storeBroken = true;
+  }
+  let lockHeld = processLock.held;
+  const myFence = lockHeld ? bumpFence(fencePath) : 0;
+  let tail = Promise.resolve();
+  let stopped = false;
+
+  function withMutex(fn) {
+    const run = tail.then(() => fn(), () => fn());
+    tail = run.then(() => {}, () => {});
+    return run;
+  }
+
+  function stillOwner() {
+    return !stopped && lockHeld && readFence(fencePath) === myFence;
+  }
+
+  function dropProcessLock() {
+    processLock.release();
+    lockHeld = false;
+  }
+
+  function stop() {
+    if (stopped) return;
+    stopped = true;
+    dropProcessLock();
+  }
   const dayPath = (userKey, localDay) => path.join(root, 'users', userKey, 'days', `${localDay}.json`);
   const metaPath = (userKey) => path.join(root, 'users', userKey, 'meta.json');
   const inflightPath = (attemptId) => path.join(root, 'inflight', `${attemptId}.json`);
@@ -57,31 +142,12 @@ export function createCoachAttemptStore({
   const dayBudgetDir = (utcDay) => path.join(root, 'budget', 'utc-day', utcDay);
   const circuitPath = path.join(root, 'circuit.json');
 
-  async function withLock(fn) {
-    const lockPath = path.join(root, 'lock');
-    const deadline = Date.now() + 2000;
-    while (true) {
-      let handle;
-      try {
-        await mkdir(root, { recursive: true, mode: 0o700 });
-        handle = await open(lockPath, 'wx');
-      } catch (error) {
-        if (error instanceof ServiceError) throw error;
-        if (error.code === 'EEXIST' && Date.now() < deadline) {
-          await delay(5);
-          continue;
-        }
-        if (error.code === 'EEXIST') throw new ServiceError('coach_store_busy', 503);
-        throw new ServiceError('coach_store_unavailable', 503);
-      }
-      try {
-        await handle.writeFile(JSON.stringify({ pid: process.pid, bootId, at: new Date(nowMs()).toISOString() }));
-        return await fn();
-      } finally {
-        await handle.close();
-        await unlink(lockPath).catch(() => {});
-      }
+  async function persist(file, value) {
+    if (!stillOwner()) throw new ServiceError('coach_lock_lost', 503);
+    if (failDurableWrite && value?.state === failDurableWrite) {
+      throw new ServiceError('coach_store_unavailable', 503);
     }
+    await durableWrite(file, value);
   }
 
   async function listJson(directory) {
@@ -146,9 +212,57 @@ export function createCoachAttemptStore({
     return Number.isFinite(started) ? now - started : limits.attemptGraceMs;
   }
 
+  async function reconcileStaleInflight(now) {
+    if (!stillOwner()) return;
+    const directory = path.join(root, 'inflight');
+    for (const name of await listJson(directory)) {
+      const file = path.join(directory, name);
+      const row = await readJson(file, null);
+      const at = Number(row?.at);
+      const age = Number.isFinite(at) ? now - at : limits.attemptGraceMs;
+      if (age < limits.attemptGraceMs) continue;
+      if (row?.userKey && row?.localDay && row?.attemptId) {
+        const record = await readJson(dayPath(row.userKey, row.localDay), null);
+        if (record
+          && record.attemptId === row.attemptId
+          && (record.state === 'reserved' || record.state === 'provider_started')) {
+          await writeUnknown(record, 'owner_lost');
+        }
+      }
+      await removeQuiet(file);
+    }
+  }
+
+  async function loadRecord(uid, localDay, timezone, locale) {
+    const userKey = coachUserHash(uid);
+    let record = await readJson(dayPath(userKey, localDay), null);
+    if (!record) {
+      const legacy = await readLegacy(uid, localDay, locale);
+      if (legacy && stillOwner()) {
+        record = fromLegacy(legacy, userKey, localDay, timezone, locale);
+        record.fence = myFence;
+        await persist(dayPath(userKey, localDay), record);
+        const meta = await readJson(metaPath(userKey), null);
+        if (!meta?.lastAttemptAt) {
+          const at = Date.parse(record.reservedAt);
+          await persist(metaPath(userKey), {
+            lastAttemptAt: Number.isFinite(at) ? at : nowMs(),
+            lastTimezone: timezone,
+            lastLocalDay: localDay,
+          });
+        }
+      } else if (legacy) {
+        record = fromLegacy(legacy, userKey, localDay, timezone, locale);
+      }
+    }
+    return record;
+  }
+
   async function writeUnknown(record, reason) {
     const next = { ...record, state: 'unknown', reason, unknownAt: new Date(nowMs()).toISOString() };
-    await writeJsonAtomic(dayPath(record.userKey, record.localDay), next);
+    if (!stillOwner()) return next;
+    if (record.fence != null && record.fence !== myFence) return next;
+    await persist(dayPath(record.userKey, record.localDay), next);
     await removeQuiet(inflightPath(record.attemptId));
     return next;
   }
@@ -181,27 +295,14 @@ export function createCoachAttemptStore({
 
   async function decide({ uid, localDay, timezone, locale, aiEnabled }) {
     const userKey = coachUserHash(uid);
-    return withLock(async () => {
+    return withMutex(async () => {
+      if (storeBroken) throw new ServiceError('coach_store_unavailable', 503);
       const now = nowMs();
-      let record = await readJson(dayPath(userKey, localDay), null);
-      if (!record) {
-        const legacy = await readLegacy(uid, localDay, locale);
-        if (legacy) {
-          record = fromLegacy(legacy, userKey, localDay, timezone, locale);
-          await writeJsonAtomic(dayPath(userKey, localDay), record);
-          const meta = await readJson(metaPath(userKey), null);
-          if (!meta?.lastAttemptAt) {
-            const at = Date.parse(record.reservedAt);
-            await writeJsonAtomic(metaPath(userKey), {
-              lastAttemptAt: Number.isFinite(at) ? at : now,
-              lastTimezone: timezone,
-              lastLocalDay: localDay,
-            });
-          }
-        }
-      }
+      await reconcileStaleInflight(now);
+      const record = await loadRecord(uid, localDay, timezone, locale);
       const existing = await interpret(record);
       if (existing) return existing;
+      if (!stillOwner()) block('coach_instance_busy', 503, null, 'global_limit_blocked');
 
       const meta = await readJson(metaPath(userKey), null);
       if (meta?.lastAttemptAt && now - meta.lastAttemptAt < limits.minIntervalMs) {
@@ -222,7 +323,7 @@ export function createCoachAttemptStore({
           && (probeRecord.state === 'reserved' || probeRecord.state === 'provider_started')
           && ageMs(probeRecord, now) < limits.attemptGraceMs;
         if (!probeLive) {
-          await writeJsonAtomic(circuitPath, {
+          await persist(circuitPath, {
             state: 'open',
             consecutiveFailures: circuit.consecutiveFailures ?? limits.circuitFailures,
             openedAt: now,
@@ -243,6 +344,11 @@ export function createCoachAttemptStore({
       if (await countDir(path.join(root, 'inflight')) >= limits.maxConcurrent) {
         block('coach_concurrency_limited', 503, null, 'global_limit_blocked');
       }
+      if (limits.singleInstanceDeclared === false) {
+        block('coach_single_instance_required', 503, null, 'global_limit_blocked');
+      }
+      if (!stillOwner()) block('coach_instance_busy', 503, null, 'global_limit_blocked');
+      if (failDurableWrite === 'reserved') throw new ServiceError('coach_store_unavailable', 503);
 
       const attemptId = randomUUID();
       const fresh = {
@@ -256,6 +362,7 @@ export function createCoachAttemptStore({
         promptVersion,
         reservedAt: new Date(now).toISOString(),
         ownerBootId: bootId,
+        fence: myFence,
         probe,
       };
       const created = await createExclusive(dayPath(userKey, localDay), JSON.stringify(fresh));
@@ -264,12 +371,14 @@ export function createCoachAttemptStore({
       await mkdir(dayBudgetDir(utcDay), { recursive: true });
       await createExclusive(path.join(dayBudgetDir(utcDay), `${attemptId}.json`), JSON.stringify({ at: now }));
       await mkdir(path.dirname(minutePath(attemptId)), { recursive: true });
-      await writeJsonAtomic(minutePath(attemptId), { at: now, attemptId });
+      await persist(minutePath(attemptId), { at: now, attemptId });
       await mkdir(path.dirname(inflightPath(attemptId)), { recursive: true });
-      await createExclusive(inflightPath(attemptId), JSON.stringify({ attemptId, at: now, bootId }));
-      await writeJsonAtomic(metaPath(userKey), { lastAttemptAt: now, lastTimezone: timezone, lastLocalDay: localDay });
+      await createExclusive(inflightPath(attemptId), JSON.stringify({
+        attemptId, at: now, bootId, userKey, localDay,
+      }));
+      await persist(metaPath(userKey), { lastAttemptAt: now, lastTimezone: timezone, lastLocalDay: localDay });
       if (probe) {
-        await writeJsonAtomic(circuitPath, {
+        await persist(circuitPath, {
           ...circuit,
           state: 'half_open',
           probeClaimed: true,
@@ -309,34 +418,46 @@ export function createCoachAttemptStore({
   }
 
   async function markProviderStarted(record) {
+    if (!stillOwner()) throw new ServiceError('coach_lock_lost', 503);
     const current = await readJson(dayPath(record.userKey, record.localDay), null);
-    if (!current || current.attemptId !== record.attemptId || current.ownerBootId !== bootId || current.state !== 'reserved') {
-      throw new ServiceError('attempt_not_owner', 409);
+    if (!current
+      || current.attemptId !== record.attemptId
+      || current.ownerBootId !== bootId
+      || current.fence !== myFence
+      || current.state !== 'reserved') {
+      throw new ServiceError('coach_lock_lost', 409);
     }
     const next = { ...current, state: 'provider_started', providerStartedAt: new Date(nowMs()).toISOString() };
-    await writeJsonAtomic(dayPath(record.userKey, record.localDay), next);
+    await persist(dayPath(record.userKey, record.localDay), next);
     return next;
   }
 
   async function markFinished(record, state, extra = {}) {
-    return withLock(async () => {
+    return withMutex(async () => {
+      if (!stillOwner()) throw new ServiceError('coach_lock_lost', 503);
       const current = await readJson(dayPath(record.userKey, record.localDay), null);
+      if (!current
+        || current.attemptId !== record.attemptId
+        || current.ownerBootId !== bootId
+        || (current.fence != null && current.fence !== myFence)) {
+        throw new ServiceError('coach_lock_lost', 409);
+      }
       const next = {
-        ...(current ?? record),
+        ...current,
         state,
         reason: extra.reason,
         result: extra.result,
         finishedAt: new Date(nowMs()).toISOString(),
       };
-      await writeJsonAtomic(dayPath(record.userKey, record.localDay), next);
+      await persist(dayPath(record.userKey, record.localDay), next);
       await removeQuiet(inflightPath(record.attemptId));
       const circuit = await loadCircuit();
       if (state === 'completed') {
-        await writeJsonAtomic(circuitPath, { state: 'closed', consecutiveFailures: 0, openedAt: 0, probeClaimed: false });
+        await persist(circuitPath, { state: 'closed', consecutiveFailures: 0, openedAt: 0, probeClaimed: false });
       } else {
         const failures = (circuit.consecutiveFailures ?? 0) + 1;
         const open = circuit.state === 'half_open' || failures >= limits.circuitFailures;
-        await writeJsonAtomic(circuitPath, {
+        await persist(circuitPath, {
           state: open ? 'open' : 'closed',
           consecutiveFailures: failures,
           openedAt: open ? nowMs() : 0,
@@ -344,6 +465,16 @@ export function createCoachAttemptStore({
         });
       }
       return next;
+    });
+  }
+
+  async function read({ uid, localDay, timezone, locale }) {
+    return withMutex(async () => {
+      if (storeBroken) throw new ServiceError('coach_store_unavailable', 503);
+      if (stillOwner()) await reconcileStaleInflight(nowMs());
+      const record = await loadRecord(uid, localDay, timezone ?? 'UTC', locale);
+      if (!record) return { kind: 'absent' };
+      return await interpret(record) ?? { kind: 'absent' };
     });
   }
 
@@ -355,5 +486,15 @@ export function createCoachAttemptStore({
     else waiter.resolve(value);
   }
 
-  return { bootId, decide, markProviderStarted, markFinished, settle };
+  return {
+    bootId,
+    decide,
+    read,
+    markProviderStarted,
+    markFinished,
+    settle,
+    stop,
+    dropProcessLock,
+    ownsProcessLock: () => lockHeld && !stopped,
+  };
 }
