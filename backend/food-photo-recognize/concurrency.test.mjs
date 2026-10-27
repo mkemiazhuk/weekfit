@@ -274,11 +274,20 @@ test('same idempotency key with different photo returns 409', async (t) => {
 });
 
 test('HTTP cancel of one shared client does not abort sibling waiters', async (t) => {
-  const adapter = createMockOpenAIAdapter({ delayMs: 400 });
-  const config = mockConfig({ FOOD_PHOTO_MOCK_DELAY_MS: '400', MAX_CONCURRENT_SCANS: '2' });
-  const server = createServer(config, { mockAdapter: adapter, openaiFetcher: adapter.fetcher });
+  const adapter = createMockOpenAIAdapter({ delayMs: 0 });
+  let releaseCall;
+  const holdCall = new Promise((resolve) => { releaseCall = resolve; });
+  const openaiFetcher = async (url, init) => {
+    await holdCall;
+    return adapter.fetcher(url, init);
+  };
+  const config = mockConfig({ MAX_CONCURRENT_SCANS: '2' });
+  const server = createServer(config, { mockAdapter: adapter, openaiFetcher });
   const base = await listen(server);
-  t.after(() => new Promise((resolve) => server.close(resolve)));
+  t.after(() => {
+    releaseCall();
+    return new Promise((resolve) => server.close(resolve));
+  });
 
   const headers = {
     'Content-Type': 'application/json',
@@ -291,20 +300,18 @@ test('HTTP cancel of one shared client does not abort sibling waiters', async (t
   const first = fetch(`${base}/v1/food/photo-recognize`, {
     method: 'POST', headers, body, signal: ac.signal,
   });
-  // Wait until first request is in-flight in the idempotency store.
-  const deadline = Date.now() + 1000;
-  while (Date.now() < deadline) {
-    if (server.weekfitInternals.idempotency.get('local-developer', 'shared-http-cancel')?.status === 'inflight') {
-      break;
-    }
+  const inflightDeadline = Date.now() + 2000;
+  let entry;
+  while (Date.now() < inflightDeadline) {
+    entry = server.weekfitInternals.idempotency.get('local-developer', 'shared-http-cancel');
+    if (entry?.status === 'inflight') break;
     await new Promise((r) => setTimeout(r, 10));
   }
+  assert.equal(entry?.status, 'inflight');
   const second = fetch(`${base}/v1/food/photo-recognize`, {
     method: 'POST', headers, body,
   });
-  // The second request reads the durable ledger before it joins the in-memory waiters.
   const joinDeadline = Date.now() + 2000;
-  let entry;
   while (Date.now() < joinDeadline) {
     entry = server.weekfitInternals.idempotency.get('local-developer', 'shared-http-cancel');
     if (entry?.waiters >= 2) break;
@@ -313,6 +320,7 @@ test('HTTP cancel of one shared client does not abort sibling waiters', async (t
   assert.ok(entry?.waiters >= 2, `expected ≥2 waiters, got ${entry?.waiters}`);
   ac.abort();
   await assert.rejects(() => first);
+  releaseCall();
   const res = await second;
   assert.equal(res.status, 200);
   assert.equal(adapter.metrics().calls, 1);
