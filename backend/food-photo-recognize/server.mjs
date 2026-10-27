@@ -52,8 +52,16 @@ export function configuration(env = process.env) {
     throw Error('Unsupported model; explicitly update the server allowlist after evaluation');
   }
   const mockScenario = env.FOOD_PHOTO_MOCK_SCENARIO ?? 'ok';
-  if (!['ok', 'rate_limit', 'server_error', 'timeout', 'slow'].includes(mockScenario)) {
+  if (!['ok', 'rate_limit', 'server_error', 'timeout', 'slow', 'coach_invalid'].includes(mockScenario)) {
     throw Error('Invalid FOOD_PHOTO_MOCK_SCENARIO');
+  }
+  let summaryNow = null;
+  if (env.COACH_SUMMARY_NOW) {
+    if (env.NODE_ENV === 'production') throw Error('COACH_SUMMARY_NOW is forbidden in production');
+    const parsed = new Date(env.COACH_SUMMARY_NOW);
+    if (Number.isNaN(parsed.getTime())) throw Error('Invalid COACH_SUMMARY_NOW');
+    const instant = parsed.getTime();
+    summaryNow = () => new Date(instant);
   }
   const imageDetail = env.FOOD_PHOTO_IMAGE_DETAIL ?? 'auto';
   if (!['auto', 'low', 'high'].includes(imageDetail)) throw Error('Invalid FOOD_PHOTO_IMAGE_DETAIL');
@@ -124,6 +132,7 @@ export function configuration(env = process.env) {
     coachSingleInstanceDeclared: env.NODE_ENV === 'production'
       ? env.COACH_SUMMARY_SINGLE_INSTANCE === '1'
       : env.COACH_SUMMARY_SINGLE_INSTANCE !== '0',
+    summaryNow,
     ...asyncConfiguration(env),
   };
 }
@@ -149,8 +158,6 @@ export function createServer(config, dependencies = {}) {
     persistentDataDir,
     photoLedgerDir: config.photoLedgerDir || (persistentDataDir ? explicitLedger : ''),
   };
-  const summary = createSummaryHandler(runtimeConfig, { ...dependencies, authenticate: auth });
-
   const mockAdapter = dependencies.mockAdapter
     ?? (config.openAIMock
       ? createMockOpenAIAdapter({
@@ -163,6 +170,12 @@ export function createServer(config, dependencies = {}) {
   const openaiFetcher = dependencies.openaiFetcher
     ?? mockAdapter?.fetcher
     ?? (config.openAIMock ? forbidRealOpenAIFetch() : undefined);
+  const summary = createSummaryHandler(runtimeConfig, {
+    ...dependencies,
+    authenticate: auth,
+    summaryNow: dependencies.summaryNow ?? config.summaryNow ?? undefined,
+    summaryFetcher: dependencies.summaryFetcher ?? openaiFetcher,
+  });
 
   const gate = dependencies.concurrencyGate ?? createConcurrencyGate({
     maxConcurrent: config.maxConcurrency,
@@ -246,7 +259,9 @@ export function createServer(config, dependencies = {}) {
   const configured = () => Boolean(
     (config.openAIMock || config.apiKey) && (config.firebaseProject || config.allowDevAuth),
   );
-  const summaryConfigured = () => Boolean(config.apiKey && config.summaryStoreDir && config.summaryModel);
+  const summaryConfigured = () => Boolean(
+    (config.apiKey || config.openAIMock) && config.summaryStoreDir && config.summaryModel,
+  );
 
   /**
    * Read JSON body with size + wall-clock limits.
@@ -723,7 +738,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     model: config.model,
     configured: Boolean(config.openAIMock || config.apiKey),
     openAIMock: Boolean(config.openAIMock),
-    coachSummaryConfigured: Boolean(config.apiKey && config.summaryStoreDir),
+    coachSummaryConfigured: Boolean((config.apiKey || config.openAIMock) && config.summaryStoreDir),
     maxConcurrency: config.maxConcurrency,
     maxQueue: config.maxQueue,
     maxConcurrentUploads: config.maxConcurrentUploads,

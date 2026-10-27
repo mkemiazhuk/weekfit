@@ -365,7 +365,7 @@ export function estimateInputTextBytes(input) {
 async function callProvider(input, config, fetcher) {
   const response = await fetcher('https://api.openai.com/v1/responses', {
     method: 'POST', signal: AbortSignal.timeout(config.summaryTimeoutMs ?? 15000),
-    headers: {Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json'},
+    headers: {Authorization: `Bearer ${config.apiKey || 'mock'}`, 'Content-Type': 'application/json'},
     body: JSON.stringify({
       model: config.summaryModel, store: false,
       max_output_tokens: config.summaryMaxOutputTokens ?? 8192,
@@ -476,7 +476,9 @@ export function createSummaryHandler(config, dependencies) {
     };
     let owned = null;
     try {
-      if (!config.apiKey || !config.summaryModel || !store) throw new ServiceError('summary_not_configured', 503);
+      if ((!config.apiKey && !config.openAIMock) || !config.summaryModel || !store) {
+        throw new ServiceError('summary_not_configured', 503);
+      }
       const uid = await dependencies.authenticate(req.headers.authorization, config);
       if (req.method === 'GET') {
         const requestUrl = new URL(req.url, 'http://127.0.0.1');

@@ -4,7 +4,7 @@ import {once} from 'node:events';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {createServer} from './server.mjs';
+import {configuration, createServer} from './server.mjs';
 import {ServiceError} from './recognition.mjs';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
@@ -214,6 +214,81 @@ test('history remains bounded and cannot introduce duplicate evidence IDs',()=>{
   assert.doesNotThrow(()=>validateDay(ok));
   b.facts.recentSleep=[b.facts.sleep[0]];
   assert.throws(()=>validateDay(b),/invalid_day_snapshot/);
+});
+
+test('mock clock keeps one coach call across replay, language, GET and a failed retry', async (t) => {
+  const dir = await directory(t);
+  const token = 'weekfit-dev-local-token';
+  const listen = async (extra) => {
+    const config = configuration({
+      OPENAI_MOCK: '1',
+      ALLOW_DEV_AUTH: '1',
+      WEEKFIT_DEV_TOKEN: token,
+      COACH_SUMMARY_STORE_DIR: dir,
+      COACH_SUMMARY_NOW: '2026-10-12T18:00:00.000Z',
+      FOOD_PHOTO_MOCK_DELAY_MS: '40',
+      COACH_AI_ENABLED: '1',
+      ...extra,
+    });
+    const server = createServer(config);
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    t.after(() => server.close());
+    return server;
+  };
+  const post = (server, body, bearer = token) => fetch(`http://127.0.0.1:${server.address().port}/v1/coach/day-summary`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}` },
+    body: JSON.stringify(body),
+  });
+  const calls = async (server) => (await (await fetch(`http://127.0.0.1:${server.address().port}/healthz`)).json()).mockMetrics.calls;
+
+  const first = await listen();
+  const parallel = await Promise.all([post(first, input()), post(first, input()), post(first, input())]);
+  assert.ok(parallel.every((response) => response.status === 200 || response.status === 409));
+  assert.equal(await calls(first), 1);
+  const changed = await post(first, { ...input(), locale: 'en' });
+  const changedBody = await changed.json();
+  assert.equal(changed.status, 200);
+  assert.equal(changedBody.reused, true);
+  assert.equal(changedBody.locale, 'ru');
+  assert.equal(changedBody.headline, 'Итог дня');
+  const saved = await fetch(`http://127.0.0.1:${first.address().port}/v1/coach/day-summary?day=2026-10-12&timezone=Europe%2FWarsaw`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  assert.equal((await saved.json()).headline, 'Итог дня');
+  assert.equal(await calls(first), 1);
+  await new Promise((resolve) => first.close(resolve));
+
+  const restarted = await listen();
+  const replay = await post(restarted, input());
+  assert.equal(replay.status, 200);
+  assert.equal((await replay.json()).reused, true);
+  assert.equal(await calls(restarted), 0);
+  await new Promise((resolve) => restarted.close(resolve));
+
+  const broken = await listen({ FOOD_PHOTO_MOCK_SCENARIO: 'server_error' });
+  const failed = await post(broken, input(), `${token}.uid-err`);
+  assert.equal(failed.status, 502);
+  assert.equal((await failed.json()).error, 'provider_error');
+  assert.equal((await post(broken, input(), `${token}.uid-err`)).status, 409);
+  assert.equal(await calls(broken), 1);
+  await new Promise((resolve) => broken.close(resolve));
+  const brokenAgain = await listen();
+  assert.equal((await post(brokenAgain, input(), `${token}.uid-err`)).status, 409);
+  assert.equal(await calls(brokenAgain), 0);
+  await new Promise((resolve) => brokenAgain.close(resolve));
+
+  const invalid = await listen({ FOOD_PHOTO_MOCK_SCENARIO: 'coach_invalid' });
+  const bad = await post(invalid, input(), `${token}.uid-bad`);
+  assert.equal(bad.status, 502);
+  assert.equal((await bad.json()).error, 'invalid_summary_result');
+  assert.equal((await post(invalid, input(), `${token}.uid-bad`)).status, 409);
+  assert.equal(await calls(invalid), 1);
+  await new Promise((resolve) => invalid.close(resolve));
+  const invalidAgain = await listen();
+  assert.equal((await post(invalidAgain, input(), `${token}.uid-bad`)).status, 409);
+  assert.equal(await calls(invalidAgain), 0);
 });
 
 test('weekly context reaches provider unchanged and outputs must cite supplied facts',async()=>{

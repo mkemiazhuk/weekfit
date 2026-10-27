@@ -32,6 +32,7 @@ test('production refuses a disabled coach day limit or unrestricted header',()=>
 test('non-production cannot opt out of the coach day guard',()=>{const c=configuration({COACH_SUMMARY_ONCE_PER_DAY:'0',COACH_SUMMARY_ALLOW_UNRESTRICTED_HEADER:'1'});assert.equal(c.summaryOncePerDay,true);assert.equal(c.summaryAllowUnrestrictedHeader,false);assert.equal(c.coachSingleInstanceDeclared,true);});
 test('production refuses developer token',()=>assert.throws(()=>configuration({NODE_ENV:'production',ALLOW_DEV_AUTH:'1',WEEKFIT_DEV_TOKEN:'weekfit-dev-local-token'})));
 test('production refuses OPENAI_MOCK',()=>assert.throws(()=>configuration({NODE_ENV:'production',OPENAI_MOCK:'1',OPENAI_API_KEY:'unused',FIREBASE_PROJECT_ID:'weekfitai'}),/OPENAI_MOCK is forbidden in production/));
+test('production refuses the coach test clock',()=>{assert.throws(()=>configuration({NODE_ENV:'production',COACH_SUMMARY_NOW:'2026-10-12T18:00:00.000Z'}),/COACH_SUMMARY_NOW is forbidden in production/);const c=configuration({COACH_SUMMARY_NOW:'2026-10-12T18:00:00.000Z'});assert.equal(c.summaryNow().toISOString(),'2026-10-12T18:00:00.000Z');});
 test('dev token suffix is a distinct non-production uid',async()=>{
   const config=configuration({ALLOW_DEV_AUTH:'1',WEEKFIT_DEV_TOKEN:'weekfit-dev-local-token'});
   assert.equal(await authenticate('Bearer weekfit-dev-local-token',config),'local-developer');

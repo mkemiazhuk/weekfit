@@ -6,6 +6,46 @@ import { ServiceError } from './recognition.mjs';
 
 export const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 
+export function mockCoachSummary() {
+  return {
+    headline: 'Итог дня',
+    today: { text: 'Сон был коротким.', evidenceIds: [] },
+    now: { text: 'Пора готовиться ко сну.', evidenceIds: [] },
+    tomorrow: { text: 'План на завтра пока неизвестен.', evidenceIds: [] },
+    limitations: ['Питание записано не полностью.'],
+  };
+}
+
+function invalidCoachSummary() {
+  return {
+    headline: 'Day wrap',
+    today: { text: 'You have logged only one meal so far today.', evidenceIds: [] },
+    now: { text: 'Wind down for sleep tonight.', evidenceIds: [] },
+    tomorrow: { text: 'Tomorrow is still open.', evidenceIds: [] },
+    limitations: ['Food log completeness is unknown.'],
+  };
+}
+
+function isCoachRequest(init) {
+  try {
+    const body = JSON.parse(init?.body ?? '{}');
+    return body?.text?.format?.name === 'coach_day_summary';
+  } catch {
+    return false;
+  }
+}
+
+function jsonResponse(payload) {
+  return new Response(JSON.stringify({
+    status: 'completed',
+    output: [{ content: [{ type: 'output_text', text: JSON.stringify(payload) }] }],
+    usage: { input_tokens: 100, output_tokens: 80 },
+  }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json', 'x-request-id': 'mock-coach' },
+  });
+}
+
 export function mockFoodPayload(overrides = {}) {
   return {
     isFood: true,
@@ -103,6 +143,10 @@ export function createMockOpenAIAdapter(options = {}) {
         const err = new Error('Timeout');
         err.name = 'TimeoutError';
         throw err;
+      }
+
+      if (isCoachRequest(init)) {
+        return jsonResponse(scenario === 'coach_invalid' ? invalidCoachSummary() : mockCoachSummary());
       }
 
       const payload = mockFoodPayload();
