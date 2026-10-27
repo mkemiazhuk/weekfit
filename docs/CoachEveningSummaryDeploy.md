@@ -64,7 +64,7 @@ These were not verified from this environment. In the Render dashboard for `week
 2. Mount the disk and set `COACH_SUMMARY_STORE_DIR` (for example `/var/data/coach-summary`). An empty value returns `503 summary_not_configured` and does not call OpenAI.
 3. Remove `COACH_SUMMARY_ONCE_PER_DAY=0` and `COACH_SUMMARY_ALLOW_UNRESTRICTED_HEADER=1`. Production refuses to boot if either is set. The day guard cannot be turned off.
 4. Leave `COACH_AI_ENABLED` unset or `0`.
-5. Confirm `/healthz`: `coachSummaryConfigured: true`, `coachSummaryOncePerDay: true`, `coachAiEnabled: false`, `coachSummaryPromptVersion: 13`.
+5. Confirm `/healthz`: `coachSummaryConfigured: true`, `coachSummaryOncePerDay: true`, `coachAiEnabled: false`, `coachSummaryPromptVersion: 14`.
 6. Only on a later explicit command, set `COACH_AI_ENABLED=1` and resume the service.
 
 ```bash
