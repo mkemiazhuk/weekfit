@@ -6,7 +6,8 @@ import {
   isSoftRequeueError,
 } from './provider-budget.mjs';
 import { analyzeQueuedPhoto } from './analyze-job.mjs';
-import { claimProviderCall, savePhotoAttemptResult } from '../photo-call-ledger.mjs';
+import { claimProviderCall, fileLedgerGenerationRefusal, savePhotoAttemptResult } from '../photo-call-ledger.mjs';
+import { assertDurableGeneration, probeDirectoryDurable } from './atomic-fs.mjs';
 
 /**
  * Worker loop: blocking claim → global AI slot → provider limits → AI → complete.
@@ -26,6 +27,11 @@ export function createWorkerRuntime({
 }) {
   const openaiFetcher = mockAdapter?.fetcher
     ?? (config.openAIMock ? forbidRealOpenAIFetch() : undefined);
+  const durableConfig = {
+    ...config,
+    directoryDurability: config.directoryDurability
+      ?? (config.dataDir ? probeDirectoryDurable(config.dataDir) : null),
+  };
 
   let stopping = false;
   let inFlight = 0;
@@ -56,6 +62,39 @@ export function createWorkerRuntime({
     const maxQueueWaitMs = Number(config.maxQueueWaitMs ?? 0);
 
     try {
+      const ledgerRefusal = fileLedgerGenerationRefusal(durableConfig);
+      if (ledgerRefusal) {
+        console.error(JSON.stringify({
+          event: 'ai_call_blocked',
+          reason: ledgerRefusal.detail,
+          analysisId: job.analysisId,
+          workerId,
+        }));
+        await jobStore.failJob(job.analysisId, {
+          error: ledgerRefusal.code,
+          providerOutcome: 'failed',
+          requeue: false,
+          leaseToken,
+        });
+        return { outcome: ledgerRefusal.code };
+      }
+      try {
+        assertDurableGeneration(durableConfig);
+      } catch (error) {
+        console.error(JSON.stringify({
+          event: 'ai_call_blocked',
+          reason: error.detail ?? error.code,
+          analysisId: job.analysisId,
+          workerId,
+        }));
+        await jobStore.failJob(job.analysisId, {
+          error: error.code ?? 'durability_unconfirmed',
+          providerOutcome: 'failed',
+          requeue: false,
+          leaseToken,
+        });
+        return { outcome: 'durability_unconfirmed' };
+      }
       if (maxQueueWaitMs > 0 && job.createdAt && (Date.now() - job.createdAt) > maxQueueWaitMs) {
         await jobStore.failJob(job.analysisId, {
           error: 'queue_wait_exceeded',

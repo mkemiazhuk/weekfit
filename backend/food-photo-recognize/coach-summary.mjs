@@ -443,6 +443,8 @@ export function createSummaryHandler(config, dependencies) {
       promptVersion: SUMMARY_PROMPT_VERSION,
       limits: coachLimits(config),
       failDurableWrite: config.summaryFailDurableWrite ?? null,
+      isProduction: config.isProduction === true,
+      directoryDurability: config.directoryDurability ?? null,
     })
     : null;
   const maxBody = config.summaryMaxBodyBytes ?? 131072;
@@ -665,6 +667,7 @@ export function createSummaryHandler(config, dependencies) {
       }
       send(timeout ? 504 : error instanceof ServiceError ? error.status : 500, {
         error: code,
+        ...(error instanceof ServiceError && error.detail ? { detail: error.detail } : {}),
         ...(error.nextEligibleAt ? {nextEligibleAt: error.nextEligibleAt} : {}),
       });
     }

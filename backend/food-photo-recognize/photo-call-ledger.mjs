@@ -38,6 +38,39 @@ export async function readPhotoAttempt(dataDir, analysisId) {
   };
 }
 
+/**
+ * The file ledger coordinates one DATA_DIR. STATE_BACKEND=redis with a separate
+ * DATA_DIR per instance is not that store, so it must not authorize a provider call.
+ * One shared disk is the single-node file declaration: ALLOW_SINGLE_NODE_ASYNC=1,
+ * an explicit DATA_DIR, and OBJECT_STORE=local.
+ */
+export function fileLedgerGenerationRefusal(config) {
+  if ((config?.stateBackend || 'file') !== 'redis') return null;
+  const oneSharedDisk = config.allowSingleNode === true
+    && config.dataDirExplicit === true
+    && config.objectStoreKind === 'local';
+  if (oneSharedDisk) return null;
+  return {
+    code: 'file_ledger_unsupported',
+    status: 503,
+    detail: 'redis_separate_data_dir',
+  };
+}
+
+export function assertFileLedgerCanGenerate(config) {
+  const refusal = fileLedgerGenerationRefusal(config);
+  if (!refusal) return;
+  console.error(JSON.stringify({
+    event: 'ai_call_blocked',
+    reason: refusal.detail,
+    stateBackend: config.stateBackend,
+    dataDirExplicit: Boolean(config.dataDirExplicit),
+    allowSingleNode: Boolean(config.allowSingleNode),
+    objectStore: config.objectStoreKind ?? null,
+  }));
+  throw new ServiceError(refusal.code, refusal.status, { detail: refusal.detail });
+}
+
 export async function claimProviderCall(dataDir, analysisId) {
   if (!dataDir) {
     const error = new ServiceError('photo_ledger_unconfigured', 503);

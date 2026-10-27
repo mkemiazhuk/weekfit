@@ -4,7 +4,13 @@ import { normalizeIdempotencyKey } from '../idempotency.mjs';
 import { JOB_STATUSES } from './job-store.mjs';
 import { analyzeQueuedPhoto } from './analyze-job.mjs';
 import { waitForJobUpdate, notifyJobUpdated } from './job-wait.mjs';
-import { claimProviderCall, readPhotoAttempt, savePhotoAttemptResult } from '../photo-call-ledger.mjs';
+import {
+  assertFileLedgerCanGenerate,
+  claimProviderCall,
+  readPhotoAttempt,
+  savePhotoAttemptResult,
+} from '../photo-call-ledger.mjs';
+import { assertDurableGeneration } from './atomic-fs.mjs';
 
 function fingerprintBytes(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
@@ -132,6 +138,9 @@ export function createSubmitHandler({
           };
         }
       }
+
+      assertDurableGeneration(config);
+      assertFileLedgerCanGenerate(config);
 
       try {
         await quota.reserve({ userId, analysisId });

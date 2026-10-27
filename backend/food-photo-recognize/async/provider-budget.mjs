@@ -61,6 +61,8 @@ export function isRetryableProviderError(error) {
   const code = error?.code ?? error?.name ?? '';
   const status = error?.status;
   const message = String(error?.message ?? '');
+  // These mean the call must not be attempted again. A 503 here is a refusal, not a transient provider error.
+  if (code === 'durability_unconfirmed' || code === 'file_ledger_unsupported') return false;
   if (status === 429 || status === 500 || status === 502 || status === 503) return true;
   if ([
     'TimeoutError',

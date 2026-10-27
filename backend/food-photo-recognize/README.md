@@ -44,7 +44,7 @@ Point iOS Debug at `http://MAC_LAN_IP:8080` (without `/healthz`). Allow Local Ne
 
 Production-oriented path: `POST /v1/food/photo-analyze` returns **202** after durable accept (photo in object store + job enqueued). Workers (`node worker.mjs`) run AI under `GLOBAL_AI_SLOTS`. Clients poll `GET /v1/food/photo-analyze/:analysisId` (`queued` | `processing` | `completed` | `failed`). See `docs/NutritionAsyncCapacityPlan.md` and `docs/NutritionNodeVsJavaADR.md`.
 
-**Production config (multi-instance):** `STATE_BACKEND=redis`, `REDIS_URL`, `OBJECT_STORE=s3|http`. Shared `DATA_DIR` / `OBJECT_STORE=local` are rejected when `NODE_ENV=production`.
+**Production config (multi-instance):** `STATE_BACKEND=redis` does not share the file photo ledger. New food generations are refused with `503 file_ledger_unsupported` and detail `redis_separate_data_dir` unless the process is one shared disk: `ALLOW_SINGLE_NODE_ASYNC=1`, an explicit `DATA_DIR`, and `OBJECT_STORE=local`. A Redis fleet with a separate `DATA_DIR` per instance must not call the provider.
 
 **Single Render instance (current `weekfit-food-photo`):** set `ALLOW_SINGLE_NODE_ASYNC=1`, `ASYNC_ANALYSIS=1`, `DATA_DIR=/var/data` (persistent disk), `OBJECT_STORE=local`, `STATE_BACKEND=file`, `GLOBAL_AI_SLOTS=16` (not 100 until provider confirmation). The image entrypoint runs API + worker in one container. Do not scale this service above 1 instance without Redis + object store. Sync `POST /v1/food/photo-recognize` and async `POST /v1/food/photo-analyze` share `DATA_DIR/quota` and `DATA_DIR/photo-calls`. One analysis id has one provider marker, synced before the call.
 

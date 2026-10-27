@@ -4,7 +4,7 @@ import { mkdir, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { ServiceError } from './recognition.mjs';
-import { createExclusive, readJson, removeQuiet, writeJsonAtomic as durableWrite } from './async/atomic-fs.mjs';
+import { assertDurableGeneration, createExclusive, readJson, removeQuiet, writeJsonAtomic as durableWrite } from './async/atomic-fs.mjs';
 
 /**
  * Durable Coach attempt ledger on one directory.
@@ -97,6 +97,8 @@ export function createCoachAttemptStore({
   promptVersion,
   limits,
   failDurableWrite = null,
+  isProduction = false,
+  directoryDurability = null,
 }) {
   const root = path.join(dir, 'coach-guard');
   const fencePath = path.join(root, 'fence.sqlite');
@@ -349,6 +351,7 @@ export function createCoachAttemptStore({
       }
       if (!stillOwner()) block('coach_instance_busy', 503, null, 'global_limit_blocked');
       if (failDurableWrite === 'reserved') throw new ServiceError('coach_store_unavailable', 503);
+      assertDurableGeneration({ isProduction, directoryDurability });
 
       const attemptId = randomUUID();
       const fresh = {
@@ -418,6 +421,7 @@ export function createCoachAttemptStore({
   }
 
   async function markProviderStarted(record) {
+    assertDurableGeneration({ isProduction, directoryDurability });
     if (!stillOwner()) throw new ServiceError('coach_lock_lost', 503);
     const current = await readJson(dayPath(record.userKey, record.localDay), null);
     if (!current

@@ -18,6 +18,7 @@ import {
 import { createHttpObjectStore, createS3ObjectStore } from './http-object-store.mjs';
 import { createProviderLimits } from './provider-limits.mjs';
 import { createFileFreeTrialStore, createRedisFreeTrialStore } from './free-trial.mjs';
+import { probeDirectoryDurable } from './atomic-fs.mjs';
 
 export function asyncConfiguration(env = process.env) {
   const integer = (key, fallback, min, max) => {
@@ -59,6 +60,7 @@ export function asyncConfiguration(env = process.env) {
     isProduction,
     stateBackend: stateBackend || 'file',
     redisUrl,
+    allowSingleNode,
     dataDir: dataDir || path.join(process.cwd(), '.data'),
     dataDirExplicit: Boolean(dataDir),
     maxAsyncQueue: integer('MAX_ASYNC_QUEUE', 2000, 1, 100_000),
@@ -100,6 +102,9 @@ export async function createAsyncStack(config, dependencies = {}) {
     ...dependencies.asyncConfig,
   };
   const merged = { ...config, ...asyncConfig };
+  merged.directoryDurability = dependencies.directoryDurability
+    ?? config.directoryDurability
+    ?? probeDirectoryDurable(merged.dataDir);
 
   let redis = dependencies.redis ?? null;
   if (!redis && asyncConfig.stateBackend === 'redis') {

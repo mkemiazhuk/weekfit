@@ -16,7 +16,12 @@ import {
 } from './idempotency.mjs';
 import { createMockOpenAIAdapter, forbidRealOpenAIFetch } from './openai-mock.mjs';
 import { asyncConfiguration, createAsyncStack } from './async/bootstrap.mjs';
-import { createPhotoCallLedger } from './photo-call-ledger.mjs';
+import {
+  assertFileLedgerCanGenerate,
+  createPhotoCallLedger,
+  fileLedgerGenerationRefusal,
+} from './photo-call-ledger.mjs';
+import { assertDurableGeneration, probeDirectoryDurable } from './async/atomic-fs.mjs';
 import {
   createFileFreeTrialStore,
   createMemoryFreeTrialStore,
@@ -126,7 +131,13 @@ export function createServer(config, dependencies = {}) {
   const auth = dependencies.authenticate ?? authenticate;
   const analyze = dependencies.recognize ?? recognize;
   const requirePaid = dependencies.requirePaidSubscriptionJWS ?? requirePaidSubscriptionJWS;
-  const summary = createSummaryHandler(config, { ...dependencies, authenticate: auth });
+  const ledgerDir = config.photoLedgerDir
+    || (config.dataDirExplicit ? config.dataDir : mkdtempSync(path.join(tmpdir(), 'weekfit-photo-')));
+  const directoryDurability = dependencies.directoryDurability
+    ?? config.directoryDurability
+    ?? probeDirectoryDurable(ledgerDir);
+  const runtimeConfig = { ...config, directoryDurability };
+  const summary = createSummaryHandler(runtimeConfig, { ...dependencies, authenticate: auth });
 
   const mockAdapter = dependencies.mockAdapter
     ?? (config.openAIMock
@@ -156,8 +167,6 @@ export function createServer(config, dependencies = {}) {
     fullDetail: 'upload_queue_full',
   });
   const idempotency = dependencies.idempotencyStore ?? createIdempotencyStore();
-  const ledgerDir = config.photoLedgerDir
-    || (config.dataDirExplicit ? config.dataDir : mkdtempSync(path.join(tmpdir(), 'weekfit-photo-')));
   const photoLedger = createPhotoCallLedger({
     dataDir: ledgerDir,
     userDailyLimit: config.dailyLimit,
@@ -323,6 +332,10 @@ export function createServer(config, dependencies = {}) {
         coachSummaryOncePerDay: true,
         coachSummaryPromptVersion: SUMMARY_PROMPT_VERSION,
         coachAiEnabled: Boolean(config.coachAiEnabled),
+        directoryDurable: directoryDurability.confirmed,
+        durabilityReason: directoryDurability.reason,
+        durabilityErrno: directoryDurability.errno,
+        fileLedgerGeneration: fileLedgerGenerationRefusal(runtimeConfig) ? 'refused' : 'allowed',
         coachSingleInstanceDeclared: config.coachSingleInstanceDeclared !== false,
         coachSummaryMaxConcurrent: config.summaryConcurrency,
         coachSummaryMaxStartsPerUtcDay: config.summaryMaxStartsPerUtcDay,
@@ -539,6 +552,8 @@ export function createServer(config, dependencies = {}) {
           let ownedCall = false;
           let prepared = null;
           try {
+            assertDurableGeneration(runtimeConfig);
+            assertFileLedgerCanGenerate(runtimeConfig);
             prepared = await photoLedger.prepare({ userId: user, idempotencyKey: idemKey, fingerprint });
             if (prepared.globalCount != null) dailyCount = prepared.globalCount;
             if (prepared.userCount != null) userCounts.set(user, prepared.userCount);
