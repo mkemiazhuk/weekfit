@@ -251,11 +251,13 @@ export async function createFileJobStore({ dataDir, jobTtlMs = 24 * 60 * 60_000 
     while (Date.now() < deadline) {
       const remaining = deadline - Date.now();
       await new Promise((resolve) => {
-        const timer = setTimeout(resolve, Math.min(remaining, 5000));
-        wake.once('ready', () => {
+        const done = () => {
           clearTimeout(timer);
+          wake.off('ready', done);
           resolve();
-        });
+        };
+        const timer = setTimeout(done, Math.min(remaining, 5000));
+        wake.once('ready', done);
       });
       const job = await tryClaimOnce({ workerId, leaseMs });
       if (job) return job;
@@ -400,16 +402,43 @@ export async function createFileJobStore({ dataDir, jobTtlMs = 24 * 60 * 60_000 
 
   const queueDepth = async () => (await listReadyNames()).length;
 
+  // Both legacy flat jobs and owner-scoped jobs. Never follow symlinks.
+  const jobFiles = async () => {
+    const files = [];
+    const walk = async (dir, depth = 0) => {
+      const entries = await readdir(dir, { withFileTypes: true }).catch((e) => {
+        if (e.code === 'ENOENT') return [];
+        throw e;
+      });
+      for (const entry of entries) {
+        const file = path.join(dir, entry.name);
+        if (entry.isDirectory() && depth === 0) await walk(file, 1);
+        else if (entry.isFile() && entry.name.endsWith('.json')) files.push(file);
+      }
+    };
+    await walk(paths.jobs);
+    return files;
+  };
+
+  const protectedPhotoKeys = async () => {
+    const keys = new Set();
+    for (const file of await jobFiles()) {
+      const job = await readJson(file, null);
+      // A corrupt record must stop cleanup, rather than risk removing its photo.
+      if (!job) throw new Error('cleanup_job_unreadable');
+      if ([JOB_STATUSES.queued, JOB_STATUSES.processing].includes(job.status) && job.photoKey) keys.add(job.photoKey);
+    }
+    return keys;
+  };
+
   const cleanupExpiredJobs = async (now = Date.now()) => {
     let removed = 0;
-    const names = await readdir(paths.jobs).catch((e) => (e.code === 'ENOENT' ? [] : Promise.reject(e)));
-    for (const name of names) {
-      if (!name.endsWith('.json')) continue;
-      const job = await readJson(path.join(paths.jobs, name), null);
-      if (!job || (job.expiresAt ?? 0) > now) continue;
-      if (job.status === JOB_STATUSES.queued || job.status === JOB_STATUSES.processing) continue;
-      await removeQuiet(path.join(paths.jobs, name));
-      await removeQuiet(path.join(paths.results, name));
+    for (const file of await jobFiles()) {
+      const job = await readJson(file, null);
+      if (!job || !Number.isFinite(job.expiresAt) || job.expiresAt > now) continue;
+      if (![JOB_STATUSES.completed, JOB_STATUSES.failed].includes(job.status)) continue;
+      await removeQuiet(file);
+      await removeQuiet(path.join(paths.results, path.relative(paths.jobs, file)));
       removed += 1;
     }
     return { removed };
@@ -431,6 +460,9 @@ export async function createFileJobStore({ dataDir, jobTtlMs = 24 * 60 * 60_000 
     renewLease,
     queueDepth,
     cleanupExpiredJobs,
+    protectedPhotoKeys,
+    metrics: () => ({ readyWaiters: wake.listenerCount('ready') }),
     jobTtlMs,
   };
 }
+
