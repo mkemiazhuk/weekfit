@@ -1,0 +1,22 @@
+name: Food photo container check
+on:
+  push:
+    branches: [coach-openai-single-attempt]
+    paths:
+      - backend/food-photo-recognize/**
+      - .github/workflows/food-photo-container-check.yml
+permissions:
+  contents: read
+concurrency:
+  group: food-photo-container-check-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  container:
+    if: github.ref == 'refs/heads/coach-openai-single-attempt'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build image
+        run: docker build --tag weekfit-food-photo:ci backend/food-photo-recognize
+      - name: Run mock container checks
+        run: bash backend/food-photo-recognize/scripts/container-http-check.sh weekfit-food-photo:ci

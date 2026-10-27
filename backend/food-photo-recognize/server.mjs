@@ -18,6 +18,7 @@ import { createMockOpenAIAdapter, forbidRealOpenAIFetch } from './openai-mock.mj
 import { asyncConfiguration, createAsyncStack } from './async/bootstrap.mjs';
 import {
   assertFileLedgerCanGenerate,
+  assertPersistentDataDir,
   createPhotoCallLedger,
   fileLedgerGenerationRefusal,
 } from './photo-call-ledger.mjs';
@@ -131,12 +132,23 @@ export function createServer(config, dependencies = {}) {
   const auth = dependencies.authenticate ?? authenticate;
   const analyze = dependencies.recognize ?? recognize;
   const requirePaid = dependencies.requirePaidSubscriptionJWS ?? requirePaidSubscriptionJWS;
-  const ledgerDir = config.photoLedgerDir
-    || (config.dataDirExplicit ? config.dataDir : mkdtempSync(path.join(tmpdir(), 'weekfit-photo-')));
+  const explicitLedger = config.photoLedgerDir
+    || (config.dataDirExplicit && config.dataDir ? config.dataDir : '');
+  // Production must not invent a temp directory. fsync of that directory would not be a persistent mount.
+  const ledgerDir = explicitLedger
+    || (config.isProduction ? null : mkdtempSync(path.join(tmpdir(), 'weekfit-photo-')));
+  const persistentDataDir = Boolean(explicitLedger);
   const directoryDurability = dependencies.directoryDurability
     ?? config.directoryDurability
-    ?? probeDirectoryDurable(ledgerDir);
-  const runtimeConfig = { ...config, directoryDurability };
+    ?? (ledgerDir
+      ? probeDirectoryDurable(ledgerDir)
+      : { confirmed: null, reason: null, errno: null });
+  const runtimeConfig = {
+    ...config,
+    directoryDurability,
+    persistentDataDir,
+    photoLedgerDir: config.photoLedgerDir || (persistentDataDir ? explicitLedger : ''),
+  };
   const summary = createSummaryHandler(runtimeConfig, { ...dependencies, authenticate: auth });
 
   const mockAdapter = dependencies.mockAdapter
@@ -167,11 +179,13 @@ export function createServer(config, dependencies = {}) {
     fullDetail: 'upload_queue_full',
   });
   const idempotency = dependencies.idempotencyStore ?? createIdempotencyStore();
-  const photoLedger = createPhotoCallLedger({
-    dataDir: ledgerDir,
-    userDailyLimit: config.dailyLimit,
-    globalDailyLimit: config.globalDailyLimit,
-  });
+  const photoLedger = ledgerDir
+    ? createPhotoCallLedger({
+      dataDir: ledgerDir,
+      userDailyLimit: config.dailyLimit,
+      globalDailyLimit: config.globalDailyLimit,
+    })
+    : null;
 
   /** Async stack (202 accept + workers). Null when explicitly disabled. */
   let asyncStack = dependencies.asyncStack ?? null;
@@ -206,7 +220,9 @@ export function createServer(config, dependencies = {}) {
       freeTrialStore,
       freeTrialRequested: isFreeTrialHeader(headers['x-weekfit-photo-free-trial']),
       userId,
-      allowDevAuth: config.allowDevAuth && userId === 'local-developer',
+      allowDevAuth: config.allowDevAuth && (
+        userId === 'local-developer' || (typeof userId === 'string' && userId.startsWith('devuid:'))
+      ),
     });
   };
 
@@ -335,6 +351,8 @@ export function createServer(config, dependencies = {}) {
         directoryDurable: directoryDurability.confirmed,
         durabilityReason: directoryDurability.reason,
         durabilityErrno: directoryDurability.errno,
+        persistentDataDir,
+        persistentDataDirReason: persistentDataDir ? null : 'persistent_mount_unconfirmed',
         fileLedgerGeneration: fileLedgerGenerationRefusal(runtimeConfig) ? 'refused' : 'allowed',
         coachSingleInstanceDeclared: config.coachSingleInstanceDeclared !== false,
         coachSummaryMaxConcurrent: config.summaryConcurrency,
@@ -524,11 +542,12 @@ export function createServer(config, dependencies = {}) {
       );
       const fingerprint = fingerprintPayload(input.imageBase64);
 
-      const prior = idemKey ? await photoLedger.read(user, idemKey, fingerprint) : null;
+      const prior = idemKey && photoLedger ? await photoLedger.read(user, idemKey, fingerprint) : null;
       if (prior?.providerStarted && prior.status !== 'completed') {
         throw new ServiceError('attempt_unknown', 409);
       }
       if (!(prior?.status === 'completed' && prior.result)) {
+        if (!photoLedger) throw new ServiceError('persistent_data_dir_required', 503, { detail: 'persistent_mount_unconfirmed' });
         const snap = await photoLedger.snapshot(user);
         if (snap.userCount >= config.dailyLimit || snap.globalCount >= config.globalDailyLimit) {
           throw new ServiceError('daily_scan_limit', 429, { retryAfterSeconds: 3600 });
@@ -552,8 +571,12 @@ export function createServer(config, dependencies = {}) {
           let ownedCall = false;
           let prepared = null;
           try {
+            assertPersistentDataDir(runtimeConfig);
             assertDurableGeneration(runtimeConfig);
             assertFileLedgerCanGenerate(runtimeConfig);
+            if (!photoLedger) {
+              throw new ServiceError('persistent_data_dir_required', 503, { detail: 'persistent_mount_unconfirmed' });
+            }
             prepared = await photoLedger.prepare({ userId: user, idempotencyKey: idemKey, fingerprint });
             if (prepared.globalCount != null) dailyCount = prepared.globalCount;
             if (prepared.userCount != null) userCounts.set(user, prepared.userCount);
@@ -566,7 +589,7 @@ export function createServer(config, dependencies = {}) {
               };
             }
             if (prepared.record?.providerStarted) throw new ServiceError('attempt_unknown', 409);
-            const marked = await photoLedger.markProviderStarted(prepared.analysisId);
+            const marked = await photoLedger.markProviderStarted(prepared.analysisId, user);
             if (!marked.startedByUs) throw new ServiceError('attempt_unknown', 409);
             ownedCall = true;
             const analyzed = await analyze(input, {
@@ -574,7 +597,7 @@ export function createServer(config, dependencies = {}) {
               openaiFetcher,
               abortSignal,
             }, openaiFetcher);
-            await photoLedger.complete(prepared.analysisId, analyzed.result);
+            await photoLedger.complete(prepared.analysisId, analyzed.result, user);
             return {
               result: analyzed.result,
               usage: analyzed.usage,
@@ -582,7 +605,7 @@ export function createServer(config, dependencies = {}) {
               aiMs: Date.now() - aiStarted,
             };
           } catch (error) {
-            if (ownedCall) await photoLedger.fail(prepared?.analysisId).catch(() => {});
+            if (ownedCall) await photoLedger.fail(prepared?.analysisId, user).catch(() => {});
             throw error;
           } finally {
             aiTicket?.release();

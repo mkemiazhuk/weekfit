@@ -6,7 +6,12 @@ import {
   isSoftRequeueError,
 } from './provider-budget.mjs';
 import { analyzeQueuedPhoto } from './analyze-job.mjs';
-import { claimProviderCall, fileLedgerGenerationRefusal, savePhotoAttemptResult } from '../photo-call-ledger.mjs';
+import {
+  assertPersistentDataDir,
+  claimProviderCall,
+  fileLedgerGenerationRefusal,
+  savePhotoAttemptResult,
+} from '../photo-call-ledger.mjs';
 import { assertDurableGeneration, probeDirectoryDurable } from './atomic-fs.mjs';
 
 /**
@@ -62,6 +67,24 @@ export function createWorkerRuntime({
     const maxQueueWaitMs = Number(config.maxQueueWaitMs ?? 0);
 
     try {
+      try {
+        assertPersistentDataDir(durableConfig);
+      } catch (error) {
+        console.error(JSON.stringify({
+          event: 'ai_call_blocked',
+          reason: error.detail ?? error.code,
+          analysisId: job.analysisId,
+          workerId,
+        }));
+        await jobStore.failJob(job.analysisId, {
+          userId: job.userId,
+          error: error.code ?? 'persistent_data_dir_required',
+          providerOutcome: 'failed',
+          requeue: false,
+          leaseToken,
+        });
+        return { outcome: 'persistent_data_dir_required' };
+      }
       const ledgerRefusal = fileLedgerGenerationRefusal(durableConfig);
       if (ledgerRefusal) {
         console.error(JSON.stringify({
@@ -70,7 +93,7 @@ export function createWorkerRuntime({
           analysisId: job.analysisId,
           workerId,
         }));
-        await jobStore.failJob(job.analysisId, {
+        await jobStore.failJob(job.analysisId, { userId: job.userId,
           error: ledgerRefusal.code,
           providerOutcome: 'failed',
           requeue: false,
@@ -87,7 +110,7 @@ export function createWorkerRuntime({
           analysisId: job.analysisId,
           workerId,
         }));
-        await jobStore.failJob(job.analysisId, {
+        await jobStore.failJob(job.analysisId, { userId: job.userId,
           error: error.code ?? 'durability_unconfirmed',
           providerOutcome: 'failed',
           requeue: false,
@@ -96,7 +119,7 @@ export function createWorkerRuntime({
         return { outcome: 'durability_unconfirmed' };
       }
       if (maxQueueWaitMs > 0 && job.createdAt && (Date.now() - job.createdAt) > maxQueueWaitMs) {
-        await jobStore.failJob(job.analysisId, {
+        await jobStore.failJob(job.analysisId, { userId: job.userId,
           error: 'queue_wait_exceeded',
           providerOutcome: 'shed',
           requeue: false,
@@ -113,7 +136,7 @@ export function createWorkerRuntime({
       if (providerLimits) {
         rateTicket = providerLimits.tryReserve();
         if (!rateTicket.ok) {
-          await jobStore.failJob(job.analysisId, {
+          await jobStore.failJob(job.analysisId, { userId: job.userId,
             error: rateTicket.code,
             providerOutcome: 'shed',
             requeue: true,
@@ -126,7 +149,7 @@ export function createWorkerRuntime({
 
       slot = await aiSlots.tryAcquire(workerId);
       if (!slot) {
-        await jobStore.failJob(job.analysisId, {
+        await jobStore.failJob(job.analysisId, { userId: job.userId,
           error: 'ai_slots_full',
           providerOutcome: 'retryable',
           requeue: true,
@@ -144,9 +167,9 @@ export function createWorkerRuntime({
         throw storeError;
       }
 
-      const marked = await jobStore.markProviderStarted(job.analysisId, leaseToken);
+      const marked = await jobStore.markProviderStarted(job.analysisId, leaseToken, job.userId);
       if (!marked?.providerStarted) {
-        await jobStore.failJob(job.analysisId, {
+        await jobStore.failJob(job.analysisId, { userId: job.userId,
           error: 'provider_not_started',
           providerOutcome: 'uncertain',
           requeue: false,
@@ -154,9 +177,9 @@ export function createWorkerRuntime({
         }).catch(() => {});
         return { outcome: 'uncertain' };
       }
-      const claimed = await claimProviderCall(config.dataDir, job.analysisId);
+      const claimed = await claimProviderCall(config.dataDir, job.analysisId, job.userId);
       if (!claimed) {
-        await jobStore.failJob(job.analysisId, {
+        await jobStore.failJob(job.analysisId, { userId: job.userId,
           error: 'provider_already_started',
           providerOutcome: 'uncertain',
           requeue: false,
@@ -168,7 +191,7 @@ export function createWorkerRuntime({
       await budget.recordAttempt({ uncertain: false });
 
       const leaseHeartbeat = setInterval(() => {
-        jobStore.renewLease(job.analysisId, workerId, config.workerLeaseMs, leaseToken).catch(() => {});
+        jobStore.renewLease(job.analysisId, workerId, config.workerLeaseMs, leaseToken, job.userId).catch(() => {});
         slot.renew().catch(() => {});
       }, Math.max(5_000, Math.floor(config.workerLeaseMs / 3)));
 
@@ -186,8 +209,9 @@ export function createWorkerRuntime({
       }
 
       await circuit.recordSuccess();
-      await savePhotoAttemptResult(config.dataDir, job.analysisId, analyzed.result).catch(() => {});
+      await savePhotoAttemptResult(config.dataDir, job.analysisId, analyzed.result, job.userId).catch(() => {});
       await jobStore.completeJob(job.analysisId, {
+        userId: job.userId,
         result: analyzed.result,
         providerOutcome: 'success',
         leaseToken,
@@ -212,7 +236,7 @@ export function createWorkerRuntime({
       // for the same analysisId. The job stays terminal.
       if (enteredProvider) {
         await circuit.recordFailure().catch(() => {});
-        await jobStore.failJob(job.analysisId, {
+        await jobStore.failJob(job.analysisId, { userId: job.userId,
           error: code,
           providerOutcome: 'uncertain',
           requeue: false,
@@ -230,7 +254,7 @@ export function createWorkerRuntime({
 
       // Provider 429 / rate — soft requeue, never blind duplicate while uncertain.
       if (code === 'provider_rate_limited' || code === 'provider_rpm_limited' || code === 'provider_tpm_limited') {
-        await jobStore.failJob(job.analysisId, {
+        await jobStore.failJob(job.analysisId, { userId: job.userId,
           error: code,
           providerOutcome: enteredProvider ? 'uncertain' : 'shed',
           requeue: !enteredProvider,
@@ -241,7 +265,7 @@ export function createWorkerRuntime({
       }
 
       if (code === 'circuit_open' || code === 'provider_budget_exhausted') {
-        await jobStore.failJob(job.analysisId, {
+        await jobStore.failJob(job.analysisId, { userId: job.userId,
           error: code,
           providerOutcome: 'shed',
           requeue: true,
@@ -266,7 +290,7 @@ export function createWorkerRuntime({
           });
           await new Promise((r) => setTimeout(r, delay));
         }
-        await jobStore.failJob(job.analysisId, {
+        await jobStore.failJob(job.analysisId, { userId: job.userId,
           error: code,
           providerOutcome: 'retryable',
           requeue: true,
@@ -285,6 +309,7 @@ export function createWorkerRuntime({
       }
 
       await jobStore.failJob(job.analysisId, {
+        userId: job.userId,
         error: code,
         providerOutcome: enteredProvider ? 'uncertain' : 'failed',
         requeue: false,

@@ -5,10 +5,30 @@ export function equalSecret(a, b) {
   const x = Buffer.from(a), y = Buffer.from(b);
   return x.length === y.length && timingSafeEqual(x, y);
 }
+
+/**
+ * Non-production only. `ALLOW_DEV_AUTH` cannot boot when NODE_ENV=production.
+ * The exact dev token is `local-developer`. A `token.uid` suffix is a second
+ * local principal so two UIDs can be checked without Firebase credentials.
+ */
+export function developmentUserId(token, config) {
+  if (!config?.allowDevAuth || typeof token !== 'string' || typeof config.devToken !== 'string' || !config.devToken) {
+    return null;
+  }
+  if (equalSecret(token, config.devToken)) return 'local-developer';
+  const dot = token.indexOf('.');
+  if (dot < 0) return null;
+  const suffix = token.slice(dot + 1);
+  if (!equalSecret(token.slice(0, dot), config.devToken)) return null;
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(suffix)) return null;
+  return `devuid:${suffix}`;
+}
+
 export async function authenticate(header, config) {
   if (!header?.startsWith('Bearer ')) throw new ServiceError('unauthorized', 401);
   const token = header.slice(7);
-  if (config.allowDevAuth && equalSecret(token, config.devToken)) return 'local-developer';
+  const devUser = developmentUserId(token, config);
+  if (devUser) return devUser;
   if (!config.firebaseProject) throw new ServiceError('unauthorized', 401);
   try {
     const parts = token.split('.');

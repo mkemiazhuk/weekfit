@@ -80,7 +80,7 @@ test('redis job store: idempotency, claim, lease recovery — no lost job', asyn
       quotaReserved: true,
     });
     assert.equal(created, true);
-    await store.enqueue(id);
+    await store.enqueue(id, 'u1');
     assert.equal(await store.queueDepth(), 1);
 
     const claimed = await store.claimNext({ workerId: 'w-dead', leaseMs: 40 });
@@ -90,14 +90,14 @@ test('redis job store: idempotency, claim, lease recovery — no lost job', asyn
     await new Promise((r) => setTimeout(r, 50));
     const { recovered } = await store.recoverExpiredLeases();
     assert.ok(recovered >= 1);
-    const job = await store.getJob(id);
+    const job = await store.getJob(id, 'u1');
     assert.equal(job.status, JOB_STATUSES.queued);
     assert.equal(await store.queueDepth(), 1);
 
     const claimed2 = await store.claimNext({ workerId: 'w-live', leaseMs: 5000 });
     assert.equal(claimed2.analysisId, id);
-    await store.completeJob(id, { result: { ok: true }, providerOutcome: 'success' });
-    const done = await store.getJob(id);
+    await store.completeJob(id, { userId: 'u1', result: { ok: true }, providerOutcome: 'success' });
+    const done = await store.getJob(id, 'u1');
     assert.equal(done.status, JOB_STATUSES.completed);
   });
 });

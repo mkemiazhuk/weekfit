@@ -6,6 +6,7 @@ import { analyzeQueuedPhoto } from './analyze-job.mjs';
 import { waitForJobUpdate, notifyJobUpdated } from './job-wait.mjs';
 import {
   assertFileLedgerCanGenerate,
+  assertPersistentDataDir,
   claimProviderCall,
   readPhotoAttempt,
   savePhotoAttemptResult,
@@ -97,7 +98,10 @@ export function createSubmitHandler({
       analysisId = idem.analysisId;
       mark('idempotency');
 
-      const priorCall = await readPhotoAttempt(config.dataDir, analysisId);
+      const priorCall = await readPhotoAttempt(config.dataDir, analysisId, userId);
+      if (priorCall && priorCall.userId !== userId) {
+        throw new ServiceError('forbidden', 403, { detail: 'analysis_owner_mismatch' });
+      }
       if (priorCall?.status === 'completed' && priorCall.result) {
         return {
           statusCode: 200,
@@ -117,7 +121,10 @@ export function createSubmitHandler({
       }
 
       if (!idem.created) {
-        const existing = await jobStore.getJob(analysisId);
+        const existing = await jobStore.getJob(analysisId, userId);
+        if (existing?.userId && existing.userId !== userId) {
+          throw new ServiceError('forbidden', 403, { detail: 'analysis_owner_mismatch' });
+        }
         if (existing) {
           // Replay completed/failed/in-flight without a new AI call.
           return {
@@ -139,6 +146,7 @@ export function createSubmitHandler({
         }
       }
 
+      assertPersistentDataDir(config);
       assertDurableGeneration(config);
       assertFileLedgerCanGenerate(config);
 
@@ -170,7 +178,10 @@ export function createSubmitHandler({
       });
 
       if (!created) {
-        const existing = await jobStore.getJob(analysisId);
+        const existing = await jobStore.getJob(analysisId, userId);
+        if (existing?.userId && existing.userId !== userId) {
+          throw new ServiceError('forbidden', 403, { detail: 'analysis_owner_mismatch' });
+        }
         uploadTicket?.release();
         uploadTicket = null;
         return {
@@ -231,9 +242,10 @@ export function createSubmitHandler({
         mark('inlineStart');
 
         try {
-          const marked = await jobStore.markProviderStarted(analysisId, leaseToken);
+          const marked = await jobStore.markProviderStarted(analysisId, leaseToken, userId);
           if (!marked?.providerStarted) {
             await jobStore.failJob(analysisId, {
+              userId,
               error: 'provider_not_started',
               providerOutcome: 'uncertain',
               requeue: false,
@@ -241,9 +253,10 @@ export function createSubmitHandler({
             }).catch(() => {});
             throw new ServiceError('attempt_not_owner', 409);
           }
-          const claimed = await claimProviderCall(config.dataDir, analysisId);
+          const claimed = await claimProviderCall(config.dataDir, analysisId, userId);
           if (!claimed) {
             await jobStore.failJob(analysisId, {
+              userId,
               error: 'provider_already_started',
               providerOutcome: 'uncertain',
               requeue: false,
@@ -259,8 +272,9 @@ export function createSubmitHandler({
             openaiFetcher,
           });
           await circuit.recordSuccess();
-          await savePhotoAttemptResult(config.dataDir, analysisId, analyzed.result).catch(() => {});
+          await savePhotoAttemptResult(config.dataDir, analysisId, analyzed.result, userId).catch(() => {});
           await jobStore.completeJob(analysisId, {
+            userId,
             result: analyzed.result,
             providerOutcome: 'success',
             leaseToken,
@@ -291,6 +305,7 @@ export function createSubmitHandler({
           await circuit.recordFailure().catch(() => {});
           const code = error?.code ?? error?.name ?? 'internal_error';
           await jobStore.failJob(analysisId, {
+            userId,
             error: code,
             providerOutcome: 'uncertain',
             requeue: false,
@@ -304,7 +319,7 @@ export function createSubmitHandler({
       }
 
       // Busy / no slot / inline disabled → queue only (workers pick up).
-      await jobStore.enqueue(analysisId);
+      await jobStore.enqueue(analysisId, userId);
       mark('enqueued');
 
       return {
@@ -375,7 +390,7 @@ export function createStatusHandler({ jobStore, longPollMaxMs = 25_000, pollHint
     if (!/^[0-9a-f-]{36}$/i.test(analysisId)) {
       throw new ServiceError('not_found', 404);
     }
-    let job = await jobStore.getJob(analysisId);
+    let job = await jobStore.getJob(analysisId, userId);
     if (!job) throw new ServiceError('not_found', 404);
     if (job.userId !== userId) throw new ServiceError('forbidden', 403);
 
@@ -395,7 +410,8 @@ export function createStatusHandler({ jobStore, longPollMaxMs = 25_000, pollHint
         waitForJobUpdate(analysisId, slice, abortSignal),
         new Promise((r) => setTimeout(r, Math.min(250, slice))),
       ]);
-      job = await jobStore.getJob(analysisId);
+      job = await jobStore.getJob(analysisId, userId);
+      if (job && job.userId !== userId) throw new ServiceError('forbidden', 403);
       if (!job) throw new ServiceError('not_found', 404);
     }
 

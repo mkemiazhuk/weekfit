@@ -302,9 +302,14 @@ test('HTTP cancel of one shared client does not abort sibling waiters', async (t
   const second = fetch(`${base}/v1/food/photo-recognize`, {
     method: 'POST', headers, body,
   });
-  // Ensure second waiter is registered before the first client disconnects.
-  await new Promise((r) => setTimeout(r, 50));
-  const entry = server.weekfitInternals.idempotency.get('local-developer', 'shared-http-cancel');
+  // The second request reads the durable ledger before it joins the in-memory waiters.
+  const joinDeadline = Date.now() + 2000;
+  let entry;
+  while (Date.now() < joinDeadline) {
+    entry = server.weekfitInternals.idempotency.get('local-developer', 'shared-http-cancel');
+    if (entry?.waiters >= 2) break;
+    await new Promise((r) => setTimeout(r, 10));
+  }
   assert.ok(entry?.waiters >= 2, `expected ≥2 waiters, got ${entry?.waiters}`);
   ac.abort();
   await assert.rejects(() => first);

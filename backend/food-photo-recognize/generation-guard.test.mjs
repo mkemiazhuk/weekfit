@@ -59,11 +59,17 @@ test('redis without one shared data dir refuses file-ledger generation', () => {
 
 test('production blocks a new food call when directory durability is unconfirmed', async (t) => {
   let calls = 0;
+  const dir = await mkdtemp(path.join(tmpdir(), 'weekfit-durable-prod-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
   const config = configuration({
     OPENAI_MOCK: '1',
     ALLOW_DEV_AUTH: '1',
     WEEKFIT_DEV_TOKEN: 'weekfit-dev-local-token',
     FOOD_PHOTO_MOCK_DELAY_MS: '0',
+    DATA_DIR: dir,
+    ALLOW_SINGLE_NODE_ASYNC: '1',
+    STATE_BACKEND: 'file',
+    OBJECT_STORE: 'local',
   });
   config.isProduction = true;
   const server = createServer(config, {

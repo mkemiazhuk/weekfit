@@ -195,7 +195,7 @@ test('async status forbids other users', async (t) => {
   })).json();
 
   // Forge a different user by temporarily swapping job owner.
-  const job = await stack.jobStore.getJob(accepted.analysisId);
+  const job = await stack.jobStore.getJob(accepted.analysisId, 'local-developer');
   await stack.jobStore.saveJob({ ...job, userId: 'someone-else' });
 
   const statusRes = await fetch(`${base}/v1/food/photo-analyze/${accepted.analysisId}`, {
@@ -239,13 +239,13 @@ test('lease recovery requeues abandoned processing jobs', async (t) => {
     maxAttempts: 3,
     quotaReserved: true,
   });
-  await stack.jobStore.enqueue(job.analysisId);
+  await stack.jobStore.enqueue(job.analysisId, job.userId);
   const claimed = await stack.jobStore.claimNext({ workerId: 'dead-worker', leaseMs: 30 });
   assert.equal(claimed.status, 'processing');
   await new Promise((r) => setTimeout(r, 40));
   const { recovered } = await stack.jobStore.recoverExpiredLeases();
   assert.ok(recovered >= 1);
-  const again = await stack.jobStore.getJob(job.analysisId);
+  const again = await stack.jobStore.getJob(job.analysisId, job.userId);
   assert.equal(again.status, 'queued');
   assert.equal(again.providerStarted, undefined);
 });
@@ -267,13 +267,13 @@ test('lease recovery does not requeue an analysis whose provider call started', 
     maxAttempts: 3,
     quotaReserved: true,
   });
-  await stack.jobStore.enqueue(job.analysisId);
+  await stack.jobStore.enqueue(job.analysisId, job.userId);
   const claimed = await stack.jobStore.claimNext({ workerId: 'dead-worker', leaseMs: 30 });
-  const marked = await stack.jobStore.markProviderStarted(claimed.analysisId, claimed.leaseToken);
+  const marked = await stack.jobStore.markProviderStarted(claimed.analysisId, claimed.leaseToken, claimed.userId);
   assert.equal(marked.providerStarted, true);
   await new Promise((r) => setTimeout(r, 40));
   await stack.jobStore.recoverExpiredLeases();
-  const again = await stack.jobStore.getJob(job.analysisId);
+  const again = await stack.jobStore.getJob(job.analysisId, job.userId);
   assert.equal(again.status, 'failed');
   assert.equal(again.providerOutcome, 'uncertain');
   const queued = await stack.jobStore.claimNext({ workerId: 'other', leaseMs: 1000 });
