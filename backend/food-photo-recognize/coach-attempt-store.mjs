@@ -24,7 +24,7 @@ import { assertDurableGeneration, createExclusive, readJson, removeQuiet, writeJ
  * deployment guarantee: a second disk does not.
  */
 
-const LEGACY_PROMPT_VERSIONS = [6, 7, 8, 9, 10, 11, 12, 13];
+const LEGACY_PROMPT_VERSIONS = [6, 7, 8, 9, 10, 11, 12, 13, 14];
 
 function openProcessLock(file) {
   mkdirSync(path.dirname(file), { recursive: true });

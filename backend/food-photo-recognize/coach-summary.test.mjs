@@ -8,7 +8,7 @@ import {configuration, createServer} from './server.mjs';
 import {ServiceError} from './recognition.mjs';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
-import {validateDay,validateSummary,generateSummary,localDayAndHour,normalizeLocale,hasEnglishLanguageLeak,emptyFactsFallbackSummary,countFacts,buildInstructions,unconfirmedConclusionIssues,SUMMARY_PROMPT_VERSION} from './coach-summary.mjs';
+import {validateDay,validateSummary,generateSummary,localDayAndHour,normalizeLocale,hasEnglishLanguageLeak,emptyFactsFallbackSummary,countFacts,buildInstructions,unconfirmedConclusionIssues,SUMMARY_PROMPT_VERSION,SUMMARY_LIMITS,summaryResponseSchema,evidenceEnumForSchema} from './coach-summary.mjs';
 
 const input=()=>({schemaVersion:1,day:'2026-10-12',timezone:'Europe/Warsaw',locale:'ru',phase:'evening',facts:{sleep:[{id:'sleep.duration',text:'Last night: 6 hours sleep.'}],nutrition:[{id:'nutrition.completeness',text:'Food log completeness unknown.'}],coachDecision:[{id:'coach.priority',text:'One priority: wind down for sleep.'}]}});
 const result=()=>({headline:'Итог дня',today:{text:'Сон был коротким.',evidenceIds:['sleep.duration']},now:{text:'Пора готовиться ко сну.',evidenceIds:['coach.priority']},tomorrow:{text:'План на завтра пока неизвестен.',evidenceIds:[]},limitations:['Питание записано не полностью.']});
@@ -93,7 +93,7 @@ test('cannot generate before 20:00 or backdate requests',async t=>{let calls=0;c
 test('next local day permits one new request',async t=>{let calls=0;const dir=await directory(t);const generate=async()=>{calls++;return {result:result()};};const a=await server(t,dir,generate);await a.post(input());await new Promise(r=>a.s.close(r));const b=await server(t,dir,generate,{dependencies:{summaryNow:()=>new Date('2026-10-13T18:00:00Z')}});assert.equal((await b.post({...input(),day:'2026-10-13'})).status,200);assert.equal(calls,2);});
 test('storage misconfiguration fails closed without AI',async t=>{let calls=0;const {post}=await server(t,'',async()=>{calls++;return {result:result()};});assert.equal((await post(input())).status,503);assert.equal(calls,0);});
 test('concurrency limit is acquired before asynchronous reservation',async t=>{let running=0,peak=0;const {post}=await server(t,await directory(t),async()=>{running++;peak=Math.max(peak,running);await new Promise(r=>setTimeout(r,40));running--;return {result:result()};},{config:{summaryConcurrency:1}});const rs=await Promise.all([post(input(),'Bearer a'),post(input(),'Bearer b'),post(input(),'Bearer c')]);assert.equal(peak,1);assert.equal(rs.filter(r=>r.status===200).length,1);assert.equal(rs.filter(r=>r.status===503).length,2);});
-test('structured output has bounded tokens, no photo and no storage',async()=>{let sent;const r=await generateSummary(validateDay(input()),{apiKey:'test',summaryModel:'test-model'},async(url,opts)=>{sent=JSON.parse(opts.body);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(result())}]}]})};});assert.equal(sent.store,false);assert.equal(sent.max_output_tokens,8192);assert.equal(sent.text.format.strict,true);assert.equal(sent.reasoning,undefined);assert.equal(r.result.headline,'Итог дня');assert.match(sent.instructions,/40.65 words/);assert.equal(SUMMARY_PROMPT_VERSION,13);assert.match(sent.instructions,/personal activity, sleep and recovery coach/);assert.match(sent.instructions,/LANGUAGE LOCK/);assert.match(sent.instructions,/Russian/);assert.match(sent.instructions,/SEVEN days/);assert.match(sent.instructions,/Hard bans/);assert.match(sent.instructions,/At most ONE next-step/);assert.match(sent.instructions,/ready for load/);assert.match(sent.instructions,/single HRV/);assert.match(sent.instructions,/active calories/);assert.match(sent.instructions,/SAME cautious conclusion/);assert.match(sent.instructions,/several days/);assert.match(sent.instructions,/principal personal fitness assistant/);assert.match(sent.instructions,/30 years of experience/);assert.match(sent.instructions,/silently verify/);assert.match(sent.instructions,/Never claim professional credentials/);});
+test('structured output has bounded tokens, no photo and no storage',async()=>{let sent;const r=await generateSummary(validateDay(input()),{apiKey:'test',summaryModel:'test-model'},async(url,opts)=>{sent=JSON.parse(opts.body);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(result())}]}]})};});assert.equal(sent.store,false);assert.equal(sent.max_output_tokens,8192);assert.equal(sent.text.format.strict,true);assert.equal(sent.reasoning,undefined);assert.equal(r.result.headline,'Итог дня');assert.match(sent.instructions,/40.65 words/);assert.equal(SUMMARY_PROMPT_VERSION,14);assert.match(sent.instructions,/personal activity, sleep and recovery coach/);assert.match(sent.instructions,/LANGUAGE LOCK/);assert.match(sent.instructions,/Russian/);assert.match(sent.instructions,/SEVEN days/);assert.match(sent.instructions,/Hard bans/);assert.match(sent.instructions,/At most ONE next-step/);assert.match(sent.instructions,/ready for load/);assert.match(sent.instructions,/single HRV/);assert.match(sent.instructions,/active calories/);assert.match(sent.instructions,/SAME cautious conclusion/);assert.match(sent.instructions,/several days/);assert.match(sent.instructions,/principal personal fitness assistant/);assert.match(sent.instructions,/30 years of experience/);assert.match(sent.instructions,/silently verify/);assert.match(sent.instructions,/Never claim professional credentials/);});
 test('empty facts return fallback without calling the provider',async t=>{
   let calls=0;
   const {post}=await server(t,await directory(t),async()=>{calls++;return {result:result()};},{
@@ -104,7 +104,7 @@ test('empty facts return fallback without calling the provider',async t=>{
   assert.equal(res.status,200);
   const body=await res.json();
   assert.equal(body.source,'fallback');
-  assert.equal(body.promptVersion,13);
+  assert.equal(body.promptVersion,14);
   assert.equal(body.factTotal,0);
   assert.equal(body.reused,false);
   assert.match(body.today.text,/brakuje danych/i);
@@ -134,7 +134,7 @@ test('unconfirmed-conclusions v11 fixture is schema-valid yet fails quality lint
   assert.match(instructions,/single HRV reading/);
   assert.match(instructions,/active calories \/ active energy/);
   assert.match(instructions,/SAME cautious conclusion as today/);
-  assert.equal(SUMMARY_PROMPT_VERSION,13);
+  assert.equal(SUMMARY_PROMPT_VERSION,14);
   assert.match(instructions,/principal personal fitness assistant/);
   assert.match(instructions,/Before returning JSON, silently verify/);
   assert.match(instructions,/Never claim professional credentials/);
@@ -299,4 +299,155 @@ test('weekly context reaches provider unchanged and outputs must cite supplied f
     return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(result())}]}]})};
   });
   assert.deepEqual(JSON.parse(sent.input[0].content[0].text).facts.recentVitals,b.facts.recentVitals);
+});
+
+function rejectedSummary(value, day = validateDay(input())) {
+  try {
+    validateSummary(value, day);
+  } catch (error) {
+    return error;
+  }
+  assert.fail('expected invalid_summary_result');
+}
+
+test('summary rejection names the check and the exact length or count boundary', () => {
+  assert.deepEqual(SUMMARY_LIMITS, {
+    headlineChars: 120,
+    passageChars: 700,
+    limitationChars: 200,
+    evidenceIdsPerPassage: 10,
+    limitations: 6,
+  });
+  const day = validateDay(input());
+  const atHeadline = result();
+  atHeadline.headline = 'Я'.repeat(SUMMARY_LIMITS.headlineChars);
+  assert.doesNotThrow(() => validateSummary(atHeadline, day));
+  const longHeadline = result();
+  longHeadline.headline = 'Я'.repeat(SUMMARY_LIMITS.headlineChars + 1);
+  const headline = rejectedSummary(longHeadline, day);
+  assert.equal(headline.code, 'invalid_summary_result');
+  assert.equal(headline.validationReason, 'text_too_long');
+  assert.equal(headline.fieldPath, 'headline');
+  assert.equal(headline.actual, 121);
+  assert.equal(headline.limit, 120);
+
+  const atPassage = result();
+  atPassage.today.text = 'Я'.repeat(SUMMARY_LIMITS.passageChars);
+  assert.doesNotThrow(() => validateSummary(atPassage, day));
+  const longPassage = result();
+  longPassage.today.text = 'Я'.repeat(SUMMARY_LIMITS.passageChars + 1);
+  const passage = rejectedSummary(longPassage, day);
+  assert.equal(passage.validationReason, 'text_too_long');
+  assert.equal(passage.fieldPath, 'today.text');
+  assert.equal(passage.actual, 701);
+  assert.equal(passage.limit, 700);
+
+  const atLimit = result();
+  atLimit.limitations = ['Я'.repeat(SUMMARY_LIMITS.limitationChars)];
+  assert.doesNotThrow(() => validateSummary(atLimit, day));
+  const longLimit = result();
+  longLimit.limitations = ['Я'.repeat(SUMMARY_LIMITS.limitationChars + 1)];
+  const limitation = rejectedSummary(longLimit, day);
+  assert.equal(limitation.validationReason, 'text_too_long');
+  assert.equal(limitation.fieldPath, 'limitations[0]');
+  assert.equal(limitation.actual, 201);
+  assert.equal(limitation.limit, 200);
+
+  const ids = Array.from({length: 11}, (_, index) => `fact.${index}`);
+  const wide = input();
+  wide.facts.sleep = ids.map((id) => ({id, text: 'Факт.'}));
+  const wideDay = validateDay(wide);
+  const atCount = result();
+  atCount.today.evidenceIds = ids.slice(0, 10);
+  atCount.now.evidenceIds = [];
+  atCount.tomorrow.evidenceIds = [];
+  assert.doesNotThrow(() => validateSummary(atCount, wideDay));
+  const overCount = result();
+  overCount.today.evidenceIds = ids;
+  overCount.now.evidenceIds = [];
+  overCount.tomorrow.evidenceIds = [];
+  const counted = rejectedSummary(overCount, wideDay);
+  assert.equal(counted.validationReason, 'too_many_items');
+  assert.equal(counted.fieldPath, 'today.evidenceIds');
+  assert.equal(counted.actual, 11);
+  assert.equal(counted.limit, 10);
+
+  const manyLimits = result();
+  manyLimits.limitations = Array.from({length: 7}, () => 'Коротко.');
+  const limits = rejectedSummary(manyLimits, day);
+  assert.equal(limits.validationReason, 'too_many_items');
+  assert.equal(limits.fieldPath, 'limitations');
+  assert.equal(limits.actual, 7);
+  assert.equal(limits.limit, 6);
+  const six = result();
+  six.limitations = Array.from({length: 6}, () => 'Коротко.');
+  assert.doesNotThrow(() => validateSummary(six, day));
+
+  const missing = result();
+  delete missing.headline;
+  const missingField = rejectedSummary(missing, day);
+  assert.equal(missingField.validationReason, 'missing_field');
+  assert.equal(missingField.fieldPath, 'headline');
+  const blank = result();
+  blank.headline = '   ';
+  assert.equal(rejectedSummary(blank, day).validationReason, 'missing_field');
+
+  const extra = result();
+  extra.note = 'лишнее';
+  const unexpected = rejectedSummary(extra, day);
+  assert.equal(unexpected.validationReason, 'unexpected_field');
+  assert.equal(unexpected.fieldPath, 'note');
+
+  const badId = result();
+  badId.today.evidenceIds = ['invented'];
+  const unknown = rejectedSummary(badId, day);
+  assert.equal(unknown.validationReason, 'unknown_evidence_id');
+  assert.equal(unknown.fieldPath, 'today.evidenceIds[0]');
+
+  const english = result();
+  english.headline = 'Day wrap';
+  english.today = {text: 'You have logged only one meal so far today and your food log completeness is unknown.', evidenceIds: ['sleep.duration']};
+  english.now = {text: 'Wind down for sleep tonight.', evidenceIds: ['coach.priority']};
+  english.tomorrow = {text: 'Tomorrow is still open.', evidenceIds: []};
+  english.limitations = [];
+  const language = rejectedSummary(english, validateDay({...input(), locale: 'pl'}));
+  assert.equal(language.validationReason, 'language_mismatch');
+  assert.equal(language.fieldPath, 'today.text');
+});
+
+test('schema sends supported bounds and snapshot evidence ids, not string length keys', () => {
+  const day = validateDay(input());
+  const ids = Object.values(day.facts).flat().map((fact) => fact.id);
+  const schema = summaryResponseSchema(ids, 'gpt-4.1-mini');
+  const banned = ['minLength', 'maxLength', 'pattern', 'format', 'allOf', 'oneOf'];
+  const seen = [];
+  const walk = (value) => {
+    if (!value || typeof value !== 'object') return;
+    for (const [key, child] of Object.entries(value)) {
+      seen.push(key);
+      walk(child);
+    }
+  };
+  walk(schema);
+  for (const key of banned) assert.equal(seen.includes(key), false, key);
+  assert.equal(schema.properties.today.properties.evidenceIds.maxItems, 10);
+  assert.equal(schema.properties.limitations.maxItems, 6);
+  assert.deepEqual(schema.$defs.evidenceId.enum, evidenceEnumForSchema(ids));
+  assert.equal(schema.$defs.evidenceId.enum.length, 3);
+
+  const many = Array.from({length: 93}, (_, index) => `fact.${index}`);
+  assert.equal(summaryResponseSchema(many, 'gpt-4.1-mini').$defs.evidenceId.enum.length, 93);
+
+  const wide = Array.from({length: 251}, (_, index) => `${String(index).padStart(3, '0')}${'x'.repeat(77)}`);
+  assert.equal(evidenceEnumForSchema(wide), null);
+  assert.equal(summaryResponseSchema(wide, 'gpt-4.1-mini').$defs, undefined);
+  assert.equal(summaryResponseSchema(wide, 'gpt-4.1-mini').properties.today.properties.evidenceIds.maxItems, 10);
+
+  const tuned = summaryResponseSchema(ids, 'ft:gpt-4.1-mini:coach');
+  assert.equal(tuned.properties.today.properties.evidenceIds.maxItems, undefined);
+  assert.equal(tuned.$defs, undefined);
+  assert.match(buildInstructions(day), /at most 120 characters/);
+  assert.match(buildInstructions(day), /at most 700 characters/);
+  assert.match(buildInstructions(day), /at most 6 entries/);
+  assert.match(buildInstructions(day), /at most 10 ids/);
 });

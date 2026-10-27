@@ -254,9 +254,129 @@ test('generateSummary itself performs one provider call when validation fails', 
       headline: 'Day wrap',
       today: { text: 'You have logged only one meal so far today.', evidenceIds: ['sleep.duration'] },
     }));
-  }), /invalid_summary_result/);
+  }), (error) => {
+    assert.equal(error.code, 'invalid_summary_result');
+    assert.equal(error.validationReason, 'language_mismatch');
+    assert.equal(error.fieldPath, 'today.text');
+    assert.equal(error.providerRequestId, 'prov-1');
+    assert.deepEqual(error.usage, { input_tokens: 20, output_tokens: 10 });
+    return true;
+  });
   assert.equal(calls, 1);
-  assert.equal(SUMMARY_PROMPT_VERSION, 13);
+  assert.equal(SUMMARY_PROMPT_VERSION, 14);
+});
+
+test('unparseable output keeps usage and a null provider id when the header is absent', async () => {
+  let calls = 0;
+  await assert.rejects(() => generateSummary(validateDay(input()), { apiKey: 'test', summaryModel: 'gpt-4.1-mini' }, async () => {
+    calls += 1;
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      json: async () => ({
+        status: 'completed',
+        usage: { input_tokens: 4, output_tokens: 1 },
+        output: [{ content: [{ type: 'output_text', text: '{oops' }] }],
+      }),
+    };
+  }), (error) => {
+    assert.equal(error.validationReason, 'json_parse_failed');
+    assert.equal(error.fieldPath, null);
+    assert.equal(error.providerRequestId, null);
+    assert.deepEqual(error.usage, { input_tokens: 4, output_tokens: 1 });
+    assert.equal(error.message.includes('{oops'), false);
+    return true;
+  });
+  assert.equal(calls, 1);
+});
+
+test('invalid summary stays one provider call across POST, GET, locale change and restart', async (t) => {
+  const dir = await directory(t);
+  const lines = [];
+  const original = console.log;
+  console.log = (line) => { lines.push(String(line)); };
+  t.after(() => { console.log = original; });
+  let calls = 0;
+  const fetcher = async () => {
+    calls += 1;
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: (name) => (name === 'x-request-id' ? 'prov-kept' : null) },
+      json: async () => ({
+        status: 'completed',
+        usage: { input_tokens: 93, output_tokens: 40 },
+        output: [{ content: [{ type: 'output_text', text: JSON.stringify({
+          ...answer(),
+          today: { text: 'Сон был коротким.', evidenceIds: ['not-a-fact'] },
+        }) }] }],
+      }),
+    };
+  };
+  const open = () => new Promise((resolve) => {
+    const server = serverWithFetcher(t, dir, fetcher, { summaryModel: 'gpt-4.1-mini' });
+    server.listen(0, '127.0.0.1', () => resolve(server));
+  });
+  const post = (server, body = input()) => fetch(`http://127.0.0.1:${server.address().port}/v1/coach/day-summary`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer a' },
+    body: JSON.stringify(body),
+  });
+  const read = (server) => fetch(`http://127.0.0.1:${server.address().port}/v1/coach/day-summary?day=2026-10-12&timezone=Europe%2FWarsaw`, {
+    headers: { Authorization: 'Bearer a' },
+  });
+  const first = await open();
+  t.after(() => first.close());
+  const bad = await post(first);
+  const badBody = await bad.json();
+  assert.equal(bad.status, 502);
+  assert.equal(badBody.error, 'invalid_summary_result');
+  assert.equal(badBody.validationReason, undefined);
+  assert.equal(calls, 1);
+  const changed = await post(first, { ...input(), locale: 'en' });
+  assert.equal(changed.status, 409);
+  assert.equal((await changed.json()).error, 'attempt_failed');
+  const status = await read(first);
+  assert.equal(status.status, 409);
+  assert.equal((await status.json()).error, 'attempt_failed');
+  assert.equal(calls, 1);
+  await new Promise((resolve) => first.close(resolve));
+
+  const restarted = await open();
+  t.after(() => restarted.close());
+  assert.equal((await post(restarted)).status, 409);
+  assert.equal((await read(restarted)).status, 409);
+  assert.equal(calls, 1);
+
+  const events = lines.flatMap((line) => {
+    try { return [JSON.parse(line)]; } catch { return []; }
+  }).filter((row) => row.endpoint === 'coach_summary');
+  const finished = events.find((row) => row.event === 'provider_call_finished' && row.outcome === 'failed');
+  assert.equal(finished.validationReason, 'unknown_evidence_id');
+  assert.equal(finished.fieldPath, 'today.evidenceIds[0]');
+  assert.equal(finished.providerRequestId, 'prov-kept');
+  assert.deepEqual(finished.usage, { input_tokens: 93, output_tokens: 40 });
+  assert.equal(finished.model, 'gpt-4.1-mini');
+  assert.equal(finished.promptVersion, SUMMARY_PROMPT_VERSION);
+  assert.equal(finished.localDay, '2026-10-12');
+  assert.equal(typeof finished.requestId, 'string');
+  assert.equal(finished.requestId.length > 0, true);
+  assert.equal(typeof finished.attemptId, 'string');
+  assert.equal(finished.userHash.length, 16);
+  const blob = JSON.stringify(events);
+  assert.equal(blob.includes('not-a-fact'), false);
+  assert.equal(blob.includes('Last night'), false);
+  assert.equal(blob.includes('Сон был коротким'), false);
+  assert.equal(blob.includes('Bearer'), false);
+  assert.equal(blob.includes('Bearer a'), false);
+
+  const userKey = coachUserHash('Bearer a');
+  const saved = JSON.parse(await readFile(path.join(dir, 'coach-guard', 'users', userKey, 'days', '2026-10-12.json'), 'utf8'));
+  assert.equal(saved.state, 'failed');
+  assert.equal(saved.reason, 'invalid_summary_result');
+  const budget = await readdir(path.join(dir, 'coach-guard', 'budget', 'utc-day', '2026-10-12'));
+  assert.equal(budget.length, 1);
 });
 
 test('a lost owner before or after provider start cannot be regenerated', async (t) => {
