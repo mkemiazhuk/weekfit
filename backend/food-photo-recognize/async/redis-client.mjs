@@ -1,4 +1,5 @@
 import net from 'node:net';
+import tls from 'node:tls';
 import { EventEmitter } from 'node:events';
 
 /**
@@ -13,6 +14,7 @@ export function parseRedisUrl(url) {
   return {
     host: u.hostname || '127.0.0.1',
     port: Number(u.port || 6379),
+    username: u.username ? decodeURIComponent(u.username) : null,
     password: u.password ? decodeURIComponent(u.password) : null,
     db: u.pathname && u.pathname !== '/' ? Number(u.pathname.slice(1)) : 0,
     tls: u.protocol === 'rediss:',
@@ -103,12 +105,23 @@ export function createRedisClient(url) {
   const call = async (args) => {
     await connect();
     return new Promise((resolve, reject) => {
-      waiters.push({ resolve, reject });
+      // A timed-out reply cannot be removed from RESP order: destroy the socket
+      // and reject all pending commands instead of misrouting subsequent replies.
+      const timeoutMs = args[0] === 'BRPOP' ? Math.max(10_000, Number(args.at(-1)) * 1000 + 2000) : 10_000;
+      const commandSocket = socket;
+      const timer = setTimeout(() => {
+        const error = new Error('redis_command_timeout');
+        error.code = 'redis_command_timeout';
+        commandSocket.destroy(error);
+      }, timeoutMs);
+      waiters.push({
+        resolve: value => { clearTimeout(timer); resolve(value); },
+        reject: error => { clearTimeout(timer); reject(error); },
+      });
       try {
         socket.write(encodeCommand(args));
       } catch (error) {
-        waiters.pop();
-        reject(error);
+        waiters.pop()?.reject(error);
       }
     });
   };
@@ -118,13 +131,19 @@ export function createRedisClient(url) {
     if (connecting) return connecting;
     connecting = new Promise((resolve, reject) => {
       let settled = false;
-      const s = net.createConnection({ host: cfg.host, port: cfg.port }, () => {
+      const options = { host: cfg.host, port: cfg.port };
+      const s = cfg.tls
+        ? tls.connect({ ...options, servername: net.isIP(cfg.host) ? undefined : cfg.host, rejectUnauthorized: true })
+        : net.createConnection(options);
+      const connectionTimer = setTimeout(() => s.destroy(new Error('redis_connect_timeout')), 5000);
+      s.once(cfg.tls ? 'secureConnect' : 'connect', () => {
+        clearTimeout(connectionTimer);
         // Mark connected before AUTH so nested call() does not re-enter connect().
         socket = s;
         connecting = null;
         (async () => {
           try {
-            if (cfg.password) await call(['AUTH', cfg.password]);
+            if (cfg.password) await call(cfg.username ? ['AUTH', cfg.username, cfg.password] : ['AUTH', cfg.password]);
             if (cfg.db) await call(['SELECT', String(cfg.db)]);
             settled = true;
             resolve();
@@ -139,6 +158,7 @@ export function createRedisClient(url) {
         drain();
       });
       s.on('error', (error) => {
+        clearTimeout(connectionTimer);
         const err = error;
         err.code = err.code || 'redis_error';
         while (waiters.length) waiters.shift().reject(err);
@@ -151,7 +171,10 @@ export function createRedisClient(url) {
         if (ee.listenerCount('error') > 0) ee.emit('error', err);
       });
       s.on('close', () => {
+        clearTimeout(connectionTimer);
         socket = null;
+        connecting = null;
+        buf = Buffer.alloc(0);
         const err = new Error('redis_connection_closed');
         err.code = 'redis_connection_closed';
         while (waiters.length) waiters.shift().reject(err);
@@ -163,6 +186,7 @@ export function createRedisClient(url) {
 
   return {
     call,
+    duplicate: () => createRedisClient(url),
     on: (...a) => ee.on(...a),
     async get(key) { return call(['GET', key]); },
     async set(key, value, opts = {}) {

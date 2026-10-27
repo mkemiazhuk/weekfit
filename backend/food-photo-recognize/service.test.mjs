@@ -248,8 +248,9 @@ test('async enabled but stack missing returns async_not_configured without burni
   assert.equal(analyze.status,503);
   const analyzeBody=await analyze.json();
   assert.equal(analyzeBody.error,'async_not_configured');
-  // Free trial must still be claimable on sync path after async fallback signal.
+  // No independent sync bypass when durable infrastructure is down. Neither route claims the trial.
   const sync=await fetch(base+'/v1/food/photo-recognize',{method:'POST',headers,body:JSON.stringify(input())});
-  assert.equal(sync.status,200);
-  assert.equal(calls,1);
+  assert.equal(sync.status,503);
+  assert.equal(calls,0);
+  assert.equal(await freeTrialStore.claim('local-developer'),true);
 });

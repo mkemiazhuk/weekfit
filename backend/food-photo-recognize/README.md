@@ -21,9 +21,13 @@ iOS app (`GoogleService-Info.plist`): `PROJECT_ID=weekfitai`. Render must set `F
 
 Client attempt markers are written **before** auth/network. Failure/timeout also consumes the day’s attempt (no retry button).
 
-Node 24, no runtime dependencies. Server-side OpenAI Responses API with strict structured output, `detail: high`, `store: false`. Default model: `gpt-6-astra`, reasoning effort `high`; configurable alternative `gpt-6.1-sol`. Model choice is controlled by the server, never by the phone. No silent fallback to a cheaper model.
+Node 24; the S3 adapter uses the pinned `@aws-sdk/client-s3` dependency. Server-side OpenAI Responses API with strict structured output, `detail: high`, `store: false`. Default model: `gpt-6-astra`, reasoning effort `high`; configurable alternative `gpt-6.1-sol`. Model choice is controlled by the server, never by the phone. No silent fallback to a cheaper model.
 
 The flagship model is a quality-first choice, not a food-recognition accuracy guarantee. Portion sizes, hidden oil, sauces and macros are estimates. Results always require user confirmation. This service does **not** query a nutrition database; all returned nutrient values are labeled `ai_estimate`. Totals are computed from component estimates. Add verified food-database matching separately before claiming database-backed values.
+
+## Production rollout
+
+See [PRODUCTION.md](PRODUCTION.md) for the deployment gate, required persistent storage, known limitations and validation. Mock capacity tests do not certify the live service.
 
 ## Local start
 

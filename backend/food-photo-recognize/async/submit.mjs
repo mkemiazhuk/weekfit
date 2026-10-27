@@ -40,9 +40,9 @@ export function createSubmitHandler({
       headers['idempotency-key'] ?? headers['x-weekfit-analysis-id'],
     );
     const idemKey = rawIdem ?? randomUUID();
-    const preferredId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idemKey)
-      ? idemKey.toLowerCase()
-      : randomUUID();
+    // Never use an untrusted, globally colliding client UUID as the storage key.
+    // Idempotency is scoped by user; analysis IDs are server-generated.
+    const preferredId = randomUUID();
 
     const input = validateInput(body);
     const jpegBytes = Buffer.from(input.imageBase64, 'base64');
