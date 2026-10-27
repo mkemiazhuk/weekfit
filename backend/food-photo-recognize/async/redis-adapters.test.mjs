@@ -207,6 +207,7 @@ test('redis with a separate data dir refuses file-ledger generations', async () 
       assert.equal(mockAdapter.metrics().realFetchAttempts, 0);
       assert.equal(await stack.jobStore.getJob(analysisId), null);
     } finally {
+      await new Promise((resolve) => server.close(resolve));
       await objInfo.close();
     }
   });

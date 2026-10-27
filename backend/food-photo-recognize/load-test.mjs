@@ -184,8 +184,13 @@ export async function runLoadSuite() {
         }
       }, 50);
 
-      const { results, wallMs } = await burst(base, n);
-      clearInterval(healthTimer);
+      let results;
+      let wallMs;
+      try {
+        ({ results, wallMs } = await burst(base, n));
+      } finally {
+        clearInterval(healthTimer);
+      }
       assertOk(healthProbe.length === 0 || healthProbe.every((s) => s === 200), `healthz failed under concurrency=${n}`);
 
       const summary = summarize(

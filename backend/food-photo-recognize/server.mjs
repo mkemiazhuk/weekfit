@@ -725,6 +725,22 @@ export function createServer(config, dependencies = {}) {
   };
   server.asyncReady = asyncReady;
   server.on('close', () => summary.stop?.());
+  const originalClose = server.close.bind(server);
+  let closeStarted = false;
+  server.close = function closeServer(callback) {
+    if (!closeStarted) {
+      closeStarted = true;
+      // Drop the Coach SQLite lock before sockets drain. A keep-alive fetch
+      // socket would otherwise hold close() open and leave the database handle
+      // referenced for the rest of the process.
+      try { summary.stop?.(); } catch { /* already stopped */ }
+      server.closeIdleConnections?.();
+      server.closeAllConnections?.();
+      return originalClose(callback);
+    }
+    if (typeof callback === 'function') queueMicrotask(callback);
+    return server;
+  };
 
   return server;
 }
