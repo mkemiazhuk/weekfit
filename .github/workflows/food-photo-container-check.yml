@@ -1,5 +1,10 @@
 name: Food photo container check
 on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - backend/food-photo-recognize/**
+      - .github/workflows/food-photo-container-check.yml
   push:
     branches: [coach-openai-single-attempt]
     paths:
@@ -12,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   container:
-    if: github.ref == 'refs/heads/coach-openai-single-attempt'
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -20,3 +25,6 @@ jobs:
         run: docker build --tag weekfit-food-photo:ci backend/food-photo-recognize
       - name: Run mock food and Coach checks
         run: bash backend/food-photo-recognize/scripts/container-http-check.sh weekfit-food-photo:ci
+      - name: Check single-node capacity with mock provider and no network
+        run: docker run --rm --network none -e NODE_ENV=development --entrypoint node weekfit-food-photo:ci scripts/capacity-mock-check.mjs
+

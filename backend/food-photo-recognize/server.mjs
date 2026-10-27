@@ -1,3 +1,4 @@
+import { createRuntimeMonitor, providerAttemptKey } from './observability.mjs';
 import http from 'node:http';
 import path from 'node:path';
 import { mkdtempSync } from 'node:fs';
@@ -376,6 +377,9 @@ export function createServer(config, dependencies = {}) {
         concurrency: gate.metrics(),
         uploads: uploadGate.metrics(),
         asyncQueueDepth: queueDepth,
+        monitoring: runtimeMonitor.snapshot(),
+        globalDailyScanLimit: config.globalDailyLimit,
+        maxProviderCallsPerDay: config.maxProviderCallsPerDay,
         circuit,
         timeouts: {
           bodyReadTimeoutMs: config.bodyReadTimeoutMs,
@@ -615,6 +619,7 @@ export function createServer(config, dependencies = {}) {
             ownedCall = true;
             const analyzed = await analyze(input, {
               ...config,
+              observerAttemptKey: providerAttemptKey(user, prepared.analysisId),
               openaiFetcher,
               abortSignal,
             }, openaiFetcher);
@@ -718,6 +723,23 @@ export function createServer(config, dependencies = {}) {
   server.headersTimeout = 15_000;
   server.keepAliveTimeout = 10_000;
 
+  const runtimeMonitor = createRuntimeMonitor({
+    dataDir: persistentDataDir ? ledgerDir : null,
+    summaryStoreDir: config.summaryStoreDir,
+    photoLimit: config.globalDailyLimit,
+    coachLimit: config.summaryMaxStartsPerUtcDay,
+    queueSnapshot: async () => {
+      const stack = await asyncReady;
+      return {
+        asyncQueueDepth: stack ? await stack.jobStore.queueDepth() : null,
+        readyWaiters: stack?.jobStore.metrics?.().readyWaiters ?? null,
+        inFlightHttp, concurrency: gate.metrics(), uploads: uploadGate.metrics(),
+      };
+    },
+  });
+  server.once('listening', () => runtimeMonitor.start());
+  server.on('close', () => runtimeMonitor.stop());
+
   server.weekfitInternals = {
     gate,
     uploadGate,
@@ -736,6 +758,7 @@ export function createServer(config, dependencies = {}) {
   server.close = function closeServer(callback) {
     if (!closeStarted) {
       closeStarted = true;
+      runtimeMonitor.stop();
       // Drop the Coach SQLite lock before sockets drain. A keep-alive fetch
       // socket would otherwise hold close() open and leave the database handle
       // referenced for the rest of the process.
@@ -772,3 +795,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     });
   }
 }
+

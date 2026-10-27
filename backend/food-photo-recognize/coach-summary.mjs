@@ -1,3 +1,4 @@
+import { observedProviderFetch } from './observability.mjs';
 import { randomUUID } from 'node:crypto';
 import { ServiceError } from './recognition.mjs';
 import { coachUserHash, createCoachAttemptStore } from './coach-attempt-store.mjs';
@@ -490,7 +491,7 @@ export function estimateInputTextBytes(input) {
 }
 
 async function callProvider(input, config, fetcher) {
-  const response = await fetcher('https://api.openai.com/v1/responses', {
+  const response = await observedProviderFetch(fetcher, 'https://api.openai.com/v1/responses', {
     method: 'POST', signal: AbortSignal.timeout(config.summaryTimeoutMs ?? 15000),
     headers: {Authorization: `Bearer ${config.apiKey || 'mock'}`, 'Content-Type': 'application/json'},
     body: JSON.stringify({
@@ -500,7 +501,7 @@ async function callProvider(input, config, fetcher) {
       input: [{role: 'user', content: [{type: 'input_text', text: JSON.stringify(input)}]}],
       text: {format: {type: 'json_schema', name: 'coach_day_summary', strict: true, schema: summaryResponseSchema(Object.values(input.facts).flat().map(fact => fact.id), config.summaryModel)}}
     })
-  });
+  }, { endpoint: 'coach_summary', model: config.summaryModel, mock: config.openAIMock, attemptKey: config.observerAttemptKey });
   const providerRequestId = response.headers?.get?.('x-request-id') ?? response.headers?.get?.('openai-request-id') ?? null;
   if (!response.ok) {
     const error = new ServiceError(response.status === 429 ? 'provider_rate_limited' : 'provider_error', response.status === 429 ? 503 : 502);
@@ -774,7 +775,7 @@ export function createSummaryHandler(config, dependencies) {
       let value;
       let generated = null;
       try {
-        generated = await generate(input, config);
+        generated = await generate(input, { ...config, observerAttemptKey: decision.record.attemptId });
         value = {
           ...generated.result,
           day: input.day,
@@ -840,3 +841,4 @@ export function createSummaryHandler(config, dependencies) {
   handler.stop = () => store?.stop?.();
   return handler;
 }
+

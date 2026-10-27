@@ -38,10 +38,22 @@ export async function startWorker(env = process.env) {
     process.on(signal, () => { shutdown(signal).catch(() => process.exit(1)); });
   }
 
-  setInterval(() => {
-    stack.objectStore.cleanupExpired().catch(() => {});
-    stack.jobStore.cleanupExpiredJobs().catch(() => {});
-    stack.aiSlots.sweep().catch(() => {});
+  let maintaining = false;
+  setInterval(async () => {
+    if (maintaining) return;
+    maintaining = true;
+    console.log(JSON.stringify({ event: 'worker_metrics', readyWaiters: stack.jobStore.metrics?.().readyWaiters ?? null, inFlight: runtime.inFlight }));
+    try {
+      const protectedKeys = await stack.jobStore.protectedPhotoKeys?.();
+      const photos = await stack.objectStore.cleanupExpired(Date.now(), protectedKeys);
+      const jobs = await stack.jobStore.cleanupExpiredJobs();
+      await stack.aiSlots.sweep();
+      if (photos?.removed || jobs?.removed) {
+        console.log(JSON.stringify({ event: 'storage_cleanup', photosRemoved: photos?.removed ?? null, jobsRemoved: jobs?.removed ?? null }));
+      }
+    } catch (error) {
+      console.error(JSON.stringify({ event: 'storage_cleanup_failed', code: error.code ?? 'cleanup_failed' }));
+    } finally { maintaining = false; }
   }, 60_000).unref();
 
   console.log(JSON.stringify({
@@ -67,3 +79,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     process.exit(1);
   });
 }
+

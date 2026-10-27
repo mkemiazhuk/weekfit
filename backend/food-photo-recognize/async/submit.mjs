@@ -156,6 +156,9 @@ export function createSubmitHandler({
         if (error.code === 'daily_scan_limit') {
           throw new ServiceError('daily_scan_limit', 429, { retryAfterSeconds: 3600 });
         }
+        if (error.code === 'quota_store_busy') {
+          throw new ServiceError('quota_store_busy', 503, { retryAfterSeconds: config.retryAfterSeconds });
+        }
         throw error;
       }
       mark('quota');
@@ -419,3 +422,4 @@ export function createStatusHandler({ jobStore, longPollMaxMs = 25_000, pollHint
     return buildStatusPayload(job, depth, pollHintMs);
   };
 }
+

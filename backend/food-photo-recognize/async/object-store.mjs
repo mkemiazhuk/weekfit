@@ -37,7 +37,7 @@ export function createLocalObjectStore({ root, ttlMs = 24 * 60 * 60_000 }) {
     async delete(key) {
       await removeQuiet(abs(key));
     },
-    async cleanupExpired(now = Date.now()) {
+    async cleanupExpired(now = Date.now(), protectedKeys = new Set()) {
       let removed = 0;
       const walk = async (dir) => {
         let entries;
@@ -53,8 +53,14 @@ export function createLocalObjectStore({ root, ttlMs = 24 * 60 * 60_000 }) {
             await walk(full);
             continue;
           }
-          if (!entry.name.endsWith('.jpg')) continue;
-          const st = await stat(full);
+          if (!entry.isFile() || (!entry.name.endsWith('.jpg') && !entry.name.endsWith('.tmp'))) continue;
+          const key = path.relative(photosRoot, full).split(path.sep).join('/');
+          if (protectedKeys.has(key)) continue;
+          const st = await stat(full).catch((error) => {
+            if (error.code === 'ENOENT') return null;
+            throw error;
+          });
+          if (!st) continue;
           if (now - st.mtimeMs > ttlMs) {
             await removeQuiet(full);
             removed += 1;
@@ -101,3 +107,4 @@ export async function tryAcquireCleanupLock(metaDir, ttlMs = 60_000) {
   }
   return true;
 }
+
