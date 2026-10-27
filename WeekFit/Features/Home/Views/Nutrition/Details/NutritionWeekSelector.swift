@@ -6,6 +6,8 @@ struct NutritionWeekSelector: View {
     var accentColor: Color = NutritionDetailsDesign.nutritionAccent
     var onDateSelected: ((Date) -> Void)?
 
+    @Environment(\.weekFitPalette) private var palette
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var visibleWeekOffset = 0
 
     private let calendar = Calendar.current
@@ -27,21 +29,81 @@ struct NutritionWeekSelector: View {
     }
 
     var body: some View {
-        HStack(spacing: 6) {
-            navButton(
-                systemName: "chevron.left",
-                label: WeekFitLocalizedString("planner.week.previous"),
-                enabled: true
-            ) {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                accessibleWeek
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    weekRow(showsNavigation: true)
+                        .fixedSize(horizontal: true, vertical: false)
+                    weekRow(showsNavigation: false)
+                }
+            }
+        }
+        .onAppear { syncVisibleWeek(toInclude: selectedDate) }
+        .onChange(of: selectedDate) { _, newDate in
+            syncVisibleWeek(toInclude: newDate)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityActions {
+            Button(WeekFitLocalizedString("planner.week.previous")) {
                 moveWeek(by: -1)
+            }
+            Button(WeekFitLocalizedString("planner.week.next")) {
+                moveWeek(by: 1)
+            }
+        }
+    }
+
+    private var accessibleWeek: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                navButton(
+                    systemName: "chevron.left",
+                    label: WeekFitLocalizedString("planner.week.previous"),
+                    enabled: true
+                ) {
+                    moveWeek(by: -1)
+                }
+                Spacer(minLength: 8)
+                navButton(
+                    systemName: "chevron.right",
+                    label: WeekFitLocalizedString("planner.week.next"),
+                    enabled: visibleWeekOffset < 0
+                ) {
+                    moveWeek(by: 1)
+                }
+            }
+
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 72), spacing: 6)],
+                spacing: 6
+            ) {
+                ForEach(visibleDays, id: \.self) { date in
+                    dayPill(date, fillsWidth: true)
+                }
+            }
+        }
+    }
+
+    private func weekRow(showsNavigation: Bool) -> some View {
+        HStack(spacing: 6) {
+            if showsNavigation {
+                navButton(
+                    systemName: "chevron.left",
+                    label: WeekFitLocalizedString("planner.week.previous"),
+                    enabled: true
+                ) {
+                    moveWeek(by: -1)
+                }
             }
 
             HStack(spacing: 4) {
                 ForEach(visibleDays, id: \.self) { date in
-                    dayPill(date)
+                    dayPill(date, fillsWidth: !showsNavigation)
                 }
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: showsNavigation ? nil : .infinity)
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 18)
@@ -51,71 +113,61 @@ struct NutritionWeekSelector: View {
                     }
             )
 
-            navButton(
-                systemName: "chevron.right",
-                label: WeekFitLocalizedString("planner.week.next"),
-                enabled: visibleWeekOffset < 0
-            ) {
-                moveWeek(by: 1)
+            if showsNavigation {
+                navButton(
+                    systemName: "chevron.right",
+                    label: WeekFitLocalizedString("planner.week.next"),
+                    enabled: visibleWeekOffset < 0
+                ) {
+                    moveWeek(by: 1)
+                }
             }
         }
-        .onAppear { syncVisibleWeek(toInclude: selectedDate) }
-        .onChange(of: selectedDate) { _, newDate in
-            syncVisibleWeek(toInclude: newDate)
-        }
-        .accessibilityElement(children: .contain)
     }
 
-    private func dayPill(_ date: Date) -> some View {
+    private func dayPill(_ date: Date, fillsWidth: Bool) -> some View {
         let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
         let isToday = calendar.isDate(date, inSameDayAs: today)
 
         return Button {
             select(date)
         } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: 3) {
                 Text(dayLetter(for: date))
-                    .font(NutritionDetailsDesign.Typography.weekDay)
-                    .foregroundStyle(
-                        isSelected
-                            ? WeekFitLightTokens.textSecondary
-                            : WeekFitLightTokens.textQuaternary
-                    )
+                    .nutritionReading(12, weight: .semibold, design: .rounded, relativeTo: .caption)
+                    .foregroundStyle(isSelected ? palette.textPrimary : palette.textTertiary)
+                    .lineLimit(1)
 
-                ZStack(alignment: .top) {
-                    if isSelected {
-                        Circle()
-                            .fill(accentColor)
-                            .frame(width: 3.5, height: 3.5)
-                            .offset(y: -5)
-                            .accessibilityHidden(true)
-                    }
-
-                    Text(date.formatted(.dateTime.day()))
-                        .font(NutritionDetailsDesign.Typography.weekDate)
-                        .monospacedDigit()
-                        .foregroundStyle(WeekFitLightTokens.textPrimary)
-                }
-                .frame(height: 18)
+                Text(date.formatted(.dateTime.day()))
+                    .nutritionReading(14, weight: .bold, design: .rounded, relativeTo: .callout)
+                    .monospacedDigit()
+                    .foregroundStyle(palette.textPrimary)
+                    .lineLimit(1)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 7)
+            .padding(.horizontal, fillsWidth ? 2 : 8)
+            .frame(minWidth: fillsWidth ? 0 : 44, minHeight: 44)
+            .frame(maxWidth: fillsWidth ? .infinity : nil)
             .background {
                 RoundedRectangle(cornerRadius: NutritionDetailsDesign.weekPillCorner, style: .continuous)
-                    .fill(isSelected ? accentColor.opacity(0.14) : NutritionDetailsDesign.cardSurface)
-                    .shadow(
-                        color: Color.black.opacity(isSelected ? 0.015 : 0.035),
-                        radius: isSelected ? 1 : 5,
-                        y: isSelected ? 1 : 2
-                    )
+                    .fill(isSelected ? accentColor.opacity(palette.isLight ? 0.16 : 0.18) : palette.cardSurface)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: NutritionDetailsDesign.weekPillCorner, style: .continuous)
                     .strokeBorder(
-                        isSelected ? accentColor.opacity(0.55) : Color.black.opacity(0.045),
+                        isSelected ? accentColor.opacity(0.55) : palette.cardBorder,
                         lineWidth: isSelected ? 1 : 0.7
                     )
             }
+            .overlay(alignment: .bottom) {
+                if isToday && !isSelected {
+                    Circle()
+                        .fill(accentColor)
+                        .frame(width: 4, height: 4)
+                        .padding(.bottom, 5)
+                        .accessibilityHidden(true)
+                }
+            }
+            .clipped()
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityDateLabel(date))
@@ -130,28 +182,23 @@ struct NutritionWeekSelector: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(
-                    enabled
-                        ? WeekFitLightTokens.iconSecondary
-                        : WeekFitLightTokens.textDisabled
-                )
-                .frame(width: 26, height: 42)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(enabled ? palette.iconSecondary : palette.textDisabled)
+                .frame(width: 44, height: 44)
                 .background {
                     Circle()
-                        .fill(NutritionDetailsDesign.cardSurface)
-                        .shadow(color: Color.black.opacity(0.03), radius: 4, y: 1)
+                        .fill(palette.cardSurface)
                 }
                 .overlay {
                     Circle()
-                        .strokeBorder(Color.black.opacity(0.045), lineWidth: 0.7)
+                        .strokeBorder(palette.cardBorder, lineWidth: 0.7)
                 }
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
         .accessibilityLabel(label)
-        .frame(minWidth: 40, minHeight: 40)
+        .frame(minWidth: 44, minHeight: 44)
     }
 
     private func select(_ date: Date) {

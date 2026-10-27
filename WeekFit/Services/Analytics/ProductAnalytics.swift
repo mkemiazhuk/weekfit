@@ -446,7 +446,7 @@ enum ProductAnalytics {
         case "run", "running": return .running
         case "ride", "cycling", "bike": return .cycling
         case "swim", "swimming": return .swimming
-        case "tennis", "squash", "racket", "badminton", "pickleball": return .racket
+        case "tennis", "padel", "squash", "racket", "badminton", "pickleball": return .racket
         case "strength", "weights", "gym": return .strength
         case "cardio", "hiit": return .cardio
         case "workout": return .other

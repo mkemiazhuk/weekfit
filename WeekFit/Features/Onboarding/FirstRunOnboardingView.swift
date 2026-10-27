@@ -128,6 +128,7 @@ struct FirstRunOnboardingView: View {
             .opacity(contentVisible ? 1 : 0)
         }
         .interactiveDismissDisabled()
+        .accessibilityIdentifier("screen.onboarding")
         .task {
             OnboardingAnalytics.started()
             OnboardingAnalytics.stepViewed(step.analyticsName)

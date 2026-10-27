@@ -317,7 +317,7 @@ enum CoachPresentationResolver {
             return "figure.pool.swim"
         case .hiit:
             return "figure.highintensity.intervaltraining"
-        case .tennis:
+        case .tennis, .padel:
             return "figure.tennis"
         case .squash:
             return "figure.squash"

@@ -55,6 +55,7 @@ final class WeekFitActivityIconResolverTests: XCTestCase {
             ("workout-lowerbody", "figure.strengthtraining.traditional"),
             ("workout-fullbody", "figure.strengthtraining.functional"),
             ("workout-tennis", "figure.tennis"),
+            ("workout-padel", "figure.tennis"),
             ("workout-squash", "figure.squash"),
             ("recovery-stretch", "figure.cooldown"),
             ("recovery-walk", "figure.walk"),

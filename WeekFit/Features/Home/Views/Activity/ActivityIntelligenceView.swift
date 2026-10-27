@@ -277,37 +277,23 @@ struct ActivityIntelligenceView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                if palette.isLight {
-                    NutritionDetailsHeader(
-                        title: WeekFitLocalizedString("activity.activityDetails"),
-                        subtitle: activityDetailsDateTitle,
-                        onClose: { dismiss() }
-                    )
+                NutritionDetailsHeader(
+                    title: WeekFitLocalizedString("activity.activityDetails"),
+                    subtitle: activityDetailsDateTitle,
+                    background: palette.isLight ? HealthDetailsSoftChrome.canvas : ActivityStyle.screenBackground,
+                    onClose: { dismiss() }
+                )
 
-                    NutritionWeekSelector(
-                        selectedDate: Binding(
-                            get: { viewModel.selectedDate },
-                            set: { select($0) }
-                        ),
-                        accentColor: WeekFitLightTokens.activity
-                    )
-                    .padding(.horizontal, HealthDetailsSoftChrome.horizontalPadding)
-                    .padding(.top, 8)
-                    .padding(.bottom, 2)
-                } else {
-                    header
-
-                    HealthDetailsWeekPicker(
-                        selectedDate: Binding(
-                            get: { viewModel.selectedDate },
-                            set: { select($0) }
-                        ),
-                        accentColor: ActivityStyle.activityColor
-                    )
-                    .padding(.horizontal, 18)
-                    .padding(.top, 9)
-                    .padding(.bottom, 8)
-                }
+                HealthDetailsWeekPicker(
+                    selectedDate: Binding(
+                        get: { viewModel.selectedDate },
+                        set: { select($0) }
+                    ),
+                    accentColor: palette.isLight ? WeekFitLightTokens.activity : ActivityStyle.activityColor
+                )
+                .padding(.horizontal, 18)
+                .padding(.top, 9)
+                .padding(.bottom, 8)
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: palette.isLight ? HealthDetailsSoftChrome.sectionSpacing : 9) {
@@ -389,38 +375,6 @@ struct ActivityIntelligenceView: View {
                 ].joined(separator: "|")
             }
             .joined(separator: ";")
-    }
-
-    private var header: some View {
-        HStack(alignment: .center, spacing: 13) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(WeekFitLocalizedString("activity.activityDetails"))
-                    .font(.system(size: 27, weight: .bold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.primaryText)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.68)
-
-                Text(activityDetailsDateTitle)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.56))
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            WeekFitCloseButton(size: .large) {
-                dismiss()
-            }
-        }
-        .padding(.horizontal, 18)
-        .padding(.top, 8)
-        .padding(.bottom, 11)
-        .background {
-            ActivityStyle.screenBackground.ignoresSafeArea(edges: .top)
-        }
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(WeekFitTheme.whiteOpacity(0.04))
-                .frame(height: 1)
-        }
     }
 
     private var activityDetailsDateTitle: String {
@@ -3592,7 +3546,7 @@ private enum ActivityStyle {
     static var innerCardBackground: Color { WeekFitTheme.cardTertiary }
     static var border: Color { WeekFitTheme.border }
 
-    static var activityColor: Color { WeekFitTheme.accent(Color(red: 0.16, green: 0.80, blue: 0.43)) }
+    static var activityColor: Color { WeekFitProgressRingColor.activity }
     static var green: Color { WeekFitTheme.accent(Color(red: 0.45, green: 0.78, blue: 0.45)) }
     static var teal: Color { WeekFitTheme.accent(Color(red: 0.25, green: 0.78, blue: 0.82)) }
     static var blue: Color { WeekFitTheme.accent(Color(red: 0.30, green: 0.72, blue: 0.95)) }

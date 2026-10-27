@@ -11,7 +11,76 @@ enum CoachStringOverrideResolver {
         if trimmed != english, let exact = table[trimmed], !exact.isEmpty {
             return exact
         }
-        return resolveTemplate(english: english, table: table, cacheKey: cacheKey)
+        if let template = resolveTemplate(english: english, table: table, cacheKey: cacheKey) {
+            return template
+        }
+        // `mergeOpener` joins known sentences with a space; translate pieces when the full
+        // join is missing from the table (e.g. morning recovery + calendar line).
+        return resolvedBySentencePieces(english: trimmed, table: table, cacheKey: cacheKey)
+    }
+
+    /// Translates space-joined coach sentences when each piece exists in the table.
+    static func resolvedBySentencePieces(
+        english: String,
+        table: [String: String],
+        cacheKey: String
+    ) -> String? {
+        let pieces = sentencePieces(english)
+        guard pieces.count >= 2 else { return nil }
+        var translated: [String] = []
+        translated.reserveCapacity(pieces.count)
+        for piece in pieces {
+            if let exact = table[piece], !exact.isEmpty {
+                translated.append(exact)
+                continue
+            }
+            if let template = resolveTemplate(english: piece, table: table, cacheKey: cacheKey),
+               !template.isEmpty {
+                translated.append(template)
+                continue
+            }
+            return nil
+        }
+        return translated.joined(separator: " ")
+    }
+
+    /// Splits on `.!?` sentence ends while keeping decimal points like `20.5` intact.
+    static func sentencePieces(_ text: String) -> [String] {
+        let terminators = CharacterSet(charactersIn: ".!?")
+        var pieces: [String] = []
+        var current = ""
+        let chars = Array(text)
+        var i = 0
+        while i < chars.count {
+            let ch = chars[i]
+            if let scalar = ch.unicodeScalars.first, terminators.contains(scalar) {
+                let prevIsDigit = i > 0 && chars[i - 1].isNumber
+                let nextIsDigit = i + 1 < chars.count && chars[i + 1].isNumber
+                if ch == "." && prevIsDigit && nextIsDigit {
+                    current.append(ch)
+                    i += 1
+                    continue
+                }
+                current.append(ch)
+                let trimmed = current.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty {
+                    pieces.append(trimmed)
+                }
+                current = ""
+                i += 1
+                while i < chars.count && chars[i].isWhitespace {
+                    i += 1
+                }
+                continue
+            }
+            current.append(ch)
+            i += 1
+        }
+        let trailing = current.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trailing.isEmpty {
+            pieces.append(trailing)
+        }
+        return pieces
     }
 
     private struct TemplateRule {

@@ -55,7 +55,11 @@ final class CoachEveningSummaryStore {
 
     // MARK: Lasting cache (manual / display)
 
+    /// Test seam so repeated restores can be counted without a second disk implementation.
+    var onLoadCache: (() -> Void)?
+
     func loadCache(owner: String) throws -> LastingCache? {
+        onLoadCache?()
         let url = cacheFile(owner: owner)
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }
         return try JSONDecoder().decode(LastingCache.self, from: Data(contentsOf: url))

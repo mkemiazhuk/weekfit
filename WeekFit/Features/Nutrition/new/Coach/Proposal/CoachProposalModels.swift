@@ -91,7 +91,10 @@ enum ProposalSleepPresenceToken: String, Codable, Sendable, Equatable {
 /// Library meal snapshot used by the morning composer (no HealthKit fields).
 struct ProposalMealCandidate: Sendable, Equatable, Identifiable {
     let id: String
+    /// Localized display title for the active UI language.
     let title: String
+    /// Stable English (or originally stored) title for matching historical templates.
+    let storedTitle: String
     let imageName: String
     let calories: Int
     let protein: Int
@@ -119,13 +122,31 @@ enum ProposalMealSlot: String, CaseIterable, Sendable {
         return from(totalMinutes: parsed.hour * 60 + parsed.minute)
     }
 
-    static func from(totalMinutes: Int) -> ProposalMealSlot {
-        switch totalMinutes {
-        case 6 * 60...(10 * 60 + 30):
+    static func from(reasonCode: CoachProposalReasonCode) -> ProposalMealSlot? {
+        switch reasonCode {
+        case .libraryMealRecoveryBreakfast, .libraryMealSteadyBreakfast:
             return .breakfast
-        case 11 * 60...(14 * 60 + 30):
+        case .libraryMealRecoveryLunch, .libraryMealSteadyLunch:
             return .lunch
-        case 15 * 60...(17 * 60 + 30):
+        case .libraryMealRecoveryDinner, .libraryMealSteadyDinner:
+            return .dinner
+        case .libraryMealSupport:
+            return .snack
+        default:
+            return nil
+        }
+    }
+
+    static func from(totalMinutes: Int) -> ProposalMealSlot {
+        // Contiguous windows — no gaps that silently fall through to dinner
+        // (previously 10:31–10:59 labeled breakfast toast as "kolacja").
+        let minutes = ((totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60)
+        switch minutes {
+        case 5 * 60 ..< 11 * 60:
+            return .breakfast
+        case 11 * 60 ..< 15 * 60:
+            return .lunch
+        case 15 * 60 ..< 18 * 60:
             return .snack
         default:
             return .dinner
@@ -283,6 +304,8 @@ struct ProposalInputFingerprint: Codable, Sendable, Equatable {
 
     /// Plan / physiology / meal / day inputs that should stale an open draft.
     /// Excludes behavioralGeneration so mid-review toggles cannot orphan Apply.
+    /// Sleep arriving after a no-sleep draft IS material — overnight data should rebuild
+    /// the card once (gate waits up to `sleepWaitTimeout` so this is uncommon).
     func planStaleDifference(from other: ProposalInputFingerprint) -> Bool {
         dayKey != other.dayKey
             || planSignature != other.planSignature

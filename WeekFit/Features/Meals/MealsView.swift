@@ -135,9 +135,9 @@ struct MealsView: View {
         let query = librarySearchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return items }
         return items.filter { meal in
+            // localizedShortTitle is derived from localizedDisplayTitle — don't compute twice.
             meal.localizedDisplayTitle.localizedCaseInsensitiveContains(query)
                 || meal.title.localizedCaseInsensitiveContains(query)
-                || meal.localizedShortTitle.localizedCaseInsensitiveContains(query)
         }
     }
 
@@ -1180,7 +1180,7 @@ struct MealsView: View {
             HStack(spacing: 10) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color(red: 0.16, green: 0.80, blue: 0.43))
+                    .foregroundStyle(WeekFitSemanticMetricTokens.activity)
                     .accessibilityHidden(true)
 
                 Text(loggedMealToast)
@@ -2460,9 +2460,9 @@ private struct MealLibraryExpandSheet: View {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return items }
         return items.filter { meal in
+            // localizedShortTitle is derived from localizedDisplayTitle — don't compute twice.
             meal.localizedDisplayTitle.localizedCaseInsensitiveContains(query)
                 || meal.title.localizedCaseInsensitiveContains(query)
-                || meal.localizedShortTitle.localizedCaseInsensitiveContains(query)
                 || meal.localizedDisplaySubtitle.localizedCaseInsensitiveContains(query)
         }
     }

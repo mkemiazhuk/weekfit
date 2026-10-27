@@ -256,9 +256,8 @@ enum PlanAgendaCompletionControl: Equatable {
 struct PlanAgendaSectionSurface: ViewModifier {
     @Environment(\.weekFitPalette) private var palette
     var compact: Bool = false
-    var emphasizesGold: Bool = false
-    /// Day-type tint for the summary card. Wins over the gold wash.
-    var accent: Color? = nil
+    /// Day-type chrome for the summary card (flat light fills; soft dark wash).
+    var dayKind: PlanDayKind? = nil
 
     func body(content: Content) -> some View {
         content
@@ -267,6 +266,18 @@ struct PlanAgendaSectionSurface: ViewModifier {
             .background {
                 RoundedRectangle(cornerRadius: PlanAgendaLayout.sectionCornerRadius, style: .continuous)
                     .fill(sectionFill)
+                    .overlay {
+                        if let dayKind, !palette.isLight {
+                            RoundedRectangle(
+                                cornerRadius: PlanAgendaLayout.sectionCornerRadius,
+                                style: .continuous
+                            )
+                            .fill(WeekFitPlanChromeTokens.daySummaryAccentOverlay(
+                                kind: dayKind,
+                                isLight: false
+                            ))
+                        }
+                    }
             }
             .overlay {
                 RoundedRectangle(cornerRadius: PlanAgendaLayout.sectionCornerRadius, style: .continuous)
@@ -279,69 +290,18 @@ struct PlanAgendaSectionSurface: ViewModifier {
             )
     }
 
-    private var sectionFill: some ShapeStyle {
-        if let accent {
-            if palette.isLight {
-                return AnyShapeStyle(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.99),
-                            accent.opacity(0.34)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-            }
-            return AnyShapeStyle(
-                LinearGradient(
-                    colors: [
-                        WeekFitTheme.cardBackground,
-                        accent.opacity(0.28)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+    private var sectionFill: Color {
+        if let dayKind {
+            return WeekFitPlanChromeTokens.daySummaryFill(kind: dayKind, isLight: palette.isLight)
         }
-
-        if emphasizesGold {
-            if palette.isLight {
-                return AnyShapeStyle(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.99),
-                            WeekFitLightTokens.brandGoldSoft.opacity(0.55)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-            }
-            return AnyShapeStyle(
-                LinearGradient(
-                    colors: [
-                        WeekFitTheme.cardBackground,
-                        WeekFitTheme.brandGold.opacity(0.08)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-        }
-
-        if palette.isLight {
-            return AnyShapeStyle(Color.white.opacity(0.97))
-        }
-        return AnyShapeStyle(WeekFitTheme.cardBackground)
+        return palette.isLight
+            ? Color.white.opacity(0.97)
+            : WeekFitTheme.cardBackground
     }
 
     private var sectionStroke: Color {
-        if let accent {
-            return accent.opacity(palette.isLight ? 0.28 : 0.36)
-        }
-        if emphasizesGold {
-            return WeekFitTheme.brandGold.opacity(palette.isLight ? 0.12 : 0.14)
+        if let dayKind {
+            return WeekFitPlanChromeTokens.daySummaryStroke(kind: dayKind, isLight: palette.isLight)
         }
         return palette.isLight
             ? Color.black.opacity(0.05)
@@ -352,13 +312,11 @@ struct PlanAgendaSectionSurface: ViewModifier {
 extension View {
     func planAgendaSectionSurface(
         compact: Bool = false,
-        emphasizesGold: Bool = false,
-        accent: Color? = nil
+        dayKind: PlanDayKind? = nil
     ) -> some View {
         modifier(PlanAgendaSectionSurface(
             compact: compact,
-            emphasizesGold: emphasizesGold,
-            accent: accent
+            dayKind: dayKind
         ))
     }
 }
@@ -376,11 +334,6 @@ struct PlanAgendaDaySummaryCard: View {
 
     private var character: PlanAgendaDayCharacter {
         PlanAgendaDayCharacter.character(for: kind)
-    }
-
-    /// Open days stay neutral. Training days use the same color as the calendar mark.
-    private var dayAccent: Color? {
-        kind == .open ? nil : kind.color
     }
 
     private var recommendation: String? {
@@ -443,24 +396,16 @@ struct PlanAgendaDaySummaryCard: View {
                 }
             }
         }
-        .planAgendaSectionSurface(accent: dayAccent)
+        .planAgendaSectionSurface(dayKind: kind)
         .accessibilityElement(children: .combine)
     }
 
     private var iconFill: Color {
-        if let dayAccent {
-            return dayAccent.opacity(palette.isLight ? 0.18 : 0.24)
-        }
-        return palette.isLight
-            ? Color.black.opacity(0.05)
-            : WeekFitTheme.whiteOpacity(0.08)
+        WeekFitPlanChromeTokens.daySummaryIconWell(kind: kind, isLight: palette.isLight)
     }
 
     private var iconForeground: Color {
-        if let dayAccent {
-            return dayAccent.opacity(palette.isLight ? 0.95 : 0.92)
-        }
-        return palette.textSecondary
+        WeekFitPlanChromeTokens.daySummaryIcon(kind: kind, isLight: palette.isLight)
     }
 
     private var characterTitleRow: some View {
@@ -487,7 +432,7 @@ struct PlanAgendaAllDoneLine: View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(WeekFitTheme.brandGold)
+                .foregroundStyle(WeekFitPlanChromeTokens.completed(isLight: palette.isLight))
                 .accessibilityHidden(true)
 
             Text(WeekFitLocalizedString("planner.agenda.allDoneMessage"))

@@ -88,36 +88,7 @@ enum CoachEveningSummaryService {
             request.setValue("1", forHTTPHeaderField: "X-WeekFit-Coach-Summary-Unrestricted")
         }
         #endif
-        // Enrich only inside the shared flight: Root and Coach cannot each query/generate.
-        // Skip weekly HK history only when Health is unavailable (`sleep.unavailable`).
-        // `sleep.duration.unknown` must NOT block recentActivity / vitals / baseline enrichment.
-        if AccountSessionController.shared.mode != .reviewDemo,
-           input.facts["sleep"]?.contains(where: { $0.id == "sleep.unavailable" }) == false,
-           let context = await weeklyFacts(for: input) {
-            var facts = input.facts
-            facts.merge(context) { _, new in new }
-            let store = CoachEveningSummaryStore()
-            let priorRecaps = (try? store.loadRecentRecaps(owner: owner, beforeDay: input.day, limit: 5)) ?? []
-            if !priorRecaps.isEmpty {
-                facts["recentRecaps"] = priorRecaps
-            } else if let cache = try? store.loadCache(owner: owner),
-                      cache.summary.day < input.day {
-                facts["recentRecaps"] = [.init(id: "history.previousRecap",
-                    text: String(("Previous recap on " + cache.summary.day + ": "
-                        + cache.summary.today.text + " " + cache.summary.tomorrow.text).prefix(500)))]
-            }
-            input = CoachEveningSummaryInput(schemaVersion: input.schemaVersion, day: input.day,
-                timezone: input.timezone, locale: input.locale, phase: input.phase, facts: facts)
-        } else {
-            CoachEveningSummaryDiagnostics.event(
-                "weeklyFacts.skipped",
-                detail: CoachEveningSummaryDiagnostics.flightDetail(
-                    owner: owner, day: input.day, source: "http",
-                    requestId: clientRequestId,
-                    extra: "reason=unavailableOrReviewDemo"
-                )
-            )
-        }
+        input = await applyingWeeklyContext(to: input, owner: owner, requestId: clientRequestId)
         try Task.checkCancellation()
         guard WorkspaceOwnerStore.currentIdentityToken() == owner else { throw CancellationError() }
         let body = try JSONEncoder().encode(input)
@@ -270,6 +241,80 @@ enum CoachEveningSummaryService {
         )
         return CoachEveningSummaryGenerationResult(summary: summary, requestId: requestId, validationInput: input)
     }
+
+    /// Same weekly enrichment `generate` attaches before encoding the HTTP body.
+    static func applyingWeeklyContext(
+        to input: CoachEveningSummaryInput,
+        owner: String,
+        requestId: String
+    ) async -> CoachEveningSummaryInput {
+        // Skip weekly HK history only when Health is unavailable (`sleep.unavailable`).
+        // `sleep.duration.unknown` must NOT block recentActivity / vitals / baseline enrichment.
+        guard AccountSessionController.shared.mode != .reviewDemo,
+              input.facts["sleep"]?.contains(where: { $0.id == "sleep.unavailable" }) == false,
+              let context = await weeklyFacts(for: input) else {
+            CoachEveningSummaryDiagnostics.event(
+                "weeklyFacts.skipped",
+                detail: CoachEveningSummaryDiagnostics.flightDetail(
+                    owner: owner, day: input.day, source: "http",
+                    requestId: requestId,
+                    extra: "reason=unavailableOrReviewDemo"
+                )
+            )
+            return input
+        }
+        var facts = input.facts
+        facts.merge(context) { _, new in new }
+        let store = CoachEveningSummaryStore()
+        let priorRecaps = (try? store.loadRecentRecaps(owner: owner, beforeDay: input.day, limit: 5)) ?? []
+        if !priorRecaps.isEmpty {
+            facts["recentRecaps"] = priorRecaps
+        } else if let cache = try? store.loadCache(owner: owner),
+                  cache.summary.day < input.day {
+            facts["recentRecaps"] = [.init(id: "history.previousRecap",
+                text: String(("Previous recap on " + cache.summary.day + ": "
+                    + cache.summary.today.text + " " + cache.summary.tomorrow.text).prefix(500)))]
+        }
+        return CoachEveningSummaryInput(
+            schemaVersion: input.schemaVersion,
+            day: input.day,
+            timezone: input.timezone,
+            locale: input.locale,
+            phase: input.phase,
+            facts: facts
+        )
+    }
+
+    #if DEBUG
+    static let exportSnapshotArgument = "-WeekFitCoachExportSnapshot"
+
+    static var shouldExportSnapshotInsteadOfNetwork: Bool {
+        ProcessInfo.processInfo.arguments.contains(exportSnapshotArgument)
+    }
+
+    /// Writes the exact request body and does not call the cloud.
+    @discardableResult
+    static func exportPreparedSnapshot(_ input: CoachEveningSummaryInput, owner: String) async -> URL? {
+        let prepared = await applyingWeeklyContext(to: input, owner: owner, requestId: "diagnostic-export")
+        do {
+            let data = try JSONEncoder().encode(prepared)
+            let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("weekfit-coach-diagnostic-snapshot.json")
+            try data.write(to: url, options: .atomic)
+            CoachEveningSummaryDiagnostics.event(
+                "diagnostic.export",
+                detail: "day=\(prepared.day) locale=\(prepared.locale) bytes=\(data.count)"
+            )
+            return url
+        } catch {
+            CoachEveningSummaryDiagnostics.error(
+                "diagnostic.export",
+                detail: "error=\(String(describing: type(of: error)))"
+            )
+            return nil
+        }
+    }
+    #endif
 
     /// Reads a saved attempt. This is a GET and does not reserve or generate.
     static func read(_ input: CoachEveningSummaryInput, owner: String) async -> CoachEveningSummaryServerRead {

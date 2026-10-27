@@ -620,7 +620,7 @@ private extension PlanAddActivitySheet {
         .accessibilityLabel(
             String(
                 format: WeekFitLocalizedString("planner.add.nutritionA11yFormat"),
-                meal.title,
+                meal.localizedDisplayTitle,
                 meal.protein,
                 meal.carbs,
                 meal.fats,
@@ -1167,7 +1167,7 @@ private extension PlanAddActivitySheet {
         } label: {
             planSelectionCard(
                 active: active,
-                title: meal.title,
+                title: meal.localizedDisplayTitle,
                 subtitle: "\(meal.calories) \(WeekFitLocalizedString("common.unit.kcal"))",
                 width: libraryCardWidth,
                 thumbSize: thumb,
@@ -2135,7 +2135,7 @@ private extension PlanAddActivitySheet {
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(meal.title)
+                Text(meal.localizedDisplayTitle)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(textPrimary)
                     .lineLimit(1)

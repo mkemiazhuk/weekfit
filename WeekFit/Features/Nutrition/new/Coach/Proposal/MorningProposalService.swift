@@ -74,7 +74,8 @@ enum MorningProposalService {
             yesterdayContextLoaded: true,
             isMorningWindow: context.isMorningWindow,
             hasCompletedPlannedItemToday: context.hasCompletedPlannedItemToday,
-            existingStatus: existing?.status
+            existingStatus: existing?.status,
+            gatheringStartedAt: existing?.status == .gatheringData ? existing?.generatedAt : nil
         )
 
         switch MorningProposalGate.decide(input: gateInput) {

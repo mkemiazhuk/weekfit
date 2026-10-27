@@ -97,6 +97,66 @@ enum CoachEveningSummaryPolicy {
         return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
     }
 
+    /// How a stored summary day relates to the user's local day.
+    /// Compares `YYYY-MM-DD` keys from `calendar`, never the UTC day of `generatedAt`.
+    enum SummaryDayRelation: Equatable {
+        case current
+        case yesterday
+        case earlier(Date)
+    }
+
+    static func summaryDayRelation(
+        summaryDay: String,
+        now: Date,
+        calendar: Calendar = .current
+    ) -> SummaryDayRelation {
+        let today = dayKey(now, calendar: calendar)
+        if summaryDay == today { return .current }
+        let start = calendar.startOfDay(for: now)
+        if let previous = calendar.date(byAdding: .day, value: -1, to: start),
+           dayKey(previous, calendar: calendar) == summaryDay {
+            return .yesterday
+        }
+        return .earlier(date(fromDayKey: summaryDay, calendar: calendar) ?? start)
+    }
+
+    /// Caption for a summary that is not the user's current local day. `nil` means show it as today.
+    static func summaryDayCaption(
+        summaryDay: String?,
+        now: Date,
+        calendar: Calendar = .current
+    ) -> String? {
+        guard let summaryDay else { return nil }
+        switch summaryDayRelation(summaryDay: summaryDay, now: now, calendar: calendar) {
+        case .current:
+            return nil
+        case .yesterday:
+            return WeekFitLocalizedString("coach.eveningRecap.summaryDay.yesterday")
+        case .earlier(let date):
+            let formatter = DateFormatter()
+            formatter.locale = WeekFitCurrentLocale()
+            formatter.calendar = calendar
+            formatter.timeZone = calendar.timeZone
+            formatter.setLocalizedDateFormatFromTemplate("d MMM")
+            return formatter.string(from: date)
+        }
+    }
+
+    static func date(fromDayKey key: String, calendar: Calendar) -> Date? {
+        let parts = key.split(separator: "-")
+        guard parts.count == 3,
+              let year = Int(parts[0]),
+              let month = Int(parts[1]),
+              let day = Int(parts[2]) else { return nil }
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.day = day
+        components.calendar = calendar
+        components.timeZone = calendar.timeZone
+        return calendar.date(from: components)
+    }
+
     static func isEvening(_ date: Date, calendar: Calendar = .current) -> Bool {
         calendar.component(.hour, from: date) >= 20
     }

@@ -43,6 +43,13 @@ final class SubscriptionManager: ObservableObject {
     private let purchaseTimeout: Duration
     /// Bumped on every Continue tap so a hung Sandbox `purchase()` can be abandoned by retry.
     private var purchaseGeneration: UInt64 = 0
+    /// One entitlement refresh at a time. Overlapping start/foreground calls share it.
+    private var refreshTask: Task<Void, Never>?
+    /// A purchase, restore, transaction, or storefront change that arrived mid-refresh.
+    private var pendingRefreshSource: String?
+    /// When the last start/foreground refresh finished. Immediate foreground repeats are skipped.
+    private var lastAutomaticRefreshAt: Date?
+    private let redundantForegroundWindow: TimeInterval = 3
 
     var hasResolved: Bool { accessState != .loading }
 
@@ -184,6 +191,8 @@ final class SubscriptionManager: ObservableObject {
         guard hasStarted else { return }
         if invalidateProducts {
             store.invalidateCachedProducts()
+            await refresh(source: "foreground.invalidateProducts")
+            return
         }
         await refresh(source: "foreground")
     }
@@ -651,6 +660,50 @@ final class SubscriptionManager: ObservableObject {
     }
 
     func refresh(source: String) async {
+        if shouldSkipRedundantForeground(source) { return }
+        if let current = refreshTask {
+            if Self.isMeaningfulRefresh(source) {
+                pendingRefreshSource = source
+            }
+            await current.value
+            return
+        }
+
+        let task = Task { @MainActor in
+            var active: String? = source
+            while let source = active {
+                await self.performRefreshBody(source: source)
+                if source == "start" || source == "foreground" {
+                    self.lastAutomaticRefreshAt = Date()
+                }
+                active = self.pendingRefreshSource
+                self.pendingRefreshSource = nil
+            }
+        }
+        refreshTask = task
+        await task.value
+        if refreshTask == task {
+            refreshTask = nil
+        }
+    }
+
+    private func shouldSkipRedundantForeground(_ source: String) -> Bool {
+        guard source == "foreground" else { return false }
+        guard let lastAutomaticRefreshAt else { return false }
+        return Date().timeIntervalSince(lastAutomaticRefreshAt) < redundantForegroundWindow
+    }
+
+    /// Events that must not be dropped when they arrive during another refresh.
+    private static func isMeaningfulRefresh(_ source: String) -> Bool {
+        switch source {
+        case "start", "start.reentry", "foreground", "refresh":
+            return false
+        default:
+            return true
+        }
+    }
+
+    private func performRefreshBody(source: String) async {
         let bypass = currentBypass()
         #if DEBUG
         // UI-test force new/legacy still require `-ui-testing`.

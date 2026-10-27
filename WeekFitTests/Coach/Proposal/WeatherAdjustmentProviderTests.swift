@@ -101,6 +101,7 @@ final class WeatherAdjustmentProviderTests: XCTestCase {
                 ProposalMealCandidate(
                     id: "m1",
                     title: "Fuel",
+                    storedTitle: "Fuel",
                     imageName: "plate-dark",
                     calories: 400,
                     protein: 20,

@@ -594,6 +594,7 @@ final class MorningAdjustmentsMovementPhaseATests: XCTestCase {
         ProposalMealCandidate(
             id: id,
             title: title,
+            storedTitle: title,
             imageName: "",
             calories: 400,
             protein: 25,

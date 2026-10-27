@@ -51,42 +51,60 @@ struct WeekFitBottomBar: View {
     @Namespace private var selectionNamespace
     @Environment(\.weekFitPalette) private var palette
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// Floating icon bar. Titles stay available to VoiceOver.
     private let barHeight: CGFloat = 52
-    private let itemHeight: CGFloat = 42
+    private let itemHeight: CGFloat = 44
+    private let tabSpacing: CGFloat = 0
+    private let barHorizontalPadding: CGFloat = 6
+    private let activePillHeight: CGFloat = 40
+    private let activePillHorizontalInset: CGFloat = 4
+    private let iconPointSize: CGFloat = 20
+    private let iconFrameHeight: CGFloat = 22
 
     private var barWidth: CGFloat {
-        min(UIScreen.main.bounds.width - 20, 370)
+        UIScreen.main.bounds.width - 44
     }
 
     private var itemWidth: CGFloat {
-        (barWidth - 10) / CGFloat(WeekFitTab.allCases.count)
+        let inner = barWidth - barHorizontalPadding * 2
+        let gaps = CGFloat(max(WeekFitTab.allCases.count - 1, 0)) * tabSpacing
+        return (inner - gaps) / CGFloat(WeekFitTab.allCases.count)
     }
 
     private var activePillWidth: CGFloat {
-        min(66, itemWidth - 6)
+        max(56, itemWidth - activePillHorizontalInset * 2)
     }
 
     private var activeColor: Color {
-        palette.isLight ? WeekFitLightTokens.tabActiveForeground : palette.textPrimary.opacity(0.94)
+        WeekFitTabBarTokens.activeForeground(isLight: palette.isLight)
     }
 
     private var inactiveColor: Color {
-        if palette.isLight {
-            return WeekFitLightTokens.tabInactive
+        let base = WeekFitTabBarTokens.inactiveForeground(isLight: palette.isLight)
+        if !palette.isLight, colorSchemeContrast == .increased {
+            return base.opacity(0.92)
         }
-        let opacity: CGFloat = colorSchemeContrast == .increased ? 0.82 : 0.70
-        return palette.textSecondary.opacity(opacity)
+        return base
+    }
+
+    private var activePillFill: Color {
+        WeekFitTabBarTokens.activeFill(isLight: palette.isLight)
+    }
+
+    private var tabSelectionAnimation: Animation? {
+        reduceMotion ? nil : .easeInOut(duration: 0.28)
     }
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: tabSpacing) {
             ForEach(WeekFitTab.allCases, id: \.self) { tab in
                 tabItem(tab)
             }
         }
+        .padding(.horizontal, barHorizontalPadding)
         .frame(width: barWidth, height: barHeight)
-        .padding(.horizontal, 5)
         .background {
             barChrome
         }
@@ -98,60 +116,67 @@ struct WeekFitBottomBar: View {
     @ViewBuilder
     private var barChrome: some View {
         if palette.isLight {
-            // Frosted glass — regularMaterial + near-opaque ivory so scrolling cards
-            // blur out under the bar the way dark’s solid chrome hides them.
+            // Premium frosted island — bright milk glass, hairline rim, layered lift.
             Capsule(style: .continuous)
-                .fill(.regularMaterial)
+                .fill(.ultraThinMaterial)
                 .background {
                     Capsule(style: .continuous)
-                        .fill(WeekFitLightTokens.backgroundPrimary.opacity(0.88))
+                        .fill(Color.white.opacity(0.82))
                 }
                 .overlay {
                     Capsule(style: .continuous)
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.78),
-                                    Color.white.opacity(0.28)
+                                    Color.white.opacity(0.92),
+                                    Color.white.opacity(0.35),
+                                    Color.white.opacity(0.12)
                                 ],
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
                         )
                         .blendMode(.softLight)
-                        .opacity(0.72)
                 }
                 .overlay {
                     Capsule(style: .continuous)
                         .strokeBorder(
-                            WeekFitLightTokens.cardBorder.opacity(0.10),
-                            lineWidth: 0.75
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.95),
+                                    WeekFitLightTokens.cardBorder.opacity(0.14)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                            lineWidth: 0.85
                         )
                 }
-                .shadow(color: Color.black.opacity(0.05), radius: 3, y: 1)
-                .shadow(color: Color.black.opacity(0.10), radius: 16, y: 8)
+                .shadow(color: Color.black.opacity(0.04), radius: 1, y: 0.5)
+                .shadow(color: Color.black.opacity(0.06), radius: 8, y: 4)
+                .shadow(color: Color.black.opacity(0.04), radius: 18, y: 10)
         } else {
+            // Quiet OLED island — sits in the night canvas, not a bright chrome slab.
             Capsule(style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.12, green: 0.14, blue: 0.20),
-                            Color(red: 0.08, green: 0.10, blue: 0.15)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .fill(Color(red: 0.09, green: 0.09, blue: 0.11).opacity(0.92))
                 .overlay {
                     Capsule(style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.07), lineWidth: 1)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.05),
+                                    Color.clear
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
                 }
-                .shadow(
-                    color: Color.black.opacity(0.34),
-                    radius: 18,
-                    x: 0,
-                    y: 10
-                )
+                .overlay {
+                    Capsule(style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.06), lineWidth: 0.6)
+                }
+                .shadow(color: Color.black.opacity(0.28), radius: 10, y: 5)
         }
     }
 
@@ -169,59 +194,14 @@ struct WeekFitBottomBar: View {
                             id: "selectedTabBackground",
                             in: selectionNamespace
                         )
-                        .overlay {
-                            Capsule(style: .continuous)
-                                .stroke(activePillStroke, lineWidth: 1)
-                        }
-                        .shadow(
-                            color: palette.isLight
-                                ? WeekFitLightTokens.tabGoldAccent.opacity(0.12)
-                                : WeekFitTheme.whiteOpacity(0.030),
-                            radius: 6,
-                            x: 0,
-                            y: palette.isLight ? 2 : -1
-                        )
-                        .shadow(
-                            color: palette.isLight
-                                ? Color.black.opacity(0.06)
-                                : Color.black.opacity(0.12),
-                            radius: 6,
-                            x: 0,
-                            y: 4
-                        )
-                        .frame(width: activePillWidth, height: 40)
+                        .frame(width: activePillWidth, height: activePillHeight)
                 }
 
-                VStack(spacing: 3) {
-                    Image(systemName: tab.icon)
-                        .font(
-                            .system(
-                                size: active ? 17 : 16,
-                                weight: active ? .semibold : .medium
-                            )
-                        )
-                        .symbolRenderingMode(.monochrome)
-                        .foregroundStyle(active ? activeColor : inactiveColor)
-                        .frame(height: 19)
-                        .scaleEffect(active ? 1.03 : 1.0)
-
-                    Text(tab.title)
-                        .font(
-                            .system(
-                                size: 11.2,
-                                weight: active ? .semibold : .medium
-                            )
-                        )
-                        .tracking(active ? 0.08 : 0)
-                        .foregroundStyle(active ? activeColor : inactiveColor)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.82)
-                }
-                .frame(width: itemWidth, height: itemHeight)
-                .animation(
-                    .spring(response: 0.32, dampingFraction: 0.86),
-                    value: active
-                )
+                Image(systemName: tab.icon)
+                    .font(.system(size: iconPointSize, weight: active ? .semibold : .medium))
+                    .symbolRenderingMode(.monochrome)
+                    .foregroundStyle(active ? activeColor : inactiveColor)
+                    .frame(width: iconFrameHeight, height: iconFrameHeight)
             }
             .frame(width: itemWidth, height: itemHeight)
             .contentShape(Rectangle())
@@ -230,33 +210,6 @@ struct WeekFitBottomBar: View {
         .accessibilityIdentifier("tab.\(tabAccessibilityName(tab))")
         .accessibilityLabel(Text(tab.title))
         .accessibilityAddTraits(active ? [.isSelected] : [])
-    }
-
-    private var activePillFill: LinearGradient {
-        if palette.isLight {
-            return LinearGradient(
-                colors: [
-                    WeekFitLightTokens.tabActiveCapsule,
-                    WeekFitLightTokens.tabActiveCapsule.opacity(0.85)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-        return LinearGradient(
-            colors: [
-                WeekFitTheme.whiteOpacity(0.100),
-                WeekFitTheme.whiteOpacity(0.045)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    private var activePillStroke: Color {
-        palette.isLight
-            ? WeekFitLightTokens.tabGoldAccent.opacity(0.28)
-            : WeekFitTheme.whiteOpacity(0.065)
     }
 
     private func tabAccessibilityName(_ tab: WeekFitTab) -> String {
@@ -277,20 +230,12 @@ struct WeekFitBottomBar: View {
 
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
-        if tab == .coach {
-            selectedTab = tab
-            return
-        }
-
-        withAnimation(
-            .spring(
-                response: 0.36,
-                dampingFraction: 0.82,
-                blendDuration: 0.08
-            )
-        ) {
+        if let animation = tabSelectionAnimation {
+            withAnimation(animation) {
+                selectedTab = tab
+            }
+        } else {
             selectedTab = tab
         }
-
     }
 }

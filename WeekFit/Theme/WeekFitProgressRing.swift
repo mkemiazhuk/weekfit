@@ -1,28 +1,50 @@
 import SwiftUI
 
-/// Progress ring accents — punchy on OLED; approved soft daylight metrics in Light.
+/// Progress ring accents — same semantic hues in Light and Dark.
 enum WeekFitProgressRingColor {
-    private static let activityDark = Color(red: 0.40, green: 0.94, blue: 0.44)
-    /// Soft amber — full-chroma `#FF941F` vibrates on OLED black; keep readable, not neon.
-    private static let nutritionDark = Color(red: 0.84, green: 0.58, blue: 0.34)
-    private static let recoveryDark = Color(red: 0.18, green: 0.86, blue: 0.98)
-
-    /// Move / activity.
+    /// Move / activity — `#72AD8A`.
     @MainActor
-    static var activity: Color {
-        WeekFitPaletteStore.current.isLight ? WeekFitLightTokens.activity : activityDark
+    static var activity: Color { WeekFitSemanticMetricTokens.activity }
+
+    /// Nutrition — `#EAA06B`.
+    @MainActor
+    static var nutrition: Color { WeekFitSemanticMetricTokens.nutrition }
+
+    /// Recovery — `#9B8ACB`.
+    @MainActor
+    static var recovery: Color { WeekFitSemanticMetricTokens.recovery }
+
+    /// Small caption / value text — darker ink in Light for AA; vivid brand hue on OLED.
+    @MainActor
+    static var activityLabel: Color {
+        WeekFitPaletteStore.current.isLight
+            ? WeekFitSemanticMetricTokens.activityInk
+            : WeekFitSemanticMetricTokens.activity
     }
 
-    /// Nutrition.
     @MainActor
-    static var nutrition: Color {
-        WeekFitPaletteStore.current.isLight ? WeekFitLightTokens.nutrition : nutritionDark
+    static var nutritionLabel: Color {
+        WeekFitPaletteStore.current.isLight
+            ? WeekFitSemanticMetricTokens.nutritionInk
+            : WeekFitSemanticMetricTokens.nutrition
     }
 
-    /// Recovery.
     @MainActor
-    static var recovery: Color {
-        WeekFitPaletteStore.current.isLight ? WeekFitLightTokens.recovery : recoveryDark
+    static var recoveryLabel: Color {
+        WeekFitPaletteStore.current.isLight
+            ? WeekFitSemanticMetricTokens.recoveryInk
+            : WeekFitSemanticMetricTokens.recovery
+    }
+
+    /// Maps a vivid ring color to its readable label ink in Light.
+    @MainActor
+    static func labelInk(for ringColor: Color) -> Color {
+        guard WeekFitPaletteStore.current.isLight else { return ringColor }
+        if ringColor == WeekFitLightTokens.activity { return WeekFitLightTokens.activityInk }
+        if ringColor == WeekFitLightTokens.nutrition { return WeekFitLightTokens.nutritionInk }
+        if ringColor == WeekFitLightTokens.recovery { return WeekFitLightTokens.recoveryInk }
+        if ringColor == WeekFitLightTokens.water { return WeekFitLightTokens.waterInk }
+        return ringColor
     }
 }
 

@@ -50,18 +50,16 @@ final class ReviewFeedbackUITests: XCTestCase {
 
     @MainActor
     func testFeedbackSheetAccessibilityIdentifiersAreDefined() throws {
-        // Soft prompt is eligibility-gated; these identifiers are the contracted automation surface.
+        // The custom sentiment card is gone. These identifiers belong to the
+        // settings review page and the internal feedback form.
         let expected = [
-            "review.feedback.sheet",
-            "review.feedback.sentiment.great",
-            "review.feedback.sentiment.okay",
-            "review.feedback.sentiment.needsImprovement",
             "review.feedback.form",
             "review.feedback.form.send",
             "review.feedback.form.notNow",
             "settings.helpWeekFit",
-            "settings.helpWeekFit.rate"
+            "settings.helpWeekFit.rate",
+            "settings.helpWeekFit.sendFeedback"
         ]
-        XCTAssertEqual(expected.count, 9)
+        XCTAssertEqual(expected.count, 6)
     }
 }

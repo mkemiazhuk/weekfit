@@ -42,11 +42,17 @@ struct WeekFitRootView: View {
     @StateObject private var planViewModel = PlanViewModel()
     @StateObject private var coachInputProvider = CoachInputProvider()
     @StateObject private var eveningSummary = CoachEveningSummaryCoordinator()
-    @State private var selectedTab: WeekFitTab = .today
+    @State private var selectedTab: WeekFitTab = WeekFitUITestSupport.startTabOverride() ?? .today
     @State private var todaySelectedDate = Date()
     @State private var todayResetTrigger = UUID()
     @State private var showContent = false
-    @State private var mountedTabs: Set<WeekFitTab> = [.today]
+    @State private var mountedTabs: Set<WeekFitTab> = {
+        var tabs: Set<WeekFitTab> = [.today]
+        if let start = WeekFitUITestSupport.startTabOverride() {
+            tabs.insert(start)
+        }
+        return tabs
+    }()
     @State private var coachRefreshInputs = CoachRefreshInputs.empty
     @State private var coachTabRefreshTask: Task<Void, Never>?
     @State private var healthRefreshEventTask: Task<Void, Never>?
@@ -85,9 +91,9 @@ struct WeekFitRootView: View {
 
     private var rootShellWithEveningSummaryHandlers: some View {
         rootShellWithHealthHandlers
-            .onAppear { restoreEveningSummaryCache() }
+            .onAppear { restoreEveningSummaryCache(source: "root.appear") }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { restoreEveningSummaryCache() }
+                if phase == .active { restoreEveningSummaryCache(source: "root.active") }
             }
             .onReceive(NotificationCenter.default.publisher(for: .coachEveningSummaryWillReset)) { _ in
                 eveningSummary.cancelForWorkspaceReset()
@@ -96,22 +102,22 @@ struct WeekFitRootView: View {
 
     /// Restore lasting cache only. Manual refresh is owned by Coach; production auto path is behind the policy flag.
     /// Cache restore does not depend on HealthKit, coach snapshot, evening window, or daily claims.
-    private func restoreEveningSummaryCache() {
+    private func restoreEveningSummaryCache(source: String = "root") {
         guard CoachEveningSummaryPolicy.isCoachSurfaceEnabled else { return }
-        CoachEveningSummaryDiagnostics.event(
-            "root.restore",
-            detail: "scene=\(String(describing: scenePhase)) hadSummary=\(eveningSummary.summary != nil)"
-        )
         guard AccountSessionController.shared.mode == .realUser,
               let owner = WorkspaceOwnerStore.currentIdentityToken() else {
-            CoachEveningSummaryDiagnostics.event("cache.skipped", detail: "source=root reason=noOwnerOrSession")
             return
         }
-        eveningSummary.restore(owner: owner)
+        eveningSummary.restore(owner: owner, source: source)
         guard CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow,
               scenePhase == .active,
-              subscriptionManager.hasFullAccess,
               hasSettledInitialHealthState else { return }
+        #if DEBUG
+        let exportOnly = CoachEveningSummaryService.shouldExportSnapshotInsteadOfNetwork
+        if !exportOnly && !subscriptionManager.hasFullAccess { return }
+        #else
+        guard subscriptionManager.hasFullAccess else { return }
+        #endif
         let now = Date()
         guard CoachEveningSummaryPolicy.allowsGeneration(at: now),
               let input = coachInputProvider.lastInput,
@@ -122,6 +128,12 @@ struct WeekFitRootView: View {
                 locale: languageManager.selectedLanguage.rawValue,
                 now: now
               ) else { return }
+        #if DEBUG
+        if CoachEveningSummaryService.shouldExportSnapshotInsteadOfNetwork {
+            Task { await CoachEveningSummaryService.exportPreparedSnapshot(request, owner: owner) }
+            return
+        }
+        #endif
         eveningSummary.startIfNeeded(input: request, owner: owner, now: now)
     }
 
@@ -525,6 +537,17 @@ struct WeekFitRootView: View {
 
     private func handleRootAppear() {
         StartupHangDetector.armForColdLaunch()
+        #if DEBUG
+        if WeekFitUITestSupport.shouldForcePaywall,
+           !WeekFitForcePaywallStore.shared.isManualPaywallPresented {
+            WeekFitForcePaywallStore.shared.setEnabled(true)
+            WeekFitForcePaywallStore.shared.requestOpenPaywall()
+        }
+        if WeekFitUITestSupport.shouldForceOnboarding,
+           !appSession.isPresentingOnboarding {
+            appSession.presentOnboarding()
+        }
+        #endif
         StartupDiagnostics.step(
             11,
             "root appear — Today tab mounting",
@@ -1119,7 +1142,7 @@ struct WeekFitRootView: View {
             plannedActivities: plannedActivities
         )
         if !Task.isCancelled {
-            restoreEveningSummaryCache()
+            restoreEveningSummaryCache(source: "root.coachInput")
         }
     }
 

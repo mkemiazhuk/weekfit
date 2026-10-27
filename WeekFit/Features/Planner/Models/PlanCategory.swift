@@ -32,15 +32,12 @@ enum PlanCategory: CaseIterable {
 
     var color: Color {
         switch self {
-        case .meal:
-            WeekFitPaletteStore.current.isLight
-                ? WeekFitLightTokens.nutrition
-                : Color(red: 0.84, green: 0.58, blue: 0.34)
-        case .workout: Color(red: 0.30, green: 0.48, blue: 0.90)
-        case .hydration: Color(red: 0.25, green: 0.55, blue: 0.92)
-        case .recovery: Color(red: 0.95, green: 0.58, blue: 0.12)
-        case .sleep: Color(red: 0.58, green: 0.40, blue: 0.78)
-        case .routine: Color(red: 0.32, green: 0.64, blue: 0.58)
+        case .meal: WeekFitSemanticMetricTokens.nutrition
+        case .workout: WeekFitSemanticMetricTokens.activity
+        case .hydration: WeekFitLightTokens.water
+        case .recovery: WeekFitSemanticMetricTokens.recovery
+        case .sleep: WeekFitSemanticMetricTokens.recovery
+        case .routine: WeekFitSemanticMetricTokens.activity
         }
     }
 

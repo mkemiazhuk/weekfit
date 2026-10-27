@@ -10,6 +10,8 @@ enum ReviewAnalyticsEvent: String, Sendable {
     case feedbackSubmitted = "feedback_submitted"
     case feedbackDismissed = "feedback_dismissed"
     case rateWeekFitSelectedFromSettings = "rate_weekfit_selected_from_settings"
+    /// Settings opened the App Store write-review page. Not a system `requestReview` call.
+    case appStoreWriteReviewOpened = "app_store_write_review_opened"
 
     /// Maps onto the shared `AnalyticsEvent` catalog (same raw names).
     var analyticsEvent: AnalyticsEvent? {
@@ -152,7 +154,7 @@ enum ReviewAnalyticsProperties {
 
     static func boundedSurface(_ raw: String) -> String {
         switch raw {
-        case "soft_prompt", "settings_in_app":
+        case "soft_prompt", "settings_in_app", "automatic", "app_store_write_review":
             return raw
         default:
             return "other"

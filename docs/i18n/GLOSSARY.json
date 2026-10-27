@@ -1,0 +1,128 @@
+{
+  "notes": "WeekFit product-term glossary for UI chrome + instructions. Prefer localized common nouns in body copy; short tab labels may stay compact.",
+  "terms": {
+    "Coach": {
+      "en": "Coach",
+      "ru": "Тренер",
+      "zh-Hans": "教练",
+      "fr": "Coach",
+      "pl": "Trener",
+      "es": "Entrenador",
+      "de": "Coach",
+      "ja": "コーチ",
+      "it": "Coach",
+      "ko": "코치"
+    },
+    "Plan": {
+      "en": "Plan",
+      "ru": "План",
+      "zh-Hans": "计划",
+      "fr": "Plan",
+      "pl": "Plan",
+      "es": "Plan",
+      "de": "Plan",
+      "ja": "プラン",
+      "it": "Piano",
+      "ko": "계획"
+    },
+    "Activity": {
+      "en": "Activity",
+      "ru": "Активность",
+      "zh-Hans": "活动",
+      "fr": "Activité",
+      "pl": "Aktywność",
+      "es": "Actividad",
+      "de": "Aktivität",
+      "ja": "アクティビティ",
+      "it": "Attività",
+      "ko": "활동"
+    },
+    "Nutrition": {
+      "en": "Nutrition",
+      "ru": "Питание",
+      "zh-Hans": "营养",
+      "fr": "Nutrition",
+      "pl": "Odżywianie",
+      "es": "Nutrición",
+      "de": "Ernährung",
+      "ja": "栄養",
+      "it": "Nutrizione",
+      "ko": "영양"
+    },
+    "Recovery": {
+      "en": "Recovery",
+      "ru": "Восстановление",
+      "zh-Hans": "恢复",
+      "fr": "Récupération",
+      "pl": "Regeneracja",
+      "es": "Recuperación",
+      "de": "Erholung",
+      "ja": "回復",
+      "it": "Recupero",
+      "ko": "회복"
+    },
+    "Stress Index": {
+      "en": "Stress Index",
+      "ru": "Индекс нагрузки",
+      "zh-Hans": "负荷指数",
+      "fr": "Indice de stress",
+      "pl": "Wskaźnik obciążenia",
+      "es": "Índice de estrés",
+      "de": "Stressindex",
+      "ja": "ストレス指数",
+      "it": "Indice di stress",
+      "ko": "스트레스 지수"
+    },
+    "Insights": {
+      "en": "Insights",
+      "ru": "Инсайты",
+      "zh-Hans": "洞察",
+      "fr": "Analyses",
+      "pl": "Wnioski",
+      "es": "Insights",
+      "de": "Einblicke",
+      "ja": "インサイト",
+      "it": "Approfondimenti",
+      "ko": "인사이트"
+    },
+    "Meals": {
+      "en": "Meals",
+      "ru": "Питание",
+      "zh-Hans": "饮食",
+      "fr": "Repas",
+      "pl": "Posiłki",
+      "es": "Comidas",
+      "de": "Mahlzeiten",
+      "ja": "食事",
+      "it": "Pasti",
+      "ko": "식사"
+    },
+    "HRV": {
+      "keep": "HRV"
+    },
+    "BMR": {
+      "keep": "BMR"
+    },
+    "TDEE": {
+      "keep": "TDEE"
+    },
+    "WeekFit": {
+      "keep": "WeekFit"
+    },
+    "Apple Health": {
+      "keep": "localized OS name where Apple provides it"
+    },
+    "Today": {
+      "en": "Today",
+      "ru": "Сегодня",
+      "zh-Hans": "今天",
+      "fr": "Aujourd’hui",
+      "pl": "Dziś",
+      "es": "Hoy",
+      "de": "Heute",
+      "ja": "今日",
+      "it": "Oggi",
+      "ko": "오늘"
+    }
+  }
+}

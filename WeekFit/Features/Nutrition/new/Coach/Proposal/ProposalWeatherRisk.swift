@@ -41,7 +41,7 @@ enum ProposalOutdoorClassifier {
         case .running, .cycling, .walk, .hiit, .snowboarding, .downhillSkiing:
             return true
         case .swimming, .sauna, .stretching, .yoga, .breathing,
-             .upperBody, .lowerBody, .core, .fullBody, .tennis, .squash, .none:
+             .upperBody, .lowerBody, .core, .fullBody, .tennis, .padel, .squash, .none:
             break
         }
 

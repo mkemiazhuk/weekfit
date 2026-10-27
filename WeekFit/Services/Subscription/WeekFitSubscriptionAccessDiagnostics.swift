@@ -43,7 +43,6 @@ enum WeekFitSubscriptionAccessDiagnostics {
     static func log(_ message: String) {
         let stamped = "utc=\(utcNow()) \(message)"
         logger.debug("\(stamped, privacy: .public)")
-        print("[WeekFit.SubscriptionAccess] \(stamped)")
     }
 
     static func logLoad(

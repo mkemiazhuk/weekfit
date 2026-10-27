@@ -461,7 +461,7 @@ enum CoachCopyRegistry {
                 "Hard endurance is coming — recovery is not fully there yet.",
                 "Впереди серьёзная работа на выносливость — тело ещё не восстановилось."
             )
-        case .tennis, .squash:
+        case .tennis, .padel, .squash:
             activityHint = .en(
                 "Match demand is real — you are not fully topped up.",
                 "Игра потребует сил — вы ещё не полностью восстановились."

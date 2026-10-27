@@ -72,7 +72,7 @@ final class LocalizationRegressionTests: XCTestCase {
         )
         XCTAssertEqual(
             WeekFitLocalizedString("nutrition.details.title", locale: Locale(identifier: "zh-Hans")),
-            "营养详情"
+            "营养"
         )
         XCTAssertEqual(
             WeekFitLocalizedString("recovery.details.title", locale: Locale(identifier: "zh-Hans")),
@@ -533,5 +533,37 @@ final class LocalizationRegressionTests: XCTestCase {
         XCTAssertEqual(meal.localizedDisplayTitle, "Говядина Огурец")
         XCTAssertTrue(meal.localizedDisplayIngredients.contains { $0.name == "Говядина" })
         XCTAssertTrue(meal.localizedDisplayIngredients.contains { $0.name == "Огурец" })
+    }
+
+    func testSavedFoodKeepsTheLanguageItWasStoredIn() {
+        let previous = WeekFitCurrentAppLanguage()
+        defer { WeekFitSetCurrentLanguage(previous) }
+
+        let food = Meals(
+            id: "saved_food_buckwheat",
+            title: "Buckwheat with meat patties and gravy",
+            subtitle: "Cottage cheese with Banana slices",
+            imageName: "plate-dark",
+            type: .balanced,
+            calories: 454,
+            protein: 29,
+            carbs: 40,
+            fats: 12,
+            benefits: [],
+            ingredients: [
+                MealsIngredient(name: "Buckwheat", amount: "150 g"),
+                MealsIngredient(name: "Banana slices", amount: "40 g")
+            ],
+            libraryKind: .product,
+            creationMode: .manual
+        )
+
+        WeekFitSetCurrentLanguage(.german)
+        XCTAssertEqual(food.localizedDisplayTitle, "Buckwheat with meat patties and gravy")
+        XCTAssertEqual(food.localizedDisplaySubtitle, "Cottage cheese with Banana slices")
+        XCTAssertEqual(food.localizedDisplayIngredients.map(\.name), ["Buckwheat", "Banana slices"])
+
+        WeekFitSetCurrentLanguage(.russian)
+        XCTAssertEqual(food.localizedDisplayTitle, "Buckwheat with meat patties and gravy")
     }
 }

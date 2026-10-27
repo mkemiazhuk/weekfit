@@ -266,7 +266,8 @@ struct PlanTimelineRow: View {
     private func completionOutcomeBadge(
         _ provenance: PlanActivityStatus.CompletionProvenance
     ) -> some View {
-        let tint = PlanActivityStatus.calmCompleted(isLight: palette.isLight)
+        let ink = WeekFitPlanChromeTokens.loggedBadgeInk(isLight: palette.isLight)
+        let fill = WeekFitPlanChromeTokens.loggedBadgeFill(isLight: palette.isLight)
         return HStack(spacing: 4) {
             Image(systemName: "checkmark")
                 .font(.system(size: 9, weight: .bold))
@@ -275,12 +276,12 @@ struct PlanTimelineRow: View {
                 .fontDesign(.rounded)
                 .lineLimit(1)
         }
-        .foregroundStyle(tint)
+        .foregroundStyle(ink)
         .padding(.horizontal, 7)
         .padding(.vertical, 4)
         .background {
             Capsule(style: .continuous)
-                .fill(tint.opacity(palette.isLight ? 0.12 : 0.16))
+                .fill(fill)
         }
         .accessibilityHidden(true)
     }
@@ -525,7 +526,10 @@ struct PlanTimelineRow: View {
                 size: .md,
                 shape: .roundedRect,
                 backgroundOpacity: iconBackgroundOpacity,
-                foregroundOpacity: iconForegroundOpacity
+                foregroundOpacity: iconForegroundOpacity,
+                fillColor: category.iconWell(isLight: palette.isLight),
+                iconColor: category.iconColor(isLight: palette.isLight)
+                    .opacity(iconForegroundOpacity)
             )
             .frame(width: PlanAgendaLayout.iconSize, height: PlanAgendaLayout.iconSize)
         }

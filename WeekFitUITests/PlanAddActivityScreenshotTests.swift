@@ -63,7 +63,7 @@ final class PlanAddActivityScreenshotTests: XCTestCase {
         if planTab.waitForExistence(timeout: 4) {
             planTab.tap()
         } else {
-            app.tabBars.buttons["Plan"].tap()
+            app.tabBars.buttons["Plan & journal"].tap()
         }
 
         XCTAssertTrue(app.descendants(matching: .any)["screen.plan"].waitForExistence(timeout: 12))

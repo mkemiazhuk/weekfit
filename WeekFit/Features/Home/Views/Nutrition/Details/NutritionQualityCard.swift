@@ -3,64 +3,61 @@ import SwiftUI
 struct NutritionQualityCard: View {
     let qualityScore: Int
     let primaryInsightText: String
-    let primaryInsight: NutritionQualityPresenter.PrimaryInsight
 
-    private var progress: CGFloat {
-        CGFloat(min(max(qualityScore, 0), 100)) / 100.0
+    @Environment(\.weekFitPalette) private var palette
+
+    private var scoreText: String {
+        String(
+            format: WeekFitLocalizedString("nutrition.details.quality.scoreFormat"),
+            locale: WeekFitCurrentLocale(),
+            qualityScore
+        )
     }
 
     var body: some View {
-        NutritionDetailsCard(padding: NutritionDetailsDesign.cardPadding) {
-            HStack(alignment: .center, spacing: 10) {
-                scoreRing
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(
-                        Text(
-                            String(
-                                format: WeekFitLocalizedString("nutrition.details.quality.scoreFormat"),
-                                qualityScore
-                            )
-                        )
-                    )
-
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(WeekFitLocalizedString("nutrition.details.quality.title").uppercased())
-                        .font(NutritionDetailsDesign.Typography.eyebrow)
-                        .tracking(0.6)
-                        .foregroundStyle(NutritionDetailsDesign.nutritionAccent)
-
-                    Text(primaryInsightText)
-                        .font(NutritionDetailsDesign.Typography.insight)
-                        .foregroundStyle(WeekFitLightTokens.textPrimary)
-                        .lineSpacing(1)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .layoutPriority(1)
-
-                NutritionDetailsInsightArtwork(insight: primaryInsight, size: 66)
+        NutritionDetailsCard(padding: 16) {
+            VStack(alignment: .leading, spacing: 7) {
+                header
+                insightText
             }
         }
         .accessibilityElement(children: .combine)
     }
 
-    private var scoreRing: some View {
-        WeekFitProgressRing(
-            progress: progress,
-            color: NutritionDetailsDesign.nutritionAccent,
-            size: NutritionDetailsDesign.qualityRingSize,
-            strokeWidth: NutritionDetailsDesign.qualityRingStroke
-        ) {
-            VStack(spacing: -1) {
-                Text("\(qualityScore)")
-                    .font(NutritionDetailsDesign.Typography.score)
-                    .foregroundStyle(WeekFitLightTokens.textPrimary)
-                    .monospacedDigit()
-
-                Text("/100")
-                    .font(NutritionDetailsDesign.Typography.scoreDenom)
-                    .foregroundStyle(WeekFitLightTokens.textQuaternary)
+    private var header: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                titleText
+                    .fixedSize(horizontal: true, vertical: true)
+                Spacer(minLength: 12)
+                scoreLabel
+                    .fixedSize(horizontal: true, vertical: true)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                titleText
+                scoreLabel
             }
         }
+    }
+
+    private var titleText: some View {
+        Text(WeekFitLocalizedString("nutrition.details.quality.title"))
+            .nutritionReading(14, weight: .medium, relativeTo: .subheadline)
+            .foregroundStyle(palette.textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var insightText: some View {
+        Text(primaryInsightText)
+            .nutritionReading(18, weight: .semibold, relativeTo: .title3)
+            .foregroundStyle(palette.textPrimary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var scoreLabel: some View {
+        Text(scoreText)
+            .nutritionReading(15, weight: .semibold, design: .rounded, relativeTo: .body)
+            .foregroundStyle(palette.textSecondary)
+            .monospacedDigit()
     }
 }

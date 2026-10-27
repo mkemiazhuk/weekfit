@@ -19,7 +19,14 @@ enum CoachChineseOverrides {
         if trimmed != english, let exact = table[trimmed], !exact.isEmpty {
             return exact
         }
-        return resolveTemplate(english: english)
+        if let template = resolveTemplate(english: english) {
+            return template
+        }
+        return CoachStringOverrideResolver.resolvedBySentencePieces(
+            english: trimmed,
+            table: table,
+            cacheKey: "zh-Hans"
+        )
     }
 
     // MARK: - Template matching

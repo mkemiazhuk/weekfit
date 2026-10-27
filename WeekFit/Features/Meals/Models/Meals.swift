@@ -392,28 +392,41 @@ extension Meals {
     }
 
     var localizedDisplayTitle: String {
-        if let starterTitle = StarterMealPreparation.title(forMealID: id) {
-            return starterTitle
+        // Saved foods keep the language they were written in. Remapping known
+        // ingredient words leaves the rest of the sentence untranslated.
+        if isFoodProduct {
+            return title
         }
-        return MealBuilderTitleComposer.displayTitle(
-            storedTitle: shortTitle,
-            builderImageItems: builderImageItems
-        )
+        let language = WeekFitCurrentAppLanguage().rawValue
+        let builderKey = builderImageItems?.map(\.id).joined(separator: ",") ?? ""
+        let cacheKey = "\(language)\u{1e}\(id)\u{1e}\(shortTitle)\u{1e}\(builderKey)"
+        return MealBuilderTitleComposer.cachedDisplayTitle(forKey: cacheKey) {
+            if let starterTitle = StarterMealPreparation.title(forMealID: id) {
+                return starterTitle
+            }
+            return MealBuilderTitleComposer.displayTitle(
+                storedTitle: shortTitle,
+                builderImageItems: builderImageItems
+            )
+        }
     }
 
     var localizedShortTitle: String {
-        localizedDisplayTitle.components(separatedBy: ",").first ?? localizedDisplayTitle
+        let localized = localizedDisplayTitle
+        return localized.components(separatedBy: ",").first ?? localized
     }
 
     var localizedDisplaySubtitle: String {
-        MealBuilderTitleComposer.displaySubtitle(
+        if isFoodProduct { return subtitle }
+        return MealBuilderTitleComposer.displaySubtitle(
             storedSubtitle: subtitle,
             builderImageItems: builderImageItems
         )
     }
 
     var localizedDisplayIngredients: [MealsIngredient] {
-        MealBuilderTitleComposer.displayIngredients(
+        if isFoodProduct { return ingredients }
+        return MealBuilderTitleComposer.displayIngredients(
             storedIngredients: ingredients,
             builderImageItems: builderImageItems
         )
@@ -717,6 +730,27 @@ enum MealBuilderTitleComposer {
         compose(from: builderImageItems) ?? localizedStoredTitle(storedTitle)
     }
 
+    /// Memoizes full meal display titles across SwiftUI body passes (library, Plan, Nutrition).
+    static func cachedDisplayTitle(forKey cacheKey: String, build: () -> String) -> String {
+        remapLock.lock()
+        if let cached = displayTitleCache[cacheKey] {
+            remapLock.unlock()
+            return cached
+        }
+        remapLock.unlock()
+
+        let value = build()
+        remapLock.lock()
+        displayTitleCache[cacheKey] = value
+        remapLock.unlock()
+        return value
+    }
+
+    /// Prebuild remap tables for the active language so the first Plan/Nutrition open isn't cold.
+    static func warmCaches(for language: AppLanguage = WeekFitCurrentAppLanguage()) {
+        _ = replacementPairs(for: language)
+    }
+
     static func displaySubtitle(
         storedSubtitle: String,
         builderImageItems: [MealBuilderImageItem]?
@@ -749,7 +783,7 @@ enum MealBuilderTitleComposer {
     ) -> [(ingredient: MealBuilderIngredient, grams: Int)] {
         guard let items, !items.isEmpty else { return [] }
 
-        let catalog = Dictionary(uniqueKeysWithValues: MealBuilderDemoData.ingredients.map { ($0.id, $0) })
+        let catalog = ingredientCatalogByID()
         return items.compactMap { item in
             guard let ingredient = catalog[item.id] else { return nil }
             return (ingredient, item.grams)
@@ -774,10 +808,13 @@ enum MealBuilderTitleComposer {
     /// English + Russian + Chinese composed titles so logged Quick Log rows still match
     /// catalog meals after localization (e.g. "Индейка Огурец" ↔ "Turkey Cucumber").
     static func matchingTitleCandidates(from items: [MealBuilderImageItem]?) -> [String] {
-        [
-            compose(from: items, titleForIngredient: { $0.title }),
-            compose(from: items, titleForIngredient: { $0.russianTitle }),
-            compose(from: items, titleForIngredient: { $0.chineseTitle }),
+        let resolvedIngredients = resolvedSelections(from: items).map(\.ingredient)
+        guard !resolvedIngredients.isEmpty else { return [] }
+
+        return [
+            compose(fromResolved: resolvedIngredients, titleForIngredient: { $0.title }),
+            compose(fromResolved: resolvedIngredients, titleForIngredient: { $0.russianTitle }),
+            compose(fromResolved: resolvedIngredients, titleForIngredient: { $0.chineseTitle }),
         ]
         .compactMap { $0 }
     }
@@ -786,9 +823,14 @@ enum MealBuilderTitleComposer {
         from items: [MealBuilderImageItem]?,
         titleForIngredient: (MealBuilderIngredient) -> String
     ) -> String? {
-        guard let items, !items.isEmpty else { return nil }
-
         let resolvedIngredients = resolvedSelections(from: items).map(\.ingredient)
+        return compose(fromResolved: resolvedIngredients, titleForIngredient: titleForIngredient)
+    }
+
+    private static func compose(
+        fromResolved resolvedIngredients: [MealBuilderIngredient],
+        titleForIngredient: (MealBuilderIngredient) -> String
+    ) -> String? {
         guard !resolvedIngredients.isEmpty else { return nil }
 
         func first(in category: MealIngredientCategory) -> MealBuilderIngredient? {
@@ -817,28 +859,7 @@ enum MealBuilderTitleComposer {
     /// Maps a stored English/Russian/Chinese recipe title into the active UI language
     /// by swapping known Meal Builder ingredient labels.
     static func localizedStoredTitle(_ title: String) -> String {
-        switch WeekFitCurrentAppLanguage() {
-        case .russian:
-            return remapStoredTitle(title, targetLanguage: .russian)
-        case .chineseSimplified:
-            return remapStoredTitle(title, targetLanguage: .chineseSimplified)
-        case .french:
-            return remapStoredTitle(title, targetLanguage: .french)
-        case .polish:
-            return remapStoredTitle(title, targetLanguage: .polish)
-        case .spanish:
-            return remapStoredTitle(title, targetLanguage: .spanish)
-        case .german:
-            return remapStoredTitle(title, targetLanguage: .german)
-        case .japanese:
-            return remapStoredTitle(title, targetLanguage: .japanese)
-        case .italian:
-            return remapStoredTitle(title, targetLanguage: .italian)
-        case .korean:
-            return remapStoredTitle(title, targetLanguage: .korean)
-        case .english:
-            return remapStoredTitle(title, targetLanguage: .english)
-        }
+        remapStoredTitle(title, targetLanguage: WeekFitCurrentAppLanguage())
     }
 
     static func remapStoredTitle(_ title: String, toRussian: Bool) -> String {
@@ -849,37 +870,103 @@ enum MealBuilderTitleComposer {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return title }
 
+        let cacheKey = "\(targetLanguage.rawValue)\u{1e}\(trimmed)"
+        remapLock.lock()
+        if let cached = remapResultCache[cacheKey] {
+            remapLock.unlock()
+            return cached
+        }
+        remapLock.unlock()
+
+        var result = trimmed
+        for pair in replacementPairs(for: targetLanguage) {
+            // Skip work when the source phrase isn't present (common for short titles).
+            guard result.range(of: pair.source, options: [.caseInsensitive, .diacriticInsensitive]) != nil else {
+                continue
+            }
+            result = replaceWholePhrase(pair.source, with: pair.target, in: result)
+        }
+
+        remapLock.lock()
+        remapResultCache[cacheKey] = result
+        remapLock.unlock()
+        return result
+    }
+
+    // MARK: - Remap caches (hot path: Plan add-food sheet + meal cards)
+
+    private static let remapLock = NSLock()
+    private static var remapResultCache: [String: String] = [:]
+    private static var displayTitleCache: [String: String] = [:]
+    private static var replacementPairsCache: [AppLanguage: [(source: String, target: String)]] = [:]
+    private static var sortedIngredientsCache: [MealBuilderIngredient]?
+    private static var ingredientCatalogByIDCache: [String: MealBuilderIngredient]?
+
+    private static func ingredientCatalogByID() -> [String: MealBuilderIngredient] {
+        remapLock.lock()
+        defer { remapLock.unlock() }
+        if let ingredientCatalogByIDCache {
+            return ingredientCatalogByIDCache
+        }
+        let catalog = Dictionary(uniqueKeysWithValues: MealBuilderDemoData.ingredients.map { ($0.id, $0) })
+        ingredientCatalogByIDCache = catalog
+        return catalog
+    }
+
+    private static func sortedIngredients() -> [MealBuilderIngredient] {
+        remapLock.lock()
+        defer { remapLock.unlock() }
+        if let sortedIngredientsCache {
+            return sortedIngredientsCache
+        }
         // Longer names first so "Sweet Potato" wins over "Potato".
-        let ingredients = MealBuilderDemoData.ingredients.sorted {
+        let sorted = MealBuilderDemoData.ingredients.sorted {
             max($0.title.count, $0.russianTitle.count, $0.chineseTitle.count)
                 > max($1.title.count, $1.russianTitle.count, $1.chineseTitle.count)
         }
+        sortedIngredientsCache = sorted
+        return sorted
+    }
 
-        func label(for ingredient: MealBuilderIngredient, language: AppLanguage) -> String {
-            switch language {
-            case .russian: return ingredient.russianTitle
-            case .chineseSimplified: return ingredient.chineseTitle
-            case .french: return MealLocalizedTitles.french[ingredient.id] ?? ingredient.title
-            case .polish: return MealLocalizedTitles.polish[ingredient.id] ?? ingredient.title
-            case .spanish: return MealLocalizedTitles.spanish[ingredient.id] ?? ingredient.title
-            case .german: return MealLocalizedTitles.german[ingredient.id] ?? ingredient.title
-            case .japanese: return MealLocalizedTitles.japanese[ingredient.id] ?? ingredient.title
-            case .italian: return MealLocalizedTitles.italian[ingredient.id] ?? ingredient.title
-            case .korean: return MealLocalizedTitles.korean[ingredient.id] ?? ingredient.title
-            case .english: return ingredient.title
-            }
+    private static func label(for ingredient: MealBuilderIngredient, language: AppLanguage) -> String {
+        switch language {
+        case .russian: return ingredient.russianTitle
+        case .chineseSimplified: return ingredient.chineseTitle
+        case .french: return MealLocalizedTitles.french[ingredient.id] ?? ingredient.title
+        case .polish: return MealLocalizedTitles.polish[ingredient.id] ?? ingredient.title
+        case .spanish: return MealLocalizedTitles.spanish[ingredient.id] ?? ingredient.title
+        case .german: return MealLocalizedTitles.german[ingredient.id] ?? ingredient.title
+        case .japanese: return MealLocalizedTitles.japanese[ingredient.id] ?? ingredient.title
+        case .italian: return MealLocalizedTitles.italian[ingredient.id] ?? ingredient.title
+        case .korean: return MealLocalizedTitles.korean[ingredient.id] ?? ingredient.title
+        case .english: return ingredient.title
         }
+    }
 
-        var result = trimmed
+    /// Precomputes (source → target) phrase pairs once per UI language.
+    /// Without this, each title remapped ~111 ingredients × 9 languages × regex on every SwiftUI body pass.
+    private static func replacementPairs(for targetLanguage: AppLanguage) -> [(source: String, target: String)] {
+        remapLock.lock()
+        if let cached = replacementPairsCache[targetLanguage] {
+            remapLock.unlock()
+            return cached
+        }
+        remapLock.unlock()
+
+        let ingredients = sortedIngredients()
+        var pairs: [(source: String, target: String)] = []
+        var seenSources = Set<String>()
+
         for ingredient in ingredients {
             let target = label(for: ingredient, language: targetLanguage)
-            // Try replacing from any known source language into the target.
             for sourceLanguage in AppLanguage.allCases where sourceLanguage != targetLanguage {
                 let source = label(for: ingredient, language: sourceLanguage)
                 guard source.compare(target, options: [.caseInsensitive, .diacriticInsensitive]) != .orderedSame else {
                     continue
                 }
-                result = replaceWholePhrase(source, with: target, in: result)
+                let dedupeKey = source.lowercased()
+                guard seenSources.insert(dedupeKey).inserted else { continue }
+                pairs.append((source, target))
             }
         }
 
@@ -890,10 +977,19 @@ enum MealBuilderTitleComposer {
                 guard legacy.compare(target, options: [.caseInsensitive, .diacriticInsensitive]) != .orderedSame else {
                     continue
                 }
-                result = replaceWholePhrase(legacy, with: target, in: result)
+                let dedupeKey = legacy.lowercased()
+                guard seenSources.insert(dedupeKey).inserted else { continue }
+                pairs.append((legacy, target))
             }
         }
-        return result
+
+        // Longer sources first (Sweet Potato before Potato).
+        pairs.sort { $0.source.count > $1.source.count }
+
+        remapLock.lock()
+        replacementPairsCache[targetLanguage] = pairs
+        remapLock.unlock()
+        return pairs
     }
 
     private static func replaceWholePhrase(_ phrase: String, with replacement: String, in text: String) -> String {
@@ -902,21 +998,26 @@ enum MealBuilderTitleComposer {
         // Space-padded matching works for both Latin and Cyrillic (unlike \\b).
         let haystack = " \(text) "
         let needle = " \(phrase) "
-        guard let regex = try? NSRegularExpression(
-            pattern: NSRegularExpression.escapedPattern(for: needle),
-            options: [.caseInsensitive]
-        ) else {
-            return text
+        var searchRange = haystack.startIndex..<haystack.endIndex
+        var cursor = haystack.startIndex
+        var output = ""
+        var didReplace = false
+
+        while let match = haystack.range(
+            of: needle,
+            options: [.caseInsensitive, .diacriticInsensitive],
+            range: searchRange
+        ) {
+            didReplace = true
+            output += haystack[cursor..<match.lowerBound]
+            output += " \(replacement) "
+            cursor = match.upperBound
+            searchRange = match.upperBound..<haystack.endIndex
         }
 
-        let range = NSRange(haystack.startIndex..<haystack.endIndex, in: haystack)
-        let replaced = regex.stringByReplacingMatches(
-            in: haystack,
-            options: [],
-            range: range,
-            withTemplate: " \(replacement) "
-        )
-        return replaced.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard didReplace else { return text }
+        output += haystack[cursor...]
+        return output.trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
     }
 }

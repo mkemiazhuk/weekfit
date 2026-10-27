@@ -33,7 +33,8 @@ enum PlanTimelineNutritionVisualResolver {
 
     static func resolve(
         for activity: PlannedActivity,
-        customMeals: [Meals]
+        customMeals: [Meals],
+        prematchedMeal: Meals? = nil
     ) -> PlanTimelineNutritionVisual? {
         if isDrinkActivity(activity) || activity.timelineEventKind == .drink {
             return resolveDrink(for: activity)
@@ -41,7 +42,8 @@ enum PlanTimelineNutritionVisualResolver {
 
         guard isFoodActivity(activity) else { return nil }
 
-        let matchedMeal = matchingCustomMeal(for: activity, in: customMeals)
+        // Prefer a caller-supplied match (timeline rows already resolved the catalog once).
+        let matchedMeal = prematchedMeal ?? matchingCustomMeal(for: activity, in: customMeals)
         let kind = foodKind(for: activity, meal: matchedMeal)
 
         if let meal = matchedMeal {
@@ -293,10 +295,33 @@ enum PlanTimelineNutritionVisualResolver {
 
     /// Reconstruct builder visuals from a localized/English activity title when the
     /// catalog row is missing or title matching failed (common for Quick Log).
+    private static let inferredItemsLock = NSLock()
+    private static var inferredItemsCache: [String: [MealBuilderImageItem]] = [:]
+    private static var inferredItemsNegativeCache = Set<String>()
+
     private static func inferredBuilderItems(fromTitle title: String) -> [MealBuilderImageItem]? {
+        let cacheKey = CustomMealStore.normalizedTitle(title)
+        guard !cacheKey.isEmpty else { return nil }
+
+        inferredItemsLock.lock()
+        if inferredItemsNegativeCache.contains(cacheKey) {
+            inferredItemsLock.unlock()
+            return nil
+        }
+        if let cached = inferredItemsCache[cacheKey] {
+            inferredItemsLock.unlock()
+            return cached
+        }
+        inferredItemsLock.unlock()
+
         let tokens = Set(CustomMealStore.titleTokens(title))
-        let normalizedFull = CustomMealStore.normalizedTitle(title)
-        guard !tokens.isEmpty || !normalizedFull.isEmpty else { return nil }
+        let normalizedFull = cacheKey
+        guard !tokens.isEmpty || !normalizedFull.isEmpty else {
+            inferredItemsLock.lock()
+            inferredItemsNegativeCache.insert(cacheKey)
+            inferredItemsLock.unlock()
+            return nil
+        }
 
         let matched = MealBuilderDemoData.ingredients.compactMap { ingredient -> MealBuilderImageItem? in
             let labels = [
@@ -332,8 +357,15 @@ enum PlanTimelineNutritionVisualResolver {
             )
         }
 
-        guard matched.count >= 1 else { return nil }
-        return matched
+        inferredItemsLock.lock()
+        if matched.count >= 1 {
+            inferredItemsCache[cacheKey] = matched
+            inferredItemsLock.unlock()
+            return matched
+        }
+        inferredItemsNegativeCache.insert(cacheKey)
+        inferredItemsLock.unlock()
+        return nil
     }
 
     private static func matchingCustomMeal(
@@ -367,13 +399,17 @@ enum PlanTimelineNutritionVisualResolver {
             return nil
         }
 
+        // Remap once (cached), then a single catalog scan — avoid 3× full-library passes
+        // during Today → Nutrition / Plan timeline body evaluation.
         let titleCandidates = [
             activity.title,
             MealBuilderTitleComposer.remapStoredTitle(activity.title, toRussian: false),
             MealBuilderTitleComposer.remapStoredTitle(activity.title, toRussian: true),
         ]
-
+        var seenNormalized = Set<String>()
         for candidate in titleCandidates {
+            let normalized = CustomMealStore.normalizedTitle(candidate)
+            guard !normalized.isEmpty, seenNormalized.insert(normalized).inserted else { continue }
             if let matched = CustomMealStore.meal(
                 matchingActivityTitle: candidate,
                 in: customMeals
@@ -491,7 +527,7 @@ struct PlanTimelineNutritionAvatar: View {
 
         case .fallbackIcon(let systemName, _):
             Image(systemName: systemName)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: max(14, size * 0.34), weight: .semibold))
                 .foregroundStyle(accent.opacity(foregroundOpacity))
         }
     }

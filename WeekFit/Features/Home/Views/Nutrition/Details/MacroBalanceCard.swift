@@ -1,62 +1,5 @@
 import SwiftUI
 
-struct MacroProgressItem: View {
-    let title: String
-    let value: Double
-    let goal: Double
-    let color: Color
-
-    private var progress: CGFloat {
-        guard goal > 0 else { return 0 }
-        return CGFloat(min(max(value / goal, 0), 1))
-    }
-
-    private var percent: Int {
-        Int((Double(progress) * 100).rounded())
-    }
-
-    var body: some View {
-        VStack(spacing: 5) {
-            WeekFitProgressRing(
-                progress: progress,
-                color: color,
-                size: NutritionDetailsDesign.macroRingSize,
-                strokeWidth: NutritionDetailsDesign.macroRingStroke
-            ) {
-                Text("\(percent)%")
-                    .font(NutritionDetailsDesign.Typography.macroPercent)
-                    .foregroundStyle(WeekFitLightTokens.textPrimary)
-                    .monospacedDigit()
-            }
-
-            VStack(spacing: 1) {
-                Text(title)
-                    .font(NutritionDetailsDesign.Typography.macroTitle)
-                    .foregroundStyle(color)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-
-                Text(
-                    String(
-                        format: WeekFitLocalizedString("nutrition.details.macro.valueFormat"),
-                        Int(value),
-                        Int(goal)
-                    )
-                )
-                .font(NutritionDetailsDesign.Typography.macroValue)
-                .foregroundStyle(WeekFitLightTokens.textTertiary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.68)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            "\(title), \(percent)%, \(Int(value)) / \(Int(goal))"
-        )
-    }
-}
-
 struct MacroBalanceCard: View {
     let protein: Double
     let carbs: Double
@@ -67,64 +10,114 @@ struct MacroBalanceCard: View {
     let fatsGoal: Double
     let fiberGoal: Double
 
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-    private var usesGrid: Bool {
-        dynamicTypeSize.isAccessibilitySize
-    }
+    @Environment(\.weekFitPalette) private var palette
 
     var body: some View {
         NutritionDetailsCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Text(WeekFitLocalizedString("nutrition.details.section.macroBalance"))
-                    .font(NutritionDetailsDesign.Typography.sectionTitle)
-                    .foregroundStyle(WeekFitLightTokens.textPrimary)
+            VStack(alignment: .leading, spacing: 16) {
+                Text(WeekFitLocalizedString("nutrition.details.section.nutrients"))
+                    .nutritionReading(15, weight: .semibold, relativeTo: .body)
+                    .foregroundStyle(palette.textPrimary)
                     .accessibilityAddTraits(.isHeader)
 
-                if usesGrid {
-                    LazyVGrid(
-                        columns: [
-                            GridItem(.flexible(), spacing: 10),
-                            GridItem(.flexible(), spacing: 10)
-                        ],
-                        spacing: 12
-                    ) {
-                        items
-                    }
-                } else {
-                    HStack(alignment: .top, spacing: 2) {
-                        items
-                    }
+                VStack(alignment: .leading, spacing: 14) {
+                    row(
+                        title: WeekFitLocalizedString("nutrition.macro.protein"),
+                        value: protein,
+                        goal: proteinGoal,
+                        tint: WeekFitLightTokens.protein
+                    )
+                    row(
+                        title: WeekFitLocalizedString("nutrition.macro.carbs"),
+                        value: carbs,
+                        goal: carbsGoal,
+                        tint: WeekFitLightTokens.carbs
+                    )
+                    row(
+                        title: WeekFitLocalizedString("nutrition.macro.fats"),
+                        value: fats,
+                        goal: fatsGoal,
+                        tint: WeekFitLightTokens.fats
+                    )
+                    row(
+                        title: WeekFitLocalizedString("nutrition.macro.fiber"),
+                        value: fiber,
+                        goal: fiberGoal,
+                        tint: WeekFitLightTokens.fiber
+                    )
                 }
             }
         }
     }
 
-    @ViewBuilder
-    private var items: some View {
-        MacroProgressItem(
-            title: WeekFitLocalizedString("nutrition.macro.protein"),
-            value: protein,
-            goal: proteinGoal,
-            color: NutritionDetailsDesign.protein
-        )
-        MacroProgressItem(
-            title: WeekFitLocalizedString("nutrition.macro.carbs"),
-            value: carbs,
-            goal: carbsGoal,
-            color: NutritionDetailsDesign.carbs
-        )
-        MacroProgressItem(
-            title: WeekFitLocalizedString("nutrition.macro.fats"),
-            value: fats,
-            goal: fatsGoal,
-            color: NutritionDetailsDesign.fats
-        )
-        MacroProgressItem(
-            title: WeekFitLocalizedString("nutrition.macro.fiber"),
-            value: fiber,
-            goal: fiberGoal,
-            color: NutritionDetailsDesign.fiber
-        )
+    private func row(title: String, value: Double, goal: Double, tint: Color) -> some View {
+        let readout = NutritionDetailsFormat.macro(current: value, goal: goal)
+            return VStack(alignment: .leading, spacing: 7) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 11) {
+                    Text(title)
+                        .nutritionReading(15, weight: .regular, relativeTo: .body)
+                        .foregroundStyle(palette.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 12)
+                    valueLabel(readout, alignment: .trailing)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .nutritionReading(15, weight: .regular, relativeTo: .body)
+                        .foregroundStyle(palette.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    valueLabel(readout, alignment: .leading)
+                }
+            }
+
+            if case .ratio(_, _, let progress, _) = readout {
+                progressBar(progress, tint: tint)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func valueLabel(
+        _ readout: NutritionDetailsFormat.Readout,
+        alignment: HorizontalAlignment
+    ) -> some View {
+        VStack(alignment: alignment, spacing: 2) {
+            switch readout {
+            case .unknown:
+                Text(WeekFitLocalizedString("nutrition.details.hydration.status.unavailable"))
+                    .nutritionReading(15, weight: .regular, relativeTo: .body)
+                    .foregroundStyle(palette.textSecondary)
+            case .amount(let text), .ratio(let text, _, _, _):
+                Text(text)
+                    .nutritionReading(15, weight: .semibold, design: .rounded, relativeTo: .body)
+                    .foregroundStyle(palette.textPrimary)
+                    .monospacedDigit()
+                    .fixedSize(horizontal: true, vertical: true)
+            }
+            if case .ratio(_, _, _, let overage?) = readout {
+                Text(overage)
+                    .nutritionReading(14, weight: .medium, design: .rounded, relativeTo: .subheadline)
+                    .foregroundStyle(palette.textSecondary)
+                    .monospacedDigit()
+                    .fixedSize(horizontal: true, vertical: true)
+            }
+        }
+    }
+
+    private func progressBar(_ progress: Double, tint: Color) -> some View {
+        GeometryReader { geo in
+            let width = geo.size.width
+            let fraction = min(max(progress, 0), 1)
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(palette.isLight ? WeekFitLightTokens.inactiveTrack : Color.white.opacity(0.10))
+                Capsule()
+                    .fill(tint)
+                    .frame(width: fraction <= 0 ? 0 : max(6, width * fraction))
+            }
+        }
+        .frame(height: NutritionDetailsDesign.Reading.barHeight)
+        .accessibilityHidden(true)
     }
 }

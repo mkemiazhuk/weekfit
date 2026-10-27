@@ -425,22 +425,35 @@ enum FullDayProposalComposer {
         if mode == .compose,
            changes.filter({ $0.kind == .createMealFromLibrary }).isEmpty,
            !mealLibrary.isEmpty {
-            let picks = pickMeals(from: mealLibrary, recoveryBand: recoveryBand, limit: maxMealCreates)
             let slots = defaultMealSlots(now: now, calendar: calendar)
-            for (index, meal) in picks.enumerated() {
-                var slot = slots[min(index, slots.count - 1)]
-                while occupied.contains(where: { abs($0.timeIntervalSince(slot)) < 20 * 60 }) {
-                    slot = slot.addingTimeInterval(30 * 60)
+            var usedIds = Set<String>()
+            for slotDate in slots {
+                let slot = ProposalMealSlot.from(date: slotDate, calendar: calendar)
+                guard let meal = pickMeal(
+                    for: slot,
+                    from: mealLibrary,
+                    recoveryBand: recoveryBand,
+                    excluding: usedIds
+                ) else { continue }
+                usedIds.insert(meal.id)
+                var proposed = slotDate
+                while occupied.contains(where: { abs($0.timeIntervalSince(proposed)) < 20 * 60 }) {
+                    proposed = proposed.addingTimeInterval(30 * 60)
                 }
-                occupied.append(slot)
+                // Keep label honest if collision push crossed a slot boundary.
+                guard ProposalMealSlot.from(date: proposed, calendar: calendar) == slot else { continue }
+                occupied.append(proposed)
                 changes.append(
                     mealChange(
                         from: meal,
-                        at: slot,
+                        at: proposed,
                         scenarioKey: scenarioKey,
                         defaultSelected: confidence == .high
                     )
                 )
+                if changes.filter({ $0.kind == .createMealFromLibrary }).count >= maxMealCreates {
+                    break
+                }
             }
         }
 
@@ -450,14 +463,24 @@ enum FullDayProposalComposer {
            changes.filter({ $0.kind == .createMealFromLibrary }).isEmpty,
            !mealLibrary.isEmpty,
            !todayOpen.isEmpty {
-            if let meal = pickMeals(from: mealLibrary, recoveryBand: recoveryBand, limit: 1).first {
-                var slot = defaultMealSlots(now: now, calendar: calendar)[0]
-                while occupied.contains(where: { abs($0.timeIntervalSince(slot)) < 20 * 60 }) {
-                    slot = slot.addingTimeInterval(30 * 60)
+            if let slotDate = defaultMealSlots(now: now, calendar: calendar).first {
+                let slot = ProposalMealSlot.from(date: slotDate, calendar: calendar)
+                if let meal = pickMeal(
+                    for: slot,
+                    from: mealLibrary,
+                    recoveryBand: recoveryBand,
+                    excluding: []
+                ) {
+                    var proposed = slotDate
+                    while occupied.contains(where: { abs($0.timeIntervalSince(proposed)) < 20 * 60 }) {
+                        proposed = proposed.addingTimeInterval(30 * 60)
+                    }
+                    if ProposalMealSlot.from(date: proposed, calendar: calendar) == slot {
+                        changes.append(
+                            mealChange(from: meal, at: proposed, scenarioKey: scenarioKey, defaultSelected: false)
+                        )
+                    }
                 }
-                changes.append(
-                    mealChange(from: meal, at: slot, scenarioKey: scenarioKey, defaultSelected: false)
-                )
             }
         }
 
@@ -476,10 +499,11 @@ enum FullDayProposalComposer {
         scenarioKey: CoachScenarioKey?,
         defaultSelected: Bool
     ) -> CoachProposedChange {
-        CoachProposedChange(
+        let slot = ProposalMealSlot.from(date: date)
+        return CoachProposedChange(
             id: UUID().uuidString,
             kind: .createMealFromLibrary,
-            reasonCode: .libraryMealSupport,
+            reasonCode: mealReason(for: slot),
             payload: .createMealFromLibrary(
                 CreateMealFromLibraryPayload(
                     mealId: meal.id,
@@ -501,63 +525,80 @@ enum FullDayProposalComposer {
         )
     }
 
-    private static func matchMeal(title: String, in library: [ProposalMealCandidate]) -> ProposalMealCandidate? {
-        let needle = title.lowercased()
-        return library.first { $0.title.lowercased() == needle }
-            ?? library.first { needle.contains($0.title.lowercased()) || $0.title.lowercased().contains(needle) }
+    private static func mealReason(for slot: ProposalMealSlot) -> CoachProposalReasonCode {
+        switch slot {
+        case .breakfast: return .libraryMealSteadyBreakfast
+        case .lunch: return .libraryMealSteadyLunch
+        case .dinner: return .libraryMealSteadyDinner
+        case .snack: return .libraryMealSupport
+        }
     }
 
-    private static func pickMeals(
-        from library: [ProposalMealCandidate],
-        recoveryBand: ProposalRecoveryBandToken,
-        limit: Int
-    ) -> [ProposalMealCandidate] {
-        let preferredTypes: [String]
+    private static func matchMeal(title: String, in library: [ProposalMealCandidate]) -> ProposalMealCandidate? {
+        let needle = title.lowercased()
+        return library.first { $0.storedTitle.lowercased() == needle || $0.title.lowercased() == needle }
+            ?? library.first {
+                let stored = $0.storedTitle.lowercased()
+                let display = $0.title.lowercased()
+                return needle.contains(stored) || stored.contains(needle)
+                    || needle.contains(display) || display.contains(needle)
+            }
+    }
+
+    private static func preferredTypes(for recoveryBand: ProposalRecoveryBandToken) -> [String] {
         switch recoveryBand {
         case .low:
-            preferredTypes = ["recovery", "sleepsupport", "highprotein", "balanced"]
+            return ["recovery", "sleepsupport", "highprotein", "balanced"]
         case .moderate:
-            preferredTypes = ["preworkout", "balanced", "highprotein", "recovery"]
+            return ["preworkout", "balanced", "highprotein", "recovery"]
         case .good:
-            preferredTypes = ["preworkout", "balanced", "highprotein", "endurance"]
+            return ["preworkout", "balanced", "highprotein", "endurance"]
         case .unavailable:
-            preferredTypes = ["balanced"]
+            return ["balanced"]
         }
+    }
 
-        var picks: [ProposalMealCandidate] = []
-        var seen = Set<String>()
-        for type in preferredTypes {
-            for meal in library where !seen.contains(meal.id) {
-                // Strict match — "balanced" only matches meals whose type contains balanced.
-                if meal.mealsTypeRaw.lowercased().contains(type) {
-                    picks.append(meal)
-                    seen.insert(meal.id)
-                    if picks.count >= limit { return picks }
-                    break
-                }
+    /// Prefer meals whose suggestedTime belongs to the target slot (toast → breakfast, not dinner).
+    private static func pickMeal(
+        for slot: ProposalMealSlot,
+        from library: [ProposalMealCandidate],
+        recoveryBand: ProposalRecoveryBandToken,
+        excluding usedIds: Set<String>
+    ) -> ProposalMealCandidate? {
+        let preferred = preferredTypes(for: recoveryBand)
+        let slotMatched = library.filter { meal in
+            !usedIds.contains(meal.id)
+                && ProposalMealSlot.from(suggestedTime: meal.suggestedTime) == slot
+        }
+        for type in preferred {
+            if let match = slotMatched.first(where: { $0.mealsTypeRaw.lowercased().contains(type) }) {
+                return match
             }
         }
-        // True fallback only when no preferred type matched.
-        if picks.isEmpty {
-            for meal in library where !seen.contains(meal.id) {
-                picks.append(meal)
-                seen.insert(meal.id)
-                if picks.count >= limit { break }
-            }
+        if let first = slotMatched.first {
+            return first
         }
-        return picks
+        // No meal timed for this slot — do not dump a breakfast plate into dinner.
+        return nil
     }
 
     private static func defaultMealSlots(now: Date, calendar: Calendar) -> [Date] {
         let base = calendar.startOfDay(for: now)
         let earliest = now.addingTimeInterval(25 * 60)
-        let breakfast = calendar.date(bySettingHour: 8, minute: 30, second: 0, of: base) ?? now
-        let lunch = calendar.date(bySettingHour: 13, minute: 0, second: 0, of: base) ?? now
-        let dinner = calendar.date(bySettingHour: 19, minute: 0, second: 0, of: base) ?? now
+        let ideals: [(ProposalMealSlot, Date)] = [
+            (.breakfast, calendar.date(bySettingHour: 8, minute: 30, second: 0, of: base) ?? now),
+            (.lunch, calendar.date(bySettingHour: 13, minute: 0, second: 0, of: base) ?? now),
+            (.dinner, calendar.date(bySettingHour: 19, minute: 0, second: 0, of: base) ?? now)
+        ]
         var unique: [Date] = []
-        for slot in [breakfast, lunch, dinner].map({ max($0, earliest) }) where slot >= earliest {
-            if unique.contains(where: { abs($0.timeIntervalSince(slot)) < 40 * 60 }) { continue }
-            unique.append(slot)
+        for (slot, ideal) in ideals {
+            let proposed = max(ideal, earliest)
+            // If "now+25m" pushed a past breakfast into lunch/dinner territory, drop it —
+            // otherwise toast at 10:55 was labeled "Dodaj kolację".
+            guard ProposalMealSlot.from(date: proposed, calendar: calendar) == slot else { continue }
+            guard proposed >= earliest else { continue }
+            if unique.contains(where: { abs($0.timeIntervalSince(proposed)) < 40 * 60 }) { continue }
+            unique.append(proposed)
         }
         return unique.isEmpty ? [earliest.addingTimeInterval(20 * 60)] : unique
     }

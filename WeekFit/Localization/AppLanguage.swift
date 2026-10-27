@@ -160,6 +160,7 @@ final class AppLanguageManager: ObservableObject {
         didSet {
             guard selectedLanguage != oldValue else { return }
             WeekFitSetCurrentLanguage(selectedLanguage)
+            MealBuilderTitleComposer.warmCaches(for: selectedLanguage)
         }
     }
 
@@ -171,6 +172,7 @@ final class AppLanguageManager: ObservableObject {
         let language = Self.resolveLaunchLanguage()
         self.selectedLanguage = language
         WeekFitSetCurrentLanguage(language)
+        MealBuilderTitleComposer.warmCaches(for: language)
     }
 
     /// Re-apply phone language while first-run onboarding is still active.
@@ -188,6 +190,11 @@ final class AppLanguageManager: ObservableObject {
     }
 
     private static func resolveLaunchLanguage() -> AppLanguage {
+        #if DEBUG
+        if let override = WeekFitUITestSupport.languageOverride() {
+            return override
+        }
+        #endif
         if AppLanguage.shouldFollowDeviceLanguage {
             return AppLanguage.detectedFromDevice()
         }

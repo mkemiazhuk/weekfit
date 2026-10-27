@@ -96,8 +96,8 @@ enum CustomMealStore {
         let normalized = normalizedTitle(title)
         guard !normalized.isEmpty else { return nil }
 
-        if let exact = meals.first(where: { activityTitleCandidates(for: $0).contains(normalized) }) {
-            return exact
+        if let indexed = titleLookupIndex(for: meals)[normalized] {
+            return indexed
         }
 
         return meals.first {
@@ -105,7 +105,58 @@ enum CustomMealStore {
         }
     }
 
+    private static let titleCandidatesLock = NSLock()
+    private static var titleCandidatesCache: [String: Set<String>] = [:]
+    private static var titleIndexCache: (signature: Int, index: [String: Meals])?
+
+    /// O(1) title → meal map for a catalog snapshot (built once per language + catalog identity).
+    private static func titleLookupIndex(for meals: [Meals]) -> [String: Meals] {
+        var hasher = Hasher()
+        hasher.combine(WeekFitCurrentAppLanguage().rawValue)
+        hasher.combine(meals.count)
+        for meal in meals {
+            hasher.combine(meal.id)
+            hasher.combine(meal.title)
+            hasher.combine(meal.builderImageItems?.count ?? 0)
+        }
+        let signature = hasher.finalize()
+
+        titleCandidatesLock.lock()
+        if let titleIndexCache, titleIndexCache.signature == signature {
+            let index = titleIndexCache.index
+            titleCandidatesLock.unlock()
+            return index
+        }
+        titleCandidatesLock.unlock()
+
+        var index: [String: Meals] = [:]
+        index.reserveCapacity(meals.count * 4)
+        for meal in meals {
+            for candidate in activityTitleCandidates(for: meal) {
+                if index[candidate] == nil {
+                    index[candidate] = meal
+                }
+            }
+        }
+
+        titleCandidatesLock.lock()
+        titleIndexCache = (signature, index)
+        titleCandidatesLock.unlock()
+        return index
+    }
+
     static func activityTitleCandidates(for meal: Meals) -> Set<String> {
+        let language = WeekFitCurrentAppLanguage().rawValue
+        let builderKey = meal.builderImageItems?.map(\.id).joined(separator: ",") ?? ""
+        let cacheKey = "\(language)\u{1e}\(meal.id)\u{1e}\(meal.title)\u{1e}\(builderKey)"
+
+        titleCandidatesLock.lock()
+        if let cached = titleCandidatesCache[cacheKey] {
+            titleCandidatesLock.unlock()
+            return cached
+        }
+        titleCandidatesLock.unlock()
+
         var candidates: Set<String> = []
 
         func insert(_ value: String) {
@@ -116,13 +167,19 @@ enum CustomMealStore {
 
         insert(meal.title)
         insert(meal.shortTitle)
-        insert(meal.localizedShortTitle)
-        insert(meal.localizedDisplayTitle)
+        let localized = meal.localizedDisplayTitle
+        insert(localized)
+        if let short = localized.components(separatedBy: ",").first {
+            insert(short)
+        }
 
         for composed in MealBuilderTitleComposer.matchingTitleCandidates(from: meal.builderImageItems) {
             insert(composed)
         }
 
+        titleCandidatesLock.lock()
+        titleCandidatesCache[cacheKey] = candidates
+        titleCandidatesLock.unlock()
         return candidates
     }
 

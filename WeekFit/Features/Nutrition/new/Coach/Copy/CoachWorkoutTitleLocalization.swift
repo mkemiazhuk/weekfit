@@ -165,6 +165,7 @@ enum CoachWorkoutTitleLocalization {
         "Lower Body": "planner.option.lowerBody",
         "Full Body": "planner.option.fullBody",
         "Tennis": "planner.option.tennis",
+        "Padel": "planner.option.padel",
         "Squash": "planner.option.squash",
         "High Intensity Interval Training": "planner.option.hiit",
         "HIIT": "planner.option.hiit",

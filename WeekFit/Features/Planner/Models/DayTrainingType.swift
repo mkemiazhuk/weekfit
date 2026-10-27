@@ -99,7 +99,7 @@ enum DayTrainingTypeClassifier {
         }
 
         let enduranceKeywords = [
-            "cycling", "cycle", "running", "run", "tennis", "squash",
+            "cycling", "cycle", "running", "run", "tennis", "padel", "squash",
             "swim", "swimming", "hike", "hiking", "ride", "bike", "biking", "cardio",
             "snowboard", "snowboarding", "skiing", "alpine ski",
             "hiit", "high intensity interval", "interval training"
@@ -141,6 +141,7 @@ enum DayTrainingTypeClassifier {
         "workout-snowboarding",
         "workout-skiing",
         "workout-tennis",
+        "workout-padel",
         "workout-squash",
         "workout-hiit"
     ]

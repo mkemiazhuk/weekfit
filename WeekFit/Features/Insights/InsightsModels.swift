@@ -325,7 +325,7 @@ extension InsightsDomainPage {
                 standoutText: InsightsSnapshotFallbackL10n.text("domain.recovery.standoutText"),
                 focusText: InsightsSnapshotFallbackL10n.text("domain.recovery.focusText"),
                 icon: "heart.fill",
-                accent: Color(red: 0.18, green: 0.74, blue: 0.89)
+                accent: WeekFitSemanticMetricTokens.recovery
             ),
             InsightsDomainPage(
                 id: "domain.activity.fallback",
@@ -358,7 +358,7 @@ extension InsightsDomainPage {
                 standoutText: InsightsSnapshotFallbackL10n.text("domain.activity.standoutText"),
                 focusText: InsightsSnapshotFallbackL10n.text("domain.activity.focusText"),
                 icon: "figure.run",
-                accent: Color(red: 0.16, green: 0.80, blue: 0.43)
+                accent: WeekFitSemanticMetricTokens.activity
             ),
             InsightsDomainPage(
                 id: "domain.nutrition.fallback",
@@ -391,7 +391,7 @@ extension InsightsDomainPage {
                 standoutText: InsightsSnapshotFallbackL10n.text("domain.nutrition.standoutText"),
                 focusText: InsightsSnapshotFallbackL10n.text("domain.nutrition.focusText"),
                 icon: "fork.knife",
-                accent: Color(red: 0.95, green: 0.65, blue: 0.12)
+                accent: WeekFitSemanticMetricTokens.nutrition
             )
         ]
     }

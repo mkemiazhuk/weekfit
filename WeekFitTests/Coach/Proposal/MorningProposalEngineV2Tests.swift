@@ -555,6 +555,7 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             ProposalMealCandidate(
                 id: "spicy",
                 title: "Spicy Bowl",
+            storedTitle: "Spicy Bowl",
                 imageName: "",
                 calories: 500, protein: 30, carbs: 40, fats: 15, fiber: 8,
                 mealsTypeRaw: "endurance",
@@ -563,6 +564,7 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             ProposalMealCandidate(
                 id: "balanced",
                 title: "Balanced Plate",
+            storedTitle: "Balanced Plate",
                 imageName: "",
                 calories: 480, protein: 28, carbs: 45, fats: 14, fiber: 10,
                 mealsTypeRaw: "balanced",
@@ -582,6 +584,7 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             ProposalMealCandidate(
                 id: "only",
                 title: "Odd Meal",
+            storedTitle: "Odd Meal",
                 imageName: "",
                 calories: 400, protein: 20, carbs: 30, fats: 10, fiber: 5,
                 mealsTypeRaw: "custom",

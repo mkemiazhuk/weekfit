@@ -501,6 +501,170 @@ final class MorningProposalPhase15Tests: XCTestCase {
         XCTAssertTrue(a.materialDifference(from: b))
     }
 
+    func testSleepArrivingAfterUnavailableDraftIsMaterialDifference() {
+        let withoutSleep = ProposalInputFingerprintBuilder.make(
+            dayKey: "2026-07-29",
+            todaySnapshots: [],
+            tomorrowSnapshots: [],
+            recoveryBand: .unavailable,
+            sleepPresence: .unavailable,
+            scenarioKey: "stableDay",
+            yesterdayHeavy: false
+        )
+        let withSleep = ProposalInputFingerprintBuilder.make(
+            dayKey: "2026-07-29",
+            todaySnapshots: [],
+            tomorrowSnapshots: [],
+            recoveryBand: .moderate,
+            sleepPresence: .present,
+            scenarioKey: "stableDay",
+            yesterdayHeavy: false
+        )
+        XCTAssertTrue(withoutSleep.planStaleDifference(from: withSleep))
+        XCTAssertTrue(withoutSleep.materialDifference(from: withSleep))
+    }
+
+    func testSleepDisappearingIsStillMaterialDifference() {
+        let withSleep = ProposalInputFingerprintBuilder.make(
+            dayKey: "2026-07-29",
+            todaySnapshots: [],
+            tomorrowSnapshots: [],
+            recoveryBand: .good,
+            sleepPresence: .present,
+            scenarioKey: "stableDay",
+            yesterdayHeavy: false
+        )
+        let withoutSleep = ProposalInputFingerprintBuilder.make(
+            dayKey: "2026-07-29",
+            todaySnapshots: [],
+            tomorrowSnapshots: [],
+            recoveryBand: .good,
+            sleepPresence: .unavailable,
+            scenarioKey: "stableDay",
+            yesterdayHeavy: false
+        )
+        XCTAssertTrue(withSleep.planStaleDifference(from: withoutSleep))
+    }
+
+    func testSleepPresenceStaysMissingUntilSleepWaitTimesOut() {
+        XCTAssertEqual(
+            ProposalInputFingerprintBuilder.sleepPresence(
+                sleepHours: 0,
+                recoveryDataAvailable: true,
+                timedOutWithoutSleep: false,
+                healthRefreshCompleted: true,
+                sleepWaitTimedOut: false
+            ),
+            .missing
+        )
+        XCTAssertEqual(
+            ProposalInputFingerprintBuilder.sleepPresence(
+                sleepHours: 0,
+                recoveryDataAvailable: true,
+                timedOutWithoutSleep: true,
+                healthRefreshCompleted: true,
+                sleepWaitTimedOut: true
+            ),
+            .unavailable
+        )
+        XCTAssertEqual(
+            ProposalInputFingerprintBuilder.sleepPresence(
+                sleepHours: 0,
+                recoveryDataAvailable: true,
+                timedOutWithoutSleep: false,
+                healthRefreshCompleted: false,
+                sleepWaitTimedOut: false
+            ),
+            .missing
+        )
+    }
+
+    func testGateKeepsGatheringWhileSleepStillMissing() {
+        let started = date(2026, 7, 29, 7, 0)
+        let stillWaiting = MorningProposalGate.decide(
+            input: MorningProposalGateInput(
+                now: date(2026, 7, 29, 7, 10),
+                dayRolloverCompleted: true,
+                healthRefreshCompleted: true,
+                healthRefreshTimedOut: false,
+                isHealthAccessGranted: true,
+                sleepHours: 0,
+                recoveryDataAvailable: true,
+                todayPlanLoaded: true,
+                tomorrowPlanLoaded: true,
+                yesterdayContextLoaded: true,
+                isMorningWindow: true,
+                hasCompletedPlannedItemToday: false,
+                existingStatus: .gatheringData,
+                gatheringStartedAt: started
+            )
+        )
+        XCTAssertEqual(stillWaiting, .gatheringData)
+
+        let afterGrace = MorningProposalGate.decide(
+            input: MorningProposalGateInput(
+                now: date(2026, 7, 29, 7, 15),
+                dayRolloverCompleted: true,
+                healthRefreshCompleted: true,
+                healthRefreshTimedOut: false,
+                isHealthAccessGranted: true,
+                sleepHours: 0,
+                recoveryDataAvailable: true,
+                todayPlanLoaded: true,
+                tomorrowPlanLoaded: true,
+                yesterdayContextLoaded: true,
+                isMorningWindow: true,
+                hasCompletedPlannedItemToday: false,
+                existingStatus: .gatheringData,
+                gatheringStartedAt: started
+            )
+        )
+        XCTAssertEqual(afterGrace, .allowGeneration)
+    }
+
+    func testMarkStaleFiresWhenSleepArrivesAfterNoSleepDraft() async {
+        let dayKey = "2026-08-12"
+        let withoutSleep = ProposalInputFingerprintBuilder.make(
+            dayKey: dayKey,
+            todaySnapshots: [],
+            tomorrowSnapshots: [],
+            recoveryBand: .unavailable,
+            sleepPresence: .unavailable,
+            scenarioKey: "stableDay",
+            yesterdayHeavy: false
+        )
+        MorningProposalStore.upsert(
+            MorningPlanProposal(
+                id: "p-sleep-enrich",
+                dayKey: dayKey,
+                generatedAt: Date(),
+                status: .proposalReady,
+                fingerprint: withoutSleep,
+                changes: [],
+                appliedAt: nil,
+                dismissedAt: nil,
+                lastErrorCode: nil,
+                schemaVersion: MorningPlanProposal.currentSchemaVersion
+            )
+        )
+        let withSleep = ProposalInputFingerprintBuilder.make(
+            dayKey: dayKey,
+            todaySnapshots: [],
+            tomorrowSnapshots: [],
+            recoveryBand: .moderate,
+            sleepPresence: .present,
+            scenarioKey: "stableDay",
+            yesterdayHeavy: false
+        )
+        await MainActor.run {
+            MorningProposalService.markStaleIfNeeded(dayKey: dayKey, liveFingerprint: withSleep)
+        }
+        let status = await MainActor.run {
+            MorningProposalStore.proposal(for: dayKey)?.status
+        }
+        XCTAssertEqual(status, .stale)
+    }
+
     func testMarkStaleOnFingerprintMismatch() async {
         let dayKey = "2026-08-11"
         let fingerprint = ProposalInputFingerprintBuilder.make(

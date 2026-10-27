@@ -33,6 +33,7 @@ struct WeekFitApp: App {
 
     init() {
         StartupDiagnostics.step(1, "app init", detail: "WeekFitApp.init")
+        WeekFitUITestSupport.applyLaunchOverridesIfNeeded()
         WeekFitCloudAPI.bootstrapFromInfoPlistIfNeeded()
         // Earliest SwiftUI App entry — once-guarded; AppDelegate still configures
         // first in didFinishLaunching before AnalyticsBootstrap (no double configure).

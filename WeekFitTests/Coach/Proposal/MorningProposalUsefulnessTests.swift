@@ -139,6 +139,62 @@ final class MorningProposalUsefulnessTests: XCTestCase {
         XCTAssertTrue(slots.contains(.lunch) || slots.contains(.dinner))
     }
 
+    func testMealSlotWindowsHaveNoDinnerGapAroundLateMorning() {
+        // 10:31–10:59 previously fell through to dinner ("Dodaj kolację" for toast).
+        XCTAssertEqual(ProposalMealSlot.from(totalMinutes: 10 * 60 + 30), .breakfast)
+        XCTAssertEqual(ProposalMealSlot.from(totalMinutes: 10 * 60 + 55), .breakfast)
+        XCTAssertEqual(ProposalMealSlot.from(totalMinutes: 10 * 60 + 59), .breakfast)
+        XCTAssertEqual(ProposalMealSlot.from(totalMinutes: 11 * 60), .lunch)
+        XCTAssertEqual(ProposalMealSlot.from(totalMinutes: 17 * 60 + 59), .snack)
+        XCTAssertEqual(ProposalMealSlot.from(totalMinutes: 18 * 60), .dinner)
+        XCTAssertEqual(ProposalMealSlot.from(totalMinutes: 19 * 60), .dinner)
+    }
+
+    func testClampedBreakfastTimeStaysBreakfastForLabels() {
+        // Mimic now≈10:30 → earliest≈10:55. With contiguous windows this is still breakfast,
+        // so UI must not show "Dodaj kolację" for a toast planned at that clock time.
+        let clamped = date(2026, 10, 26, 10, 55)
+        XCTAssertEqual(ProposalMealSlot.from(date: clamped), .breakfast)
+        XCTAssertEqual(
+            ProposalMealSlot.from(reasonCode: .libraryMealSteadyBreakfast),
+            .breakfast
+        )
+        XCTAssertNotEqual(
+            ProposalMealSlot.from(date: clamped),
+            .dinner,
+            "Late-morning clamp must not fall through to dinner"
+        )
+    }
+
+    func testPastBreakfastSlotIsDroppedInsteadOfRelabeledAsDinner() {
+        let library = [
+            meal("toast", "Toast with ricotta cheese and strawberries", time: "08:30", type: "preworkout"),
+            meal("pasta", "Shrimp Pasta", time: "13:00", type: "highprotein"),
+            meal("dinner", "Turkey Sweet Potato", time: "19:00", type: "recovery")
+        ]
+        // 11:05 → breakfast clamp would leave the breakfast window; provider must not
+        // emit toast under a dinner identity.
+        let context = makeContext(
+            recoveryBand: .good,
+            yesterdayHeavy: false,
+            templates: [],
+            mealLibrary: library,
+            now: date(2026, 10, 26, 11, 5)
+        )
+        let meals = MealLibraryProvider.generate(context: context, strategy: .maintain)
+        for candidate in meals {
+            guard case .createMealFromLibrary(let payload) = candidate.payload else { continue }
+            if payload.mealId == "toast" || payload.title.localizedCaseInsensitiveContains("toast") {
+                XCTFail("Breakfast toast must not be proposed after breakfast window: \(payload.proposedDate)")
+            }
+            let clockSlot = ProposalMealSlot.from(date: payload.proposedDate)
+            let reasonSlot = candidate.reasonCodes.first.flatMap(ProposalMealSlot.from(reasonCode:))
+            if let reasonSlot {
+                XCTAssertEqual(clockSlot, reasonSlot, "Clock label and reason slot diverged for \(payload.title)")
+            }
+        }
+    }
+
     func testRemainingSlotsPreferLunchAndDinnerOverSnack() {
         let library = [
             meal("l", "Lunch", time: "13:00", type: "balanced"),
@@ -314,6 +370,7 @@ final class MorningProposalUsefulnessTests: XCTestCase {
         ProposalMealCandidate(
             id: id,
             title: title,
+            storedTitle: title,
             imageName: "",
             calories: 400,
             protein: 25,
@@ -330,11 +387,17 @@ final class MorningProposalUsefulnessTests: XCTestCase {
         yesterdayHeavy: Bool,
         templates: [SimilarDayTemplate],
         mealLibrary: [ProposalMealCandidate] = [],
-        stronglyRejectsWalk: Bool = false
+        stronglyRejectsWalk: Bool = false,
+        now: Date? = nil
     ) -> DailyContext {
         let mode = MorningProposalGenerationMode.compose
+        let nowDate = now ?? date(2026, 7, 29, 8, 19)
+        let dayKey: String = {
+            let c = Calendar.current.dateComponents([.year, .month, .day], from: nowDate)
+            return String(format: "%04d-%02d-%02d", c.year ?? 2026, c.month ?? 1, c.day ?? 1)
+        }()
         let fingerprint = ProposalInputFingerprintBuilder.make(
-            dayKey: "2026-07-29",
+            dayKey: dayKey,
             todaySnapshots: [],
             tomorrowSnapshots: [],
             recoveryBand: recoveryBand,
@@ -344,8 +407,8 @@ final class MorningProposalUsefulnessTests: XCTestCase {
             generationMode: mode
         )
         return DailyContext(
-            now: date(2026, 7, 29, 8, 19),
-            dayKey: "2026-07-29",
+            now: nowDate,
+            dayKey: dayKey,
             isMorningEligible: true,
             hasCompletedOrPartialToday: false,
             generationMode: mode,

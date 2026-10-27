@@ -108,9 +108,20 @@ struct OnboardingPromiseMark: View {
         WeekFitLocalizedString("onboarding.v11.splash.headline")
             + " "
             + WeekFitLocalizedString("onboarding.v11.splash.subhead.emphasis")
-            + WeekFitLocalizedString("onboarding.v11.splash.subhead.suffix")
+            + Self.spacedSplashSuffix()
             + " "
             + WeekFitLocalizedString("onboarding.v11.splash.tagline")
+    }
+
+    /// Ensure emphasis+suffix concatenation never glues Latin words (`zähltwenn`).
+    private static func spacedSplashSuffix() -> String {
+        let suffix = WeekFitLocalizedString("onboarding.v11.splash.subhead.suffix")
+        guard let first = suffix.unicodeScalars.first else { return suffix }
+        if CharacterSet.whitespacesAndNewlines.contains(first)
+            || CharacterSet.punctuationCharacters.contains(first) {
+            return suffix
+        }
+        return " " + suffix
     }
 
     private var brandMark: some View {
@@ -183,7 +194,7 @@ struct OnboardingPromiseMark: View {
             (
                 Text(WeekFitLocalizedString("onboarding.v11.splash.subhead.emphasis"))
                     .foregroundStyle(subheadEmphasisInk)
-                + Text(WeekFitLocalizedString("onboarding.v11.splash.subhead.suffix"))
+                + Text(Self.spacedSplashSuffix())
                     .foregroundStyle(subheadSuffixInk)
             )
             .font(.system(size: subheadSize, weight: .medium, design: .rounded))

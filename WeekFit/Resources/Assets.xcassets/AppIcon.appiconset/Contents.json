@@ -1,31 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "WeekFit-Icon-Light-1024.png",
-      "idiom" : "universal",
-      "platform" : "ios",
-      "size" : "1024x1024"
-    },
-    {
-      "appearances" : [
-        {
-          "appearance" : "luminosity",
-          "value" : "dark"
-        }
-      ],
-      "filename" : "WeekFit-AppIcon-Open-Ribbon-1024.png",
-      "idiom" : "universal",
-      "platform" : "ios",
-      "size" : "1024x1024"
-    },
-    {
-      "appearances" : [
-        {
-          "appearance" : "luminosity",
-          "value" : "tinted"
-        }
-      ],
-      "filename" : "ChatGPT Image Jul 28, 2026, 11_47_39 PM.png",
+      "filename" : "WeekFit-Icon-v3-1024.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"

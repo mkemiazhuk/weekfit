@@ -1,0 +1,3 @@
+"NSCameraUsageDescription" = "WeekFit은 맞춤 음식에 사진을 추가할 수 있도록 카메라를 사용합니다.";
+"NSHealthShareUsageDescription" = "WeekFit은 건강 및 활동 데이터를 사용해 하루 계획을 개인화합니다.";
+"NSHealthUpdateUsageDescription" = "WeekFit은 Apple Health에서 운동과 활동을 읽어 계획을 정확하게 유지합니다. Apple Health에 운동을 쓰지 않습니다.";

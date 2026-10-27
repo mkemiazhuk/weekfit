@@ -29,6 +29,44 @@ final class CoachMorningBriefCopyPolicyTests: XCTestCase {
         )
     }
 
+    func testMergedMorningCatchupAssessmentLocalizesInEverySupportedLanguage() {
+        let facts = CoachMorningBriefFactsBuilder.synthetic(
+            dayReadiness: CoachDayReadiness(
+                recoveryPercent: 50,
+                sleepHours: 0,
+                recoveryBand: .moderate,
+                hadHeavyYesterday: false,
+                sleepIsLow: false
+            ),
+            todayActivityCount: 0,
+            recoveryDataAvailable: false
+        )
+        let pack = CoachMorningBriefCopyPolicy.morningReadinessPack(for: facts)
+        let english = pack.assessment.english
+        XCTAssertTrue(english.contains("Morning — recovery data is still catching up."))
+        XCTAssertTrue(english.contains("Nothing heavy is on the calendar yet."))
+
+        let languages: [AppLanguage] = [
+            .french, .polish, .spanish, .german, .japanese, .italian, .korean, .chineseSimplified
+        ]
+        for language in languages {
+            let localized = pack.assessment.resolved(language: language)
+            XCTAssertFalse(
+                localized.contains("Morning — recovery data is still catching up."),
+                "\(language.rawValue) left English opener: \(localized)"
+            )
+            XCTAssertFalse(
+                localized.contains("Nothing heavy is on the calendar yet."),
+                "\(language.rawValue) left English tail: \(localized)"
+            )
+            XCTAssertFalse(localized.isEmpty, language.rawValue)
+        }
+
+        let polish = pack.assessment.resolved(language: .polish)
+        XCTAssertTrue(polish.contains("Rano — dane regeneracji"), polish)
+        XCTAssertTrue(polish.localizedCaseInsensitiveContains("kalendarz"), polish)
+    }
+
     func testHeavyYesterdayAssessmentInterpolatesRussianSleepAndRecovery() {
         let facts = CoachMorningBriefFacts(
             recoveryDataAvailable: true,
@@ -52,6 +90,10 @@ final class CoachMorningBriefCopyPolicyTests: XCTestCase {
     }
 
     func testProtectTomorrowFreshLocalizesLongRunTitleInRussian() {
+        let previous = WeekFitCurrentAppLanguage()
+        WeekFitSetCurrentLanguage(.russian)
+        defer { WeekFitSetCurrentLanguage(previous) }
+
         let facts = CoachMorningBriefFacts(
             recoveryDataAvailable: true,
             sleepHours: 8.0,

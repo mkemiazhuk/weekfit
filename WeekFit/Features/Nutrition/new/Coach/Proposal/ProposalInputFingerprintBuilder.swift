@@ -97,12 +97,19 @@ enum ProposalInputFingerprintBuilder {
     static func sleepPresence(
         sleepHours: Double,
         recoveryDataAvailable: Bool,
-        timedOutWithoutSleep: Bool
+        timedOutWithoutSleep: Bool,
+        healthRefreshCompleted: Bool = false,
+        sleepWaitTimedOut: Bool = false
     ) -> ProposalSleepPresenceToken {
         if sleepHours > 0 {
             return .present
         }
-        if timedOutWithoutSleep || !recoveryDataAvailable {
+        // Overnight samples often land after HealthKit "settled". Stay `.missing`
+        // until the sleep-wait grace ends so we don't freeze a no-sleep draft early.
+        if !sleepWaitTimedOut {
+            return .missing
+        }
+        if timedOutWithoutSleep || !recoveryDataAvailable || healthRefreshCompleted {
             return .unavailable
         }
         return .missing

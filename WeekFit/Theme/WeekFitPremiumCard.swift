@@ -278,9 +278,9 @@ struct WeekFitPremiumCardModifier: ViewModifier {
     private var contactShadowRadius: CGFloat {
         if palette.isLight {
             switch emphasis {
-            case .elevated: return 2.5
-            case .accent, .standard: return 2
-            case .compact: return 1.5
+            case .elevated: return 1.75
+            case .accent, .standard: return 1.5
+            case .compact: return 1.25
             }
         }
         return 0
@@ -314,10 +314,10 @@ struct WeekFitPremiumCardModifier: ViewModifier {
     private var ambientShadowRadius: CGFloat {
         if palette.isLight {
             switch emphasis {
-            case .elevated: return 6
-            case .accent: return 5
-            case .standard: return 5
-            case .compact: return 4
+            case .elevated: return 4
+            case .accent: return 3.5
+            case .standard: return 3.5
+            case .compact: return 3
             }
         }
         switch emphasis {

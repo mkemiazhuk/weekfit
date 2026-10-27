@@ -11,8 +11,8 @@ enum WeekFitScreenLayout {
     /// Gap under the screen header before first content.
     static let headerBottomSpacing: CGFloat = 22
     /// Floating tab bar occupied height + breathing room for scroll content.
-    /// Bar 52 + bottom pad 10 + gap so the last card clears the pill fully.
-    static let tabBarClearance: CGFloat = 104
+    /// Icon+label bar (~64) + bottom pad 10 + home-indicator slack.
+    static let tabBarClearance: CGFloat = 112
 
     static var topPadding: CGFloat {
         UIScreen.main.bounds.height > 800 ? topPaddingLarge : topPaddingSmall

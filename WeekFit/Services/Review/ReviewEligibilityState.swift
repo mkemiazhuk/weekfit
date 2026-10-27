@@ -5,8 +5,12 @@ struct ReviewEligibilityState: Equatable, Sendable {
     var activeDayTimestamps: [TimeInterval]
     var meaningfulActionCount: Int
     var lastMeaningfulActionDate: Date?
+    /// Legacy custom-card timestamp. Not the system-request cooldown.
     var lastFeedbackPromptDate: Date?
+    /// Legacy custom-card version. Eligibility reads `systemReviewRequestVersion` instead.
     var lastPromptedAppVersion: String?
+    /// App version passed to `AppStore.requestReview`. Nil until that API is invoked.
+    var systemReviewRequestVersion: String?
     var nativeReviewRequestAttemptDate: Date?
     var lastFeedbackSentimentRaw: String?
     var isPermanentlyDismissed: Bool
@@ -18,6 +22,7 @@ struct ReviewEligibilityState: Equatable, Sendable {
         lastMeaningfulActionDate: nil,
         lastFeedbackPromptDate: nil,
         lastPromptedAppVersion: nil,
+        systemReviewRequestVersion: nil,
         nativeReviewRequestAttemptDate: nil,
         lastFeedbackSentimentRaw: nil,
         isPermanentlyDismissed: false
@@ -34,7 +39,9 @@ enum ReviewEligibilityFailureReason: String, Equatable, Sendable {
     case insufficientActiveDays
     case insufficientMeaningfulActions
     case noRecentMeaningfulAction
+    /// `AppStore.requestReview` already ran for this app version.
     case alreadyPromptedThisVersion
+    /// Fewer than 120 days since the last `AppStore.requestReview` attempt.
     case cooldownActive
     case permanentlyDismissed
     case uiBlocked
@@ -80,7 +87,8 @@ enum ReviewEligibilityEvaluator {
         calendar: Calendar = .current,
         currentAppVersion: String,
         isUIBlocked: Bool,
-        isReviewDemoMode: Bool
+        isReviewDemoMode: Bool,
+        bypassEngagementThresholds: Bool = false
     ) -> ReviewEligibilityDecision {
         var reasons: [ReviewEligibilityFailureReason] = []
 
@@ -94,54 +102,62 @@ enum ReviewEligibilityEvaluator {
             reasons.append(.permanentlyDismissed)
         }
 
-        guard let firstUse = state.firstAppUseDate else {
+        let distinctActiveDays = state.distinctActiveDayCount
+        let actionCount = state.meaningfulActionCount
+        var daysSinceFirstUse = 0
+
+        if let firstUse = state.firstAppUseDate {
+            daysSinceFirstUse = calendar.dateComponents(
+                [.day],
+                from: startOfDay(firstUse, calendar),
+                to: startOfDay(now, calendar)
+            ).day ?? 0
+        } else if !bypassEngagementThresholds {
             reasons.append(.missingFirstUse)
             return .ineligible(
                 reasons: reasons,
-                distinctActiveDays: state.distinctActiveDayCount,
-                meaningfulActionCount: state.meaningfulActionCount
+                distinctActiveDays: distinctActiveDays,
+                meaningfulActionCount: actionCount
             )
         }
 
-        let daysSinceFirstUse = calendar.dateComponents([.day], from: startOfDay(firstUse, calendar), to: startOfDay(now, calendar)).day ?? 0
-        let distinctActiveDays = state.distinctActiveDayCount
-        let actionCount = state.meaningfulActionCount
+        if !bypassEngagementThresholds {
+            if daysSinceFirstUse < ReviewEligibilityRules.minimumCalendarDaysSinceFirstUse {
+                reasons.append(.insufficientCalendarDays)
+            }
+            if distinctActiveDays < ReviewEligibilityRules.minimumDistinctActiveDays {
+                reasons.append(.insufficientActiveDays)
+            }
+            if actionCount < ReviewEligibilityRules.minimumMeaningfulActions {
+                reasons.append(.insufficientMeaningfulActions)
+            }
 
-        if daysSinceFirstUse < ReviewEligibilityRules.minimumCalendarDaysSinceFirstUse {
-            reasons.append(.insufficientCalendarDays)
-        }
-        if distinctActiveDays < ReviewEligibilityRules.minimumDistinctActiveDays {
-            reasons.append(.insufficientActiveDays)
-        }
-        if actionCount < ReviewEligibilityRules.minimumMeaningfulActions {
-            reasons.append(.insufficientMeaningfulActions)
-        }
-
-        if let lastAction = state.lastMeaningfulActionDate {
-            let daysSinceAction = calendar.dateComponents(
-                [.day],
-                from: startOfDay(lastAction, calendar),
-                to: startOfDay(now, calendar)
-            ).day ?? Int.max
-            if daysSinceAction > ReviewEligibilityRules.recentActionWindowDays {
+            if let lastAction = state.lastMeaningfulActionDate {
+                let daysSinceAction = calendar.dateComponents(
+                    [.day],
+                    from: startOfDay(lastAction, calendar),
+                    to: startOfDay(now, calendar)
+                ).day ?? Int.max
+                if daysSinceAction > ReviewEligibilityRules.recentActionWindowDays {
+                    reasons.append(.noRecentMeaningfulAction)
+                }
+            } else {
                 reasons.append(.noRecentMeaningfulAction)
             }
-        } else {
-            reasons.append(.noRecentMeaningfulAction)
         }
 
-        if let promptedVersion = state.lastPromptedAppVersion,
-           promptedVersion == currentAppVersion {
+        if let requestedVersion = state.systemReviewRequestVersion,
+           requestedVersion == currentAppVersion {
             reasons.append(.alreadyPromptedThisVersion)
         }
 
-        if let lastPrompt = state.lastFeedbackPromptDate {
-            let daysSincePrompt = calendar.dateComponents(
+        if let lastAttempt = state.nativeReviewRequestAttemptDate {
+            let daysSinceAttempt = calendar.dateComponents(
                 [.day],
-                from: startOfDay(lastPrompt, calendar),
+                from: startOfDay(lastAttempt, calendar),
                 to: startOfDay(now, calendar)
             ).day ?? 0
-            if daysSincePrompt < ReviewEligibilityRules.promptCooldownDays {
+            if daysSinceAttempt < ReviewEligibilityRules.promptCooldownDays {
                 reasons.append(.cooldownActive)
             }
         }

@@ -43,7 +43,7 @@ final class TodayHierarchyScreenshotTests: XCTestCase {
             app.staticTexts["Easy Run"].waitForExistence(timeout: 10)
                 || app.staticTexts["Up next"].waitForExistence(timeout: 3)
                 || app.staticTexts["UP NEXT"].waitForExistence(timeout: 3)
-                || app.staticTexts["Tomorrow's plan"].waitForExistence(timeout: 3),
+                || app.staticTexts["Next Up"].waitForExistence(timeout: 3),
             "Upcoming activity card did not appear"
         )
     }
@@ -75,6 +75,17 @@ final class TodayHierarchyScreenshotTests: XCTestCase {
             app.staticTexts["Finish activity"].exists,
             "Idle Today should not show a live Finish activity control"
         )
+    }
+
+    @MainActor
+    func testCaptureTodayLightAndDark() throws {
+        let light = launch(extraArguments: ["-weekfit-appearance=light"])
+        saveScreenshot(light, name: "today-light-theme")
+        XCTAssertTrue(light.otherElements["screen.today"].exists)
+
+        let dark = launch(extraArguments: ["-weekfit-appearance=dark"])
+        saveScreenshot(dark, name: "today-dark-theme")
+        XCTAssertTrue(dark.otherElements["screen.today"].exists)
     }
 
     @MainActor
@@ -144,6 +155,12 @@ final class TodayHierarchyScreenshotTests: XCTestCase {
         try? FileManager.default.createDirectory(at: docs, withIntermediateDirectories: true)
         let docsURL = docs.appendingPathComponent("\(name).png")
         try? screenshot.pngRepresentation.write(to: docsURL)
+
+        let tmp = URL(fileURLWithPath: "/Users/maxk/Dev/WeekFit/.tmp/today-typography-screenshots", isDirectory: true)
+        try? FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        let tmpURL = tmp.appendingPathComponent("\(name).png")
+        try? screenshot.pngRepresentation.write(to: tmpURL)
         print("📸 Saved screenshot: \(docsURL.path)")
+        print("📸 Saved screenshot: \(tmpURL.path)")
     }
 }

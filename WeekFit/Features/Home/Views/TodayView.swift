@@ -150,12 +150,14 @@ struct TodayView: View {
     }
 
     private var ringCaptionLineLimit: Int {
+        // Allow wrap so +10–12% type doesn't collide across the three columns.
         if shouldStackRings { return 3 }
-        return dynamicTypeSize >= .xLarge ? 2 : 1
+        return dynamicTypeSize >= .xLarge ? 3 : 2
     }
 
     private var quickActionCaptionLineLimit: Int {
-        shouldStackQuickActions ? 2 : 1
+        // Allow wrap so ×1.10 labels fit DE/PL/RU without shrinking.
+        shouldStackQuickActions ? 3 : 2
     }
 
     private var healthRefreshBinding: Binding<UUID> {
@@ -357,13 +359,17 @@ struct TodayView: View {
     private var timeOfDayGreeting: (text: String, icon: String, iconColor: Color) {
         switch WeekFitLocalDayPeriod.from() {
         case .morning:
-            return ("Good morning", "sun.max.fill", .orange)
+            return (WeekFitLocalizedString("today.greeting.morning"), "sun.max.fill", .orange)
         case .afternoon:
-            return ("Good afternoon", "sun.max.fill", .orange)
+            return (WeekFitLocalizedString("today.greeting.afternoon"), "sun.max.fill", .orange)
         case .evening:
-            return ("Good evening", "moon.stars.fill", Color(red: 0.55, green: 0.40, blue: 0.85))
+            return (
+                WeekFitLocalizedString("today.greeting.evening"),
+                "moon.stars.fill",
+                Color(red: 0.55, green: 0.40, blue: 0.85)
+            )
         case .night:
-            return ("Good night", "moon.fill", .indigo)
+            return (WeekFitLocalizedString("today.greeting.night"), "moon.fill", .indigo)
         }
     }
     
@@ -1489,7 +1495,7 @@ struct TodayView: View {
                     AnyView(quickActionsSection)
 
                 case .upcoming:
-                    // Your Day → (pending confirms | Up Next) → Today’s Focus → Quick Log.
+                    // Evening and daytime: Next Up, then the focus card.
                     if let planSlot = erasedPlanAttentionSlot(now: now, upcoming: upcoming) {
                         planSlot
                     }
@@ -1497,7 +1503,6 @@ struct TodayView: View {
                     AnyView(quickActionsSection)
 
                 case .idle:
-                    // Your Day → (pending confirms | empty plan) → Today’s Focus → Quick Log.
                     if let planSlot = erasedPlanAttentionSlot(now: now, upcoming: nil) {
                         planSlot
                     } else {
@@ -1569,8 +1574,7 @@ struct TodayView: View {
 
     private func todayCardSectionTitle(_ title: String) -> some View {
         Text(title)
-            .font(WeekFitType.sectionLabel)
-            .fontDesign(.rounded)
+            .font(TodayCardTypography.sectionLabel)
             .foregroundStyle(todaySectionTitleColor)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -1985,6 +1989,66 @@ struct TodayView: View {
         return presentation.icon
     }
 
+    private func todayCoachFocusAccent(
+        for presentation: CoachUIPresentation,
+        displayIcon: String
+    ) -> Color {
+        // Evening focus mockup: lavender icon well for wind-down / recovery stance.
+        switch presentation.scenario {
+        case .walkEveningWindDown,
+             .eveningAfterEndurance,
+             .eveningAfterRacket,
+             .eveningAfterStrength,
+             .eveningAfterRecovery,
+             .protectTomorrowFresh,
+             .tomorrowProtection:
+            return WeekFitProgressRingColor.recovery
+        default:
+            break
+        }
+        if displayIcon == "moon.fill" || displayIcon.contains("brain") {
+            return WeekFitProgressRingColor.recovery
+        }
+        return presentation.accentColor
+    }
+
+    /// Duration pill only when a real planned focus duration exists (never invented).
+    private func todayCoachFocusDurationLabel(for presentation: CoachUIPresentation) -> String? {
+        switch presentation.scenario {
+        case .walkEveningWindDown,
+             .eveningAfterEndurance,
+             .eveningAfterRacket,
+             .eveningAfterStrength,
+             .eveningAfterRecovery,
+             .protectTomorrowFresh,
+             .tomorrowProtection:
+            break
+        default:
+            return nil
+        }
+
+        let now = todayViewModel.now
+        let calendar = Calendar.current
+        let recoveryTypes: Set<String> = [
+            "recovery", "mobility", "stretch", "breath", "breathwork",
+            "meditation", "yoga", "walk", "cool"
+        ]
+        let candidates = plannedActivities.filter { activity in
+            guard calendar.isDate(activity.date, inSameDayAs: now) else { return false }
+            guard !activity.isCompleted, !activity.isSkipped else { return false }
+            return recoveryTypes.contains(activity.type.lowercased())
+                || activity.title.lowercased().contains("wind")
+                || activity.title.lowercased().contains("breath")
+        }
+        guard let activity = candidates.sorted(by: { $0.date < $1.date }).first else { return nil }
+        let minutes = max(activity.actualDurationMinutes ?? 0, activity.effectiveDurationMinutes)
+        guard minutes > 0 else { return nil }
+        return String(
+            format: WeekFitLocalizedString("common.unit.minutesFormat"),
+            Int64(minutes)
+        )
+    }
+
     private var dailyStatusSection: some View {
         let _ = TodayStartupDiagnostics.child(
             "dailyStatusSection compute",
@@ -2204,6 +2268,7 @@ struct TodayView: View {
                 value: ringFillPercent,
                 centerText: activityDisplayText,
                 color: activityColor,
+                valueColor: WeekFitProgressRingColor.activityLabel,
                 ringProgressOverride: CGFloat(min(1, max(0, activityProgress >= 1 ? 1 : activityProgress)))
             )
             .frame(maxWidth: .infinity)
@@ -2237,11 +2302,12 @@ struct TodayView: View {
             showNutritionDetails = true
         } label: {
             statusRingWidget(
-                title: WeekFitLocalizedString("today.status.nutrition"),
+                title: WeekFitLocalizedString("today.status.calories"),
                 infoText: remainingCaloriesText,
                 valueText: String(format: WeekFitLocalizedString("common.unit.caloriesFormat"), Int(eatenCalories)),
                 value: nutritionPercent,
-                color: nutritionColor
+                color: nutritionColor,
+                valueColor: WeekFitProgressRingColor.nutritionLabel
             )
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
@@ -2294,7 +2360,8 @@ struct TodayView: View {
                 infoText: recoverySleepRingText,
                 valueText: recoveryStatusRingText,
                 value: recoveryDisplayValue,
-                color: recoveryColor
+                color: recoveryColor,
+                valueColor: WeekFitProgressRingColor.recoveryLabel
             )
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
@@ -2310,6 +2377,7 @@ struct TodayView: View {
         value: Int?,
         centerText: String? = nil,
         color: Color,
+        valueColor: Color? = nil,
         ringProgressOverride: CGFloat? = nil
     ) -> some View {
         let displayValue = value ?? 0
@@ -2317,8 +2385,9 @@ struct TodayView: View {
         let ringSize = todayEffectiveRingSize
         let ringStroke = max(3, todayRingStroke * (ringSize / todayRingSize))
         let centerLabel = value == nil ? "—" : (centerText ?? "\(displayValue)%")
+        let captionColor = valueColor ?? color
 
-        return VStack(spacing: 7) {
+        return VStack(spacing: 8) {
             WeekFitProgressRing(
                 progress: value == nil ? 0 : progress,
                 color: color,
@@ -2326,42 +2395,38 @@ struct TodayView: View {
                 strokeWidth: ringStroke
             ) {
                 Text(centerLabel)
-                    .font(.system(size: centerLabel.count > 3 ? 15 : 17, weight: .bold, design: .rounded))
+                    .font(TodayCardTypography.ringPercent(compact: centerLabel.count > 3))
                     .foregroundStyle(textPrimary)
                     .monospacedDigit()
-                    .minimumScaleFactor(0.72)
                     .lineLimit(1)
                     .offset(y: value == nil ? 1 : 0.5)
             }
 
-            VStack(spacing: 2) {
+            VStack(spacing: 3) {
                 Text(title)
-                    .font(.caption.weight(.semibold))
-                    .fontDesign(.rounded)
+                    .font(TodayCardTypography.ringCategory)
                     .foregroundStyle(textPrimary.opacity(palette.isLight ? 0.88 : 0.94))
                     .lineLimit(ringCaptionLineLimit)
-                    .minimumScaleFactor(0.68)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Text(valueText)
-                    .font(.caption2.weight(.bold))
-                    .fontDesign(.rounded)
-                    .foregroundStyle(palette.isLight ? color : color.opacity(1))
+                    .font(TodayCardTypography.ringPrimaryValue)
+                    .foregroundStyle(captionColor)
                     .lineLimit(ringCaptionLineLimit)
-                    .minimumScaleFactor(0.84)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 if !infoText.isEmpty {
                     Text(infoText)
-                        .font(.caption2.weight(.medium))
-                        .fontDesign(.rounded)
+                        .font(TodayCardTypography.ringMeta)
                         .foregroundStyle(todayMetaReadable)
                         .lineLimit(ringCaptionLineLimit)
-                        .minimumScaleFactor(0.82)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .top)
             .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .top)
     }
 
     // MARK: - Session / plan cards
@@ -2377,8 +2442,7 @@ struct TodayView: View {
         return todayPremiumCard(accent: nil, featured: true) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(WeekFitLocalizedString("today.session.inProgress"))
-                    .font(WeekFitType.sectionLabel)
-                    .fontDesign(.rounded)
+                    .font(TodayCardTypography.sectionLabel)
                     .foregroundStyle(todaySecondaryReadable)
 
                 HStack(alignment: .center, spacing: 12) {
@@ -2389,15 +2453,13 @@ struct TodayView: View {
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(title)
-                            .font(WeekFitType.compactCardTitle)
-                            .fontDesign(.rounded)
+                            .font(TodayCardTypography.cardTitle)
                             .foregroundStyle(textPrimary)
                             .lineLimit(3)
                             .fixedSize(horizontal: false, vertical: true)
 
                         Text(startLabel)
-                            .font(WeekFitType.secondary)
-                            .fontDesign(.rounded)
+                            .font(TodayCardTypography.cardBody)
                             .foregroundStyle(todaySecondaryReadable)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -2449,7 +2511,7 @@ struct TodayView: View {
             todayPremiumCard(accent: nil, featured: false) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(upNextSectionTitle(for: activity, now: now))
-                        .font(WeekFitType.sectionLabel)
+                        .font(TodayCardTypography.sectionLabel)
                         .fontDesign(.rounded)
                         .foregroundStyle(todaySecondaryReadable)
 
@@ -2461,28 +2523,25 @@ struct TodayView: View {
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(shortDisplayTitle(activityDisplayTitle(activity)))
-                                .font(WeekFitType.compactCardTitle)
-                                .fontDesign(.rounded)
+                                .font(TodayCardTypography.cardTitle)
                                 .foregroundStyle(textPrimary)
                                 .lineLimit(3)
                                 .fixedSize(horizontal: false, vertical: true)
 
                             Text(upNextSubtitle(for: activity))
-                                .font(WeekFitType.secondary)
-                                .fontDesign(.rounded)
+                                .font(TodayCardTypography.cardBody)
                                 .foregroundStyle(todaySecondaryReadable)
                                 .lineLimit(4)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                        // Avoid “Today at 19:00” + trailing “19:00” saying the same thing.
                         if shouldShowUpNextTrailingTime(for: activity) {
                             Text(upNextTimeText(for: activity, selectedDate: selectedDate))
                                 .font(WeekFitType.captionEmphasized)
-                                .monospacedDigit()
                                 .foregroundStyle(todaySecondaryReadable)
-                                .fixedSize(horizontal: true, vertical: false)
+                                .multilineTextAlignment(.trailing)
+                                .fixedSize(horizontal: true, vertical: true)
                         }
 
                         todaySupportingCardChevron(color: todayMetaReadable)
@@ -2585,15 +2644,13 @@ struct TodayView: View {
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(upNextSectionTitle(for: nil, now: now))
-                            .font(WeekFitType.compactCardTitle)
-                            .fontDesign(.rounded)
+                            .font(TodayCardTypography.cardTitle)
                             .foregroundStyle(textPrimary)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
 
                         Text(AppText.Today.noActivitiesPlanned)
-                            .font(WeekFitType.secondary)
-                            .fontDesign(.rounded)
+                            .font(TodayCardTypography.cardBody)
                             .foregroundStyle(todaySecondaryReadable)
                             .lineLimit(3)
                             .fixedSize(horizontal: false, vertical: true)
@@ -2619,7 +2676,7 @@ struct TodayView: View {
         )
     }
 
-    /// Prefer “Tomorrow’s plan” only when the next (or empty) destination is tomorrow.
+    /// Prefer “Next Up” only when the next destination is tomorrow.
     private func upNextSectionTitle(for activity: PlannedActivity?, now: Date) -> String {
         let calendar = Calendar.current
         guard calendar.isDate(selectedDate, inSameDayAs: now) else {
@@ -2753,6 +2810,12 @@ struct TodayView: View {
     }
 
     private func upNextAccent(for activity: PlannedActivity) -> Color {
+        // Walk / run icons stay in the activity (green) family even if typed as habit.
+        let icon = WeekFitActivityIconResolver.resolve(for: activity).lowercased()
+        if icon.contains("walk") || icon.contains("run") || icon.contains("hiking") {
+            return todayActivityColor
+        }
+
         switch activity.type.lowercased() {
         case "meal", "drink", "hydration":
             // Nutrition family (apricot) — not activity green.
@@ -2778,10 +2841,10 @@ struct TodayView: View {
             strokeOpacity: 1,
             strokeWidth: 1,
             fillColor: palette.isLight
-                ? accent.opacity(0.12)
+                ? accent.opacity(0.10)
                 : WeekFitTheme.whiteOpacity(0.07),
             strokeColor: palette.isLight
-                ? accent.opacity(0.26)
+                ? accent.opacity(WeekFitLightTokens.softBadgeStrokeOpacity)
                 : accent.opacity(0.22),
             iconColor: palette.isLight ? accent : accent.opacity(0.92)
         )
@@ -2887,12 +2950,13 @@ struct TodayView: View {
             from: presentation,
             nextActivityTitle: nextTitle
         )
-        let insightColor = presentation.accentColor
-        let insightTitle = display.title
         let insightIcon = todayCoachDisplayIcon(for: presentation)
+        let insightColor = todayCoachFocusAccent(for: presentation, displayIcon: insightIcon)
+        let insightTitle = display.title
         let insightMessage = display.message
         let challengeCue = todayRecoveryChallengeCue
         let focusHeading = todayCoachFocusHeading()
+        let durationLabel = todayCoachFocusDurationLabel(for: presentation)
 
         // Fully extracted body (no ViewBuilder closures capturing TodayView).
         return TodayCoachInsightCardBody(
@@ -2902,6 +2966,7 @@ struct TodayView: View {
             insightIcon: insightIcon,
             insightColor: insightColor,
             iconYOffset: coachIconOpticalYOffset(insightIcon),
+            durationLabel: durationLabel,
             challengeCue: challengeCue,
             textPrimary: textPrimary,
             textSecondary: todaySecondaryReadable,
@@ -3385,9 +3450,29 @@ struct TodayView: View {
 
     private func scheduleMorningProposalHealthTimeout() {
         morningProposalTimeoutTask?.cancel()
-        let timeout = MorningProposalGate.healthTimeoutSeconds
+        guard let proposal = morningProposal, proposal.status == .gatheringData else { return }
+        // Aim at the sleep-wait deadline (absolute). Rescheduling on refresh shrinks
+        // remaining time instead of resetting an 8s loop forever.
+        let sleepRemaining = MorningProposalGate.sleepWaitTimeoutSeconds
+            - Date().timeIntervalSince(proposal.generatedAt)
+        let healthSettled = healthManager.hasSettledMetrics(for: selectedDate)
+            || MorningProposalEvaluator.hasRecoverySignals(
+                sleepMinutes: healthManager.sleepMinutes,
+                timeInBedMinutes: healthManager.timeInBedMinutes,
+                hrvSDNN: healthManager.hrvSDNN,
+                restingHeartRate: healthManager.restingHeartRate
+            )
+        let delay: TimeInterval
+        if healthSettled {
+            delay = max(0.5, sleepRemaining)
+        } else {
+            delay = min(
+                MorningProposalGate.healthTimeoutSeconds,
+                max(0.5, sleepRemaining)
+            )
+        }
         morningProposalTimeoutTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             guard !Task.isCancelled else { return }
             guard morningProposal?.status == .gatheringData else { return }
             refreshMorningProposal()
@@ -3587,37 +3672,21 @@ struct TodayView: View {
         return loggedMeals.isEmpty
     }
 
-    private func quickActionFoodSubtitle(now: Date) -> String {
-        let _ = now
-        return WeekFitLocalizedString("today.quickActions.logFoodSubtitle")
-    }
-
-    private func quickActionDrinksSubtitle() -> String {
-        WeekFitLocalizedString("today.quickActions.logDrink")
-    }
-
-    private func quickActionActivitySubtitle(now: Date) -> String {
-        if currentActiveSession(now: now) != nil {
-            return WeekFitLocalizedString("today.quickActions.viewSession")
-        }
-        return WeekFitLocalizedString("today.quickActions.start")
-    }
-
     @ViewBuilder
     private func quickActionButtons(activeSession: PlannedActivity?, now: Date) -> some View {
         let priority = quickActionDynamicPriority(now: now)
-        let drinksSubtitle = quickActionDrinksSubtitle()
-        let foodSubtitle = quickActionFoodSubtitle(now: now)
-        let activitySubtitle = quickActionActivitySubtitle(now: now)
         let activityIcon = activeSession.map { upNextIcon(for: $0, isLive: true) } ?? "play.fill"
+        let activityLabel = activeSession == nil
+            ? WeekFitLocalizedString("today.quickActions.startActivity")
+            : WeekFitLocalizedString("today.quickActions.viewSession")
 
         quickActionItem(
             icon: "cup.and.saucer.fill",
-            label: WeekFitLocalizedString("today.quickActions.logDrinks"),
-            subLabel: drinksSubtitle,
-            color: WeekFitTheme.workout,
+            label: WeekFitLocalizedString("today.quickActions.logDrink"),
+            color: QuickDrinkAccent.hydration,
             isEmphasized: false,
-            toastMessage: drinksQuickLogToast
+            toastMessage: drinksQuickLogToast,
+            accessibilityIdentifier: "today.quickAction.drinks"
         ) {
             preloadQuickDrinkLogDataIfNeeded()
             ProductAnalytics.todayPrimaryActionTapped(.hydration)
@@ -3630,11 +3699,11 @@ struct TodayView: View {
 
         quickActionItem(
             icon: "fork.knife",
-            label: WeekFitLocalizedString("today.quickActions.logFood"),
-            subLabel: foodSubtitle,
+            label: WeekFitLocalizedString("today.quickActions.logMeal"),
             color: todayNutritionColor,
             isEmphasized: priority == .food,
-            toastMessage: foodQuickLogToast
+            toastMessage: foodQuickLogToast,
+            accessibilityIdentifier: "today.quickAction.food"
         ) {
             selectedLogTab = .meals
             preloadQuickFoodLogDataIfNeeded()
@@ -3648,9 +3717,8 @@ struct TodayView: View {
 
         quickActionItem(
             icon: activityIcon,
-            label: WeekFitLocalizedString("today.quickActions.startActivity"),
-            subLabel: activitySubtitle,
-            color: activeSession == nil ? todayActivityColor : todayActivityColor,
+            label: activityLabel,
+            color: todayActivityColor,
             isEmphasized: priority == .activity,
             liveIndicatorColor: activeSession == nil ? nil : todayActivityColor,
             accessibilityIdentifier: "today.quickAction.activity"
@@ -3696,7 +3764,6 @@ struct TodayView: View {
     private func quickActionItem(
         icon: String,
         label: String,
-        subLabel: String,
         color: Color,
         isEmphasized: Bool = false,
         liveIndicatorColor: Color? = nil,
@@ -3706,7 +3773,6 @@ struct TodayView: View {
     ) -> some View {
         let iconFillOpacity = isEmphasized ? (palette.isLight ? 0.18 : 0.17) : (palette.isLight ? 0.14 : 0.11)
         let iconStrokeOpacity = isEmphasized ? (palette.isLight ? 0.32 : 0.22) : (palette.isLight ? 0.24 : 0.15)
-        let subtitleOpacity = isEmphasized ? 0.88 : 0.78
         let iconForeground = palette.isLight
             ? color
             : color.opacity(isEmphasized ? 0.94 : 0.88)
@@ -3715,7 +3781,7 @@ struct TodayView: View {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             action()
         } label: {
-            VStack(spacing: 6) {
+            VStack(spacing: 8) {
                 ZStack(alignment: .top) {
                     Circle()
                         .fill(color.opacity(iconFillOpacity))
@@ -3754,33 +3820,23 @@ struct TodayView: View {
                     }
                 }
 
-                VStack(spacing: 1) {
-                    Text(verbatim: label)
-                        .font(WeekFitType.quickActionLabel)
-                        .fontDesign(.rounded)
-                        .foregroundStyle(
-                            palette.isLight
-                                ? textPrimary
-                                : textPrimary.opacity(isEmphasized ? 0.94 : 0.88)
-                        )
-                        .lineLimit(quickActionCaptionLineLimit)
-                        .minimumScaleFactor(0.85)
-                        .multilineTextAlignment(.center)
-                    Text(verbatim: subLabel)
-                        .font(WeekFitType.quickActionSupport)
-                        .fontDesign(.rounded)
-                        .foregroundStyle(textSecondary.opacity(subtitleOpacity))
-                        .lineLimit(quickActionCaptionLineLimit)
-                        .minimumScaleFactor(0.82)
-                        .multilineTextAlignment(.center)
-                }
+                Text(verbatim: label)
+                    .font(TodayCardTypography.quickActionLabel)
+                    .foregroundStyle(
+                        palette.isLight
+                            ? textPrimary
+                            : textPrimary.opacity(isEmphasized ? 0.94 : 0.88)
+                    )
+                    .lineLimit(quickActionCaptionLineLimit)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .multilineTextAlignment(.center)
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, minHeight: 44)
             .contentShape(Rectangle())
             .padding(.vertical, 2)
         }
         .buttonStyle(QuickActionPressStyle())
-        .accessibilityLabel("\(label), \(subLabel)")
+        .accessibilityLabel(label)
         .accessibilityIdentifier(accessibilityIdentifier ?? label)
     }
 
@@ -3971,12 +4027,18 @@ struct TodayView: View {
     }
 
     private func upNextTimeText(for activity: PlannedActivity, selectedDate: Date) -> String {
-        if Calendar.current.isDate(activity.date, inSameDayAs: selectedDate) {
-            return activityTime(activity.date)
+        let time = activityTime(activity.date)
+        let calendar = Calendar.current
+        let now = Date()
+        guard calendar.isDate(selectedDate, inSameDayAs: now),
+              let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)),
+              calendar.isDate(activity.date, inSameDayAs: tomorrow) else {
+            return time
         }
-
-        let prefix = WeekFitTrilingual("Tomorrow", "Завтра", "明天")
-        return "\(prefix) \(activityTime(activity.date))"
+        return String(
+            format: WeekFitLocalizedString("today.upNext.tomorrowAtFormat"),
+            time
+        )
     }
 
     private func refreshHealthAndNutritionAsync() async {
@@ -4220,8 +4282,7 @@ private struct TodayCoachSettlingCardBody: View {
         // Match Up Next / Log Quickly: section label on its own top row.
         VStack(alignment: .leading, spacing: 8) {
             Text(focusHeading)
-                .font(WeekFitType.sectionLabel)
-                .fontDesign(.rounded)
+                .font(TodayCardTypography.sectionLabel)
                 .foregroundStyle(textSecondary)
 
             HStack(alignment: .center, spacing: 12) {
@@ -4242,14 +4303,12 @@ private struct TodayCoachSettlingCardBody: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(settlingTitle)
-                        .font(WeekFitType.compactCardTitle)
-                        .fontDesign(.rounded)
+                        .font(TodayCardTypography.cardTitle)
                         .foregroundStyle(textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Text(settlingMessage)
-                        .font(WeekFitType.secondary)
-                        .fontDesign(.rounded)
+                        .font(TodayCardTypography.cardBody)
                         .foregroundStyle(textSecondary)
                         .lineSpacing(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -4274,6 +4333,7 @@ private struct TodayCoachInsightCardBody: View {
     let insightIcon: String
     let insightColor: Color
     let iconYOffset: CGFloat
+    let durationLabel: String?
     let challengeCue: TodayRecoveryChallengeCue?
     let textPrimary: Color
     let textSecondary: Color
@@ -4283,8 +4343,7 @@ private struct TodayCoachInsightCardBody: View {
         // Same card anatomy as Up Next: section label → content row → optional footer.
         VStack(alignment: .leading, spacing: 8) {
             Text(focusHeading)
-                .font(WeekFitType.sectionLabel)
-                .fontDesign(.rounded)
+                .font(TodayCardTypography.sectionLabel)
                 .foregroundStyle(textSecondary)
 
             HStack(alignment: .center, spacing: 12) {
@@ -4302,22 +4361,37 @@ private struct TodayCoachInsightCardBody: View {
                 .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(insightTitle)
-                        .font(WeekFitType.compactCardTitle)
-                        .fontDesign(.rounded)
-                        .foregroundStyle(textPrimary)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(4)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(insightTitle)
+                            .font(TodayCardTypography.cardTitle)
+                            .foregroundStyle(textPrimary)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(4)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        if let durationLabel, !durationLabel.isEmpty {
+                            Text(durationLabel)
+                                .font(WeekFitType.captionEmphasized)
+                                .fontDesign(.rounded)
+                                .monospacedDigit()
+                                .foregroundStyle(insightColor.opacity(0.92))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(insightColor.opacity(0.14))
+                                )
+                                .accessibilityLabel(durationLabel)
+                        }
+                    }
 
                     if !insightMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         Text(insightMessage)
-                            .font(WeekFitType.secondary)
-                            .fontDesign(.rounded)
+                            .font(TodayCardTypography.cardBody)
                             .foregroundStyle(textSecondary)
                             .lineSpacing(1)
                             .multilineTextAlignment(.leading)
-                            .lineLimit(3)
+                            .lineLimit(4)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }

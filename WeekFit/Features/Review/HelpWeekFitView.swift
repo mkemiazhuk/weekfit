@@ -40,7 +40,7 @@ struct HelpWeekFitView: View {
                             subtitle: WeekFitLocalizedString("review.helpWeekFit.rate.subtitle"),
                             id: "settings.helpWeekFit.rate"
                         ) {
-                            reviewManager.rateFromSettings()
+                            reviewManager.openWriteReviewPage()
                         }
 
                         SettingsGroupDivider()

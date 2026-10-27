@@ -778,7 +778,7 @@ struct ProposalReviewView: View {
             }
             return WeekFitLocalizedString("coach.proposal.change.addActivity")
         case .createMealFromLibrary(let payload):
-            return mealSlotTitle(for: payload.proposedDate)
+            return mealSlotTitle(for: change, proposedDate: payload.proposedDate)
         case .guidanceOnly(let payload):
             return CoachProposalReasonCopy.localizedGuidance(payload.guidanceCode)
         }
@@ -792,9 +792,16 @@ struct ProposalReviewView: View {
         return String(format: WeekFitLocalizedString(namedKey), trimmed)
     }
 
-    private func mealSlotTitle(for date: Date, calendar: Calendar = .current) -> String {
+    private func mealSlotTitle(
+        for change: CoachProposedChange,
+        proposedDate: Date,
+        calendar: Calendar = .current
+    ) -> String {
+        // Prefer the slot the composer intended (reason code) over the clamped clock time.
+        let slot = ProposalMealSlot.from(reasonCode: change.reasonCode)
+            ?? ProposalMealSlot.from(date: proposedDate, calendar: calendar)
         let key: String
-        switch ProposalMealSlot.from(date: date, calendar: calendar) {
+        switch slot {
         case .breakfast:
             key = "coach.proposal.change.addBreakfast"
         case .lunch:

@@ -18,14 +18,17 @@ struct WeekFitScreenHeader<Trailing: View>: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: showsSubtitle ? 5 : 0) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text(title)
                     .weekFitScreenTitle()
 
-                if showsSubtitle {
-                    Text(subtitle)
-                        .weekFitScreenSubtitle()
-                }
+                // Always reserve the subtitle row so the avatar keeps the same
+                // Y (and trailing X) on Plan / title-only screens as on Today /
+                // Coach / Meals.
+                Text(showsSubtitle ? subtitle : " ")
+                    .weekFitScreenSubtitle()
+                    .opacity(showsSubtitle ? 1 : 0)
+                    .accessibilityHidden(!showsSubtitle)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .layoutPriority(1)
@@ -45,7 +48,7 @@ struct WeekFitScreenHeader<Trailing: View>: View {
             }
             .fixedSize(horizontal: true, vertical: false)
         }
-        .frame(minHeight: showsSubtitle ? 52 : 40)
+        .frame(minHeight: 52)
     }
 }
 
@@ -124,13 +127,13 @@ struct WeekFitAvatarButton: View {
             Circle()
                 .fill(
                     palette.isLight
-                        ? WeekFitLightTokens.surfaceSecondary
+                        ? WeekFitLightTokens.avatarFill
                         : Color(red: 0.14, green: 0.16, blue: 0.22)
                 )
             Circle()
                 .strokeBorder(
                     palette.isLight
-                        ? Color.black.opacity(0.08)
+                        ? WeekFitLightTokens.avatarStroke.opacity(WeekFitLightTokens.avatarStrokeOpacity)
                         : Color.white.opacity(0.10),
                     lineWidth: 1
                 )
@@ -164,27 +167,7 @@ struct WeekFitAvatarButton: View {
                     .fill(avatarFill)
                     .overlay {
                         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [
-                                        goldStrokeLight.opacity(
-                                            palette.isLight
-                                                ? (isSubdued ? 0.72 : 0.98)
-                                                : (isSubdued ? 0.62 : 0.95)
-                                        ),
-                                        goldStrokeDeep.opacity(
-                                            palette.isLight
-                                                ? (isSubdued ? 0.48 : 0.78)
-                                                : (isSubdued ? 0.42 : 0.72)
-                                        )
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: palette.isLight
-                                    ? (isSubdued ? 1.05 : 1.35)
-                                    : (isSubdued ? 0.85 : 1.1)
-                            )
+                            .stroke(avatarStrokeStyle, lineWidth: avatarStrokeWidth)
                     }
                     .overlay {
                         if !palette.isLight {
@@ -199,23 +182,24 @@ struct WeekFitAvatarButton: View {
             .frame(width: avatarSize, height: avatarSize)
             .shadow(
                 color: palette.isLight
-                    ? Color.black.opacity(isSubdued ? 0.03 : 0.04)
+                    ? Color.black.opacity(isSubdued ? 0.025 : 0.03)
                     : Color.black.opacity(isSubdued ? 0.16 : 0.30),
-                radius: palette.isLight ? (isSubdued ? 1.5 : 2) : (isSubdued ? 4 : 8),
+                radius: palette.isLight ? (isSubdued ? 1 : 1.5) : (isSubdued ? 4 : 8),
                 y: palette.isLight ? 1 : (isSubdued ? 3 : 5)
             )
             .shadow(
                 color: palette.isLight
-                    ? Color.black.opacity(isSubdued ? 0.05 : 0.08)
+                    ? Color.black.opacity(isSubdued ? 0.03 : 0.045)
                     : Color.clear,
-                radius: palette.isLight ? (isSubdued ? 6 : 10) : 0,
-                y: palette.isLight ? (isSubdued ? 2 : 4) : 0
+                radius: palette.isLight ? (isSubdued ? 4 : 6) : 0,
+                y: palette.isLight ? (isSubdued ? 1.5 : 2) : 0
             )
         }
     }
 
     private var avatarFill: LinearGradient {
         if palette.isLight {
+            // Warm ceramic fill under the gold ring.
             return LinearGradient(
                 colors: [
                     Color(red: 1.0, green: 0.998, blue: 0.992),
@@ -235,16 +219,44 @@ struct WeekFitAvatarButton: View {
         )
     }
 
+    private var avatarStrokeWidth: CGFloat {
+        if palette.isLight {
+            return isSubdued ? 1.15 : 1.35
+        }
+        return isSubdued ? 0.85 : 1.1
+    }
+
+    private var avatarStrokeStyle: AnyShapeStyle {
+        // Gold ring in both themes (light uses deeper brand gold for contrast on milk).
+        AnyShapeStyle(
+            LinearGradient(
+                colors: [
+                    goldStrokeLight.opacity(
+                        palette.isLight
+                            ? (isSubdued ? 0.88 : 0.98)
+                            : (isSubdued ? 0.62 : 0.95)
+                    ),
+                    goldStrokeDeep.opacity(
+                        palette.isLight
+                            ? (isSubdued ? 0.62 : 0.78)
+                            : (isSubdued ? 0.42 : 0.72)
+                    )
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+    }
+
     private var avatarGlyphStyle: some ShapeStyle {
         if isPlain {
-            return AnyShapeStyle(
-                palette.isLight
-                    ? WeekFitTheme.primaryText.opacity(0.88)
-                    : Color.white.opacity(0.92)
-            )
+            if palette.isLight {
+                return AnyShapeStyle(WeekFitLightTokens.avatarGlyph.opacity(0.88))
+            }
+            return AnyShapeStyle(Color.white.opacity(0.92))
         }
         if palette.isLight {
-            // Deep brand gold on ceramic — pale champagne reads soft/unfocused in Light.
+            // Deep brand gold glyph on ceramic — restored premium Light chrome.
             return AnyShapeStyle(
                 LinearGradient(
                     colors: [

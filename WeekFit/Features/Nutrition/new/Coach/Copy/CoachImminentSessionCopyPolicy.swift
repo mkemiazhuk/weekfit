@@ -278,7 +278,7 @@ enum CoachImminentSessionCopyPolicy {
                 russian: "Не стартуйте рывком с первых минут.",
                 chinese: "别从最初几分钟就冲刺开场。"
             )
-        case .tennis, .squash:
+        case .tennis, .padel, .squash:
             return CoachBilingualText(
                 english: "Don't spend energy before the first point matters.",
                 russian: "Не тратьте силы до первого важного розыгрыша.",
@@ -318,7 +318,7 @@ enum CoachImminentSessionCopyPolicy {
                 russian: "10 минут разминки — \(titleRU) в \(time).",
                 chinese: "热身 10 分钟——\(titleZH) 于 \(time)。"
             )
-        case .tennis, .squash:
+        case .tennis, .padel, .squash:
             return CoachBilingualText(
                 english: "15-minute warmup — \(titleEN) at \(time).",
                 russian: "15 минут разминки — \(titleRU) в \(time).",
@@ -365,6 +365,8 @@ enum CoachImminentSessionCopyPolicy {
             (english, russian, chinese) = ("alpine skiing", "горные лыжи", "高山滑雪")
         case .tennis:
             (english, russian, chinese) = ("tennis", "теннис", "网球")
+        case .padel:
+            (english, russian, chinese) = ("padel", "падел", "板式网球")
         case .squash:
             (english, russian, chinese) = ("squash", "сквош", "壁球")
         case .walk:
@@ -393,7 +395,7 @@ enum CoachImminentSessionCopyPolicy {
             return CoachBilingualText(english: "Before snowboarding", russian: "Перед сноубордом", chinese: "单板滑雪前")
         case .downhillSkiing:
             return CoachBilingualText(english: "Before skiing", russian: "Перед горными лыжами", chinese: "高山滑雪前")
-        case .tennis, .squash:
+        case .tennis, .padel, .squash:
             return CoachBilingualText(english: "Before the match", russian: "Перед игрой", chinese: "比赛前")
         default:
             return CoachBilingualText(english: "Before the session", russian: "Перед тренировкой", chinese: "训练前")

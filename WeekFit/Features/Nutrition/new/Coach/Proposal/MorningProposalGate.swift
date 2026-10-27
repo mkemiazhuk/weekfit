@@ -15,6 +15,8 @@ struct MorningProposalGateInput: Sendable, Equatable {
     let isMorningWindow: Bool
     let hasCompletedPlannedItemToday: Bool
     let existingStatus: CoachProposalStatus?
+    /// When `gatheringData` started — used for the sleep-wait grace period.
+    let gatheringStartedAt: Date?
 }
 
 enum MorningProposalGateDecision: Sendable, Equatable {
@@ -26,7 +28,10 @@ enum MorningProposalGateDecision: Sendable, Equatable {
 
 enum MorningProposalGate {
 
+    /// HealthKit initial settle timeout.
     static let healthTimeoutSeconds: TimeInterval = 8
+    /// Overnight sleep often syncs minutes after wake — wait before first proposal.
+    static let sleepWaitTimeoutSeconds: TimeInterval = 15 * 60
 
     static func decide(input: MorningProposalGateInput) -> MorningProposalGateDecision {
         if let existing = input.existingStatus {
@@ -63,6 +68,13 @@ enum MorningProposalGate {
             return .gatheringData
         }
 
+        // Sleep usually arrives after HealthKit "settled". Hold the card until samples
+        // show up, or until the sleep-wait grace elapses — otherwise we flash a weak
+        // no-sleep proposal and replace it when overnight data syncs.
+        if input.sleepHours <= 0 && !sleepWaitTimedOut(input: input) {
+            return .gatheringData
+        }
+
         if !input.isHealthAccessGranted && !input.healthRefreshTimedOut {
             // Still allow generation path — engine will restrict to guidance/unavailable.
             return .allowGeneration
@@ -71,11 +83,23 @@ enum MorningProposalGate {
         return .allowGeneration
     }
 
+    static func sleepWaitTimedOut(input: MorningProposalGateInput) -> Bool {
+        sleepWaitTimedOut(gatheringStartedAt: input.gatheringStartedAt, now: input.now)
+    }
+
+    static func sleepWaitTimedOut(gatheringStartedAt: Date?, now: Date) -> Bool {
+        guard let start = gatheringStartedAt else { return false }
+        return now.timeIntervalSince(start) >= sleepWaitTimeoutSeconds
+    }
+
     static func sleepPresence(from input: MorningProposalGateInput) -> ProposalSleepPresenceToken {
         ProposalInputFingerprintBuilder.sleepPresence(
             sleepHours: input.sleepHours,
             recoveryDataAvailable: input.recoveryDataAvailable,
-            timedOutWithoutSleep: input.healthRefreshTimedOut && input.sleepHours <= 0
+            timedOutWithoutSleep: (input.healthRefreshTimedOut || sleepWaitTimedOut(input: input))
+                && input.sleepHours <= 0,
+            healthRefreshCompleted: input.healthRefreshCompleted,
+            sleepWaitTimedOut: sleepWaitTimedOut(input: input)
         )
     }
 }

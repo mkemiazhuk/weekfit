@@ -210,7 +210,7 @@ enum QuickActivityAccent {
             return Color(red: 0.64, green: 0.78, blue: 0.84)
         case "workout-core", "workout-lowerbody", "workout-fullbody":
             return Color(red: 0.84, green: 0.76, blue: 0.66)
-        case "workout-tennis", "workout-squash", "workout-hiit":
+        case "workout-tennis", "workout-padel", "workout-squash", "workout-hiit":
             return Color(red: 0.86, green: 0.72, blue: 0.66)
         case "recovery-stretch", "recovery-yoga":
             return Color(red: 0.76, green: 0.74, blue: 0.84)

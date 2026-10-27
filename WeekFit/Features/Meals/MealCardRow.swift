@@ -14,7 +14,7 @@ struct MealCardRow: View {
     private let cardBackground = WeekFitTheme.cardBackground
     private let cardShadow = WeekFitTheme.cardShadow
 
-    private let weekFitGreen = Color(red: 0.16, green: 0.80, blue: 0.43)
+    private let weekFitGreen = WeekFitSemanticMetricTokens.activity
 
     private var isMealMatchingCurrentTime: Bool {
         let hour = Calendar.current.component(.hour, from: Date())

@@ -3,9 +3,22 @@ import SwiftUI
 // MARK: - Accent
 
 enum QuickDrinkAccent {
-    static let hydration = Color(red: 0.29, green: 0.56, blue: 0.92)
-    /// Soft icy blue — Water frequent-card wash only.
-    static let waterWash = Color(red: 0.62, green: 0.78, blue: 0.90)
+    /// Dark OLED keeps cool hydration blue; Light uses teal `#35ADD0`.
+    private static let hydrationDark = Color(red: 0.29, green: 0.56, blue: 0.92)
+
+    @MainActor
+    static var hydration: Color {
+        WeekFitPaletteStore.current.isLight ? WeekFitLightTokens.water : hydrationDark
+    }
+
+    /// Soft wash — teal family in Light, icy blue on OLED.
+    @MainActor
+    static var waterWash: Color {
+        WeekFitPaletteStore.current.isLight
+            ? WeekFitLightTokens.waterSoft
+            : Color(red: 0.62, green: 0.78, blue: 0.90)
+    }
+
     static let coffee = Color(red: 0.86, green: 0.55, blue: 0.30)
     static let tea = Color(red: 0.42, green: 0.62, blue: 0.48)
     /// Light tea / sage — Tea frequent-card wash only.
@@ -19,12 +32,16 @@ enum QuickDrinkAccent {
     static let beer = Color(red: 0.90, green: 0.68, blue: 0.22)
     static let whiteWine = Color(red: 0.78, green: 0.74, blue: 0.42)
     static let redWine = Color(red: 0.72, green: 0.22, blue: 0.32)
-    /// List / CTA circles — cool hydration blue (matches drop icon family).
-    static let listAction = hydration
+
+    /// List / CTA circles — hydration teal / cool blue (not Recovery).
+    @MainActor
+    static var listAction: Color { hydration }
 
     static func color(for item: QuickItem, isLight: Bool) -> Color {
         let id = item.id.lowercased()
-        if id.contains("water") { return hydration }
+        if id.contains("water") {
+            return isLight ? WeekFitLightTokens.water : hydrationDark
+        }
         if id.contains("espresso") || id.contains("coffee") || id.contains("latte") { return coffee }
         if id.contains("cocoa") || id.contains("chocolate") {
             return isLight ? cocoa : Color(red: 0.78, green: 0.52, blue: 0.34)
@@ -40,13 +57,15 @@ enum QuickDrinkAccent {
         if id.contains("red_wine") || id.contains("redwine") { return redWine }
         if id.contains("juice") { return juice }
         if id.contains("milk") || id.contains("kefir") || id.contains("shake") { return milk }
-        return hydration
+        return isLight ? WeekFitLightTokens.water : hydrationDark
     }
 
     /// Delicate frequent-card wash — matched intensity, distinct hue per drink family.
-    static func frequentWash(for item: QuickItem, isLight _: Bool) -> Color {
+    static func frequentWash(for item: QuickItem, isLight: Bool) -> Color {
         let id = item.id.lowercased()
-        if id.contains("water") { return waterWash }
+        if id.contains("water") {
+            return isLight ? WeekFitLightTokens.waterSoft : Color(red: 0.62, green: 0.78, blue: 0.90)
+        }
         if id.contains("tea") { return teaWash }
         if id.contains("espresso") || id.contains("coffee") || id.contains("latte") {
             return Color(red: 0.86, green: 0.72, blue: 0.58)
@@ -60,12 +79,12 @@ enum QuickDrinkAccent {
         if id.contains("milk") || id.contains("kefir") || id.contains("shake") {
             return Color(red: 0.78, green: 0.80, blue: 0.86)
         }
-        return waterWash
+        return isLight ? WeekFitLightTokens.waterSoft : Color(red: 0.62, green: 0.78, blue: 0.90)
     }
 
-    /// CTA circles — always hydration blue (not per-drink orange/gold).
-    static func action(for _: QuickItem, isLight _: Bool) -> Color {
-        listAction
+    /// CTA circles — hydration family (teal / cool blue), not Recovery lavender.
+    static func action(for _: QuickItem, isLight: Bool) -> Color {
+        isLight ? WeekFitLightTokens.water : hydrationDark
     }
 
     static func meta(for item: QuickItem, isLight: Bool) -> Color {
@@ -108,11 +127,15 @@ enum QuickDrinkLogDesign {
         static let recommendedCardMinHeight: CGFloat = QuickActionSheetDesign.RecommendedCard.minHeight
         static let recommendedCardRadius: CGFloat = QuickActionSheetDesign.RecommendedCard.cornerRadius
         static let recommendedCardPadding: CGFloat = QuickActionSheetDesign.RecommendedCard.padding
-        /// Same media slot as Food / Activity recommended cards.
-        static let recommendedMediaHeight: CGFloat = QuickActionSheetDesign.RecommendedCard.mediaHeight
-        static let recentItemWidth: CGFloat = 74
+        /// Taller drink cutout than Food / Activity; card height stays shared (272).
+        /// Budget: padding 32 + badge 24 + gaps 10 + titles ~37 + spacer 8 + action 44 ≈ 155 → media ≤ 117.
+        static let recommendedMediaHeight: CGFloat = 116
+        /// Tighter than shared Food cards so the larger cutout still clears the badge.
+        static let recommendedBadgeToMedia: CGFloat = 4
+        static let recommendedMediaToTitle: CGFloat = 6
+        static let recentItemWidth: CGFloat = 78
         static let listCardRadius: CGFloat = 22
-        static let listRowMinHeight: CGFloat = 92
+        static let listRowMinHeight: CGFloat = 100
         static let addButtonSize: CGFloat = QuickActionSheetDesign.RecommendedCard.actionHitSize
         static let greetingRadius: CGFloat = 22
     }
@@ -168,13 +191,22 @@ struct QuickDrinkLogSheet: View {
     private var showFrequent: Bool { !frequentRows.isEmpty }
     private var showRecent: Bool { !recentRows.isEmpty }
 
-    private var sortedAllRows: [QuickItemDisplayRow] {
-        allRows.sorted {
-            sortAscending
-                ? $0.item.localizedTitle.localizedCaseInsensitiveCompare($1.item.localizedTitle) == .orderedAscending
-                : $0.item.localizedTitle.localizedCaseInsensitiveCompare($1.item.localizedTitle) == .orderedDescending
-        }
+    /// IDs already surfaced in Frequent / Recent — don't repeat them under All.
+    private var allSectionExcludedIDs: Set<String> {
+        Set(frequentRows.map(\.id)).union(recentRows.map(\.id))
     }
+
+    private var sortedAllRows: [QuickItemDisplayRow] {
+        allRows
+            .filter { !allSectionExcludedIDs.contains($0.id) }
+            .sorted {
+                sortAscending
+                    ? $0.item.localizedTitle.localizedCaseInsensitiveCompare($1.item.localizedTitle) == .orderedAscending
+                    : $0.item.localizedTitle.localizedCaseInsensitiveCompare($1.item.localizedTitle) == .orderedDescending
+            }
+    }
+
+    private var showAllSection: Bool { !sortedAllRows.isEmpty }
 
     var body: some View {
         let _ = languageManager.selectedLanguage
@@ -203,9 +235,11 @@ struct QuickDrinkLogSheet: View {
                                 .offset(y: revealRecent ? 0 : 10)
                         }
 
-                        allSection
-                            .opacity(revealAll ? 1 : 0)
-                            .offset(y: revealAll ? 0 : 12)
+                        if showAllSection {
+                            allSection
+                                .opacity(revealAll ? 1 : 0)
+                                .offset(y: revealAll ? 0 : 12)
+                        }
                     }
                 }
                 .padding(.top, 4)
@@ -455,14 +489,18 @@ struct QuickDrinkLogSheet: View {
             withAnimation(spring.delay(0.06)) { revealFrequent = true }
             if showRecent {
                 withAnimation(spring.delay(0.12)) { revealRecent = true }
-                withAnimation(spring.delay(0.18)) { revealAll = true }
-            } else {
+                if showAllSection {
+                    withAnimation(spring.delay(0.18)) { revealAll = true }
+                }
+            } else if showAllSection {
                 withAnimation(spring.delay(0.12)) { revealAll = true }
             }
         } else if showRecent {
             withAnimation(spring.delay(0.06)) { revealRecent = true }
-            withAnimation(spring.delay(0.12)) { revealAll = true }
-        } else {
+            if showAllSection {
+                withAnimation(spring.delay(0.12)) { revealAll = true }
+            }
+        } else if showAllSection {
             withAnimation(spring.delay(0.06)) { revealAll = true }
         }
     }
@@ -481,17 +519,17 @@ private enum QuickDrinkPhotoRole {
     var size: CGFloat {
         switch self {
         case .recommended: return QuickDrinkLogDesign.Layout.recommendedMediaHeight
-        case .recent: return 56
-        case .library: return 68
+        case .recent: return 64
+        case .library: return 80
         }
     }
 
     var contentScale: CGFloat {
         switch self {
-        /// A little under the shared slot so drink cutouts sit smaller than Food / Activity photos.
-        case .recommended: return 0.88
-        case .recent: return 0.78
-        case .library: return 0.90
+        /// Fill the enlarged drink media slot; badge strip stays reserved above.
+        case .recommended: return 1.0
+        case .recent: return 0.90
+        case .library: return 0.98
         }
     }
 
@@ -631,23 +669,27 @@ private struct QuickDrinkRecommendedCard: View {
             badgeRow
 
             drinkMedia
-                .padding(.top, QuickActionSheetDesign.RecommendedCard.badgeToMedia)
+                .padding(.top, QuickDrinkLogDesign.Layout.recommendedBadgeToMedia)
 
-            Text(row.item.localizedTitle)
-                .font(QuickDrinkLogDesign.Typography.recommendedTitle)
-                .foregroundStyle(WeekFitTheme.primaryText)
-                .lineLimit(1)
-                .padding(.top, QuickActionSheetDesign.RecommendedCard.mediaToTitle)
+            // Title + serving + kcal/+ stay one block under the photo (no air gap before kcal).
+            VStack(alignment: .leading, spacing: 0) {
+                Text(row.item.localizedTitle)
+                    .font(QuickDrinkLogDesign.Typography.recommendedTitle)
+                    .foregroundStyle(WeekFitTheme.primaryText)
+                    .lineLimit(1)
 
-            Text(row.item.localizedServingSizeDescription)
-                .font(QuickDrinkLogDesign.Typography.recommendedSubtitle)
-                .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.68))
-                .lineLimit(1)
-                .padding(.top, 2)
+                Text(row.item.localizedServingSizeDescription)
+                    .font(QuickDrinkLogDesign.Typography.recommendedSubtitle)
+                    .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.68))
+                    .lineLimit(1)
+                    .padding(.top, 2)
 
-            Spacer(minLength: QuickActionSheetDesign.Row.contentSpacing)
+                recommendedMetaRow
+                    .padding(.top, 8)
+            }
+            .padding(.top, QuickDrinkLogDesign.Layout.recommendedMediaToTitle)
 
-            recommendedMetaRow
+            Spacer(minLength: 0)
         }
         .padding(QuickDrinkLogDesign.Layout.recommendedCardPadding)
         .frame(
@@ -684,7 +726,7 @@ private struct QuickDrinkRecommendedCard: View {
         )
     }
 
-    /// Same media slot as Food / Activity. The cutout is scaled slightly under that slot.
+    /// Same media slot as Food / Activity; cutout fills the slot without entering the badge strip.
     private var drinkMedia: some View {
         ZStack {
             QuickDrinkPhoto(

@@ -6,6 +6,9 @@ enum WeekFitRussianPluralForm: Equatable {
     case many
 }
 
+/// Shared Slavic-style categories used by RU/PL and by String Catalog `.one/.few/.many` keys.
+typealias WeekFitPluralForm = WeekFitRussianPluralForm
+
 struct WeekFitCountNounForms {
     let englishOne: String
     let englishOther: String
@@ -53,8 +56,14 @@ enum WeekFitCountPluralization {
     }
 
     static func russianForm(for count: Int) -> WeekFitRussianPluralForm {
-        let mod100 = count % 100
-        let mod10 = count % 10
+        pluralForm(for: count)
+    }
+
+    /// RU/PL-compatible categories. Other languages map `few` → `many` (except exact 1 → `one`).
+    static func pluralForm(for count: Int) -> WeekFitPluralForm {
+        let absolute = abs(count)
+        let mod100 = absolute % 100
+        let mod10 = absolute % 10
 
         if (11...14).contains(mod100) {
             return .many
@@ -70,12 +79,44 @@ enum WeekFitCountPluralization {
         }
     }
 
+    /// Category for catalog keys when the language is not Slavic: only 1 uses `.one`.
+    static func catalogPluralForm(
+        for count: Int,
+        languageCode: String = WeekFitCurrentLanguageCode()
+    ) -> WeekFitPluralForm {
+        switch languageCode {
+        case AppLanguage.russian.rawValue, AppLanguage.polish.rawValue:
+            return pluralForm(for: count)
+        default:
+            return abs(count) == 1 ? .one : .many
+        }
+    }
+
+    static func catalogPluralSuffix(
+        for count: Int,
+        languageCode: String = WeekFitCurrentLanguageCode()
+    ) -> String {
+        switch catalogPluralForm(for: count, languageCode: languageCode) {
+        case .one: return "one"
+        case .few: return "few"
+        case .many: return "many"
+        }
+    }
+
     static func isRussian(locale: Locale = WeekFitCurrentLocale()) -> Bool {
         if locale.identifier == WeekFitCurrentLocale().identifier {
             return WeekFitUsesRussianLanguage()
         }
         let code = locale.language.languageCode?.identifier ?? locale.identifier
         return code.hasPrefix("ru")
+    }
+
+    static func isPolish(locale: Locale = WeekFitCurrentLocale()) -> Bool {
+        if locale.identifier == WeekFitCurrentLocale().identifier {
+            return WeekFitCurrentLanguageCode() == AppLanguage.polish.rawValue
+        }
+        let code = locale.language.languageCode?.identifier ?? locale.identifier
+        return code.hasPrefix("pl")
     }
 
     static func isChineseSimplified(locale: Locale = WeekFitCurrentLocale()) -> Bool {
@@ -119,12 +160,29 @@ enum WeekFitCountPluralization {
         return count == 1 ? forms.englishOne : forms.englishOther
     }
 
+    private static func countKeyBase(for category: Category) -> String? {
+        switch category {
+        case .workout: return "common.count.workout"
+        case .meal: return "common.count.meal"
+        case .habit: return "common.count.habit"
+        case .recovery: return "common.count.recovery"
+        case .plannedItem, .plannedPoint: return "common.count.plannedItem"
+        case .day: return "common.count.day"
+        case .session: return "common.count.workout"
+        case .portion, .night, .minuteAccusative, .hourNominative, .ingredientAdded, .drink:
+            return nil
+        }
+    }
+
     static func phrase(
         count: Int,
         category: Category,
         locale: Locale = WeekFitCurrentLocale()
     ) -> String {
-        "\(count) \(noun(count: count, category: category, locale: locale))"
+        if let keyBase = countKeyBase(for: category) {
+            return WeekFitLocalizedQuantityFormat(keyBase, count: count, locale: locale)
+        }
+        return "\(count) \(noun(count: count, category: category, locale: locale))"
     }
 
     static func portionsPhrase(

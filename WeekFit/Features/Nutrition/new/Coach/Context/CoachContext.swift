@@ -18,6 +18,7 @@ nonisolated enum CoachActivityType: String, CaseIterable, Equatable, Sendable {
     case swimming
     case hiit
     case tennis
+    case padel
     case squash
     case upperBody
     case lowerBody
@@ -286,7 +287,7 @@ enum CoachActivityClassifier {
         switch type(for: activity) {
         case .cycling, .running, .swimming, .hiit, .snowboarding, .downhillSkiing:
             return .endurance
-        case .tennis, .squash:
+        case .tennis, .padel, .squash:
             return .racket
         case .upperBody, .lowerBody, .core, .fullBody:
             return .strength
@@ -328,6 +329,9 @@ enum CoachActivityClassifier {
         }
         if containsAny(text, ["running", "run", "jog", "jogging"]) {
             return .running
+        }
+        if containsAny(text, ["padel", "падел", "падл"]) {
+            return .padel
         }
         if text.contains("tennis") {
             return .tennis
@@ -400,7 +404,7 @@ enum CoachActivityClassifier {
             let text = tokenText(for: activity)
             return minutes >= 75 || load == .heavy || load == .extreme ||
                 text.contains("interval") || text.contains("long")
-        case .tennis, .squash:
+        case .tennis, .padel, .squash:
             let minutes = activity.effectiveDurationMinutes
             let load = inferredLoad(for: activity)
             return minutes >= 60 || load == .heavy || load == .extreme
@@ -416,7 +420,7 @@ enum CoachActivityClassifier {
     nonisolated static func isElevatedTrainingLoad(_ activity: CoachPlannedActivitySnapshot) -> Bool {
         switch type(for: activity) {
         case .cycling, .running, .swimming, .hiit, .snowboarding, .downhillSkiing,
-             .tennis, .squash,
+             .tennis, .padel, .squash,
              .upperBody, .lowerBody, .core, .fullBody:
             return true
         case .walk:
@@ -514,7 +518,7 @@ enum CoachActivityClassifier {
         switch type(for: activity) {
         case .cycling, .running, .swimming, .hiit, .snowboarding, .downhillSkiing:
             return .endurance
-        case .tennis, .squash, .upperBody, .lowerBody, .core, .fullBody:
+        case .tennis, .padel, .squash, .upperBody, .lowerBody, .core, .fullBody:
             return .workout
         case .walk, .stretching, .yoga, .breathing:
             return .recovery

@@ -125,6 +125,7 @@ final class CoachEveningSummaryTests: XCTestCase {
         assertRoundTrip(json, chunkSize: 2400)
 
         // Exercise live printChunked path (same index walk as console tape).
+        CoachEveningSummaryDebugTape.isFullTextLoggingEnabled = true
         let largeJSON = Data((#"{"facts":{"note":"Spacer: 7,7 km mniej. 🙂"},"pad":""# + String(repeating: "ąęć", count: 2000) + #""}"#).utf8)
         CoachEveningSummaryDebugTape.logInput(clientRequestId: "chunk-smoke", httpBody: largeJSON)
         CoachEveningSummaryDebugTape.logUI(
@@ -749,6 +750,92 @@ final class CoachEveningSummaryTests: XCTestCase {
         try store.saveCache(.init(summary: answer(input()), receivedAt: date("2026-10-12T18:00:00Z")), owner: "a")
         XCTAssertNil(try store.loadCache(owner: "b"))
         XCTAssertNotEqual(try store.loadCache(owner: "a")?.summary, nil)
+    }
+
+    func testRepeatedRestoreReadsTheSameCacheOnce() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
+        let store = CoachEveningSummaryStore(directory: directory)
+        var loads = 0
+        store.onLoadCache = { loads += 1 }
+        let cached = answer(input(day: "2026-10-26"), headline: "Итог")
+        let evening = date("2026-10-26T20:30:09Z")
+        try store.saveCache(.init(summary: cached, receivedAt: evening), owner: "local")
+        let coordinator = CoachEveningSummaryCoordinator(store: store) { _, _ in
+            XCTFail("restore must not generate")
+            throw URLError(.badServerResponse)
+        }
+        let warsaw = calendar()
+        for _ in 0..<3 {
+            coordinator.restore(owner: "local", source: "root.active", now: evening, calendar: warsaw)
+        }
+        XCTAssertEqual(loads, 1)
+        XCTAssertEqual(coordinator.summary, cached)
+        XCTAssertNil(coordinator.summaryDayCaption)
+    }
+
+    func testAccountChangeDropsThePreviousCache() throws {
+        let store = temporaryStore()
+        try store.saveCache(.init(summary: answer(input(), headline: "A"), receivedAt: date("2026-10-12T18:00:00Z")), owner: "owner-a")
+        let coordinator = CoachEveningSummaryCoordinator(store: store) { _, _ in
+            XCTFail("account switch must not generate")
+            throw URLError(.badServerResponse)
+        }
+        coordinator.restore(owner: "owner-a")
+        XCTAssertEqual(coordinator.summary?.headline, "A")
+        coordinator.restore(owner: "owner-b")
+        XCTAssertNil(coordinator.summary)
+        XCTAssertNil(coordinator.summaryDayCaption)
+    }
+
+    func testLocalMidnightLabelsYesterdayWithoutAnotherDiskRead() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
+        let store = CoachEveningSummaryStore(directory: directory)
+        var loads = 0
+        store.onLoadCache = { loads += 1 }
+        let cached = answer(input(day: "2026-10-26"), headline: "Итог")
+        try store.saveCache(.init(summary: cached, receivedAt: date("2026-10-26T20:30:09Z")), owner: "local")
+        let coordinator = CoachEveningSummaryCoordinator(store: store) { _, _ in
+            XCTFail("a day rollover must not generate from restore")
+            throw URLError(.badServerResponse)
+        }
+        let warsaw = calendar()
+        coordinator.restore(owner: "local", now: date("2026-10-26T20:30:09Z"), calendar: warsaw)
+        XCTAssertNil(coordinator.summaryDayCaption)
+        coordinator.restore(owner: "local", now: date("2026-10-27T06:00:00Z"), calendar: warsaw)
+        XCTAssertEqual(loads, 1)
+        XCTAssertEqual(coordinator.summary?.day, "2026-10-26")
+        XCTAssertEqual(
+            coordinator.summaryDayCaption,
+            WeekFitLocalizedString("coach.eveningRecap.summaryDay.yesterday")
+        )
+    }
+
+    func testSummaryDayUsesLocalCalendarNotUTC() {
+        let losAngeles = calendar("America/Los_Angeles")
+        let stillLocalEvening = date("2026-10-27T06:30:00Z")
+        XCTAssertEqual(
+            CoachEveningSummaryPolicy.dayKey(stillLocalEvening, calendar: losAngeles),
+            "2026-10-26"
+        )
+        XCTAssertEqual(
+            CoachEveningSummaryPolicy.summaryDayRelation(
+                summaryDay: "2026-10-26",
+                now: stillLocalEvening,
+                calendar: losAngeles
+            ),
+            .current
+        )
+        let afterLocalMidnight = date("2026-10-27T07:30:00Z")
+        XCTAssertEqual(
+            CoachEveningSummaryPolicy.summaryDayRelation(
+                summaryDay: "2026-10-26",
+                now: afterLocalMidnight,
+                calendar: losAngeles
+            ),
+            .yesterday
+        )
     }
 
     func testDeletingSummaryTextPreservesDailyAttemptButClearsLastingCache() throws {

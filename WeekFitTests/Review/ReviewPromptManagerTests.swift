@@ -9,6 +9,7 @@ final class ReviewPromptManagerTests: XCTestCase {
     private var storage: ReviewPromptStorage!
     private var analytics: ReviewAnalytics!
     private var reviewRequester: RecordingStoreKitReviewRequester!
+    private var writeReviewOpener: RecordingWriteReviewOpener!
     private var feedbackService: RecordingFeedbackSubmissionService!
     private var clock: FixedReviewClock!
     private var manager: ReviewPromptManager!
@@ -21,6 +22,7 @@ final class ReviewPromptManagerTests: XCTestCase {
         storage = ReviewPromptStorage(defaults: defaults)
         analytics = ReviewAnalytics()
         reviewRequester = RecordingStoreKitReviewRequester()
+        writeReviewOpener = RecordingWriteReviewOpener()
         feedbackService = RecordingFeedbackSubmissionService()
         clock = FixedReviewClock(now: date(2026, 7, 23))
         manager = makeManager()
@@ -32,6 +34,7 @@ final class ReviewPromptManagerTests: XCTestCase {
         storage = nil
         analytics = nil
         reviewRequester = nil
+        writeReviewOpener = nil
         feedbackService = nil
         clock = nil
         manager = nil
@@ -59,30 +62,34 @@ final class ReviewPromptManagerTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(decision.meaningfulActionCount, 5)
     }
 
-    func testSameVersionPromptsAreSuppressed() {
-        seedEligibleEngagement()
-        manager.presentSentimentSheet(triggerSource: .meaningfulAction)
-        manager.dismissPresentation(trackAsDismissed: true)
-
-        let decision = manager.evaluateEligibility(triggerSource: .returnedToMain)
-        XCTAssertFalse(decision.isEligible)
-        XCTAssertTrue(decision.failureReasons.contains(.alreadyPromptedThisVersion))
-    }
-
-    func testOneHundredTwentyDayCooldownWorks() {
-        seedEligibleEngagement()
-        manager.presentSentimentSheet(triggerSource: .meaningfulAction)
-        manager.dismissPresentation(trackAsDismissed: false)
-
-        // Simulate a new app version after prompt, still inside cooldown.
-        manager = makeManager(appVersion: "1.2.1")
-        clock.now = calendarDate(addingDays: 30, to: clock.now)
-        reseedRecentActionKeepingHistory()
+    func testSameVersionSystemRequestIsSuppressed() async {
+        await requestReviewAfterEligibleAction()
 
         let decision = manager.evaluateEligibility(triggerSource: .meaningfulAction)
         XCTAssertFalse(decision.isEligible)
+        XCTAssertTrue(decision.failureReasons.contains(.alreadyPromptedThisVersion))
         XCTAssertTrue(decision.failureReasons.contains(.cooldownActive))
-        XCTAssertFalse(decision.failureReasons.contains(.alreadyPromptedThisVersion))
+        XCTAssertEqual(manager.eligibilityState.systemReviewRequestVersion, "1.2.0")
+        XCTAssertNotNil(manager.eligibilityState.nativeReviewRequestAttemptDate)
+    }
+
+    func testOneHundredTwentyDayCooldownWorks() async throws {
+        await requestReviewAfterEligibleAction()
+        let attempt = try XCTUnwrap(manager.eligibilityState.nativeReviewRequestAttemptDate)
+
+        manager = makeManager(appVersion: "1.2.1", delayNanoseconds: 0)
+        clock.now = calendarDate(addingDays: 30, to: attempt)
+        reseedRecentActionKeepingHistory()
+
+        let cooled = manager.evaluateEligibility(triggerSource: .meaningfulAction)
+        XCTAssertFalse(cooled.isEligible)
+        XCTAssertTrue(cooled.failureReasons.contains(.cooldownActive))
+        XCTAssertFalse(cooled.failureReasons.contains(.alreadyPromptedThisVersion))
+
+        clock.now = calendarDate(addingDays: 120, to: attempt)
+        reseedRecentActionKeepingHistory()
+        let ready = manager.evaluateEligibility(triggerSource: .meaningfulAction)
+        XCTAssertTrue(ready.isEligible, "reasons: \(ready.failureReasons)")
     }
 
     func testPermanentDismissalWorks() {
@@ -94,60 +101,138 @@ final class ReviewPromptManagerTests: XCTestCase {
         XCTAssertTrue(decision.failureReasons.contains(.permanentlyDismissed))
     }
 
-    func testPositiveFeedbackAttemptsStoreKitReviewRequest() async {
-        seedEligibleEngagement()
-        manager.presentSentimentSheet(triggerSource: .meaningfulAction)
-        manager.selectSentiment(.great, triggerSource: ReviewPromptTriggerSource.meaningfulAction.rawValue)
+    func testEligibleActionRequestsStoreReviewOnce() async {
+        await requestReviewAfterEligibleAction()
 
-        XCTAssertNil(manager.presentation)
         XCTAssertEqual(reviewRequester.requestCount, 1)
-        XCTAssertNotNil(manager.eligibilityState.nativeReviewRequestAttemptDate)
         XCTAssertTrue(analytics.recordedEvents.contains { $0.event == .nativeReviewRequestAttempted })
-        XCTAssertTrue(analytics.recordedEvents.contains { $0.event == .reviewFeedbackSelected })
+        XCTAssertEqual(
+            analytics.recordedEvents.first { $0.event == .nativeReviewRequestAttempted }?.properties["surface"],
+            "automatic"
+        )
+        XCTAssertFalse(analytics.recordedEvents.contains { $0.event == .reviewFeedbackSheetShown })
+        XCTAssertFalse(analytics.recordedEvents.contains { $0.event == .appStoreWriteReviewOpened })
     }
 
-    func testNeutralAndNegativeFeedbackOpenFeedbackForm() {
+    func testFeedbackFormDoesNotRequestStoreReview() async throws {
         seedEligibleEngagement()
-        manager.presentSentimentSheet(triggerSource: .meaningfulAction)
-        manager.selectSentiment(.okay, triggerSource: ReviewPromptTriggerSource.meaningfulAction.rawValue)
+        manager.openFeedbackForm(
+            intent: .general,
+            sentiment: nil,
+            triggerSource: .settingsFeedback,
+            present: false
+        )
+        try await manager.submitFeedback(
+            FeedbackDraft(
+                category: .other,
+                message: "The plan list is hard to scan",
+                allowContact: false,
+                sentiment: nil,
+                intent: .general
+            )
+        )
+        manager.dismissPresentation(trackAsDismissed: true)
 
-        guard case .feedbackForm(let intent, let sentiment, _) = manager.presentation else {
-            return XCTFail("Expected feedback form presentation")
-        }
-        XCTAssertEqual(intent, .postSentiment)
-        XCTAssertEqual(sentiment, .okay)
-
-        manager.dismissPresentation(trackAsDismissed: false)
-        manager.presentSentimentSheet(triggerSource: .meaningfulAction)
-        // Already prompted this version — presentation API still allows explicit reopen for test path.
-        // Use select after forcing presentation for negative path:
-        manager.selectSentiment(.needsImprovement, triggerSource: "test")
-        guard case .feedbackForm(_, let negativeSentiment, _) = manager.presentation else {
-            return XCTFail("Expected negative feedback form")
-        }
-        XCTAssertEqual(negativeSentiment, .needsImprovement)
+        XCTAssertEqual(reviewRequester.requestCount, 0)
+        XCTAssertNil(manager.eligibilityState.nativeReviewRequestAttemptDate)
+        XCTAssertNil(manager.eligibilityState.systemReviewRequestVersion)
+        XCTAssertTrue(analytics.recordedEvents.contains { $0.event == .feedbackFormOpened })
+        XCTAssertTrue(analytics.recordedEvents.contains { $0.event == .feedbackSubmitted })
+        XCTAssertTrue(analytics.recordedEvents.contains { $0.event == .feedbackDismissed })
+        XCTAssertFalse(analytics.recordedEvents.contains { $0.event == .nativeReviewRequestAttempted })
     }
 
-    func testRepeatedEligibilityChecksDoNotDuplicatePromptPresentation() async {
-        seedEligibleEngagement()
+    func testBurstOfActionsRequestsReviewOnce() async {
         manager = makeManager(delayNanoseconds: 0)
+        seedEligibleEngagement()
 
         manager.recordMeaningfulAction(.foodLogged, evaluatePrompt: true)
-        // Allow scheduled task to run.
-        await Task.yield()
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        manager.recordMeaningfulAction(.drinkLogged, evaluatePrompt: true)
+        manager.recordMeaningfulAction(.planCreatedOrUpdated, evaluatePrompt: true)
+        await waitForPendingReview()
 
-        XCTAssertEqual(manager.presentation, .sentimentSheet(triggerSource: ReviewPromptTriggerSource.meaningfulAction.rawValue))
+        XCTAssertEqual(reviewRequester.requestCount, 1)
 
-        // Second evaluation while already presenting must not replace / re-fire sheet shown.
-        let shownCountBefore = analytics.recordedEvents.filter { $0.event == .reviewFeedbackSheetShown }.count
-        manager.noteReturnedToStableMainScreen()
-        await Task.yield()
-        try? await Task.sleep(nanoseconds: 50_000_000)
-        let shownCountAfter = analytics.recordedEvents.filter { $0.event == .reviewFeedbackSheetShown }.count
+        manager.recordMeaningfulAction(.activityLoggedOrCompleted, evaluatePrompt: true)
+        await waitForPendingReview()
+        XCTAssertEqual(reviewRequester.requestCount, 1)
+    }
 
-        XCTAssertEqual(shownCountBefore, 1)
-        XCTAssertEqual(shownCountAfter, 1)
+    func testBackgroundOrBlockingScreenCancelsPendingRequest() async {
+        manager = makeManager(delayNanoseconds: 400_000_000)
+        seedEligibleEngagement()
+
+        manager.recordMeaningfulAction(.foodLogged, evaluatePrompt: true)
+        manager.cancelPendingSystemReviewRequest()
+        manager.setApplicationActive(true)
+        try? await Task.sleep(nanoseconds: 500_000_000)
+        XCTAssertEqual(reviewRequester.requestCount, 0)
+        XCTAssertNil(manager.eligibilityState.nativeReviewRequestAttemptDate)
+
+        manager.recordMeaningfulAction(.foodLogged, evaluatePrompt: true)
+        manager.updateUIBlocking(true)
+        manager.updateUIBlocking(false)
+        try? await Task.sleep(nanoseconds: 500_000_000)
+        XCTAssertEqual(reviewRequester.requestCount, 0)
+
+        manager.setApplicationActive(false)
+        manager.recordMeaningfulAction(.foodLogged, evaluatePrompt: true)
+        try? await Task.sleep(nanoseconds: 500_000_000)
+        XCTAssertEqual(reviewRequester.requestCount, 0)
+        XCTAssertNil(manager.eligibilityState.systemReviewRequestVersion)
+    }
+
+    func testLaunchAndForegroundDoNotRequestReview() async {
+        seedEligibleEngagement()
+        manager.recordAppOpen()
+        manager.setApplicationActive(false)
+        manager.setApplicationActive(true)
+        await waitForPendingReview()
+        XCTAssertEqual(reviewRequester.requestCount, 0)
+    }
+
+    func testFailedSystemCallDoesNotConsumeTheAttempt() async {
+        manager = makeManager(delayNanoseconds: 0)
+        seedEligibleEngagement()
+        reviewRequester.acceptsRequest = false
+
+        manager.recordMeaningfulAction(.foodLogged, evaluatePrompt: true)
+        await waitForPendingReview()
+
+        XCTAssertEqual(reviewRequester.requestCount, 1)
+        XCTAssertNil(manager.eligibilityState.nativeReviewRequestAttemptDate)
+        XCTAssertNil(manager.eligibilityState.systemReviewRequestVersion)
+        XCTAssertFalse(analytics.recordedEvents.contains { $0.event == .nativeReviewRequestAttempted })
+
+        reviewRequester.acceptsRequest = true
+        manager.recordMeaningfulAction(.foodLogged, evaluatePrompt: true)
+        await waitForPendingReview()
+        XCTAssertEqual(reviewRequester.requestCount, 2)
+        XCTAssertEqual(manager.eligibilityState.systemReviewRequestVersion, "1.2.0")
+    }
+
+    func testSettingsOpensWriteReviewPageWithoutSystemRequest() {
+        seedEligibleEngagement()
+        XCTAssertTrue(manager.openWriteReviewPage())
+
+        XCTAssertEqual(writeReviewOpener.openCount, 1)
+        XCTAssertEqual(reviewRequester.requestCount, 0)
+        XCTAssertNil(manager.eligibilityState.nativeReviewRequestAttemptDate)
+        XCTAssertNil(manager.eligibilityState.systemReviewRequestVersion)
+        XCTAssertTrue(analytics.recordedEvents.contains { $0.event == .appStoreWriteReviewOpened })
+        XCTAssertFalse(analytics.recordedEvents.contains { $0.event == .nativeReviewRequestAttempted })
+        XCTAssertEqual(
+            AppStoreReviewURL.writeReview?.absoluteString,
+            "https://apps.apple.com/app/id6776311371?action=write-review"
+        )
+    }
+
+    func testReviewDemoModeDoesNotRequestReview() async {
+        manager = makeManager(isReviewDemo: true, delayNanoseconds: 0)
+        seedEligibleEngagement()
+        manager.recordMeaningfulAction(.foodLogged, evaluatePrompt: true)
+        await waitForPendingReview()
+        XCTAssertEqual(reviewRequester.requestCount, 0)
     }
 
     func testHealthDataValuesAreNeverRequiredForEligibility() {
@@ -241,14 +326,28 @@ final class ReviewPromptManagerTests: XCTestCase {
             storage: storage,
             analytics: analytics,
             reviewRequester: reviewRequester,
+            writeReviewOpener: writeReviewOpener,
             feedbackService: feedbackService,
             clock: clock,
             calendar: Calendar(identifier: .gregorian),
             appVersionProvider: { appVersion },
             isReviewDemoMode: { isReviewDemo },
+            bypassEngagementThresholds: false,
             presentationDelayNanoseconds: delayNanoseconds,
             observesEngagementNotifications: false
         )
+    }
+
+    private func requestReviewAfterEligibleAction() async {
+        manager = makeManager(delayNanoseconds: 0)
+        seedEligibleEngagement()
+        manager.recordMeaningfulAction(.foodLogged, evaluatePrompt: true)
+        await waitForPendingReview()
+    }
+
+    private func waitForPendingReview() async {
+        await Task.yield()
+        try? await Task.sleep(nanoseconds: 50_000_000)
     }
 
     private func seedEligibleEngagement() {
@@ -282,5 +381,111 @@ final class ReviewPromptManagerTests: XCTestCase {
 
     private func calendarDate(addingDays days: Int, to base: Date) -> Date {
         Calendar(identifier: .gregorian).date(byAdding: .day, value: days, to: base)!
+    }
+}
+
+private final class RecordingWriteReviewOpener: AppStoreWriteReviewOpening {
+    private(set) var openCount = 0
+
+    @MainActor
+    func openWriteReview() -> Bool {
+        openCount += 1
+        return true
+    }
+}
+
+@MainActor
+final class ReviewPromptMigrationTests: XCTestCase {
+
+    private var suiteName: String!
+    private var defaults: UserDefaults!
+    private var storage: ReviewPromptStorage!
+
+    override func setUp() {
+        super.setUp()
+        suiteName = "weekfit.tests.review.migration.\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suiteName)
+        defaults.removePersistentDomain(forName: suiteName)
+        storage = ReviewPromptStorage(defaults: defaults)
+    }
+
+    override func tearDown() {
+        defaults.removePersistentDomain(forName: suiteName)
+        defaults = nil
+        storage = nil
+        suiteName = nil
+        super.tearDown()
+    }
+
+    func testCustomCardHistoryIsNotASystemRequest() {
+        defaults.set("1.2.0", forKey: ReviewPromptStorage.Keys.lastPromptedAppVersion)
+        defaults.set(Date().timeIntervalSince1970, forKey: ReviewPromptStorage.Keys.lastFeedbackPromptDate)
+
+        let state = storage.load()
+
+        XCTAssertNil(state.systemReviewRequestVersion)
+        XCTAssertNil(state.nativeReviewRequestAttemptDate)
+        XCTAssertEqual(state.lastPromptedAppVersion, "1.2.0")
+    }
+
+    func testKnownSystemAttemptKeepsVersionAndDate() {
+        let attempt = Date(timeIntervalSince1970: 1_700_000_000)
+        defaults.set(attempt.timeIntervalSince1970, forKey: ReviewPromptStorage.Keys.nativeReviewRequestAttemptDate)
+        defaults.set("1.2.0", forKey: ReviewPromptStorage.Keys.lastPromptedAppVersion)
+
+        let state = storage.load()
+
+        XCTAssertEqual(state.systemReviewRequestVersion, "1.2.0")
+        XCTAssertEqual(state.nativeReviewRequestAttemptDate, attempt)
+    }
+
+    func testSettingsOnlySystemAttemptKeepsCooldownWithoutVersion() {
+        let attempt = Date(timeIntervalSince1970: 1_700_000_000)
+        defaults.set(attempt.timeIntervalSince1970, forKey: ReviewPromptStorage.Keys.nativeReviewRequestAttemptDate)
+
+        let state = storage.load()
+
+        XCTAssertNil(state.systemReviewRequestVersion)
+        XCTAssertEqual(state.nativeReviewRequestAttemptDate, attempt)
+    }
+
+    func testMigrationDoesNotRewriteALaterSystemRequestFromTheLegacyCardVersion() {
+        defaults.set("1.0.0", forKey: ReviewPromptStorage.Keys.lastPromptedAppVersion)
+        _ = storage.load()
+
+        var state = storage.load()
+        let attempt = Date(timeIntervalSince1970: 1_800_000_000)
+        state.systemReviewRequestVersion = "2.0.0"
+        state.nativeReviewRequestAttemptDate = attempt
+        storage.save(state)
+
+        let reloaded = storage.load()
+        XCTAssertEqual(reloaded.systemReviewRequestVersion, "2.0.0")
+        XCTAssertEqual(reloaded.nativeReviewRequestAttemptDate, attempt)
+    }
+
+    func testDebugOverrideIsOffUnlessDebugFlagIsSet() {
+        XCTAssertFalse(
+            ReviewPromptDebugOverride.bypassesEngagementThresholds(defaults: defaults, arguments: [])
+        )
+        defaults.set(true, forKey: ReviewPromptDebugOverride.defaultsKey)
+        #if DEBUG
+        XCTAssertTrue(
+            ReviewPromptDebugOverride.bypassesEngagementThresholds(defaults: defaults, arguments: [])
+        )
+        XCTAssertTrue(
+            ReviewPromptDebugOverride.bypassesEngagementThresholds(
+                defaults: defaults,
+                arguments: [ReviewPromptDebugOverride.launchArgument]
+            )
+        )
+        #else
+        XCTAssertFalse(
+            ReviewPromptDebugOverride.bypassesEngagementThresholds(
+                defaults: defaults,
+                arguments: [ReviewPromptDebugOverride.launchArgument]
+            )
+        )
+        #endif
     }
 }

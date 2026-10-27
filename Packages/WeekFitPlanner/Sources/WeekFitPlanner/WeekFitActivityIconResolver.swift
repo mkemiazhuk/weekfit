@@ -15,6 +15,7 @@ public enum WeekFitActivityIconResolver {
         "workout-lowerbody": "figure.strengthtraining.traditional",
         "workout-fullbody": "figure.strengthtraining.functional",
         "workout-tennis": "figure.tennis",
+        "workout-padel": "figure.tennis",
         "workout-squash": "figure.squash",
         "recovery-stretch": "figure.cooldown",
         "recovery-walk": "figure.walk",
@@ -47,6 +48,7 @@ public enum WeekFitActivityIconResolver {
         "strength workout": "dumbbell.fill",
         "hiit workout": "flame.fill",
         "tennis": "figure.tennis",
+        "padel": "figure.tennis",
         "squash": "figure.squash",
         "stretching": "figure.cooldown",
         "walk": "figure.walk",
@@ -228,6 +230,10 @@ public enum WeekFitActivityIconResolver {
 
         if containsAny(haystack, ["hiit", "interval"]) {
             return "flame.fill"
+        }
+
+        if containsAny(haystack, ["padel", "падел", "падл"]) {
+            return "figure.tennis"
         }
 
         if containsAny(haystack, ["tennis"]) {

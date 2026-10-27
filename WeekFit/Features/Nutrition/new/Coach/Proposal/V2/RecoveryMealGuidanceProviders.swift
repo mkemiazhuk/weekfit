@@ -827,7 +827,10 @@ enum MealLibraryProvider {
                 usedIds: usedIds
             ) else { continue }
             usedIds.insert(meal.id)
-            let proposedDate = slotDate(slot, now: context.now, meal: meal)
+            guard let proposedDate = slotDate(slot, now: context.now, meal: meal) else {
+                usedIds.remove(meal.id)
+                continue
+            }
             result.append(
                 ProposalCandidate(
                     id: "meal-\(slot.rawValue)-\(meal.id)",
@@ -944,7 +947,7 @@ enum MealLibraryProvider {
 
         let matched = ordered.filter { slot in
             library.contains { meal in
-                !excludedTitles.contains(normalizedTitle(meal.title))
+                !excludedTitles.contains(normalizedTitle(meal.storedTitle))
                     && ProposalMealSlot.from(suggestedTime: meal.suggestedTime) == slot
             }
         }
@@ -960,7 +963,7 @@ enum MealLibraryProvider {
         usedIds: Set<String>
     ) -> ProposalMealCandidate? {
         func isAvailable(_ meal: ProposalMealCandidate) -> Bool {
-            !usedIds.contains(meal.id) && !excludedTitles.contains(normalizedTitle(meal.title))
+            !usedIds.contains(meal.id) && !excludedTitles.contains(normalizedTitle(meal.storedTitle))
         }
 
         let slotMeals = library.filter { meal in
@@ -993,21 +996,29 @@ enum MealLibraryProvider {
         now: Date,
         meal: ProposalMealCandidate,
         calendar: Calendar = .current
-    ) -> Date {
+    ) -> Date? {
         let base = calendar.startOfDay(for: now)
         let earliest = now.addingTimeInterval(25 * 60)
+        let ideal: Date
         if let suggested = meal.suggestedTime,
            ProposalMealSlot.from(suggestedTime: suggested) == slot,
            let parsed = parseSuggestedTime(suggested, on: base, calendar: calendar) {
-            return max(parsed, earliest)
+            ideal = parsed
+        } else {
+            ideal = calendar.date(
+                bySettingHour: slot.defaultHour,
+                minute: slot.defaultMinute,
+                second: 0,
+                of: base
+            ) ?? now
         }
-        let proposed = calendar.date(
-            bySettingHour: slot.defaultHour,
-            minute: slot.defaultMinute,
-            second: 0,
-            of: base
-        ) ?? now
-        return max(proposed, earliest)
+        let proposed = max(ideal, earliest)
+        // Drop the candidate if clamping moved it into another meal window
+        // (e.g. 08:30 breakfast → 10:55 must not become "kolacja").
+        guard ProposalMealSlot.from(date: proposed, calendar: calendar) == slot else {
+            return nil
+        }
+        return proposed
     }
 
     private static func yesterdayMealTitles(
@@ -1077,7 +1088,7 @@ enum MealLibraryProvider {
                 )
             }
             if offered {
-                titles.insert(normalizedTitle(meal.title))
+                titles.insert(normalizedTitle(meal.storedTitle))
             }
         }
         return titles

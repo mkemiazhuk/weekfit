@@ -172,7 +172,7 @@ enum CoachCopySubjectGuard {
                 return ["strength", "set", "силов", "подход", "мышц"]
             }
         case .activeRacket, .duringRacket, .postRacketImmediate, .postRacketSettled, .eveningAfterRacket:
-            return ["tennis", "squash", "racket", "match", "court", "матч", "теннис", "сквош", "игр", "корт"]
+            return ["tennis", "padel", "squash", "racket", "match", "court", "матч", "теннис", "падел", "падл", "сквош", "игр", "корт"]
         case .activeRecovery, .duringRecovery, .postRecoveryImmediate, .postRecoverySettled, .eveningAfterRecovery:
             switch activityType {
             case .yoga:

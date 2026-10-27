@@ -143,7 +143,9 @@ struct PremiumActivityStartSheet: View {
             weatherRisk: weatherRisk,
             recoveryBand: recoveryBand
         )
-        let sorted = sortedOptions(options)
+        let frequentKeys = Set(frequent.map(\.option.imageName))
+        // Keep Frequent cards unique — don't list the same option again under All.
+        let sorted = sortedOptions(options).filter { !frequentKeys.contains($0.imageName) }
         let isBlocked = liveActivity != nil
 
         return ScrollView(showsIndicators: false) {
@@ -173,33 +175,35 @@ struct PremiumActivityStartSheet: View {
                     }
                 }
 
-                VStack(alignment: .leading, spacing: 10) {
-                    allHeader(
-                        title: WeekFitLocalizedString(
-                            currentSubTab == "Workout"
-                                ? "home.activityStart.section.allWorkouts"
-                                : "home.activityStart.section.allRecovery"
+                if !sorted.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        allHeader(
+                            title: WeekFitLocalizedString(
+                                currentSubTab == "Workout"
+                                    ? "home.activityStart.section.allWorkouts"
+                                    : "home.activityStart.section.allRecovery"
+                            )
                         )
-                    )
 
-                    VStack(spacing: 10) {
-                        ForEach(sorted, id: \.imageName) { option in
-                            let duration = defaultDuration(for: option, type: selectedPlannerType)
-                            let category = ActivityOptionPresentation.category(for: option)
-                            let chip = ActivityOptionPresentation.detailChip(for: option)
-                            PremiumActivityStartCard(
-                                title: localizedOptionTitle(option.title),
-                                category: category,
-                                categoryLabel: WeekFitLocalizedString(category.localizationKey),
-                                detailLine: listDetailLine(option: option, duration: duration),
-                                chip: chip,
-                                chipLabel: WeekFitLocalizedString(chip.localizationKey),
-                                imageName: option.imageName,
-                                systemIcon: selectedPlannerType.icon,
-                                accentColor: activityAccent,
-                                hasConflict: isBlocked
-                            ) {
-                                start(option: option, duration: duration)
+                        VStack(spacing: 10) {
+                            ForEach(sorted, id: \.imageName) { option in
+                                let duration = defaultDuration(for: option, type: selectedPlannerType)
+                                let category = ActivityOptionPresentation.category(for: option)
+                                let chip = ActivityOptionPresentation.detailChip(for: option)
+                                PremiumActivityStartCard(
+                                    title: localizedOptionTitle(option.title),
+                                    category: category,
+                                    categoryLabel: WeekFitLocalizedString(category.localizationKey),
+                                    detailLine: listDetailLine(option: option, duration: duration),
+                                    chip: chip,
+                                    chipLabel: WeekFitLocalizedString(chip.localizationKey),
+                                    imageName: option.imageName,
+                                    systemIcon: selectedPlannerType.icon,
+                                    accentColor: activityAccent,
+                                    hasConflict: isBlocked
+                                ) {
+                                    start(option: option, duration: duration)
+                                }
                             }
                         }
                     }

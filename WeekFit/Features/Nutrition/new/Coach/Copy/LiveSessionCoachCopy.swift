@@ -131,7 +131,7 @@ enum LiveSessionCoachCopy {
                 return .recoveryEasy
             case .upperBody, .lowerBody, .core, .fullBody:
                 return .strength
-            case .tennis, .squash:
+            case .tennis, .padel, .squash:
                 return .racket
             case .sauna:
                 return .heat

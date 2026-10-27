@@ -1,0 +1,3 @@
+"NSCameraUsageDescription" = "WeekFit usa la fotocamera per aggiungere foto ai tuoi alimenti personalizzati.";
+"NSHealthShareUsageDescription" = "WeekFit usa i tuoi dati di salute e attività per personalizzare il piano giornaliero.";
+"NSHealthUpdateUsageDescription" = "WeekFit legge allenamenti e attività da Apple Health per mantenere il piano accurato. Non scrive allenamenti su Apple Health.";

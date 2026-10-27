@@ -120,6 +120,7 @@ enum AppText {
         static let standMetric: LocalizedStringResource = "today.status.metric.stand"
         static let cardioMetric: LocalizedStringResource = "today.status.metric.cardio"
         static let nutritionTitle: LocalizedStringResource = "today.status.nutrition"
+        static let caloriesTitle: LocalizedStringResource = "today.status.calories"
         static let recoveryTitle: LocalizedStringResource = "today.status.recovery"
         static let syncingHealth: LocalizedStringResource = "today.status.syncingHealth"
         static let loading: LocalizedStringResource = "today.status.loading"
@@ -641,6 +642,66 @@ func WeekFitLocalizedString(_ key: String, locale: Locale? = nil) -> String {
     let resolved = WeekFitBundleLocalizedString(key, locale: resolvedLocale)
     WeekFitDebugLogLocalizationResolution(key: key, locale: resolvedLocale, resolved: resolved)
     return resolved
+}
+
+/// Resolves `keyBase.one|few|many` (with fallback to `keyBase` / `keyBase.other`) for quantity copy.
+/// Uses Slavic one/few/many for RU and PL; other languages use one vs many.
+/// Integer counts only — fractional portion copy uses `WeekFitCountPluralization.portionsPhrase`.
+func WeekFitLocalizedQuantityFormat(
+    _ keyBase: String,
+    count: Int,
+    locale: Locale? = nil
+) -> String {
+    let resolvedLocale = locale ?? WeekFitCurrentLocale()
+    let mappedLanguage = WeekFitQuantityFormatLanguageCode(for: resolvedLocale)
+    let suffix = WeekFitCountPluralization.catalogPluralSuffix(
+        for: count,
+        languageCode: mappedLanguage
+    )
+    let preferredCandidates = [
+        "\(keyBase).\(suffix)",
+        "\(keyBase).other",
+        keyBase
+    ]
+    var format: String?
+    for candidate in preferredCandidates {
+        let resolved = WeekFitBundleLocalizedString(candidate, locale: resolvedLocale)
+        if resolved != candidate {
+            format = resolved
+            break
+        }
+    }
+    // If the requested locale is missing quantity keys, fall back to English catalog
+    // forms — never leave an unresolved key (which would print as English-looking garbage).
+    if format == nil {
+        let english = Locale(identifier: AppLanguage.english.rawValue)
+        for candidate in preferredCandidates {
+            let resolved = WeekFitBundleLocalizedString(candidate, locale: english)
+            if resolved != candidate {
+                format = resolved
+                break
+            }
+        }
+    }
+    let formatString = format ?? keyBase
+    // Catalog quantity keys use `%lld` or `%d`; Int is safe for both on 64-bit.
+    return String(format: formatString, locale: resolvedLocale, arguments: [count as CVarArg])
+}
+
+/// Prefer app language tags (`zh-Hans`, `ru`, …) over bare `Locale.language.languageCode` (`zh`).
+private func WeekFitQuantityFormatLanguageCode(for locale: Locale) -> String {
+    let identifier = locale.identifier.replacingOccurrences(of: "_", with: "-")
+    if let exact = AppLanguage(rawValue: identifier) {
+        return exact.rawValue
+    }
+    if let matched = AppLanguage.matchLanguageTag(identifier) {
+        return matched.rawValue
+    }
+    let code = locale.language.languageCode?.identifier ?? WeekFitCurrentLanguageCode()
+    switch code {
+    case "zh": return AppLanguage.chineseSimplified.rawValue
+    default: return code
+    }
 }
 
 private func WeekFitBundleLocalizedString(_ key: String, locale: Locale) -> String {

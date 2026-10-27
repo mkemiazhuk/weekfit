@@ -248,6 +248,7 @@ public enum ActivityReconciler {
         case breathing
         case recovery
         case tennis
+        case padel
         case squash
         case swimming
         case snowboarding
@@ -370,6 +371,10 @@ public enum ActivityReconciler {
 
         if containsAny(text, ["tennis", "теннис"]) {
             return .tennis
+        }
+
+        if containsAny(text, ["padel", "падел", "падл"]) {
+            return .padel
         }
 
         if containsAny(text, ["squash", "сквош"]) {

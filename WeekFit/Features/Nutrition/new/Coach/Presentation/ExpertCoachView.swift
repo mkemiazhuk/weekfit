@@ -199,8 +199,8 @@ struct ExpertCoachView: View {
                     initials: userSettings.profileInitials,
                     hasProfileName: userSettings.hasProfileName,
                     showAvatar: true,
-                    // Evening: full champagne avatar; other Coach states stay subdued.
-                    avatarProminence: shouldShowEveningRecap ? .standard : .subdued
+                    // Same subdued chrome as Today / Meals / Plan on every Coach state.
+                    avatarProminence: .subdued
                 ) {
                     showProfile = true
                 }
@@ -402,6 +402,7 @@ struct ExpertCoachView: View {
                         activitySummary: eveningRecapActivity,
                         daySignals: eveningRecapSignals,
                         commentary: eveningSummary.displayCommentary,
+                        summaryDayCaption: eveningSummary.summaryDayCaption,
                         isLoadingCommentary: eveningSummary.isRefreshing
                             && eveningSummary.displayCommentary == nil
                             && eveningRecapFeeling == nil,
@@ -531,7 +532,7 @@ struct ExpertCoachView: View {
 
         if let owner = WorkspaceOwnerStore.currentIdentityToken(),
            AccountSessionController.shared.mode == .realUser {
-            eveningSummary.restore(owner: owner)
+            eveningSummary.restore(owner: owner, source: "recap")
         }
 
         // Coalesce bursty first-open triggers so we don't cancel/restart HK mid-flight.
@@ -1782,7 +1783,7 @@ struct ExpertCoachView: View {
 }
 
 enum CoachPalette {
-    static let recovery = Color(red: 0.18, green: 0.74, blue: 0.89)
+    static let recovery = WeekFitSemanticMetricTokens.recovery
     static let hydration = Color(red: 0.40, green: 0.72, blue: 0.98)
     static let warning = Color(red: 1.00, green: 0.76, blue: 0.26)
     static let fueling = WeekFitTheme.orange

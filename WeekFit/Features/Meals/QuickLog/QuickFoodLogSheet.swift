@@ -126,22 +126,30 @@ struct QuickFoodLogSheet: View {
         ).weekFitMealSlot
     }
 
+    /// Meals already in Frequently Used — omit from All to avoid repeats.
     private var sortedMealRows: [QuickMealDisplayRow] {
-        mealRows.sorted {
-            let left = $0.meal.isFoodProduct ? $0.meal.title : $0.meal.localizedShortTitle
-            let right = $1.meal.isFoodProduct ? $1.meal.title : $1.meal.localizedShortTitle
-            return sortAscending
-                ? left.localizedCaseInsensitiveCompare(right) == .orderedAscending
-                : left.localizedCaseInsensitiveCompare(right) == .orderedDescending
-        }
+        let excluded = Set(frequentMealRows.map(\.id))
+        return mealRows
+            .filter { !excluded.contains($0.id) }
+            .sorted {
+                let left = $0.meal.isFoodProduct ? $0.meal.title : $0.meal.localizedShortTitle
+                let right = $1.meal.isFoodProduct ? $1.meal.title : $1.meal.localizedShortTitle
+                return sortAscending
+                    ? left.localizedCaseInsensitiveCompare(right) == .orderedAscending
+                    : left.localizedCaseInsensitiveCompare(right) == .orderedDescending
+            }
     }
 
+    /// Snacks already in Frequently Used — omit from All to avoid repeats.
     private var sortedSnackRows: [QuickItemDisplayRow] {
-        snackRows.sorted {
-            sortAscending
-                ? $0.item.localizedTitle.localizedCaseInsensitiveCompare($1.item.localizedTitle) == .orderedAscending
-                : $0.item.localizedTitle.localizedCaseInsensitiveCompare($1.item.localizedTitle) == .orderedDescending
-        }
+        let excluded = Set(frequentSnackRows.map(\.id))
+        return snackRows
+            .filter { !excluded.contains($0.id) }
+            .sorted {
+                sortAscending
+                    ? $0.item.localizedTitle.localizedCaseInsensitiveCompare($1.item.localizedTitle) == .orderedAscending
+                    : $0.item.localizedTitle.localizedCaseInsensitiveCompare($1.item.localizedTitle) == .orderedDescending
+            }
     }
 
     var body: some View {
@@ -711,13 +719,15 @@ struct QuickFoodLogSheet: View {
                 frequentMealCards
             }
 
-            allHeader(
-                title: WeekFitLocalizedString("today.quickLog.section.allMeals")
-            )
+            if !sortedMealRows.isEmpty {
+                allHeader(
+                    title: WeekFitLocalizedString("today.quickLog.section.allMeals")
+                )
 
-            LazyVStack(spacing: 8) {
-                ForEach(sortedMealRows) { row in
-                    mealLibraryRow(row)
+                LazyVStack(spacing: 8) {
+                    ForEach(sortedMealRows) { row in
+                        mealLibraryRow(row)
+                    }
                 }
             }
         }
@@ -734,13 +744,15 @@ struct QuickFoodLogSheet: View {
                 frequentSnackCards
             }
 
-            allHeader(
-                title: WeekFitLocalizedString("today.quickLog.section.allSnacks")
-            )
+            if !sortedSnackRows.isEmpty {
+                allHeader(
+                    title: WeekFitLocalizedString("today.quickLog.section.allSnacks")
+                )
 
-            LazyVStack(spacing: 8) {
-                ForEach(sortedSnackRows) { row in
-                    snackLibraryRow(row)
+                LazyVStack(spacing: 8) {
+                    ForEach(sortedSnackRows) { row in
+                        snackLibraryRow(row)
+                    }
                 }
             }
         }

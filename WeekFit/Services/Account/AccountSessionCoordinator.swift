@@ -237,16 +237,25 @@ enum AccountSessionCoordinator {
         }
 
         OnboardingStore.migrateExistingUsersIfNeeded()
+        // UI-test flags must win over migrateExistingUsersIfNeeded (which can mark completed).
+        WeekFitUITestSupport.applyLaunchOverridesIfNeeded()
 
         // UserDefaults may have been wiped during account transition — re-apply Apple name.
         AppleIdentityStore.restoreProfileIfNeeded(appleUserID: AuthSessionStore.appleUserID)
 
-        if !OnboardingStore.hasCompletedOnboarding {
+        if WeekFitUITestSupport.shouldForceOnboarding || !OnboardingStore.hasCompletedOnboarding {
             appSession.presentOnboarding()
+        } else if WeekFitUITestSupport.shouldSkipHealthAccess {
+            appSession.dismissHealthAccess()
         } else if !healthManager.isHealthAccessGranted && !healthManager.isHealthAccessRequested {
             appSession.presentHealthAccess()
         } else {
             appSession.dismissHealthAccess()
+        }
+
+        if WeekFitUITestSupport.shouldForcePaywall {
+            WeekFitForcePaywallStore.shared.setEnabled(true)
+            WeekFitForcePaywallStore.shared.requestOpenPaywall()
         }
 
         // After Apple Sign in / Sign up (or any real-user entry), land on Today.

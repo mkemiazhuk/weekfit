@@ -131,10 +131,10 @@ struct CoachEveningRecapActivitySummary: Equatable, Sendable {
 
     var workoutSummaryLine: String? {
         guard workoutCount > 0, workoutMinutes > 0 else { return nil }
-        let workouts = String(
-            format: WeekFitLocalizedString("coach.eveningRecap.workoutsCountFormat"),
-            locale: CoachEveningRecapFormatting.locale,
-            arguments: [Int64(workoutCount) as CVarArg]
+        let workouts = WeekFitLocalizedQuantityFormat(
+            "coach.eveningRecap.workoutsCountFormat",
+            count: workoutCount,
+            locale: CoachEveningRecapFormatting.locale
         )
         let duration = CoachEveningRecapFormatting.formatNaturalDuration(workoutMinutes)
         return "\(workouts) · \(duration)"

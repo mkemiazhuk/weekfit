@@ -67,69 +67,43 @@ struct NutritionDetailsView: View {
     var body: some View {
         let _ = languageManager.selectedLanguage
 
-        Group {
-            if palette.isLight {
-                lightBody
-            } else {
-                NutritionDetailsLegacyContent(
-                    selectedDate: displayedDate,
-                    calories: calories,
-                    protein: protein,
-                    carbs: carbs,
-                    fats: fats,
-                    fiber: fiber,
-                    caloriesGoal: caloriesGoal,
-                    proteinGoal: proteinGoal,
-                    carbsGoal: carbsGoal,
-                    fatsGoal: fatsGoal,
-                    fiberGoal: fiberGoal,
-                    waterLiters: waterLiters,
-                    waterGoal: waterGoal,
-                    meals: meals,
-                    mealCatalog: mealCatalog,
-                    onDateChanged: { newDate in
-                        displayedDate = newDate
-                        onDateChanged(newDate)
-                    }
-                )
-            }
-        }
-    }
-
-    // MARK: - Light (reference redesign)
-
-    private var lightBody: some View {
         ZStack {
-            NutritionDetailsDesign.canvas
+            palette.appScreenBackground
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 NutritionDetailsHeader(
                     title: WeekFitLocalizedString("nutrition.details.title"),
                     subtitle: nutritionDetailsDateTitle,
+                    background: palette.appScreenBackground,
                     onClose: { dismiss() }
                 )
 
-                NutritionWeekSelector(
+                HealthDetailsWeekPicker(
                     selectedDate: $displayedDate,
                     accentColor: NutritionDetailsDesign.nutritionAccent
                 ) { date in
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     onDateChanged(date)
                 }
-                .padding(.horizontal, NutritionDetailsDesign.horizontalPadding)
-                .padding(.top, 8)
-                .padding(.bottom, 2)
+                .padding(.horizontal, 18)
+                .padding(.top, 9)
+                .padding(.bottom, 8)
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: NutritionDetailsDesign.sectionSpacing) {
-                        NutritionQualityCard(
-                            qualityScore: nutritionQualityScore,
-                            primaryInsightText: nutritionPrimaryInsight,
-                            primaryInsight: nutritionPrimaryInsightKind
+                    VStack(spacing: NutritionDetailsDesign.Reading.sectionSpacing) {
+                        NutritionIntakeCard(
+                            calories: calories,
+                            caloriesGoal: caloriesGoal,
+                            waterLiters: waterLiters,
+                            waterGoal: waterGoal,
+                            isToday: isToday
                         )
 
-                        metricsRow
+                        NutritionQualityCard(
+                            qualityScore: nutritionQualityScore,
+                            primaryInsightText: nutritionPrimaryInsight
+                        )
 
                         MacroBalanceCard(
                             protein: protein,
@@ -151,77 +125,13 @@ struct NutritionDetailsView: View {
                             message: WeekFitLocalizedString("nutrition.details.note.full")
                         )
                     }
-                    .padding(.horizontal, NutritionDetailsDesign.horizontalPadding)
-                    .padding(.top, 8)
-                    .padding(.bottom, 20)
+                    .padding(.horizontal, NutritionDetailsDesign.Reading.horizontalPadding)
+                    .padding(.bottom, 25)
                 }
             }
         }
         .navigationBarBackButtonHidden(true)
-    }
-
-    @ViewBuilder
-    private var metricsRow: some View {
-        let waterPercent = percent(waterLiters, of: waterGoal)
-        let caloriePercent = percent(calories, of: caloriesGoal)
-        let status = hydrationStatus
-
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: 10) {
-                waterCard(percent: waterPercent, status: status)
-                caloriesCard(percent: caloriePercent)
-            }
-
-            VStack(spacing: 10) {
-                waterCard(percent: waterPercent, status: status)
-                caloriesCard(percent: caloriePercent)
-            }
-        }
-    }
-
-    private func waterCard(
-        percent: Int?,
-        status: (text: String, color: Color)?
-    ) -> some View {
-        NutritionMetricCard(
-            kind: .water,
-            title: WeekFitLocalizedString("nutrition.details.hydration.short"),
-            valueText: waterGoal > 0
-                ? String(
-                    format: WeekFitLocalizedString("today.quickActions.waterProgressFormat"),
-                    waterLiters,
-                    waterGoal
-                )
-                : String(
-                    format: WeekFitLocalizedString("nutrition.details.hydration.literFormat"),
-                    waterLiters
-                ),
-            percentOfGoal: percent,
-            progress: waterGoal > 0 ? min(max(waterLiters / waterGoal, 0), 1) : 0,
-            statusText: status?.text,
-            statusColor: status?.color
-        )
-    }
-
-    private func caloriesCard(percent: Int?) -> some View {
-        NutritionMetricCard(
-            kind: .calories,
-            title: WeekFitLocalizedString("nutrition.macro.calories"),
-            valueText: caloriesGoal > 0
-                ? String(
-                    format: WeekFitLocalizedString("nutrition.details.calories.progressFormat"),
-                    Int(calories),
-                    Int(caloriesGoal)
-                )
-                : String(
-                    format: WeekFitLocalizedString("nutrition.details.calories.valueFormat"),
-                    Int(calories)
-                ),
-            percentOfGoal: percent,
-            progress: caloriesGoal > 0 ? min(max(calories / caloriesGoal, 0), 1) : 0,
-            statusText: nil,
-            statusColor: nil
-        )
+        .accessibilityIdentifier("screen.nutritionDetails")
     }
 
     // MARK: - Shared derived state
@@ -239,16 +149,12 @@ struct NutritionDetailsView: View {
             fiberGoal: fiberGoal,
             caloriesGoal: caloriesGoal,
             mealsLogged: !meals.isEmpty,
-            isToday: Calendar.current.isDate(displayedDate, inSameDayAs: Date())
+            isToday: isToday
         )
     }
 
     private var nutritionQualityScore: Int {
         NutritionQualityPresenter.qualityScore(for: nutritionQualityInput)
-    }
-
-    private var nutritionPrimaryInsightKind: NutritionQualityPresenter.PrimaryInsight {
-        NutritionQualityPresenter.primaryInsight(for: nutritionQualityInput)
     }
 
     private var nutritionPrimaryInsight: String {
@@ -262,32 +168,8 @@ struct NutritionDetailsView: View {
         return formatter.string(from: displayedDate)
     }
 
-    private var hydrationStatus: (text: String, color: Color)? {
-        guard waterGoal > 0 else { return nil }
-
-        if waterLiters >= waterGoal {
-            return (
-                WeekFitLocalizedString("nutrition.details.hydration.status.goalReached"),
-                WeekFitLightTokens.success
-            )
-        }
-
-        if waterLiters >= waterGoal * 0.85 {
-            return (
-                WeekFitLocalizedString("nutrition.details.hydration.status.onTrack"),
-                NutritionDetailsDesign.waterAccent
-            )
-        }
-
-        return (
-            WeekFitLocalizedString("nutrition.details.hydration.status.behind"),
-            NutritionDetailsDesign.waterAccent
-        )
-    }
-
-    private func percent(_ value: Double, of goal: Double) -> Int? {
-        guard goal > 0 else { return nil }
-        return Int(((value / goal) * 100).rounded())
+    private var isToday: Bool {
+        Calendar.current.isDate(displayedDate, inSameDayAs: Date())
     }
 }
 

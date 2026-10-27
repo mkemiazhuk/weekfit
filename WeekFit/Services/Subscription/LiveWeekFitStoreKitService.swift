@@ -93,6 +93,9 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
     /// Avoids re-hitting the network on every `SubscriptionManager.refresh()` /
     /// foreground while the catalog is unchanged.
     private var cachedProductsResult: WeekFitProductsLoadResult?
+    /// In-flight catalog fetch. Cleared on success and on failure so a later attempt can run.
+    private var productLoadTask: Task<WeekFitProductsLoadResult, Error>?
+    private var productLoadKey: String?
     /// When `productsByID` was last filled — used to avoid a full reload on every Continue
     /// while still refreshing after long background / Sandbox stalls.
     private var productsLoadedAt: Date?
@@ -138,10 +141,10 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
     func loadProducts() async throws -> WeekFitProductsLoadResult {
         let requestedIDs = WeekFitSubscriptionProductID.allRawValues
         let storefront = await Self.currentStorefrontSnapshot()
+        let key = Self.catalogKey(storefront: storefront, productIDs: requestedIDs)
         if let cached = cachedProductsResult,
            !productsByID.isEmpty,
-           cached.storefront.id == storefront.id,
-           cached.storefront.countryCode == storefront.countryCode {
+           Self.catalogKey(storefront: cached.storefront, productIDs: requestedIDs) == key {
             #if DEBUG
             WeekFitStoreKitDebug.log(
                 "Product.products cache hit storefront=\(storefront.countryCode ?? "?")/\(storefront.id ?? "?") count=\(cached.products.count)"
@@ -149,6 +152,34 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
             #endif
             return cached
         }
+        if let productLoadTask, productLoadKey == key {
+            return try await productLoadTask.value
+        }
+        let task = Task { @MainActor in
+            try await self.fetchProducts(requestedIDs: requestedIDs, storefront: storefront)
+        }
+        productLoadTask = task
+        productLoadKey = key
+        do {
+            let result = try await task.value
+            if productLoadTask == task {
+                productLoadTask = nil
+                productLoadKey = nil
+            }
+            return result
+        } catch {
+            if productLoadTask == task {
+                productLoadTask = nil
+                productLoadKey = nil
+            }
+            throw error
+        }
+    }
+
+    private func fetchProducts(
+        requestedIDs: [String],
+        storefront: WeekFitStorefrontSnapshot
+    ) async throws -> WeekFitProductsLoadResult {
         #if DEBUG
         await WeekFitStoreKitDebug.logProductLoadStart(requestedIDs: requestedIDs)
         #endif
@@ -163,8 +194,6 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
             for product in storeProducts {
                 mapped[product.id] = product
             }
-            productsByID = mapped
-            productsLoadedAt = Date()
             var snapshots: [WeekFitProductSnapshot] = []
             snapshots.reserveCapacity(storeProducts.count)
             for product in storeProducts {
@@ -177,7 +206,12 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
                 rawReturnedCount: storeProducts.count,
                 storefront: storefront
             )
-            cachedProductsResult = result
+            let latest = await Self.currentStorefrontSnapshot()
+            if latest == storefront {
+                productsByID = mapped
+                productsLoadedAt = Date()
+                cachedProductsResult = result
+            }
             #if DEBUG
             WeekFitStoreKitDebug.logProductLoadSuccess(
                 requestedIDs: requestedIDs,
@@ -189,11 +223,16 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
         } catch {
             productsByID = [:]
             cachedProductsResult = nil
+            productsLoadedAt = nil
             #if DEBUG
             WeekFitStoreKitDebug.logProductLoadFailure(requestedIDs: requestedIDs, error: error)
             #endif
             throw error
         }
+    }
+
+    private static func catalogKey(storefront: WeekFitStorefrontSnapshot, productIDs: [String]) -> String {
+        "\(storefront.id ?? "-")|\(storefront.countryCode ?? "-")|\(productIDs.joined(separator: ","))"
     }
 
     func loadCurrentSubscription() async -> WeekFitSubscriptionSnapshot? {
@@ -276,6 +315,8 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
         productsByID = [:]
         cachedProductsResult = nil
         productsLoadedAt = nil
+        productLoadTask = nil
+        productLoadKey = nil
     }
 
     func purchase(productID: String) async -> WeekFitPurchaseOutcome {
@@ -430,12 +471,30 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
         _ onChange: @escaping @Sendable () async -> Void
     ) -> Task<Void, Never> {
         Task.detached { [weak self] in
+            let productIDs = WeekFitSubscriptionProductID.allRawValues
             for await storefront in Storefront.updates {
-                await MainActor.run {
-                    self?.invalidateCachedProducts()
+                let incoming = WeekFitStorefrontSnapshot(
+                    countryCode: storefront.countryCode,
+                    id: storefront.id
+                )
+                let shouldReload = await MainActor.run { () -> Bool in
+                    guard let self else { return false }
                     WeekFitStoreKitTimelineDiagnostics.shared.recordStorefrontUpdate(storefront)
+                    if let cached = self.cachedProductsResult?.storefront, cached == incoming {
+                        return false
+                    }
+                    if self.productLoadKey == Self.catalogKey(storefront: incoming, productIDs: productIDs) {
+                        return false
+                    }
+                    guard self.cachedProductsResult != nil || self.productLoadKey != nil else {
+                        return false
+                    }
+                    self.invalidateCachedProducts()
+                    return true
                 }
-                await onChange()
+                if shouldReload {
+                    await onChange()
+                }
             }
         }
     }

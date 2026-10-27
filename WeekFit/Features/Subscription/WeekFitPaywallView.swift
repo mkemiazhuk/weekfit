@@ -249,7 +249,7 @@ struct WeekFitPaywallView: View {
                 }
 
                 if kind == .annual, let trialDays {
-                    Text(String(format: WeekFitLocalizedString("paywall.plan.trialFormat"), trialDays))
+                    Text(WeekFitLocalizedQuantityFormat("paywall.plan.trialFormat", count: trialDays))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(WeekFitTheme.brandGold)
                 }
@@ -457,7 +457,7 @@ struct WeekFitPaywallView: View {
             priceLine(for: product, kind: kind)
         ]
         if let trialDays {
-            parts.append(String(format: WeekFitLocalizedString("paywall.plan.trialFormat"), trialDays))
+            parts.append(WeekFitLocalizedQuantityFormat("paywall.plan.trialFormat", count: trialDays))
         }
         if let savings {
             parts.append(String(format: WeekFitLocalizedString("paywall.plan.saveFormat"), savings))

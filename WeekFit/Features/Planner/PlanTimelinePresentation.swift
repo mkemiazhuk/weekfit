@@ -9,11 +9,38 @@ enum PlanTimelineCategory: Equatable {
     var color: Color {
         switch self {
         case .activity:
-            return Color(red: 0.46, green: 0.72, blue: 0.82)
+            return WeekFitSemanticMetricTokens.activity
         case .recovery:
-            return Color(red: 0.66, green: 0.58, blue: 0.86)
+            return WeekFitSemanticMetricTokens.recovery
         case .nutrition:
-            return WeekFitProgressRingColor.nutrition
+            return WeekFitSemanticMetricTokens.nutrition
+        }
+    }
+
+    /// Icon glyph tint — terracotta Nutrition in Light; category color otherwise.
+    @MainActor
+    func iconColor(isLight: Bool) -> Color {
+        switch self {
+        case .nutrition:
+            return isLight
+                ? WeekFitPlanChromeTokens.nutritionIcon
+                : WeekFitSemanticMetricTokens.nutrition
+        case .activity, .recovery:
+            return color
+        }
+    }
+
+    /// Icon well fill for Light timeline cards (cards themselves stay white).
+    @MainActor
+    func iconWell(isLight: Bool) -> Color? {
+        guard isLight else { return nil }
+        switch self {
+        case .nutrition:
+            return WeekFitPlanChromeTokens.nutritionIconWell
+        case .activity:
+            return WeekFitSemanticMetricTokens.activitySoft
+        case .recovery:
+            return WeekFitSemanticMetricTokens.recoverySoft
         }
     }
 

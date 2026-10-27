@@ -15,6 +15,7 @@ enum PlannerOptionLocalization {
         case "Lower Body": return WeekFitLocalizedString("planner.option.lowerBody")
         case "Full Body": return WeekFitLocalizedString("planner.option.fullBody")
         case "Tennis": return WeekFitLocalizedString("planner.option.tennis")
+        case "Padel": return WeekFitLocalizedString("planner.option.padel")
         case "Squash": return WeekFitLocalizedString("planner.option.squash")
         case "High Intensity Interval Training", "HIIT", "TBC":
             return WeekFitLocalizedString("planner.option.hiit")

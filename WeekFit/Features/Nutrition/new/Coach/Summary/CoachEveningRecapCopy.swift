@@ -129,25 +129,13 @@ enum CoachEveningRecapCopy {
             return trimmed
         }
         // Comparison first, then one short takeaway sentence from commentary.
-        let takeaway = firstSentence(trimmed)
+        let takeaway = CoachEveningSummaryPolicy.firstSentence(of: trimmed)
         let safeTakeaway = CoachEveningSummaryPolicy.filteringToRequestedLocale(
             takeaway,
             locale: locale
         )
         if safeTakeaway.isEmpty { return comparison }
         return "\(comparison) \(safeTakeaway)"
-    }
-
-    private static func firstSentence(_ text: String) -> String {
-        let parts = text
-            .components(separatedBy: CharacterSet(charactersIn: ".!?。！？"))
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        guard let first = parts.first else { return "" }
-        if first.hasSuffix(".") || first.hasSuffix("!") || first.hasSuffix("?") {
-            return first
-        }
-        return first + "."
     }
 
     private static func sharesSignificantToken(_ a: String, _ b: String) -> Bool {

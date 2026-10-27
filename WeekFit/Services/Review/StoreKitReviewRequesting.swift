@@ -3,8 +3,10 @@ import StoreKit
 import UIKit
 
 protocol StoreKitReviewRequesting: AnyObject {
+    /// Returns true only when `AppStore.requestReview` was invoked.
+    /// A missing scene is not an attempt and must not be recorded.
     @MainActor
-    func requestReview()
+    func requestReview() -> Bool
 }
 
 /// Requests a native App Store review via StoreKit.
@@ -13,10 +15,12 @@ protocol StoreKitReviewRequesting: AnyObject {
 /// started from cold launch — WeekFit has no subscription PaymentQueue observer.
 @MainActor
 final class SystemStoreKitReviewRequester: StoreKitReviewRequesting {
-    func requestReview() {
-        guard let scene = activeWindowScene() else { return }
+    func requestReview() -> Bool {
+        guard let scene = activeWindowScene() else { return false }
         // Does not throw. Safe if App Store / Sandbox is unreachable.
+        // iOS decides whether a dialog appears; a true return is not that confirmation.
         AppStore.requestReview(in: scene)
+        return true
     }
 
     private func activeWindowScene() -> UIWindowScene? {
@@ -53,9 +57,24 @@ enum AppStoreReviewURL {
 
 final class RecordingStoreKitReviewRequester: StoreKitReviewRequesting {
     private(set) var requestCount = 0
+    var acceptsRequest = true
 
     @MainActor
-    func requestReview() {
+    func requestReview() -> Bool {
         requestCount += 1
+        return acceptsRequest
+    }
+}
+
+protocol AppStoreWriteReviewOpening: AnyObject {
+    @MainActor
+    func openWriteReview() -> Bool
+}
+
+/// Opens the App Store write-review page. Does not call `requestReview`.
+@MainActor
+final class SystemAppStoreWriteReviewOpener: AppStoreWriteReviewOpening {
+    func openWriteReview() -> Bool {
+        AppStoreReviewURL.openWriteReviewIfAvailable()
     }
 }

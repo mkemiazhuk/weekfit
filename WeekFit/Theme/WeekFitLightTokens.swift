@@ -3,84 +3,112 @@ import SwiftUI
 /// Approved WeekFit Light Mode semantic palette.
 /// Dark Mode values live elsewhere and must remain unchanged.
 enum WeekFitLightTokens {
-    // Foundation — shared ivory canvas across all main tabs
-    static let backgroundPrimary = Color(red: 0.984, green: 0.976, blue: 0.957) // #FBF9F4
-    /// Soft secondary ivory — chips / wells only. Never use as a page or content-canvas fill.
-    static let backgroundSecondary = Color(red: 0.953, green: 0.941, blue: 0.914) // #F3F0E9
-    static let backgroundElevated = Color(red: 0.984, green: 0.976, blue: 0.957) // #FBF9F4
-    static let backgroundTopGlow = Color(red: 1.000, green: 0.973, blue: 0.910) // #FFF8E8
+    // Foundation — warm milk canvas across all main tabs
+    static let backgroundPrimary = Color(red: 0.969, green: 0.965, blue: 0.949) // #F7F6F2
+    /// Soft secondary milk — chips / wells only. Never use as a page or content-canvas fill.
+    static let backgroundSecondary = Color(red: 0.941, green: 0.933, blue: 0.914) // #F0EEE9
+    static let backgroundElevated = Color(red: 0.969, green: 0.965, blue: 0.949) // #F7F6F2
+    static let backgroundTopGlow = Color(red: 1.000, green: 0.976, blue: 0.925) // #FFF9EC
 
-    // Surfaces — brighter pearl so cards lift clearly off ivory canvas (#FBF9F4).
-    static let surfacePrimary = Color(red: 1.000, green: 0.999, blue: 0.996) // #FFFEFD elevated
-    static let surfaceSecondary = Color(red: 0.969, green: 0.961, blue: 0.945) // #F7F5F1
-    static let surfaceTertiary = Color(red: 0.941, green: 0.933, blue: 0.918) // #F0EEEA
-    /// Standard card body — near-white pearl (was too close to canvas).
-    static let surfaceCard = Color(red: 1.000, green: 0.998, blue: 0.994) // #FFFEFD
-    static let internalTile = Color(red: 0.961, green: 0.953, blue: 0.937) // #F5F3EF
-    static let thumbnailWell = Color(red: 0.945, green: 0.937, blue: 0.922) // #F1EFEB
+    // Surfaces — true white cards so they lift cleanly off the milk canvas.
+    static let surfacePrimary = Color.white
+    static let surfaceSecondary = Color(red: 0.961, green: 0.957, blue: 0.945) // #F5F4F1
+    static let surfaceTertiary = Color(red: 0.937, green: 0.929, blue: 0.914) // #EFEEE9
+    /// Standard card body — pure white (no warm cast).
+    static let surfaceCard = Color.white
+    static let internalTile = Color(red: 0.953, green: 0.949, blue: 0.937) // #F3F2EF
+    static let thumbnailWell = Color(red: 0.941, green: 0.937, blue: 0.925) // #F0EFEC
 
     // Text (solid roles — never opacity hierarchy)
-    // Secondary aims ≥ WCAG AA on ivory (#FBF9F4): ~#636366 system gray.
-    static let textPrimary = Color(red: 0.165, green: 0.157, blue: 0.145) // #2A2825
-    static let textSecondary = Color(red: 0.388, green: 0.388, blue: 0.400) // #636366
-    static let textTertiary = Color(red: 0.455, green: 0.447, blue: 0.431) // #74726E
-    static let textQuaternary = Color(red: 0.561, green: 0.541, blue: 0.510) // #8F8A82
-    static let textDisabled = Color(red: 0.702, green: 0.682, blue: 0.651) // #B3AEA6
+    // Primary graphite on milk (#F7F6F2) / white cards — WCAG AA+.
+    static let textPrimary = Color(red: 0.161, green: 0.169, blue: 0.157) // #292B28
+    static let textSecondary = Color(red: 0.365, green: 0.373, blue: 0.361) // #5D5F5C
+    static let textTertiary = Color(red: 0.455, green: 0.463, blue: 0.451) // #747673
+    static let textQuaternary = Color(red: 0.561, green: 0.565, blue: 0.545) // #8F908B
+    static let textDisabled = Color(red: 0.702, green: 0.698, blue: 0.671) // #B3B2AB
 
     // MARK: - Icons
 
-    static let iconPrimary = Color(red: 0.227, green: 0.216, blue: 0.200) // #3A3733
-    static let iconSecondary = Color(red: 0.420, green: 0.408, blue: 0.388) // #6B6863
-    static let iconInactive = Color(red: 0.561, green: 0.541, blue: 0.510) // #8F8A82
+    static let iconPrimary = Color(red: 0.220, green: 0.227, blue: 0.216) // #383A37
+    static let iconSecondary = Color(red: 0.420, green: 0.427, blue: 0.412) // #6B6D69
+    static let iconInactive = Color(red: 0.561, green: 0.565, blue: 0.545) // #8F908B
 
     // MARK: - Edges / tracks
 
-    static let divider = Color(red: 0.847, green: 0.831, blue: 0.804) // #D8D4CD
-    /// Warm stone hairline — readable on ivory without turning into a hard outline.
-    /// Prefer this over pure black (cold) or brand gold (competes with nav/profile).
-    static let cardBorder = Color(red: 0.36, green: 0.33, blue: 0.29) // #5C544A
-    static let cardBorderStrokeOpacity: Double = 0.14
+    static let divider = Color(red: 0.847, green: 0.839, blue: 0.820) // #D8D6D1
+    /// Warm stone hairline — readable on milk without a hard outline.
+    static let cardBorder = Color(red: 0.36, green: 0.34, blue: 0.31) // #5C574F
+    static let cardBorderStrokeOpacity: Double = 0.11
     /// Soft top-edge highlight (precision rim, not a visible outline).
     static let cardEdgeHighlight = Color.white
     /// Airy chart / ring track (#E5E5EA).
     static let inactiveTrack = Color(red: 0.898, green: 0.898, blue: 0.918) // #E5E5EA
 
-    // MARK: - Shadows (short contact only — wide ambient casts a rectangular slab on ivory)
+    // MARK: - Shadows (short contact only — wide ambient casts a rectangular slab on milk)
 
     static let shadowAmbient = Color.black
     static let shadowContact = Color.black
-    static let cardContactShadowOpacity: Double = 0.055
-    static let cardAmbientShadowOpacity: Double = 0.022
+    static let cardContactShadowOpacity: Double = 0.035
+    static let cardAmbientShadowOpacity: Double = 0.014
 
-    // MARK: - Metrics
+    // MARK: - Metrics (aliases → WeekFitSemanticMetricTokens)
 
-    static let activity = Color(red: 0.196, green: 0.725, blue: 0.420) // #32B96B
-    static let activitySoft = Color(red: 0.886, green: 0.961, blue: 0.914) // #E2F5E9
-    static let nutrition = Color(red: 0.898, green: 0.553, blue: 0.196) // #E58D32
-    static let nutritionSoft = Color(red: 1.000, green: 0.941, blue: 0.875) // #FFF0DF
-    static let recovery = Color(red: 0.208, green: 0.678, blue: 0.816) // #35ADD0
-    static let recoverySoft = Color(red: 0.890, green: 0.957, blue: 0.973) // #E3F4F8
+    static let activity = WeekFitSemanticMetricTokens.activity
+    static let activitySoft = WeekFitSemanticMetricTokens.activitySoft
+    static let activityInk = WeekFitSemanticMetricTokens.activityInk
 
-    static let coach = Color(red: 0.176, green: 0.741, blue: 0.451) // #2DBD73
-    static let coachSoft = Color(red: 0.894, green: 0.965, blue: 0.925) // #E4F6EC
-    static let coachPurple = Color(red: 0.482, green: 0.380, blue: 0.820) // #7B61D1
-    static let coachPurpleSoft = Color(red: 0.937, green: 0.918, blue: 0.984) // #EFEAFB
+    static let nutrition = WeekFitSemanticMetricTokens.nutrition
+    static let nutritionSoft = WeekFitSemanticMetricTokens.nutritionSoft
+    static let nutritionInk = WeekFitSemanticMetricTokens.nutritionInk
 
-    static let water = Color(red: 0.255, green: 0.545, blue: 0.878) // #418BE0
-    static let waterSoft = Color(red: 0.906, green: 0.941, blue: 0.988) // #E7F0FC
-    static let stress = Color(red: 0.839, green: 0.604, blue: 0.196) // #D69A32
-    static let stressSoft = Color(red: 1.000, green: 0.945, blue: 0.843) // #FFF1D7
+    /// Recovery — lavender (not shared with drinks / hydration).
+    static let recovery = WeekFitSemanticMetricTokens.recovery
+    static let recoverySoft = WeekFitSemanticMetricTokens.recoverySoft
+    static let recoveryInk = WeekFitSemanticMetricTokens.recoveryInk
+
+    static let coach = WeekFitSemanticMetricTokens.activity
+    static let coachSoft = WeekFitSemanticMetricTokens.activitySoft
+    /// Coach purple chrome follows recovery lavender.
+    static let coachPurple = WeekFitSemanticMetricTokens.recovery
+    static let coachPurpleSoft = WeekFitSemanticMetricTokens.recoverySoft
+
+    /// Hydration / drinks — cool teal (distinct from Recovery lavender).
+    static let water = Color(red: 0.208, green: 0.678, blue: 0.816) // #35ADD0
+    static let waterSoft = Color(red: 0.902, green: 0.961, blue: 0.973) // #E6F5F8
+    static let waterInk = Color(red: 0.071, green: 0.455, blue: 0.557) // #12748E
+
+    static let stress = Color(red: 0.831, green: 0.573, blue: 0.173) // #D4922C
+    static let stressSoft = Color(red: 1.000, green: 0.949, blue: 0.867) // #FFF2DD
+
+    /// Delicate stroke for pastel metric wells / icon badges.
+    static let softBadgeStrokeOpacity: Double = 0.22
 
     // MARK: - Brand / chrome
 
+    /// Brand gold — avatar ring/glyph, Quick Log / onboarding accents.
     static let brandGold = Color(red: 0.725, green: 0.541, blue: 0.196) // #B98A32
     static let brandGoldSoft = Color(red: 0.949, green: 0.898, blue: 0.765) // #F2E5C3
     static let brandGoldDark = Color(red: 0.588, green: 0.431, blue: 0.141) // #966E24
-    /// Active tab icon/label on champagne pill — darker for crisp contrast.
-    static let tabActiveForeground = Color(red: 0.455, green: 0.333, blue: 0.106) // #74551B
-    static let tabInactive = Color(red: 0.510, green: 0.490, blue: 0.463) // #827D76
-    static let tabActiveCapsule = Color(red: 0.953, green: 0.906, blue: 0.784) // #F3E7C8
-    static let tabGoldAccent = Color(red: 0.725, green: 0.541, blue: 0.196) // #B98A32
+
+    // MARK: - Tab bar (aliases → WeekFitTabBarTokens)
+
+    static let tabActiveForeground = WeekFitTabBarTokens.activeForegroundLight
+    static let tabInactive = WeekFitTabBarTokens.inactiveLight
+    /// Soft peach well for sheet chrome / legacy call sites (not the tab-bar wash).
+    static let tabActiveCapsule = Color(red: 1.000, green: 0.953, blue: 0.906) // #FFF3E7
+    static let tabActiveAccent = WeekFitTabBarTokens.activeForegroundLight
+    /// Alias kept for older call sites that referenced the gold tab stroke.
+    static let tabGoldAccent = tabActiveAccent
+    /// Unused by current tab bar; kept for call-site compatibility.
+    static let tabActiveFillOpacity: Double = 1.0
+
+    // MARK: - Avatar (ceramic fill + brand-gold ring / glyph)
+
+    static let avatarFill = Color(red: 0.980, green: 0.976, blue: 0.969) // #FAF9F7
+    /// Gold ring ink (used by plain circular variant / legacy call sites).
+    static let avatarStroke = brandGold
+    static let avatarStrokeOpacity: Double = 0.55
+    static let avatarGlyph = brandGoldDark
 
     // MARK: - CTA
 
@@ -91,10 +119,13 @@ enum WeekFitLightTokens {
 
     // MARK: - Status
 
-    static let success = Color(red: 0.184, green: 0.686, blue: 0.400) // #2FAF66
+    /// Calm completed green — shared with Plan checkmarks / Logged badges.
+    static let success = WeekFitPlanChromeTokens.completed // #4D9875
+    static let successSoft = WeekFitPlanChromeTokens.loggedBadgeFill // #EFF5F0
+    static let successInk = WeekFitPlanChromeTokens.loggedBadgeInk // #487C60
     static let warning = Color(red: 0.831, green: 0.573, blue: 0.173) // #D4922C
     static let critical = Color(red: 0.839, green: 0.345, blue: 0.322) // #D65852
-    static let informational = Color(red: 0.255, green: 0.545, blue: 0.878) // #418BE0
+    static let informational = waterInk
 
     // MARK: - Macros
 
@@ -108,5 +139,5 @@ enum WeekFitLightTokens {
     static let cardElevated = surfacePrimary
     static let cardGrouped = surfaceTertiary
     static let ringTrack = inactiveTrack
-    static let tabActive = brandGoldDark
+    static let tabActive = tabActiveForeground
 }

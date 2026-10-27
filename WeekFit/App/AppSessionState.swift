@@ -47,6 +47,14 @@ final class AppSessionState: ObservableObject {
     }
 
     func presentOnboarding() {
+        #if DEBUG
+        if WeekFitUITestSupport.shouldForceOnboarding {
+            isPresentingOnboarding = true
+            isPresentingHealthAccess = false
+            return
+        }
+        #endif
+        // Normal UI tests suppress first-run onboarding so tab/sheet tests stay deterministic.
         guard !WeekFitUITestSupport.isActive else { return }
         isPresentingOnboarding = true
         isPresentingHealthAccess = false

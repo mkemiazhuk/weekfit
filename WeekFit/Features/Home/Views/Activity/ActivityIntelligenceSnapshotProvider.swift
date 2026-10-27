@@ -439,7 +439,7 @@ final class ActivityIntelligenceSnapshotProvider {
             to: activity.date
         ) ?? activity.date
         let icon = activity.icon.isEmpty ? "fork.knife" : activity.icon
-        let mealColor = Color(red: 0.16, green: 0.80, blue: 0.43)
+        let mealColor = WeekFitSemanticMetricTokens.activity
 
         return ActivitySessionSnapshot(
             workoutID: nil,

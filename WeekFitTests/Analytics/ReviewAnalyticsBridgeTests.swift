@@ -31,7 +31,8 @@ final class ReviewAnalyticsBridgeTests: XCTestCase {
             .feedbackFormOpened,
             .feedbackSubmitted,
             .feedbackDismissed,
-            .rateWeekFitSelectedFromSettings
+            .rateWeekFitSelectedFromSettings,
+            .appStoreWriteReviewOpened
         ]
 
         for event in events {

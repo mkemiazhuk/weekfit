@@ -132,10 +132,10 @@ private struct WeekPlannerLiveQueryView: View {
         #endif
 
         GeometryReader { proxy in
-            WeekFitScreenContainer(headerBottomSpacing: 8) {
+            WeekFitScreenContainer(headerBottomSpacing: 12) {
                 WeekFitScreenHeader(
                     title: WeekFitLocalizedString("planner.week.title"),
-                    subtitle: "",
+                    subtitle: WeekFitLocalizedString("planner.week.subtitle"),
                     initials: userSettings.profileInitials,
                     hasProfileName: userSettings.hasProfileName,
                     showAvatar: true,
@@ -1099,14 +1099,21 @@ private extension WeekPlannerLiveQueryView {
                     .font(WeekFitType.secondary.weight(.semibold))
                     .fontDesign(.rounded)
             }
-            .foregroundStyle(palette.isLight ? WeekFitTheme.brandGoldDeep : WeekFitTheme.brandGold)
+            .foregroundStyle(WeekFitPlanChromeTokens.addForeground(isLight: palette.isLight))
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background {
                 Capsule(style: .continuous)
-                    .fill(WeekFitTheme.brandGold.opacity(palette.isLight ? 0.14 : 0.20))
+                    .fill(WeekFitPlanChromeTokens.addFill(isLight: palette.isLight))
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .strokeBorder(
+                                WeekFitPlanChromeTokens.addStroke(isLight: palette.isLight),
+                                lineWidth: palette.isLight ? 0.8 : 0
+                            )
+                    }
             }
-            .frame(minHeight: PlanAgendaLayout.minHitSize)
+            .frame(minWidth: PlanAgendaLayout.minHitSize, minHeight: PlanAgendaLayout.minHitSize)
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -1315,7 +1322,11 @@ private extension WeekPlannerLiveQueryView {
             HStack(alignment: .center, spacing: 12) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .fill(WeekFitTheme.brandGold.opacity(palette.isLight ? 0.14 : 0.18))
+                        .fill(
+                            palette.isLight
+                                ? WeekFitPlanChromeTokens.calendarSelectedFill
+                                : WeekFitTheme.brandGold.opacity(0.18)
+                        )
                         .frame(
                             width: PlanAgendaLayout.summaryIconSize,
                             height: PlanAgendaLayout.summaryIconSize
@@ -1324,7 +1335,9 @@ private extension WeekPlannerLiveQueryView {
                     Image(systemName: "calendar.badge.plus")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(
-                            WeekFitTheme.brandGold.opacity(palette.isLight ? 0.95 : 0.90)
+                            palette.isLight
+                                ? WeekFitPlanChromeTokens.recoveryIcon
+                                : WeekFitTheme.brandGold.opacity(0.90)
                         )
                 }
                 .accessibilityHidden(true)
@@ -1349,14 +1362,21 @@ private extension WeekPlannerLiveQueryView {
                             .font(WeekFitType.secondary.weight(.semibold))
                             .fontDesign(.rounded)
                     }
-                    .foregroundStyle(palette.isLight ? WeekFitTheme.brandGoldDeep : WeekFitTheme.brandGold)
+                    .foregroundStyle(WeekFitPlanChromeTokens.addForeground(isLight: palette.isLight))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .background {
                         Capsule(style: .continuous)
-                            .fill(WeekFitTheme.brandGold.opacity(palette.isLight ? 0.14 : 0.20))
+                            .fill(WeekFitPlanChromeTokens.addFill(isLight: palette.isLight))
+                            .overlay {
+                                Capsule(style: .continuous)
+                                    .strokeBorder(
+                                        WeekFitPlanChromeTokens.addStroke(isLight: palette.isLight),
+                                        lineWidth: palette.isLight ? 0.8 : 0
+                                    )
+                            }
                     }
-                    .frame(minHeight: PlanAgendaLayout.minHitSize)
+                    .frame(minWidth: PlanAgendaLayout.minHitSize, minHeight: PlanAgendaLayout.minHitSize)
                     .accessibilityHidden(true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1561,14 +1581,7 @@ private extension WeekPlannerLiveQueryView {
                 tint: WeekFitTheme.coachAccent
             )
             .accessibilityLabel(
-                String(
-                    format: WeekFitLocalizedString(
-                        count == 1
-                            ? "planner.coachAdjusted.one"
-                            : "planner.coachAdjusted.other"
-                    ),
-                    count
-                )
+                WeekFitLocalizedQuantityFormat("planner.coachAdjusted", count: count)
             )
         }
     }
@@ -1623,14 +1636,7 @@ private extension WeekPlannerLiveQueryView {
         let coachCount = coachAdjustedActiveCount
         if coachCount > 0 {
             parts.append(
-                String(
-                    format: WeekFitLocalizedString(
-                        coachCount == 1
-                            ? "planner.coachAdjusted.one"
-                            : "planner.coachAdjusted.other"
-                    ),
-                    coachCount
-                )
+                WeekFitLocalizedQuantityFormat("planner.coachAdjusted", count: coachCount)
             )
         }
 
@@ -1922,18 +1928,19 @@ private struct PlanAgendaAddButtonLabel: View {
     @State private var didFirePressHaptic = false
 
     private var isPressed: Bool { configuration.isPressed }
-    private var gold: Color { WeekFitTheme.brandGold }
 
     var body: some View {
         ZStack {
             Circle()
                 .fill(fillColor)
                 .overlay {
-                    Circle()
-                        .strokeBorder(
-                            gold.opacity(palette.isLight ? (isPressed ? 0.55 : 0.42) : (isPressed ? 0.48 : 0.34)),
-                            lineWidth: 0.9
-                        )
+                    if !palette.isLight {
+                        Circle()
+                            .strokeBorder(
+                                WeekFitTheme.brandGold.opacity(isPressed ? 0.48 : 0.34),
+                                lineWidth: 0.9
+                            )
+                    }
                 }
 
             configuration.label
@@ -1956,17 +1963,14 @@ private struct PlanAgendaAddButtonLabel: View {
     }
 
     private var fillColor: Color {
-        if isPressed {
-            return gold.opacity(palette.isLight ? 0.28 : 0.34)
+        if palette.isLight {
+            return WeekFitPlanChromeTokens.addFill.opacity(isPressed ? 0.82 : 1)
         }
-        return gold.opacity(palette.isLight ? 0.14 : 0.20)
+        return WeekFitTheme.brandGold.opacity(isPressed ? 0.34 : 0.20)
     }
 
     private var iconColor: Color {
-        if palette.isLight {
-            return WeekFitTheme.brandGoldDeep
-        }
-        return gold.opacity(0.95)
+        WeekFitPlanChromeTokens.addForeground(isLight: palette.isLight)
     }
 }
 
@@ -2165,9 +2169,15 @@ private struct DynamicDayCapsule: View {
 
             ZStack {
                 Circle()
-                    .fill(WeekFitTheme.brandGold)
+                    .fill(
+                        WeekFitPlanChromeTokens.calendarDot(
+                            isLight: palette.isLight,
+                            isSelected: isSelected,
+                            isToday: isToday
+                        )
+                    )
                     .frame(width: 4, height: 4)
-                    .opacity(isToday ? 1 : 0)
+                    .opacity(isToday || isSelected ? 1 : 0)
             }
             .frame(height: 5)
             .accessibilityHidden(true)
@@ -2179,6 +2189,13 @@ private struct DynamicDayCapsule: View {
             if isSelected {
                 Capsule(style: .continuous)
                     .fill(selectedCapsuleFill)
+            } else if isToday && palette.isLight {
+                // Today (unselected): hairline so it stays distinct from selected lavender.
+                Capsule(style: .continuous)
+                    .strokeBorder(
+                        WeekFitPlanChromeTokens.calendarSelectedDot.opacity(0.28),
+                        lineWidth: 1
+                    )
             }
         }
         .contentShape(Rectangle())
@@ -2192,16 +2209,16 @@ private struct DynamicDayCapsule: View {
         return traits
     }
 
-    /// Soft gold wash — no stroke / shadow; calendar stays secondary to schedule.
+    /// Soft lavender wash in Light; legacy gold wash in Dark.
     private var selectedCapsuleFill: Color {
-        if palette.isLight {
-            return WeekFitLightTokens.brandGoldSoft.opacity(0.78)
-        }
-        return WeekFitTheme.brandGold.opacity(0.22)
+        WeekFitPlanChromeTokens.calendarSelectedFill(isLight: palette.isLight)
     }
 
     private var dayLabelColor: Color {
         if isSelected {
+            return palette.textSecondary
+        }
+        if isToday {
             return palette.textSecondary
         }
         return palette.textTertiary
@@ -2209,6 +2226,9 @@ private struct DynamicDayCapsule: View {
 
     private var dayNumberColor: Color {
         if isSelected {
+            return palette.textPrimary
+        }
+        if isToday {
             return palette.textPrimary
         }
         return palette.textPrimary.opacity(0.88)
@@ -2256,11 +2276,9 @@ enum PlanActivityStatus {
     case skipped
     case logged
 
-    /// Calm mint for completed / done glyphs (not brand gold).
+    /// Calm green for completed / done glyphs (not brand gold).
     static func calmCompleted(isLight: Bool) -> Color {
-        isLight
-            ? WeekFitLightTokens.success
-            : Color(red: 0.40, green: 0.76, blue: 0.58) // #66C294
+        WeekFitPlanChromeTokens.completed(isLight: isLight)
     }
 
     /// Soft rose for skipped — readable, not alarm-red.
@@ -2321,8 +2339,8 @@ enum PlanActivityStatus {
         case .live: return accent
         case .pending: return Color(hex: "#FFB457")
         case .skipped: return Color(red: 0.82, green: 0.50, blue: 0.48)
-        case .completed: return Color(red: 0.40, green: 0.76, blue: 0.58)
-        case .logged: return WeekFitTheme.whiteOpacity(0.42)     // Logged
+        case .completed: return PlanActivityStatus.calmCompleted(isLight: WeekFitPaletteStore.current.isLight)
+        case .logged: return WeekFitPlanChromeTokens.loggedBadgeInk(isLight: WeekFitPaletteStore.current.isLight)
         }
     }
 }
@@ -2439,16 +2457,13 @@ private extension WeekPlannerLiveQueryView {
 // MARK: - Color Helper
 
 extension PlanDayKind {
+    /// Semantic day accents — Recovery lavender, Activity green; open stays neutral.
     var color: Color {
         switch self {
-        case .endurance: return Color(hex: "#5E7CFF")
-        case .load:
-            // Soften on OLED — same amber as nutrition accents, keep daylight punch in Light.
-            return WeekFitPaletteStore.current.isLight
-                ? Color(hex: "#FF9F43")
-                : Color(red: 0.84, green: 0.58, blue: 0.34)
-        case .mixed: return Color(hex: "#FFD166")
-        case .recovery: return Color(hex: "#59D98E")
+        case .endurance, .load, .mixed:
+            return WeekFitSemanticMetricTokens.activity
+        case .recovery:
+            return WeekFitSemanticMetricTokens.recovery
         case .open:
             return WeekFitPaletteStore.current.isLight
                 ? WeekFitLightTokens.textTertiary

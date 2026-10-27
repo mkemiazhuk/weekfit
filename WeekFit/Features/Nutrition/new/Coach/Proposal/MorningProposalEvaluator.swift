@@ -82,7 +82,10 @@ enum MorningProposalEvaluator {
                 yesterdayContextLoaded: true,
                 isMorningWindow: isMorningWindow,
                 hasCompletedPlannedItemToday: hasCompletedPlannedItemToday,
-                existingStatus: existingProposal?.status
+                existingStatus: existingProposal?.status,
+                gatheringStartedAt: existingProposal?.status == .gatheringData
+                    ? existingProposal?.generatedAt
+                    : nil
             )
         )
         let seriousOpen = todayActivities.filter {
@@ -203,7 +206,8 @@ enum MorningProposalEvaluator {
         let candidates = settings.customMealsCatalog.map {
             ProposalMealCandidate(
                 id: $0.id,
-                title: $0.title,
+                title: $0.localizedDisplayTitle,
+                storedTitle: $0.title,
                 imageName: $0.imageName,
                 calories: $0.calories,
                 protein: $0.protein,

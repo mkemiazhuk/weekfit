@@ -1582,7 +1582,7 @@ private extension InsightsDomainIntelligenceEngine {
             standoutText: takeaway,
             focusText: focus,
             icon: "heart.fill",
-            accent: Color(red: 0.18, green: 0.74, blue: 0.89)
+            accent: WeekFitSemanticMetricTokens.recovery
             ),
             score: score
         )
@@ -1703,7 +1703,7 @@ private extension InsightsDomainIntelligenceEngine {
             standoutText: takeaway,
             focusText: focus,
             icon: "figure.run",
-            accent: Color(red: 0.16, green: 0.80, blue: 0.43)
+            accent: WeekFitSemanticMetricTokens.activity
             ),
             score: score
         )
@@ -1819,7 +1819,7 @@ private extension InsightsDomainIntelligenceEngine {
             standoutText: takeaway,
             focusText: focus,
             icon: "fork.knife",
-            accent: Color(red: 0.95, green: 0.65, blue: 0.12)
+            accent: WeekFitSemanticMetricTokens.nutrition
             ),
             score: score
         )

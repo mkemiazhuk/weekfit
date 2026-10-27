@@ -742,21 +742,16 @@ enum StressIndexCopy {
     }
 
     /// Compact contributor chips for the card footer (elevating first).
-    static func compactContributorLabels(
-        for result: StressIndexResult,
-        bedtimeDeviationMinutes: Int? = nil
-    ) -> [String] {
+    ///
+    /// Sleep strain is duration and continuity only. Bedtime deviation belongs to
+    /// the recovery consistency factor and must not be relabeled as load.
+    static func compactContributorLabels(for result: StressIndexResult) -> [String] {
         let preferred = result.contributors.filter { $0.tone == .elevating }
         let source = preferred.isEmpty ? Array(result.contributors.prefix(2)) : Array(preferred.prefix(2))
-        return source.map {
-            compactContributorLabel(for: $0, bedtimeDeviationMinutes: bedtimeDeviationMinutes)
-        }
+        return source.map { compactContributorLabel(for: $0) }
     }
 
-    static func compactContributorLabel(
-        for contributor: StressIndexContributor,
-        bedtimeDeviationMinutes: Int? = nil
-    ) -> String {
+    static func compactContributorLabel(for contributor: StressIndexContributor) -> String {
         switch (contributor.kind, contributor.tone) {
         case (.hrv, .elevating):
             return WeekFitLocalizedString("recovery.stressIndex.chip.hrv.below")
@@ -767,9 +762,6 @@ enum StressIndexCopy {
         case (.restingHeartRate, _):
             return WeekFitLocalizedString("recovery.stressIndex.chip.rhr.stable")
         case (.sleep, .elevating):
-            if let deviation = bedtimeDeviationMinutes, deviation >= 45 {
-                return WeekFitLocalizedString("recovery.stressIndex.chip.sleep.late")
-            }
             return WeekFitLocalizedString("recovery.stressIndex.chip.sleep.short")
         case (.sleep, _):
             return WeekFitLocalizedString("recovery.stressIndex.chip.sleep.stable")

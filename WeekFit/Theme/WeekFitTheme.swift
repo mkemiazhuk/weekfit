@@ -8,30 +8,32 @@ enum WeekFitTheme {
     }
 
     // MARK: - Semantic Category Colors (bases)
+    // Unified with WeekFitSemanticMetricTokens in Light and Dark.
 
-    /// Activity / meal green — punchy on OLED; soft daylight green in Light.
-    private static let mealBaseDark = Color(red: 0.55, green: 0.82, blue: 0.61)
-    private static let mealBaseLight = WeekFitLightTokens.activity
+    /// Activity green (`#72AD8A`) — meal / move accents.
+    private static let mealBaseDark = WeekFitSemanticMetricTokens.activity
+    private static let mealBaseLight = WeekFitSemanticMetricTokens.activity
 
-    private static let workoutBaseDark = Color(red: 0.50, green: 0.62, blue: 0.92)
-    private static let workoutBaseLight = WeekFitLightTokens.recovery
+    /// Workout accents use Activity green (not Recovery).
+    private static let workoutBaseDark = WeekFitSemanticMetricTokens.activity
+    private static let workoutBaseLight = WeekFitSemanticMetricTokens.activity
 
-    /// Recovery purple (dark) / cyan (light) — light mode uses calm recovery cyan.
-    private static let recoveryBaseDark = Color(red: 0.68, green: 0.56, blue: 0.90)
-    private static let recoveryBaseLight = WeekFitLightTokens.recovery
+    /// Recovery lavender (`#9B8ACB`).
+    private static let recoveryBaseDark = WeekFitSemanticMetricTokens.recovery
+    private static let recoveryBaseLight = WeekFitSemanticMetricTokens.recovery
 
-    /// Nutrition orange — muted on OLED so it sits with workout blue instead of blazing.
-    private static let habitBaseDark = Color(red: 0.84, green: 0.58, blue: 0.34)
-    private static let habitBaseLight = WeekFitLightTokens.nutrition
+    /// Nutrition orange (`#EAA06B`) — habit / food accents.
+    private static let habitBaseDark = WeekFitSemanticMetricTokens.nutrition
+    private static let habitBaseLight = WeekFitSemanticMetricTokens.nutrition
 
-    private static let coachAccentBaseDark = Color(red: 0.55, green: 0.40, blue: 0.85)
-    private static let coachAccentBaseLight = WeekFitLightTokens.coachPurple
+    private static let coachAccentBaseDark = WeekFitSemanticMetricTokens.recovery
+    private static let coachAccentBaseLight = WeekFitSemanticMetricTokens.recovery
 
-    private static let primaryGreenBaseDark = Color(red: 0.62, green: 0.82, blue: 0.45)
-    private static let primaryGreenBaseLight = WeekFitLightTokens.coach
+    private static let primaryGreenBaseDark = WeekFitSemanticMetricTokens.activity
+    private static let primaryGreenBaseLight = WeekFitSemanticMetricTokens.activity
 
-    private static let avatarOrangeBaseDark = Color(red: 0.84, green: 0.58, blue: 0.34)
-    private static let avatarOrangeBaseLight = WeekFitLightTokens.nutrition
+    private static let avatarOrangeBaseDark = WeekFitSemanticMetricTokens.nutrition
+    private static let avatarOrangeBaseLight = WeekFitSemanticMetricTokens.nutrition
 
     /// Champagne warmth for light canvas vignettes / Quick Log.
     static let champagneGlow = WeekFitLightTokens.backgroundTopGlow
@@ -92,7 +94,9 @@ enum WeekFitTheme {
         palette.isLight ? WeekFitLightTokens.stress : habit
     }
     static var waterSoftSurface: Color {
-        palette.isLight ? WeekFitLightTokens.waterSoft : workout.opacity(0.12)
+        palette.isLight
+            ? WeekFitLightTokens.waterSoft
+            : Color(red: 0.29, green: 0.56, blue: 0.92).opacity(0.14)
     }
 
     /// Warm neutral accent for Quick Log / utility surfaces.
@@ -151,7 +155,7 @@ enum WeekFitTheme {
         let peak = palette.isLight ? 0.0 : 0.042
         return RadialGradient(
             colors: [
-                (palette.isLight ? WeekFitLightTokens.nutrition : Color(red: 0.84, green: 0.58, blue: 0.34))
+                (palette.isLight ? WeekFitLightTokens.nutrition : WeekFitSemanticMetricTokens.nutrition)
                     .opacity(peak * palette.ambientOpacity),
                 Color.clear
             ],
@@ -317,7 +321,7 @@ enum WeekFitMacroColor {
         WeekFitPaletteStore.current
     }
 
-    private static let caloriesBaseDark = Color(red: 0.84, green: 0.58, blue: 0.34)
+    private static let caloriesBaseDark = WeekFitSemanticMetricTokens.nutrition
     private static let proteinBaseDark = Color(red: 0.42, green: 0.62, blue: 0.88)
     private static let carbsBaseDark = Color(red: 0.66, green: 0.55, blue: 0.86)
     private static let fatsBaseDark = Color(red: 0.49, green: 0.70, blue: 0.52)

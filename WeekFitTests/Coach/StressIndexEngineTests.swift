@@ -402,4 +402,33 @@ final class StressIndexEngineTests: XCTestCase {
         XCTAssertEqual(result.baselineSampleDays, 18)
         XCTAssertFalse(result.usedSignalKinds.isEmpty)
     }
+
+    func testShortSleepIsNotLabeledAsLateBedtime() {
+        let contributor = StressIndexContributor(
+            kind: .sleep,
+            strainScore: 75,
+            weightUsed: 0.2,
+            tone: .elevating,
+            baselineNote: .sleepMinutes(340)
+        )
+        let label = StressIndexCopy.compactContributorLabel(for: contributor)
+        XCTAssertEqual(label, WeekFitLocalizedString("recovery.stressIndex.chip.sleep.short"))
+        XCTAssertNotEqual(label, WeekFitLocalizedString("recovery.stressIndex.chip.sleep.late"))
+
+        let result = StressIndexEngine.calculate(
+            makeInput(
+                sleepMinutes: 340,
+                timeInBedMinutes: 400,
+                bedtimeDeviationMinutes: 120,
+                baseline: makeBaseline(),
+                priorDayLoad: RecoveryPriorDayLoad(exerciseMinutes: 20, activeCalories: 180, workoutCount: 0)
+            ),
+            at: fixedDate
+        )
+        let chips = StressIndexCopy.compactContributorLabels(for: result)
+        XCTAssertFalse(chips.contains(WeekFitLocalizedString("recovery.stressIndex.chip.sleep.late")))
+        if result.contributors.contains(where: { $0.kind == .sleep && $0.tone == .elevating }) {
+            XCTAssertTrue(chips.contains(WeekFitLocalizedString("recovery.stressIndex.chip.sleep.short")))
+        }
+    }
 }

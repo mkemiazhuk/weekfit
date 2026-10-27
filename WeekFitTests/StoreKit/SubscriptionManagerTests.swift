@@ -21,7 +21,9 @@ final class RecordingWeekFitStoreKitService: WeekFitStoreKitServicing {
     var finishVerifiedPurchaseCount = 0
     var loadProductsError: Error?
     var loadProductsCallCount = 0
+    var loadProductsLatch: SubscriptionTestLatch?
     var loadCurrentSubscriptionCount = 0
+    var loadSubscriptionLatch: SubscriptionTestLatch?
     var invalidateCachedProductsCount = 0
     var cachedProductIDs: Set<String> = []
     var storefrontUpdateHandler: (@Sendable () async -> Void)?
@@ -32,6 +34,9 @@ final class RecordingWeekFitStoreKitService: WeekFitStoreKitServicing {
 
     func loadProducts() async throws -> WeekFitProductsLoadResult {
         loadProductsCallCount += 1
+        if let loadProductsLatch {
+            await loadProductsLatch.wait()
+        }
         if let loadProductsError { throw loadProductsError }
         cachedProductIDs = Set(products.map(\.id))
         return WeekFitProductsLoadResult(
@@ -43,6 +48,11 @@ final class RecordingWeekFitStoreKitService: WeekFitStoreKitServicing {
 
     func loadCurrentSubscription() async -> WeekFitSubscriptionSnapshot? {
         loadCurrentSubscriptionCount += 1
+        let observed = subscription
+        if let loadSubscriptionLatch, loadCurrentSubscriptionCount == 1 {
+            await loadSubscriptionLatch.wait()
+            return observed
+        }
         if let remaining = deferredGrantRemainingLoads {
             let next = remaining - 1
             if next <= 0 {
@@ -1186,6 +1196,87 @@ final class SubscriptionManagerTests: XCTestCase {
         XCTAssertTrue(manager.shouldBlockAccess)
     }
 
+    func testOverlappingRefreshesShareOneProductLoad() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "Sandbox"
+        )
+        let latch = SubscriptionTestLatch()
+        store.loadProductsLatch = latch
+        let first = Task { await manager.refresh(source: "start") }
+        let entered = Date().addingTimeInterval(1)
+        while store.loadProductsCallCount < 1, Date() < entered {
+            await Task.yield()
+        }
+        let second = Task { await manager.refresh(source: "foreground") }
+        await Task.yield()
+        XCTAssertEqual(store.loadProductsCallCount, 1)
+        latch.open()
+        await first.value
+        await second.value
+        XCTAssertEqual(store.loadProductsCallCount, 1)
+
+        let loadsAfterStart = store.loadProductsCallCount
+        await manager.refreshOnForeground()
+        XCTAssertEqual(store.loadProductsCallCount, loadsAfterStart)
+    }
+
+    func testStorefrontChangeStillReloadsAfterStartup() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "Sandbox"
+        )
+        await manager.start()
+        let loads = store.loadProductsCallCount
+        store.storefront = WeekFitStorefrontSnapshot(countryCode: "POL", id: "143478")
+        await store.emitStorefrontUpdate()
+        XCTAssertGreaterThan(store.loadProductsCallCount, loads)
+        XCTAssertEqual(manager.storefrontCountryCode, "POL")
+    }
+
+    func testTransactionUpdateDuringRefreshIsNotDropped() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "Sandbox"
+        )
+        store.subscription = nil
+        let latch = SubscriptionTestLatch()
+        store.loadSubscriptionLatch = latch
+        let started = Task { await manager.start() }
+        let entered = Date().addingTimeInterval(1)
+        while store.loadCurrentSubscriptionCount < 1, Date() < entered {
+            await Task.yield()
+        }
+        let emitted = Task { await store.emitVerifiedTransactionUpdate() }
+        for _ in 0..<30 { await Task.yield() }
+        latch.open()
+        await started.value
+        await emitted.value
+        XCTAssertTrue(manager.hasFullAccess)
+        XCTAssertTrue(manager.accessState == .trial || manager.accessState == .subscribed)
+        XCTAssertGreaterThanOrEqual(store.loadCurrentSubscriptionCount, 2)
+    }
+
+    func testProductLoadFailureDoesNotBlockTheNextAttempt() async {
+        store.appTransaction = .verified(
+            originalPurchaseDate: WeekFitMonetizationCutoff.date.addingTimeInterval(86_400),
+            environment: "Sandbox"
+        )
+        store.loadProductsError = NSError(domain: "test", code: 7)
+        await manager.start()
+        XCTAssertTrue(manager.productsFailedToLoad)
+        XCTAssertTrue(manager.products.isEmpty)
+
+        store.loadProductsError = nil
+        store.products = [
+            makeSnapshot(id: .annual, displayPrice: "€34.99", price: "34.99", currency: "EUR"),
+            makeSnapshot(id: .monthly, displayPrice: "€4.99", price: "4.99", currency: "EUR", periodUnit: .month)
+        ]
+        await manager.refresh()
+        XCTAssertFalse(manager.productsFailedToLoad)
+        XCTAssertEqual(manager.annualProduct?.displayPrice, "€34.99")
+    }
+
     private func makeSnapshot(
         id: WeekFitSubscriptionProductID,
         displayPrice: String,
@@ -1211,5 +1302,33 @@ final class SubscriptionManagerTests: XCTestCase {
                 : nil,
             introductoryOfferEligibility: periodUnit == .year ? .eligible : .ineligible
         )
+    }
+}
+
+final class SubscriptionTestLatch: @unchecked Sendable {
+    private let lock = NSLock()
+    private var opened = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func wait() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            lock.lock()
+            if opened {
+                lock.unlock()
+                continuation.resume()
+                return
+            }
+            waiters.append(continuation)
+            lock.unlock()
+        }
+    }
+
+    func open() {
+        lock.lock()
+        opened = true
+        let pending = waiters
+        waiters.removeAll()
+        lock.unlock()
+        pending.forEach { $0.resume() }
     }
 }

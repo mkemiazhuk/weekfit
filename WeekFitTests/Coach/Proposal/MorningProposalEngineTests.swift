@@ -158,6 +158,7 @@ final class MorningProposalEngineTests: XCTestCase {
         let meal = ProposalMealCandidate(
             id: "meal-1",
             title: "Oats",
+            storedTitle: "Oats",
             imageName: "oats",
             calories: 300,
             protein: 10,
@@ -294,16 +295,18 @@ final class MorningProposalEngineTests: XCTestCase {
                 yesterdayContextLoaded: true,
                 isMorningWindow: false,
                 hasCompletedPlannedItemToday: false,
-                existingStatus: nil
+                existingStatus: nil,
+                gatheringStartedAt: nil
             )
         )
         XCTAssertEqual(decision, .unavailable(reason: "outside_window"))
     }
 
     func testGateKeepsGatheringUntilHealthSettlesOrTimesOut() {
+        let now = Date()
         let gathering = MorningProposalGate.decide(
             input: MorningProposalGateInput(
-                now: Date(),
+                now: now,
                 dayRolloverCompleted: true,
                 healthRefreshCompleted: false,
                 healthRefreshTimedOut: false,
@@ -315,14 +318,16 @@ final class MorningProposalEngineTests: XCTestCase {
                 yesterdayContextLoaded: true,
                 isMorningWindow: true,
                 hasCompletedPlannedItemToday: false,
-                existingStatus: .gatheringData
+                existingStatus: .gatheringData,
+                gatheringStartedAt: now
             )
         )
         XCTAssertEqual(gathering, .gatheringData)
 
-        let timedOut = MorningProposalGate.decide(
+        // Health timeout alone is not enough while sleep is still missing.
+        let healthTimedOutSleepStillMissing = MorningProposalGate.decide(
             input: MorningProposalGateInput(
-                now: Date(),
+                now: now.addingTimeInterval(10),
                 dayRolloverCompleted: true,
                 healthRefreshCompleted: false,
                 healthRefreshTimedOut: true,
@@ -334,10 +339,51 @@ final class MorningProposalEngineTests: XCTestCase {
                 yesterdayContextLoaded: true,
                 isMorningWindow: true,
                 hasCompletedPlannedItemToday: false,
-                existingStatus: .gatheringData
+                existingStatus: .gatheringData,
+                gatheringStartedAt: now
             )
         )
-        XCTAssertEqual(timedOut, .allowGeneration)
+        XCTAssertEqual(healthTimedOutSleepStillMissing, .gatheringData)
+
+        let sleepWaitTimedOut = MorningProposalGate.decide(
+            input: MorningProposalGateInput(
+                now: now.addingTimeInterval(MorningProposalGate.sleepWaitTimeoutSeconds),
+                dayRolloverCompleted: true,
+                healthRefreshCompleted: false,
+                healthRefreshTimedOut: true,
+                isHealthAccessGranted: true,
+                sleepHours: 0,
+                recoveryDataAvailable: false,
+                todayPlanLoaded: true,
+                tomorrowPlanLoaded: true,
+                yesterdayContextLoaded: true,
+                isMorningWindow: true,
+                hasCompletedPlannedItemToday: false,
+                existingStatus: .gatheringData,
+                gatheringStartedAt: now
+            )
+        )
+        XCTAssertEqual(sleepWaitTimedOut, .allowGeneration)
+
+        let sleepArrived = MorningProposalGate.decide(
+            input: MorningProposalGateInput(
+                now: now.addingTimeInterval(30),
+                dayRolloverCompleted: true,
+                healthRefreshCompleted: true,
+                healthRefreshTimedOut: false,
+                isHealthAccessGranted: true,
+                sleepHours: 7.2,
+                recoveryDataAvailable: true,
+                todayPlanLoaded: true,
+                tomorrowPlanLoaded: true,
+                yesterdayContextLoaded: true,
+                isMorningWindow: true,
+                hasCompletedPlannedItemToday: false,
+                existingStatus: .gatheringData,
+                gatheringStartedAt: now
+            )
+        )
+        XCTAssertEqual(sleepArrived, .allowGeneration)
     }
 
     func testMoveProposedWhenTwoSeriousSessionsAndTomorrowOpen() {

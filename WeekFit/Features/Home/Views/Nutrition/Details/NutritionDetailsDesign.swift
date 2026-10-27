@@ -44,6 +44,17 @@ enum NutritionDetailsDesign {
     static let cardPadding: CGFloat = 12
     static let metricCardPadding: CGFloat = 11
 
+    /// Reading layout for the Nutrition Details screen. Shared light chrome
+    /// constants above stay untouched for Activity and Recovery.
+    enum Reading {
+        static let horizontalPadding: CGFloat = 18
+        static let cardPadding: CGFloat = 18
+        static let sectionSpacing: CGFloat = 11
+        static let corner: CGFloat = 20
+        static let barHeight: CGFloat = 5
+        static let mealPhoto: CGFloat = 50
+    }
+
     // MARK: - Typography
 
     enum Typography {
@@ -78,26 +89,79 @@ enum NutritionDetailsDesign {
 // MARK: - Card container
 
 struct NutritionDetailsCard<Content: View>: View {
-    var cornerRadius: CGFloat = NutritionDetailsDesign.largeCorner
-    var fill: Color = NutritionDetailsDesign.cardSurface
+    @Environment(\.weekFitPalette) private var palette
+
+    var cornerRadius: CGFloat = NutritionDetailsDesign.Reading.corner
+    var fill: Color? = nil
     var borderOpacity: Double = NutritionDetailsDesign.cardBorderOpacity
-    var padding: CGFloat = NutritionDetailsDesign.cardPadding
+    var padding: CGFloat = NutritionDetailsDesign.Reading.cardPadding
+    var edgeInsets: EdgeInsets? = nil
     @ViewBuilder var content: () -> Content
 
     var body: some View {
+        let resolvedFill = fill ?? (palette.isLight ? NutritionDetailsDesign.cardSurface : palette.cardSurface)
+        let border = palette.isLight
+            ? WeekFitLightTokens.cardBorder.opacity(WeekFitLightTokens.cardBorderStrokeOpacity)
+            : Color.white.opacity(0.08)
+        let insets = edgeInsets ?? EdgeInsets(
+            top: padding,
+            leading: padding,
+            bottom: padding,
+            trailing: padding
+        )
+
         content()
-            .padding(padding)
+            .padding(insets)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(fill)
+                    .fill(resolvedFill)
                     .overlay {
                         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .strokeBorder(Color.black.opacity(borderOpacity), lineWidth: 0.7)
+                            .strokeBorder(border, lineWidth: 0.7)
                     }
-                    .shadow(color: NutritionDetailsDesign.cardShadowAmbient, radius: 12, y: 5)
-                    .shadow(color: NutritionDetailsDesign.cardShadowContact, radius: 2, y: 1)
+                    .shadow(
+                        color: palette.isLight
+                            ? Color.black.opacity(WeekFitLightTokens.cardContactShadowOpacity)
+                            : .clear,
+                        radius: palette.isLight ? 8 : 0,
+                        y: palette.isLight ? 3 : 0
+                    )
             }
+    }
+}
+
+struct NutritionReadingFont: ViewModifier {
+    var weight: Font.Weight
+    var design: Font.Design
+    @ScaledMetric var size: CGFloat
+
+    init(size: CGFloat, weight: Font.Weight, design: Font.Design, relativeTo: Font.TextStyle) {
+        self.weight = weight
+        self.design = design
+        _size = ScaledMetric(wrappedValue: size, relativeTo: relativeTo)
+    }
+
+    func body(content: Content) -> some View {
+        content.font(.system(size: size, weight: weight, design: design))
+    }
+}
+
+extension View {
+    func nutritionReading(
+        _ size: CGFloat,
+        weight: Font.Weight = .regular,
+        design: Font.Design = .default,
+        relativeTo style: Font.TextStyle = .body
+    ) -> some View {
+        modifier(
+            NutritionReadingFont(
+                size: size,
+                weight: weight,
+                design: design,
+                relativeTo: style
+            )
+        )
     }
 }
 

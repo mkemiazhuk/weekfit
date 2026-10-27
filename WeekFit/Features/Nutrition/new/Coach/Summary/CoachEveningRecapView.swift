@@ -6,6 +6,8 @@ struct CoachEveningRecapView: View {
     let activitySummary: CoachEveningRecapActivitySummary
     let daySignals: [CoachEveningRecapSignal]
     let commentary: String?
+    /// Set when the note belongs to a previous local day ("Yesterday" or a date).
+    var summaryDayCaption: String? = nil
     let isLoadingCommentary: Bool
     let commentaryFailed: Bool
     let selectedFeeling: CoachFeelingKind?
@@ -95,6 +97,14 @@ struct CoachEveningRecapView: View {
                 .tracking(1.2)
                 .textCase(.uppercase)
                 .foregroundStyle(copper.opacity(palette.isLight ? 0.85 : 0.90))
+
+            if let summaryDayCaption {
+                Text(summaryDayCaption)
+                    .font(WeekFitType.secondary.weight(.semibold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(primary.opacity(0.88))
+                    .accessibilityIdentifier("coach.eveningRecap.summaryDay")
+            }
 
             Text(headline)
                 .font(WeekFitType.cardTitle)

@@ -1,0 +1,3 @@
+"NSCameraUsageDescription" = "WeekFitはカスタム食品に写真を追加するためにカメラを使用します。";
+"NSHealthShareUsageDescription" = "WeekFitは健康と活動のデータを使い、毎日のプランをパーソナライズします。";
+"NSHealthUpdateUsageDescription" = "WeekFitはApple Healthからワークアウトと活動を読み取り、プランを正確に保ちます。Apple Healthへワークアウトは書き込みません。";

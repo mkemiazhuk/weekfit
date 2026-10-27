@@ -112,6 +112,7 @@ enum PlannerType: CaseIterable {
                 PlannerOption(title: "Full Body", subtitle: "Strength", icon: "figure.strengthtraining.functional", imageName: "workout-fullbody"),
 
                 PlannerOption(title: "Tennis", subtitle: "Endurance", icon: "figure.tennis", imageName: "workout-tennis"),
+                PlannerOption(title: "Padel", subtitle: "Endurance", icon: "figure.tennis", imageName: "workout-padel"),
                 PlannerOption(title: "Squash", subtitle: "High Intensity", icon: "figure.squash", imageName: "workout-squash"),
                 PlannerOption(title: "High Intensity Interval Training", subtitle: "High Intensity", icon: "figure.highintensity.intervaltraining", imageName: "workout-hiit")
             ]

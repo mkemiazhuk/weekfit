@@ -33,12 +33,16 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
     /// Last request id applied to UI (`http` / restored cache). DEBUG + diagnostics.
     @Published private(set) var lastAppliedRequestId: String?
     @Published private(set) var lastAppliedUISource: String?
+    /// Non-nil when the visible summary is not the user's current local day.
+    @Published private(set) var summaryDayCaption: String?
 
     private let store: CoachEveningSummaryStore
     private let generate: (CoachEveningSummaryInput, String) async throws -> CoachEveningSummaryGenerationResult
     private let readStatus: (CoachEveningSummaryInput, String) async -> CoachEveningSummaryServerRead
     private let timeoutSeconds: TimeInterval
     private var owner: String?
+    /// Owner + record identity already applied. Repeat restore skips disk and UI writes.
+    private var satisfiedRestoreToken: String?
 
     /// Single in-flight HTTP generation keyed by (owner, localDay, locale). Waiter cancel / UI timeout must not clear this.
     private var inFlight: InFlight?
@@ -90,99 +94,70 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
 
     /// Restore lasting cache for the owner. Does not call AI.
     /// Independent of HealthKit, coach snapshot, clock, evening window, and daily claims.
-    func restore(owner: String) {
-        let tag = CoachEveningSummaryDiagnostics.ownerTag(owner)
+    /// Repeat calls for the same owner and record do not re-read disk or republish the summary.
+    func restore(
+        owner: String,
+        source: String = "restore",
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) {
+        let localDay = CoachEveningSummaryPolicy.dayKey(now, calendar: calendar)
         if self.owner != owner {
-            CoachEveningSummaryDiagnostics.event(
-                "restore.ownerChange",
-                detail: "owner=\(tag) hadSummary=\(summary != nil) wasRefreshing=\(isRefreshing) hadFlight=\(inFlight != nil)"
-            )
             cancelInFlight(reason: "ownerChange")
             statusRead?.cancel()
             statusRead = nil
             serverAttemptPending = false
             lastRefreshFailed = false
+            satisfiedRestoreToken = nil
+            summary = nil
+            receivedAt = nil
+            cachedFingerprint = nil
+            summaryDayCaption = nil
             self.owner = owner
         }
+
+        if satisfiedRestoreToken == restoreToken(owner: owner, summary: summary) {
+            let captionChanged = refreshSummaryDayCaption(now: now, calendar: calendar)
+            guard captionChanged else { return }
+            logRestore(
+                owner: owner,
+                localDay: localDay,
+                source: source,
+                cacheHit: summary != nil,
+                changed: true
+            )
+            return
+        }
+
         do {
             if let cache = try store.loadCache(owner: owner) {
-                summary = cache.summary
-                receivedAt = cache.receivedAt
-                cachedFingerprint = cache.inputFingerprint
-                lastRefreshFailed = false
-                lastAppliedUISource = "disk"
-                lastAppliedRequestId = nil
-                #if DEBUG
-                CoachEveningSummaryDebugTape.logUI(
-                    source: "disk",
-                    requestId: nil,
-                    generatedAt: cache.summary.generatedAt,
-                    displayedNote: CoachEveningSummaryPolicy.displayCommentary(from: cache.summary)
-                )
-                #endif
-                CoachEveningSummaryDiagnostics.event(
-                    "cache.hit",
-                    detail: CoachEveningSummaryDiagnostics.flightDetail(
-                        owner: owner,
-                        day: cache.summary.day,
-                        source: "restore",
-                        extra: "hit=disk receivedAt=\(ISO8601DateFormatter().string(from: cache.receivedAt))"
-                    )
-                )
+                let changed = applyCachedSummary(cache, owner: owner)
+                refreshSummaryDayCaption(now: now, calendar: calendar)
+                logRestore(owner: owner, localDay: localDay, source: source, cacheHit: true, changed: changed)
             } else if let summary, self.owner == owner {
-                // In-memory success (e.g. disk write failed earlier) — treat as session cache hit.
                 lastAppliedUISource = "memory"
-                #if DEBUG
-                CoachEveningSummaryDebugTape.logUI(
-                    source: "memory",
-                    requestId: lastAppliedRequestId,
-                    generatedAt: summary.generatedAt,
-                    displayedNote: CoachEveningSummaryPolicy.displayCommentary(from: summary)
-                )
-                #endif
-                CoachEveningSummaryDiagnostics.event(
-                    "cache.hit",
-                    detail: CoachEveningSummaryDiagnostics.flightDetail(
-                        owner: owner,
-                        day: summary.day,
-                        source: "restore",
-                        extra: "hit=memory"
-                    )
-                )
+                satisfiedRestoreToken = restoreToken(owner: owner, summary: summary)
+                refreshSummaryDayCaption(now: now, calendar: calendar)
+                logSummaryTextIfEnabled(summary, source: "memory", requestId: lastAppliedRequestId)
+                logRestore(owner: owner, localDay: localDay, source: source, cacheHit: true, changed: false)
             } else if inFlight?.key.owner == owner {
-                CoachEveningSummaryDiagnostics.event(
-                    "cache.miss",
-                    detail: CoachEveningSummaryDiagnostics.flightDetail(
-                        owner: owner,
-                        day: inFlight?.key.day ?? "-",
-                        source: "restore",
-                        extra: "hit=miss keepVisible=true reason=refreshInFlight"
-                    )
-                )
+                satisfiedRestoreToken = restoreToken(owner: owner, summary: summary)
+                logRestore(owner: owner, localDay: localDay, source: source, cacheHit: false, changed: false)
             } else {
                 let hadSummary = summary != nil
-                summary = nil
-                receivedAt = nil
-                cachedFingerprint = nil
-                CoachEveningSummaryDiagnostics.event(
-                    "cache.miss",
-                    detail: CoachEveningSummaryDiagnostics.flightDetail(
-                        owner: owner,
-                        day: "-",
-                        source: "restore",
-                        extra: "hit=miss clearedInMemory=\(hadSummary)"
-                    )
-                )
+                if hadSummary {
+                    summary = nil
+                    receivedAt = nil
+                    cachedFingerprint = nil
+                    summaryDayCaption = nil
+                }
+                satisfiedRestoreToken = restoreToken(owner: owner, summary: nil)
+                logRestore(owner: owner, localDay: localDay, source: source, cacheHit: false, changed: hadSummary)
             }
         } catch {
             CoachEveningSummaryDiagnostics.error(
                 "cache.readError",
-                detail: CoachEveningSummaryDiagnostics.flightDetail(
-                    owner: owner,
-                    day: "-",
-                    source: "restore",
-                    extra: "keepVisible=\(summary != nil) error=\(String(describing: type(of: error)))"
-                )
+                detail: "ownerHash=\(CoachEveningSummaryDiagnostics.ownerTag(owner)) localDay=\(localDay) source=\(source) cacheHit=false changed=false"
             )
             if summary == nil {
                 lastRefreshFailed = true
@@ -194,6 +169,8 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         CoachEveningSummaryDiagnostics.event("workspaceReset")
         cancelInFlight(reason: "workspaceReset")
         owner = nil
+        satisfiedRestoreToken = nil
+        summaryDayCaption = nil
         sessionAttemptedDays = []
         serverAttemptPending = false
         summary = nil
@@ -399,6 +376,9 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         source: String,
         isStillEligible: @escaping () -> Bool
     ) {
+        #if DEBUG
+        if CoachEveningSummaryService.shouldExportSnapshotInsteadOfNetwork { return }
+        #endif
         let key = FlightKey(owner: owner, day: input.day, locale: input.locale)
 
         if let flight = inFlight {
@@ -563,14 +543,9 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             lastRefreshFailed = false
             lastAppliedRequestId = requestId
             lastAppliedUISource = result.summary.source == "fallback" ? "fallback" : "http"
-            #if DEBUG
-            CoachEveningSummaryDebugTape.logUI(
-                source: lastAppliedUISource ?? "http",
-                requestId: requestId,
-                generatedAt: result.summary.generatedAt,
-                displayedNote: CoachEveningSummaryPolicy.displayCommentary(from: result.summary)
-            )
-            #endif
+            satisfiedRestoreToken = restoreToken(owner: key.owner, summary: result.summary)
+            refreshSummaryDayCaption(now: received)
+            logSummaryTextIfEnabled(result.summary, source: lastAppliedUISource ?? "http", requestId: requestId)
 
             var diskSaved = true
             do {
@@ -728,6 +703,9 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         serverAttemptPending = false
         lastAppliedRequestId = result.requestId
         lastAppliedUISource = "status"
+        satisfiedRestoreToken = restoreToken(owner: owner, summary: result.summary)
+        refreshSummaryDayCaption(now: receivedAt ?? Date())
+        logSummaryTextIfEnabled(result.summary, source: "status", requestId: result.requestId)
         do {
             try store.saveCache(
                 .init(summary: result.summary, receivedAt: receivedAt ?? Date(), inputFingerprint: cachedFingerprint),
@@ -768,6 +746,9 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             lastRefreshFailed = false
             serverAttemptPending = false
             lastAppliedUISource = "disk"
+            satisfiedRestoreToken = restoreToken(owner: owner, summary: cached)
+            refreshSummaryDayCaption(now: Date())
+            logSummaryTextIfEnabled(cached, source: "disk", requestId: nil)
         } else if summary == nil {
             beginStatusRead(input: input, owner: owner, source: source)
             return true
@@ -825,6 +806,65 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         deadline?.cancel()
         deadline = nil
         isRefreshing = false
+    }
+
+    @discardableResult
+    private func applyCachedSummary(_ cache: CoachEveningSummaryStore.LastingCache, owner: String) -> Bool {
+        let token = restoreToken(owner: owner, summary: cache.summary)
+        let changed = token != satisfiedRestoreToken || summary != cache.summary
+        guard changed else {
+            satisfiedRestoreToken = token
+            return false
+        }
+        summary = cache.summary
+        receivedAt = cache.receivedAt
+        cachedFingerprint = cache.inputFingerprint
+        lastRefreshFailed = false
+        lastAppliedUISource = "disk"
+        lastAppliedRequestId = nil
+        satisfiedRestoreToken = token
+        logSummaryTextIfEnabled(cache.summary, source: "disk", requestId: nil)
+        return true
+    }
+
+    private func refreshSummaryDayCaption(now: Date, calendar: Calendar = .current) -> Bool {
+        let next = CoachEveningSummaryPolicy.summaryDayCaption(
+            summaryDay: summary?.day,
+            now: now,
+            calendar: calendar
+        )
+        guard next != summaryDayCaption else { return false }
+        summaryDayCaption = next
+        return true
+    }
+
+    private func restoreToken(owner: String, summary: CoachEveningSummary?) -> String {
+        guard let summary else { return "\(owner)|miss" }
+        return "\(owner)|\(summary.day)|\(summary.generatedAt)|\(summary.locale)|\(summary.headline)|\(summary.today.text)|\(summary.now.text)|\(summary.tomorrow.text)"
+    }
+
+    private func logRestore(
+        owner: String,
+        localDay: String,
+        source: String,
+        cacheHit: Bool,
+        changed: Bool
+    ) {
+        CoachEveningSummaryDiagnostics.event(
+            "restore",
+            detail: "ownerHash=\(CoachEveningSummaryDiagnostics.ownerTag(owner)) localDay=\(localDay) source=\(source) cacheHit=\(cacheHit) changed=\(changed)"
+        )
+    }
+
+    private func logSummaryTextIfEnabled(_ summary: CoachEveningSummary, source: String, requestId: String?) {
+        #if DEBUG
+        CoachEveningSummaryDebugTape.logUI(
+            source: source,
+            requestId: requestId,
+            generatedAt: summary.generatedAt,
+            displayedNote: CoachEveningSummaryPolicy.displayCommentary(from: summary)
+        )
+        #endif
     }
 
     private static func errorCode(_ error: Error) -> String {

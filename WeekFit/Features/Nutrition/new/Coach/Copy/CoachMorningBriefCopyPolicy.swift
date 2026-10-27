@@ -319,7 +319,7 @@ enum CoachMorningBriefCopyPolicy {
                 "10-minute warmup — \(title) starts at \(time).",
                 "10 минут разминки — \(title) в \(time)."
             )
-        case .tennis, .squash:
+        case .tennis, .padel, .squash:
             return .en(
                 "Warm up 15 minutes — \(title) at \(time).",
                 "15 минут разминки — \(title) в \(time)."
@@ -425,7 +425,7 @@ enum CoachMorningBriefCopyPolicy {
                 return .en("Before snowboarding", "Перед сноубордом")
             case .downhillSkiing:
                 return .en("Before skiing", "Перед горными лыжами")
-            case .tennis, .squash:
+            case .tennis, .padel, .squash:
                 return .en("Before the match", "Перед игрой")
             case .upperBody, .lowerBody, .core, .fullBody:
                 return .en("Before lifting", "Перед силовой")
@@ -473,6 +473,7 @@ enum CoachMorningBriefCopyPolicy {
             case .snowboarding: return "Сноуборд"
             case .downhillSkiing: return "Горные лыжи"
             case .tennis: return "Теннис"
+            case .padel: return "Падел"
             case .squash: return "Сквош"
             case .upperBody, .lowerBody, .core, .fullBody: return "Силовая"
             case .walk: return "Прогулка"
@@ -489,6 +490,7 @@ enum CoachMorningBriefCopyPolicy {
         case .snowboarding: key = "planner.option.snowboarding"
         case .downhillSkiing: key = "planner.option.alpineSkiing"
         case .tennis: key = "planner.option.tennis"
+        case .padel: key = "planner.option.padel"
         case .squash: key = "planner.option.squash"
         case .upperBody: key = "planner.option.upperBody"
         case .lowerBody: key = "planner.option.lowerBody"

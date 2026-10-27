@@ -155,6 +155,25 @@ final class DefaultMealLibrarySeederTests: XCTestCase {
         }
     }
 
+    func testStarterMealDisplayTitlesLocalizeForGerman() {
+        let previous = WeekFitCurrentAppLanguage()
+        defer { WeekFitSetCurrentLanguage(previous) }
+
+        let meals = DefaultMealLibrarySeeder.buildStarterMeals()
+        WeekFitSetCurrentLanguage(.german)
+
+        let avocado = meals.first { $0.id == "custom_meal_starter_avocado_toast" }
+        XCTAssertEqual(avocado?.title, "Avocado Toast")
+        XCTAssertEqual(avocado?.localizedDisplayTitle, "Avocado-Toast")
+
+        let chickenRice = meals.first { $0.id == "custom_meal_starter_chicken_rice" }
+        XCTAssertEqual(chickenRice?.title, "Chicken Rice")
+        XCTAssertEqual(
+            chickenRice?.localizedDisplayTitle,
+            "\(MealLocalizedTitles.german["protein_chicken"]!) \(MealLocalizedTitles.german["base_rice"]!)"
+        )
+    }
+
     @MainActor
     func testV3ToV4Migration_addsWorldBreakfastsOnceAndDoesNotRestoreDeletes() {
         let suiteName = "weekfit.tests.meals.seed.\(UUID().uuidString)"

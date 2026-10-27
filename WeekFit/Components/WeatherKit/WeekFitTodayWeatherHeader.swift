@@ -133,10 +133,11 @@ struct WeekFitTodayWeatherHeader: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(WeekFitTheme.primaryText)
 
-                Text(WeekFitTrilingual("Enable Local Weather", "Включить погоду", "开启本地天气"))
+                Text(WeekFitTrilingual("Local Weather", "Погода", "本地天气"))
                     .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                     .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
             .padding(.horizontal, 10)
             .frame(height: 32)

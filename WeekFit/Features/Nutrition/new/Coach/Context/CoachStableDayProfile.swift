@@ -505,7 +505,7 @@ enum CoachStableDayCopy {
                 "Swim is banked — recovery is the job now.",
                 "Заплыв сделан — сейчас задача восстановиться."
             )
-        case .tennis, .squash:
+        case .tennis, .padel, .squash:
             return .en(
                 "Match is over — recovery comes first.",
                 "Игра позади — сейчас важнее восстановление."

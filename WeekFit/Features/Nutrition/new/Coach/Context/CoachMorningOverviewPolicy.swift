@@ -141,7 +141,7 @@ enum CoachMorningOverviewPolicy {
                 "Training is on the plan — start from how you feel now.",
                 "Тренировка в календаре — начните с того, как вы себя чувствуете."
             )
-        case .tennis, .squash:
+        case .tennis, .padel, .squash:
             return .en(
                 "Match day is coming — protect energy until it's time.",
                 "Игра впереди — берегите силы до старта."

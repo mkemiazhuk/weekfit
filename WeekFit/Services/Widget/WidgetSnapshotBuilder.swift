@@ -301,7 +301,7 @@ enum WidgetSnapshotBuilder {
         if haystack.contains("run") || haystack.contains("бег") { return .running }
         if haystack.contains("swim") || haystack.contains("плав") { return .swimming }
         if haystack.contains("yoga") || haystack.contains("йога") { return .yoga }
-        if haystack.contains("tennis") || haystack.contains("squash") || haystack.contains("теннис") || haystack.contains("сквош") { return .racket }
+        if haystack.contains("tennis") || haystack.contains("padel") || haystack.contains("squash") || haystack.contains("теннис") || haystack.contains("падел") || haystack.contains("падл") || haystack.contains("сквош") { return .racket }
         if haystack.contains("walk") || haystack.contains("hike") || haystack.contains("ходь") || haystack.contains("прогул") { return .walk }
         if haystack.contains("strength") || haystack.contains("gym") || haystack.contains("lift") || haystack.contains("сил") { return .strength }
         if haystack.contains("recover") || haystack.contains("mobility") || haystack.contains("stretch") || haystack.contains("восстанов") { return .recovery }

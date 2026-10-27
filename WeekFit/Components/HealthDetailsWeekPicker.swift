@@ -1,9 +1,17 @@
 import SwiftUI
 
+enum HealthDetailsWeekPickerDensity {
+    /// Activity and Nutrition details.
+    case regular
+    /// Recovery details — the week row stays within 56–64 pt.
+    case compact
+}
+
 struct HealthDetailsWeekPicker: View {
     @Binding var selectedDate: Date
 
     let accentColor: Color
+    var density: HealthDetailsWeekPickerDensity = .regular
     var onDateSelected: ((Date) -> Void)?
 
     @Environment(\.weekFitPalette) private var palette
@@ -86,12 +94,12 @@ struct HealthDetailsWeekPicker: View {
         return Button {
             select(date)
         } label: {
-            VStack(spacing: 5) {
+            VStack(spacing: density == .compact ? 3 : 5) {
                 HStack(spacing: 3) {
                     Text(dayTitle(for: date))
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .font(.system(size: density == .compact ? 11 : 10, weight: .semibold, design: .rounded))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.72)
+                        .minimumScaleFactor(0.8)
 
                     if isToday {
                         Circle()
@@ -102,10 +110,13 @@ struct HealthDetailsWeekPicker: View {
                 .foregroundStyle(weekdayLabelColor(isSelected: isSelected))
 
                 Text(date.formatted(.dateTime.day()))
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .font(.system(size: density == .compact ? 13 : 14, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(dayNumberForeground(isSelected: isSelected, isToday: isToday))
-                    .frame(width: 28, height: 28)
+                    .frame(
+                        width: density == .compact ? 26 : 28,
+                        height: density == .compact ? 26 : 28
+                    )
                     .background {
                         Circle()
                             .fill(dayNumberBackground(isSelected: isSelected, isToday: isToday))
@@ -118,7 +129,7 @@ struct HealthDetailsWeekPicker: View {
                     }
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 7)
+            .padding(.vertical, density == .compact ? 8 : 7)
             .background {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(dayCellBackground(isSelected: isSelected, isToday: isToday))
@@ -146,7 +157,7 @@ struct HealthDetailsWeekPicker: View {
             Image(systemName: systemName)
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(navForeground(isEnabled: isEnabled))
-                .frame(width: 28, height: 48)
+                .frame(width: 28, height: density == .compact ? 44 : 48)
                 .background {
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
                         .fill(navBackground(isEnabled: isEnabled))

@@ -1,0 +1,3 @@
+"NSCameraUsageDescription" = "WeekFit używa aparatu, abyś mógł dodawać zdjęcia do własnych produktów.";
+"NSHealthShareUsageDescription" = "WeekFit używa danych o zdrowiu i aktywności, aby personalizować Twój dzienny plan.";
+"NSHealthUpdateUsageDescription" = "WeekFit odczytuje treningi i aktywność z Apple Health, aby plan był dokładny. Nie zapisuje treningów w Apple Health.";

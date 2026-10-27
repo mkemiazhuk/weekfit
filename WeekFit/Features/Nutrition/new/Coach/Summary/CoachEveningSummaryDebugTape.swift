@@ -23,9 +23,15 @@ enum CoachEveningSummaryDebugTape {
 
     private(set) static var last: Snapshot?
 
+    /// Full request body and summary text stay off unless a developer turns this on.
+    /// Release builds do not compile this type.
+    static var isFullTextLoggingEnabled = false
+
     private static let chunkSize = 2_400
+    private static var lastPrintedNote: String?
 
     static func logInput(clientRequestId: String, httpBody: Data) {
+        guard isFullTextLoggingEnabled else { return }
         let pretty = prettyJSON(httpBody) ?? String(data: httpBody, encoding: .utf8) ?? "<non-utf8 body>"
         printChunked(
             begin: "[CoachSummary][INPUT BEGIN] clientRequestId=\(clientRequestId)",
@@ -59,6 +65,7 @@ enum CoachEveningSummaryDebugTape {
         responseBody: Data?,
         transportError: String? = nil
     ) {
+        guard isFullTextLoggingEnabled else { return }
         let pretty: String
         if let responseBody {
             pretty = prettyJSON(responseBody) ?? String(data: responseBody, encoding: .utf8) ?? "<non-utf8 body>"
@@ -89,6 +96,9 @@ enum CoachEveningSummaryDebugTape {
     }
 
     static func logUI(source: String, requestId: String?, generatedAt: String?, displayedNote: String) {
+        guard isFullTextLoggingEnabled else { return }
+        guard displayedNote != lastPrintedNote else { return }
+        lastPrintedNote = displayedNote
         let rid = requestId ?? "-"
         let generated = generatedAt ?? "-"
         print("[CoachSummary][UI] source=\(source) requestId=\(rid) generatedAt=\(generated)")

@@ -27,46 +27,45 @@ enum ReviewPromptTriggerSource: String, Sendable {
     case settingsProblem = "settings_problem"
 }
 
-enum ReviewPromptPresentation: Equatable {
-    case sentimentSheet(triggerSource: String)
-    case feedbackForm(intent: FeedbackFormIntent, sentiment: FeedbackSentiment?, triggerSource: String)
-}
-
-/// Centralized eligibility, engagement tracking, and prompt presentation orchestration.
+/// Eligibility, engagement, and the direct system review request.
 @MainActor
 final class ReviewPromptManager: ObservableObject {
     // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown.
     nonisolated deinit {}
 
-    @Published private(set) var presentation: ReviewPromptPresentation?
     @Published private(set) var lastDecision: ReviewEligibilityDecision?
 
     private let storage: ReviewPromptStoring
     private let analytics: ReviewAnalyticsTracking
     private let reviewRequester: StoreKitReviewRequesting
+    private let writeReviewOpener: AppStoreWriteReviewOpening
     private let feedbackService: FeedbackSubmissionServing
     private let clock: ReviewClock
     private let calendar: Calendar
     private let appVersionProvider: () -> String
     private let isReviewDemoMode: () -> Bool
+    private let bypassEngagementThresholds: Bool
     private let presentationDelayNanoseconds: UInt64
 
     private var state: ReviewEligibilityState
     private var isUIBlocked = false
+    private var isApplicationActive = true
     private var hasEmittedEligibilityReached = false
-    private var isSchedulingPresentation = false
     private var pendingEvaluationTask: Task<Void, Never>?
     private var meaningfulActionObserver: NSObjectProtocol?
+    private var lastFeedbackTriggerSource = "unknown"
 
     init(
         storage: ReviewPromptStoring? = nil,
         analytics: ReviewAnalyticsTracking? = nil,
         reviewRequester: StoreKitReviewRequesting? = nil,
+        writeReviewOpener: AppStoreWriteReviewOpening? = nil,
         feedbackService: FeedbackSubmissionServing? = nil,
         clock: ReviewClock? = nil,
         calendar: Calendar = .current,
         appVersionProvider: (() -> String)? = nil,
         isReviewDemoMode: (() -> Bool)? = nil,
+        bypassEngagementThresholds: Bool? = nil,
         presentationDelayNanoseconds: UInt64 = 900_000_000,
         observesEngagementNotifications: Bool = true
     ) {
@@ -74,6 +73,7 @@ final class ReviewPromptManager: ObservableObject {
         self.storage = resolvedStorage
         self.analytics = analytics ?? ReviewAnalytics.shared
         self.reviewRequester = reviewRequester ?? SystemStoreKitReviewRequester()
+        self.writeReviewOpener = writeReviewOpener ?? SystemAppStoreWriteReviewOpener()
         self.feedbackService = feedbackService ?? MailtoFeedbackSubmissionService()
         self.clock = clock ?? SystemReviewClock()
         self.calendar = calendar
@@ -83,6 +83,8 @@ final class ReviewPromptManager: ObservableObject {
         self.isReviewDemoMode = isReviewDemoMode ?? {
             AccountSessionController.shared.mode == .reviewDemo
         }
+        self.bypassEngagementThresholds = bypassEngagementThresholds
+            ?? ReviewPromptDebugOverride.bypassesEngagementThresholds()
         self.presentationDelayNanoseconds = presentationDelayNanoseconds
         self.state = resolvedStorage.load()
 
@@ -122,20 +124,23 @@ final class ReviewPromptManager: ObservableObject {
         state.lastMeaningfulActionDate = now
         persist()
 
-        guard evaluatePrompt else { return }
-        scheduleEligibilityEvaluation(triggerSource: .meaningfulAction)
+        guard evaluatePrompt, !isUIBlocked else { return }
+        scheduleSystemReviewRequest()
     }
 
-    func noteReturnedToStableMainScreen() {
-        scheduleEligibilityEvaluation(triggerSource: .returnedToMain)
+    func setApplicationActive(_ isActive: Bool) {
+        isApplicationActive = isActive
+    }
+
+    func cancelPendingSystemReviewRequest() {
+        pendingEvaluationTask?.cancel()
+        pendingEvaluationTask = nil
     }
 
     func updateUIBlocking(_ blocked: Bool) {
         isUIBlocked = blocked
         if blocked {
-            pendingEvaluationTask?.cancel()
-            pendingEvaluationTask = nil
-            isSchedulingPresentation = false
+            cancelPendingSystemReviewRequest()
         }
     }
 
@@ -148,8 +153,9 @@ final class ReviewPromptManager: ObservableObject {
             now: clock.now,
             calendar: calendar,
             currentAppVersion: currentAppVersion,
-            isUIBlocked: isUIBlocked || presentation != nil || isSchedulingPresentation,
-            isReviewDemoMode: isReviewDemoMode()
+            isUIBlocked: isUIBlocked,
+            isReviewDemoMode: isReviewDemoMode(),
+            bypassEngagementThresholds: bypassEngagementThresholds
         )
         lastDecision = decision
 
@@ -168,43 +174,54 @@ final class ReviewPromptManager: ObservableObject {
         return decision
     }
 
-    private func scheduleEligibilityEvaluation(triggerSource: ReviewPromptTriggerSource) {
+    private func scheduleSystemReviewRequest() {
         pendingEvaluationTask?.cancel()
         pendingEvaluationTask = Task { [weak self] in
             guard let self else { return }
-            // Short delay so success animations / navigation can finish.
+            // Wait until the completed action's UI has settled.
             try? await Task.sleep(nanoseconds: presentationDelayNanoseconds)
             guard !Task.isCancelled else { return }
             await MainActor.run {
-                self.considerPresenting(triggerSource: triggerSource)
+                self.considerSystemReviewRequest()
             }
         }
     }
 
-    private func considerPresenting(triggerSource: ReviewPromptTriggerSource) {
-        guard presentation == nil, !isSchedulingPresentation else { return }
-        let decision = evaluateEligibility(triggerSource: triggerSource)
+    private func considerSystemReviewRequest() {
+        guard isApplicationActive, !isUIBlocked else { return }
+        let decision = evaluateEligibility(triggerSource: .meaningfulAction)
         guard decision.isEligible else { return }
-
-        isSchedulingPresentation = true
-        presentSentimentSheet(triggerSource: triggerSource)
-        isSchedulingPresentation = false
+        // Persist only after the system API is actually invoked. iOS may still hide the dialog.
+        guard reviewRequester.requestReview() else { return }
+        state.nativeReviewRequestAttemptDate = clock.now
+        state.systemReviewRequestVersion = currentAppVersion
+        persist()
+        analytics.track(
+            .nativeReviewRequestAttempted,
+            properties: [
+                "app_version": currentAppVersion,
+                "trigger_source": ReviewPromptTriggerSource.meaningfulAction.rawValue,
+                "surface": "automatic"
+            ]
+        )
     }
 
-    // MARK: - Presentation API
+    // MARK: - Settings and feedback
 
-    func presentSentimentSheet(triggerSource: ReviewPromptTriggerSource) {
-        guard presentation == nil else { return }
-        markPromptShown()
-        presentation = .sentimentSheet(triggerSource: triggerSource.rawValue)
+    /// Opens the App Store write-review page. Does not call `requestReview` or consume an attempt.
+    @discardableResult
+    func openWriteReviewPage() -> Bool {
+        let opened = writeReviewOpener.openWriteReview()
+        guard opened else { return false }
         analytics.track(
-            .reviewFeedbackSheetShown,
-            properties: ReviewAnalyticsProperties.base(
-                appVersion: currentAppVersion,
-                triggerSource: triggerSource.rawValue,
-                decision: lastDecision
-            )
+            .appStoreWriteReviewOpened,
+            properties: [
+                "app_version": currentAppVersion,
+                "trigger_source": ReviewPromptTriggerSource.settingsRate.rawValue,
+                "surface": "app_store_write_review"
+            ]
         )
+        return true
     }
 
     func openFeedbackForm(
@@ -213,9 +230,8 @@ final class ReviewPromptManager: ObservableObject {
         triggerSource: ReviewPromptTriggerSource,
         present: Bool = true
     ) {
-        if present {
-            presentation = .feedbackForm(intent: intent, sentiment: sentiment, triggerSource: triggerSource.rawValue)
-        }
+        _ = present
+        lastFeedbackTriggerSource = triggerSource.rawValue
         analytics.track(
             .feedbackFormOpened,
             properties: ReviewAnalyticsProperties.base(
@@ -229,94 +245,15 @@ final class ReviewPromptManager: ObservableObject {
         )
     }
 
-    func selectSentiment(_ sentiment: FeedbackSentiment, triggerSource: String) {
-        state.lastFeedbackSentimentRaw = sentiment.rawValue
-        persist()
-
-        analytics.track(
-            .reviewFeedbackSelected,
-            properties: [
-                "app_version": currentAppVersion,
-                "trigger_source": triggerSource,
-                "feedback_sentiment": sentiment.analyticsName
-            ]
-        )
-
-        switch sentiment {
-        case .great:
-            presentation = nil
-            attemptNativeReview(triggerSource: triggerSource)
-        case .okay, .needsImprovement:
-            presentation = .feedbackForm(
-                intent: .postSentiment,
-                sentiment: sentiment,
-                triggerSource: triggerSource
-            )
-            analytics.track(
-                .feedbackFormOpened,
-                properties: [
-                    "app_version": currentAppVersion,
-                    "trigger_source": triggerSource,
-                    "feedback_sentiment": sentiment.analyticsName,
-                    "feedback_intent": FeedbackFormIntent.postSentiment.rawValue
-                ]
-            )
-        }
-    }
-
     func dismissPresentation(trackAsDismissed: Bool = true) {
-        if trackAsDismissed, presentation != nil {
-            analytics.track(
-                .feedbackDismissed,
-                properties: [
-                    "app_version": currentAppVersion,
-                    "trigger_source": presentationTriggerSource
-                ]
-            )
-        }
-        presentation = nil
-    }
-
-    func rateFromSettings() {
+        guard trackAsDismissed else { return }
         analytics.track(
-            .rateWeekFitSelectedFromSettings,
-            properties: ["app_version": currentAppVersion, "trigger_source": ReviewPromptTriggerSource.settingsRate.rawValue]
-        )
-        // Explicit Settings action: show the native in-app StoreKit sheet.
-        // Do not consume soft-prompt version/cooldown state — Settings Rate must stay
-        // available without suppressing the later sentiment flow.
-        state.nativeReviewRequestAttemptDate = clock.now
-        persist()
-        analytics.track(
-            .nativeReviewRequestAttempted,
+            .feedbackDismissed,
             properties: [
                 "app_version": currentAppVersion,
-                "trigger_source": ReviewPromptTriggerSource.settingsRate.rawValue,
-                "surface": "settings_in_app"
+                "trigger_source": lastFeedbackTriggerSource
             ]
         )
-        reviewRequester.requestReview()
-    }
-
-    func attemptNativeReview(triggerSource: String) {
-        // Soft-prompt path: record attempt and mark this version as prompted.
-        // Apple may still suppress the system dialog.
-        state.nativeReviewRequestAttemptDate = clock.now
-        state.lastPromptedAppVersion = currentAppVersion
-        if state.lastFeedbackPromptDate == nil {
-            state.lastFeedbackPromptDate = clock.now
-        }
-        persist()
-
-        analytics.track(
-            .nativeReviewRequestAttempted,
-            properties: [
-                "app_version": currentAppVersion,
-                "trigger_source": triggerSource,
-                "surface": "soft_prompt"
-            ]
-        )
-        reviewRequester.requestReview()
     }
 
     func submitFeedback(_ draft: FeedbackDraft) async throws {
@@ -328,12 +265,11 @@ final class ReviewPromptManager: ObservableObject {
             .feedbackSubmitted,
             properties: [
                 "app_version": currentAppVersion,
-                "trigger_source": presentationTriggerSource,
+                "trigger_source": lastFeedbackTriggerSource,
                 "feedback_sentiment": draft.sentiment?.analyticsName ?? "none",
                 "feedback_category": draft.category?.analyticsName ?? "none"
             ]
         )
-        presentation = nil
     }
 
     func setPermanentlyDismissed(_ dismissed: Bool) {
@@ -342,23 +278,6 @@ final class ReviewPromptManager: ObservableObject {
     }
 
     // MARK: - Private
-
-    private var presentationTriggerSource: String {
-        switch presentation {
-        case .sentimentSheet(let source):
-            return source
-        case .feedbackForm(_, _, let source):
-            return source
-        case nil:
-            return "unknown"
-        }
-    }
-
-    private func markPromptShown() {
-        state.lastFeedbackPromptDate = clock.now
-        state.lastPromptedAppVersion = currentAppVersion
-        persist()
-    }
 
     private func ensureFirstUse(_ now: Date) {
         if state.firstAppUseDate == nil {
