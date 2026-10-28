@@ -251,6 +251,8 @@ test('routes enforce the allowlist and never return the server key', async () =>
     assert.equal(captured.url, 'https://api.openai.com/v1/realtime/client_secrets');
     assert.equal(captured.init.headers.Authorization, 'Bearer sk-server-secret');
     assert.equal(sent.session.model, 'gpt-realtime-2.1-mini');
+    assert.equal(sent.session.audio.input.transcription, undefined);
+    assert.deepEqual(sent.session.output_modalities, ['audio']);
     assert.equal(sent.session.tools[0].name, 'create_activity');
     assert.equal(sent.session.audio.input.turn_detection.interrupt_response, true);
     assert.match(sent.session.instructions, /2026-10-29/);
@@ -281,6 +283,7 @@ test('console releases the microphone and does not embed a server key', () => {
   assert.equal(html.includes('OPENAI_API_KEY'), false);
   assert.equal(html.includes('sk-'), false);
   assert.equal(html.includes('MediaRecorder'), false);
+  assert.equal(html.includes("type: 'transcript'"), false);
 });
 
 test('mock session does not call OpenAI', async () => {
