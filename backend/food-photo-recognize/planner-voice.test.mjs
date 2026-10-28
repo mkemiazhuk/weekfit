@@ -232,12 +232,12 @@ test('marin and cedar share the russian preview and keep the mini model', () => 
   }
   const lines = plannerVoicePreviewPhrases('ru');
   assert.deepEqual(lines, plannerVoicePreviewPhrases('ru'));
-  assert.equal(lines.greeting, 'Привет, Макс! Что запланируем?');
+  assert.equal(lines.greeting, 'Привет, Макс. Чем могу помочь?');
   assert.equal(lines.askTime, 'Во сколько?');
   assert.equal(lines.confirmation, 'Добавил теннис на завтра, с 13 до 14.');
   assert.equal(lines.conflict, 'Это время уже занято.');
-  assert.equal(plannerVoicePreviewPhrases('en', 'Max').greeting, 'Hi, Max! What shall we plan?');
-  assert.equal(plannerVoicePreviewPhrases('pl', 'Max').greeting, 'Cześć, Max! Co zaplanujemy?');
+  assert.equal(plannerVoicePreviewPhrases('en', 'Max').greeting, 'Hi, Max. How can I help you?');
+  assert.equal(plannerVoicePreviewPhrases('pl', 'Max').greeting, 'Cześć, Max. W czym mogę pomóc?');
 });
 
 test('cedar uses the same russian greeting without a larger model', async () => {
@@ -269,7 +269,7 @@ test('cedar uses the same russian greeting without a larger model', async () => 
     const sent = JSON.parse(captured.init.body);
     assert.equal(sent.session.model, 'gpt-realtime-2.1-mini');
     assert.equal(sent.session.audio.output.voice, 'cedar');
-    assert.match(sent.session.instructions, /Привет, Макс! Что запланируем\?/);
+    assert.match(sent.session.instructions, /Привет, Макс\. Чем могу помочь\?/);
     assert.match(sent.session.instructions, /natural Russian pronunciation/);
     assert.equal(sent.session.instructions.includes('только по-русски'), false);
 
@@ -283,7 +283,7 @@ test('cedar uses the same russian greeting without a larger model', async () => 
     });
     assert.equal(polish.status, 200);
     const polishSession = JSON.parse(captured.init.body).session;
-    assert.match(polishSession.instructions, /Cześć, Max! Co zaplanujemy\?/);
+    assert.match(polishSession.instructions, /Cześć, Max\. W czym mogę pomóc\?/);
     assert.match(polishSession.instructions, /Speak only in Polish/);
     assert.equal(polishSession.model, 'gpt-realtime-2.1-mini');
   } finally {
@@ -379,7 +379,7 @@ test('routes enforce the allowlist and never return the server key', async () =>
     assert.equal(sent.session.audio.input.turn_detection.interrupt_response, true);
     assert.match(sent.session.instructions, /2026-10-29/);
     assert.match(sent.session.instructions, /day after tomorrow is 2026-10-31/);
-    assert.match(sent.session.instructions, /Привет, Максим! Что запланируем\?/);
+    assert.match(sent.session.instructions, /Привет, Максим\. Чем могу помочь\?/);
     assert.equal(sent.session.instructions.includes('только по-русски'), false);
     assert.equal(sent.session.audio.output.voice, 'marin');
     assert.equal(sent.session.model, 'gpt-realtime-2.1-mini');
@@ -421,7 +421,7 @@ test('console releases the microphone and does not embed a server key', () => {
   assert.equal(html.includes("type: 'transcript'"), false);
 });
 
-test('ringback stops on connection before the first spoken greeting', async () => {
+test('ringing continues until the assistant starts the greeting', async () => {
   const script = consoleDocument().match(/<script>([\s\S]*?)<\/script>/)?.[1];
   assert.ok(script);
   const events = [];
@@ -454,9 +454,12 @@ test('ringback stops on connection before the first spoken greeting', async () =
   channel.onopen();
   assert.equal(events.at(-1).value, 'connected');
   assert.equal(track.enabled, false);
-  timers.find(timer => timer.delay === 180).callback();
-  assert.equal(track.enabled, true);
   assert.deepEqual(JSON.parse(JSON.stringify(sent)), [{ type: 'response.create' }]);
+  channel.onmessage({ data: JSON.stringify({ type: 'response.created' }) });
+  assert.equal(events.at(-1).value, 'speaking');
+  assert.equal(track.enabled, false);
+  window.weekfit.answered();
+  assert.equal(track.enabled, true);
   channel.onmessage({ data: JSON.stringify({ type: 'response.function_call_arguments.done', name: 'end_call', call_id: 'call_bye' }) });
   assert.equal(track.stopped, false);
   channel.onmessage({ data: JSON.stringify({ type: 'response.done', response: {} }) });

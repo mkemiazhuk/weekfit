@@ -31,7 +31,7 @@ const SPOKEN = {
 const PHRASES = {
   ru: {
     englishName: 'Russian',
-    greeting: name => (name ? `Привет, ${name}! Что запланируем?` : 'Привет! Что запланируем?'),
+    greeting: name => (name ? `Привет, ${name}. Чем могу помочь?` : 'Привет. Чем могу помочь?'),
     goodbye: 'До свидания!',
     closing: '«всё», «всё, спасибо», «спасибо», «до свидания», «пока»',
     askTime: 'Во сколько?',
@@ -45,7 +45,7 @@ const PHRASES = {
   },
   en: {
     englishName: 'English',
-    greeting: name => (name ? `Hi, ${name}! What shall we plan?` : 'Hi! What shall we plan?'),
+    greeting: name => (name ? `Hi, ${name}. How can I help you?` : 'Hi. How can I help you?'),
     goodbye: 'Bye!',
     closing: '"that\'s all", "thanks", "thank you", "goodbye", "bye"',
     askTime: 'What time?',
@@ -59,7 +59,7 @@ const PHRASES = {
   },
   pl: {
     englishName: 'Polish',
-    greeting: name => (name ? `Cześć, ${name}! Co zaplanujemy?` : 'Cześć! Co zaplanujemy?'),
+    greeting: name => (name ? `Cześć, ${name}. W czym mogę pomóc?` : 'Cześć. W czym mogę pomóc?'),
     goodbye: 'Do widzenia!',
     closing: '«to wszystko», «dzięki», «dziękuję», «do widzenia», «pa»',
     askTime: 'O której?',
@@ -73,7 +73,7 @@ const PHRASES = {
   },
   fr: {
     englishName: 'French',
-    greeting: name => (name ? `Salut, ${name} ! On planifie quoi ?` : 'Salut ! On planifie quoi ?'),
+    greeting: name => (name ? `Salut, ${name}. Comment puis-je t'aider ?` : 'Salut. Comment puis-je t\'aider ?'),
     goodbye: 'Au revoir !',
     closing: '«c\'est tout», «merci», «au revoir», «salut»',
     askTime: 'À quelle heure ?',
@@ -87,7 +87,7 @@ const PHRASES = {
   },
   es: {
     englishName: 'Spanish',
-    greeting: name => (name ? `¡Hola, ${name}! ¿Qué planificamos?` : '¡Hola! ¿Qué planificamos?'),
+    greeting: name => (name ? `Hola, ${name}. ¿En qué puedo ayudarte?` : 'Hola. ¿En qué puedo ayudarte?'),
     goodbye: '¡Adiós!',
     closing: '«eso es todo», «gracias», «adiós», «hasta luego»',
     askTime: '¿A qué hora?',
@@ -101,7 +101,7 @@ const PHRASES = {
   },
   de: {
     englishName: 'German',
-    greeting: name => (name ? `Hi, ${name}! Was planen wir?` : 'Hi! Was planen wir?'),
+    greeting: name => (name ? `Hi, ${name}. Womit kann ich helfen?` : 'Hi. Womit kann ich helfen?'),
     goodbye: 'Tschüss!',
     closing: '«das war\'s», «danke», «auf Wiedersehen», «tschüss»',
     askTime: 'Um wie viel Uhr?',
@@ -115,7 +115,7 @@ const PHRASES = {
   },
   'zh-Hans': {
     englishName: 'Chinese',
-    greeting: name => (name ? `你好，${name}！我们安排什么？` : '你好！我们安排什么？'),
+    greeting: name => (name ? `你好，${name}。需要我帮什么？` : '你好。需要我帮什么？'),
     goodbye: '再见！',
     closing: '「就这样」「谢谢」「再见」',
     askTime: '几点？',
@@ -129,7 +129,7 @@ const PHRASES = {
   },
   ja: {
     englishName: 'Japanese',
-    greeting: name => (name ? `こんにちは、${name}！何を予定しましょうか？` : 'こんにちは！何を予定しましょうか？'),
+    greeting: name => (name ? `こんにちは、${name}。何かお手伝いしましょうか？` : 'こんにちは。何かお手伝いしましょうか？'),
     goodbye: 'さようなら！',
     closing: '「以上です」「ありがとう」「さようなら」',
     askTime: '何時にしますか？',
@@ -143,7 +143,7 @@ const PHRASES = {
   },
   it: {
     englishName: 'Italian',
-    greeting: name => (name ? `Ciao, ${name}! Cosa pianifichiamo?` : 'Ciao! Cosa pianifichiamo?'),
+    greeting: name => (name ? `Ciao, ${name}. Come posso aiutarti?` : 'Ciao. Come posso aiutarti?'),
     goodbye: 'Ciao!',
     closing: '«è tutto», «grazie», «arrivederci», «ciao»',
     askTime: 'A che ora?',
@@ -157,7 +157,7 @@ const PHRASES = {
   },
   ko: {
     englishName: 'Korean',
-    greeting: name => (name ? `안녕하세요, ${name}! 무엇을 계획할까요?` : '안녕하세요! 무엇을 계획할까요?'),
+    greeting: name => (name ? `안녕하세요, ${name}. 무엇을 도와드릴까요?` : '안녕하세요. 무엇을 도와드릴까요?'),
     goodbye: '안녕히 가세요!',
     closing: '「그거예요」, 「감사합니다」, 「안녕히 가세요」',
     askTime: '몇 시요?',

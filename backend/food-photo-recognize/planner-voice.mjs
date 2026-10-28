@@ -346,6 +346,10 @@ export function consoleDocument() {
       muted = Boolean(value);
       if (local) local.getAudioTracks().forEach((track) => { track.enabled = !muted; });
     },
+    answered: () => {
+      if (!local) return;
+      local.getAudioTracks().forEach((track) => { track.enabled = !muted; });
+    },
     toolResult: (callId, output) => {
       const resolve = pending.get(callId);
       pending.delete(callId);
@@ -376,13 +380,9 @@ export function consoleDocument() {
         channel.onopen = () => {
           if (thisCall !== callNumber || !local || !channel) return;
           post({ type: 'state', value: 'connected' });
-          // Native ringback stops on 'connected' before the microphone opens.
-          setTimeout(() => {
-            if (thisCall !== callNumber || !local || !channel || channel.readyState !== 'open') return;
-            local.getAudioTracks().forEach((track) => { track.enabled = !muted; });
-            channel.send(JSON.stringify({ type: 'response.create' }));
-            armIdle();
-          }, 180);
+          // Keep the microphone closed while the phone is still ringing.
+          channel.send(JSON.stringify({ type: 'response.create' }));
+          armIdle();
         };
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
@@ -643,7 +643,7 @@ function instructions(days, planningDay, givenName, language) {
     `Use natural ${phrases.englishName} pronunciation and a normal pace. Say one short sentence, then stop. Never repeat yourself, the user's words, or a question you already asked. Do not ask what else to plan.`,
     nameLine,
     `The app language is ${language}. Do not choose the language from the device or the time zone.`,
-    `Your first words must be exactly: ${greetingLine(language, givenName)} Do not repeat that greeting later.`,
+    `As soon as the call connects, speak first. Your first words must be exactly: ${greetingLine(language, givenName)} Do not wait for the user and do not repeat that greeting later.`,
     `Today is ${days.today}. Tomorrow is ${days.tomorrow}. The day after tomorrow is ${days.dayAfterTomorrow}. Time zone: ${days.timeZone}. Calculate dates and times in this time zone.`,
     `The open plan day is ${planningDay}. If the person does not name a day, pass date as an empty string.`,
     'One hour means 60 minutes. An hour and a half means 90. One in the afternoon means 13:00. One at night means 01:00. Midnight means 00:00.',

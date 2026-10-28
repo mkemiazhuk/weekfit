@@ -147,12 +147,15 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         case "connecting":
             phase = .connecting
         case "connected":
-            ringback.stop()
-            connectedAt = Date()
-            phase = .connected
+            phase = .connecting
         case "listening":
             phase = .listening
         case "speaking":
+            if connectedAt == nil {
+                ringback.stop()
+                connectedAt = Date()
+                webView?.evaluateJavaScript("window.weekfit && window.weekfit.answered()")
+            }
             phase = .speaking
         case "acting":
             phase = .acting
@@ -325,8 +328,12 @@ private final class PlanVoiceRingback {
     private var player: AVAudioPlayer?
 
     func start() {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
+        try? session.setActive(true)
         guard player == nil, let sound = try? AVAudioPlayer(data: Self.tone) else { return }
         sound.numberOfLoops = -1
+        sound.volume = 1
         sound.prepareToPlay()
         sound.play()
         player = sound
@@ -337,10 +344,10 @@ private final class PlanVoiceRingback {
         player = nil
     }
 
-    // Two seconds of a soft dual tone followed by four seconds of silence.
+    // A phone ring: two short bursts, then silence, until the assistant answers.
     private static let tone: Data = {
         let rate = 16_000
-        let count = rate * 6
+        let count = rate * 3
         var wave = Data(capacity: 44 + count * 2)
         func word(_ value: UInt32) {
             var little = value.littleEndian
@@ -364,9 +371,9 @@ private final class PlanVoiceRingback {
         word(UInt32(count * 2))
         for index in 0..<count {
             let seconds = Double(index) / Double(rate)
-            let fade = min(1, seconds * 25, (2 - seconds) * 25)
-            let sample = seconds < 2
-                ? (sin(2 * .pi * 440 * seconds) + sin(2 * .pi * 480 * seconds)) * 0.14 * max(0, fade)
+            let ringing = (seconds < 0.4) || (seconds >= 0.6 && seconds < 1.0)
+            let sample = ringing
+                ? (sin(2 * .pi * 440 * seconds) + sin(2 * .pi * 480 * seconds)) * 0.28
                 : 0
             var value = Int16((sample * Double(Int16.max)).rounded()).littleEndian
             withUnsafeBytes(of: &value) { wave.append(contentsOf: $0) }
