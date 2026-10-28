@@ -358,6 +358,11 @@ enum CoachCopyRegistryScenarios {
                 "Squash is close — sharp feet beat rushed swings.",
                 "Сквош скоро — быстрые ноги важнее торопливых ударов."
             )
+        case .padel:
+            assessment = .en(
+                "Padel is close — find your partner before you swing hard.",
+                "Падел скоро — сначала найдите партнёра, потом силу удара."
+            )
         default:
             assessment = .en(
                 "Match is close — sharp mind beats rushed legs.",
@@ -389,6 +394,11 @@ enum CoachCopyRegistryScenarios {
             assessment = .en(
                 "You're on court — squash rewards patience point by point.",
                 "Вы на корте — в сквоше терпение вознаграждается, розыгрыш за розыгрышем."
+            )
+        case .padel:
+            assessment = .en(
+                "You're on court — hold the net with your partner and use the glass.",
+                "Вы на корте — держите сетку с партнёром и используйте стекло."
             )
         default:
             assessment = .en(
@@ -428,11 +438,21 @@ enum CoachCopyRegistryScenarios {
     }
 
     private static func postRacketImmediate(input: CoachCopyBuildInput) -> Draft {
-        Draft(
-            assessment: .en(
+        let assessment: CoachBilingualText
+        switch input.activityType {
+        case .padel:
+            assessment = .en(
+                "Padel's over — feet and shoulders are still switched on.",
+                "Падел позади — стопы и плечи ещё включены."
+            )
+        default:
+            assessment = .en(
                 "Match over — legs and nerves are still lit up.",
                 "Игра позади — ноги и нервы ещё горят."
-            ),
+            )
+        }
+        return Draft(
+            assessment: assessment,
             recommendation: .en(
                 "Ten easy minutes on court — let body and pulse land.",
                 "Минут десять легко по корту — пусть тело и пульс успокоятся."
@@ -474,11 +494,21 @@ enum CoachCopyRegistryScenarios {
 
     private static func eveningAfterRacket(input: CoachCopyBuildInput) -> Draft {
         let windDown = CoachCopyNutritionTiming.isWindDown(input.timeOfDay)
-        return Draft(
-            assessment: .en(
+        let assessment: CoachBilingualText
+        switch input.activityType {
+        case .padel:
+            assessment = .en(
+                "Padel day is in the books — evening is for quiet legs.",
+                "День падела завершён — вечером ногам нужна тишина."
+            )
+        default:
+            assessment = .en(
                 "Racket day is in the books — evening is for recovery.",
                 "Игровой день завершён — вечер для восстановления."
-            ),
+            )
+        }
+        return Draft(
+            assessment: assessment,
             recommendation: windDown
                 ? .en(
                     "Ease into the night — tomorrow's legs start with sleep.",

@@ -60,12 +60,11 @@ struct RecoveryDetailsView: View {
                 await load(date: activeDate)
             }
         }
-        .sheet(isPresented: $showStressIndexSheet) {
+        .fullScreenCover(isPresented: $showStressIndexSheet) {
             StressIndexDetailSheet(
                 result: viewModel.stressIndex,
                 recoveryScore: viewModel.snapshot.recoveryScore
             )
-            .presentationDetents([.medium, .large])
         }
     }
 

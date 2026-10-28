@@ -747,6 +747,11 @@ enum CoachBodyStateCopyRenderer {
                 "Squash is close — recovery isn't fully back yet.",
                 "Сквош скоро — восстановление ещё не полное."
             )
+        case .padel:
+            return .en(
+                "Padel is close — recovery isn't fully back yet.",
+                "Падел скоро — восстановление ещё не полное."
+            )
         default:
             return .en(
                 "Match is close — recovery isn't fully back yet.",

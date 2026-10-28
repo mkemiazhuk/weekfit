@@ -456,14 +456,18 @@ struct TodayView: View {
             if tabIsActive {
                 let _ = TodayStartupDiagnostics.step(4, "body root created", detail: "todayActiveBody branch")
                 // Erase TodayActiveBody's enormous opaque type before attaching sheets/tasks.
+                // Identity transition: the tab-bar transaction must not slide each card in.
                 AnyView(todayActiveBody)
+                    .transition(.identity)
             } else {
                 let _ = TodayStartupDiagnostics.step(4, "body root created", detail: "inactive clear branch")
                 Color.clear
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .accessibilityHidden(true)
+                    .transition(.identity)
             }
         }
+        .animation(nil, value: tabIsActive)
         let _ = TodayStartupDiagnostics.step(7, "body evaluation complete", detail: "modifiers attaching")
 
         return root
@@ -1406,6 +1410,8 @@ struct TodayView: View {
                 .frame(height: TodayChrome.tabBarReservedHeight)
                 .accessibilityHidden(true)
         }
+        // One geometry group: ancestor tab animation can't move each card on its own.
+        .geometryGroup()
     }
 
     /// Full Today stack at once — AnyView only for stack-safe type erasure, no staged reveal.

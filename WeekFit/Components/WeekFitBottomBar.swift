@@ -47,6 +47,14 @@ enum WeekFitTab: Hashable, CaseIterable {
 struct WeekFitBottomBar: View {
 
     @Binding var selectedTab: WeekFitTab
+    /// Visual selection only. Animating `selectedTab` itself also animated
+    /// every mounted tab's layout, so Today cards jumped on the way in.
+    @State private var pillTab: WeekFitTab
+
+    init(selectedTab: Binding<WeekFitTab>) {
+        _selectedTab = selectedTab
+        _pillTab = State(initialValue: selectedTab.wrappedValue)
+    }
 
     @Namespace private var selectionNamespace
     @Environment(\.weekFitPalette) private var palette
@@ -109,6 +117,16 @@ struct WeekFitBottomBar: View {
             barChrome
         }
         .padding(.bottom, 10)
+        .onChange(of: selectedTab) { _, newValue in
+            guard pillTab != newValue else { return }
+            if let animation = tabSelectionAnimation {
+                withAnimation(animation) {
+                    pillTab = newValue
+                }
+            } else {
+                pillTab = newValue
+            }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tabBar.main")
     }
@@ -181,7 +199,8 @@ struct WeekFitBottomBar: View {
     }
 
     private func tabItem(_ tab: WeekFitTab) -> some View {
-        let active = selectedTab == tab
+        let active = pillTab == tab
+        let isSelected = selectedTab == tab
 
         return Button {
             handleTap(tab)
@@ -209,7 +228,7 @@ struct WeekFitBottomBar: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier("tab.\(tabAccessibilityName(tab))")
         .accessibilityLabel(Text(tab.title))
-        .accessibilityAddTraits(active ? [.isSelected] : [])
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
     private func tabAccessibilityName(_ tab: WeekFitTab) -> String {
@@ -229,13 +248,6 @@ struct WeekFitBottomBar: View {
         #endif
 
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-
-        if let animation = tabSelectionAnimation {
-            withAnimation(animation) {
-                selectedTab = tab
-            }
-        } else {
-            selectedTab = tab
-        }
+        selectedTab = tab
     }
 }
