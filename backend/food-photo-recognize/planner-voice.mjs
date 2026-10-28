@@ -376,15 +376,6 @@ export function consoleDocument() {
       post({ type: 'state', value: 'speaking' });
       return;
     }
-    if (type === 'conversation.item.input_audio_transcription.completed' && event.transcript) {
-      post({ type: 'transcript', role: 'user', text: event.transcript });
-      return;
-    }
-    const assistantText = event.transcript || event.delta || '';
-    if ((type === 'response.output_audio_transcript.done' || type === 'response.audio_transcript.done') && assistantText) {
-      post({ type: 'transcript', role: 'assistant', text: assistantText });
-      return;
-    }
     if (type === 'response.done') {
       const usage = event.response && event.response.usage;
       if (usage) {
@@ -550,7 +541,6 @@ async function mintSecret(config, fetcher, uid, payload, log) {
     output_modalities: ['audio'],
     audio: {
       input: {
-        transcription: { model: 'gpt-4o-mini-transcribe', language: 'ru' },
         turn_detection: {
           type: 'server_vad',
           create_response: true,
