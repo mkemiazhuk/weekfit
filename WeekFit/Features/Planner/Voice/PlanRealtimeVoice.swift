@@ -137,7 +137,7 @@ struct PlanRealtimeClient {
         try await send(method: "GET", path: "v1/planner-voice/access", body: nil)
     }
 
-    func openSession(timeZone: String, now: Date, planningDay: String) async throws -> PlanRealtimeSessionSecret {
+    func openSession(timeZone: String, now: Date, planningDay: String, givenName: String) async throws -> PlanRealtimeSessionSecret {
         try await send(
             method: "POST",
             path: "v1/planner-voice/session",
@@ -145,6 +145,7 @@ struct PlanRealtimeClient {
                 "timeZone": timeZone,
                 "now": ISO8601DateFormatter().string(from: now),
                 "planningDay": planningDay,
+                "givenName": givenName,
             ]
         )
     }

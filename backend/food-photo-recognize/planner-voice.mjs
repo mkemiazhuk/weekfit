@@ -273,9 +273,12 @@ export function consoleDocument() {
 (() => {
   let pc = null;
   let local = null;
+  let remoteAudio = null;
   let channel = null;
   let idle = null;
   let idleMs = 75000;
+  let callNumber = 0;
+  let muted = false;
   const pending = new Map();
 
   const post = (payload) => {
@@ -295,6 +298,11 @@ export function consoleDocument() {
       local.getTracks().forEach((track) => track.stop());
       local = null;
     }
+    if (remoteAudio) {
+      remoteAudio.srcObject = null;
+      remoteAudio.remove();
+      remoteAudio = null;
+    }
     if (channel) {
       try { channel.close(); } catch (e) {}
       channel = null;
@@ -306,6 +314,7 @@ export function consoleDocument() {
   };
 
   function stop(reason) {
+    callNumber++;
     release();
     post({ type: 'state', value: 'ended', reason: reason || 'user' });
   }
@@ -321,6 +330,10 @@ export function consoleDocument() {
 
   window.weekfit = {
     stop: () => stop('user'),
+    setMuted: (value) => {
+      muted = Boolean(value);
+      if (local) local.getAudioTracks().forEach((track) => { track.enabled = !muted; });
+    },
     toolResult: (callId, output) => {
       const resolve = pending.get(callId);
       pending.delete(callId);
@@ -328,20 +341,37 @@ export function consoleDocument() {
       else sendToolOutput(callId, output);
     },
     start: async (options) => {
+      let thisCall = 0;
       try {
         release();
+        thisCall = ++callNumber;
         idleMs = Math.max(20000, Number(options.idleSeconds || 75) * 1000);
         post({ type: 'state', value: 'connecting' });
         pc = new RTCPeerConnection();
-        const audio = document.createElement('audio');
-        audio.autoplay = true;
-        audio.setAttribute('playsinline', '');
-        document.body.appendChild(audio);
-        pc.ontrack = (event) => { audio.srcObject = event.streams[0]; };
-        local = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+        remoteAudio = document.createElement('audio');
+        remoteAudio.autoplay = true;
+        remoteAudio.setAttribute('playsinline', '');
+        document.body.appendChild(remoteAudio);
+        pc.ontrack = (event) => { if (remoteAudio) remoteAudio.srcObject = event.streams[0]; };
+        const microphone = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+        if (thisCall !== callNumber || !pc) { microphone.getTracks().forEach((track) => track.stop()); return; }
+        local = microphone;
+        // Don't send locally played ringback audio to the assistant.
+        local.getAudioTracks().forEach((track) => { track.enabled = false; });
         local.getTracks().forEach((track) => pc.addTrack(track, local));
         channel = pc.createDataChannel('oai-events');
         channel.onmessage = (event) => onEvent(event.data);
+        channel.onopen = () => {
+          if (thisCall !== callNumber || !local || !channel) return;
+          post({ type: 'state', value: 'connected' });
+          // Native ringback stops on 'connected' before the microphone opens.
+          setTimeout(() => {
+            if (thisCall !== callNumber || !local || !channel || channel.readyState !== 'open') return;
+            local.getAudioTracks().forEach((track) => { track.enabled = !muted; });
+            channel.send(JSON.stringify({ type: 'response.create' }));
+            armIdle();
+          }, 180);
+        };
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         const response = await fetch('https://api.openai.com/v1/realtime/calls', {
@@ -353,10 +383,10 @@ export function consoleDocument() {
           },
         });
         if (!response.ok) throw new Error('session_connect_failed');
+        if (thisCall !== callNumber) return;
         await pc.setRemoteDescription({ type: 'answer', sdp: await response.text() });
-        armIdle();
-        post({ type: 'state', value: 'listening' });
       } catch (error) {
+        if (thisCall !== callNumber) return;
         release();
         post({ type: 'state', value: 'failed', message: 'session_connect_failed' });
       }
@@ -530,10 +560,12 @@ async function mintSecret(config, fetcher, uid, payload, log) {
   const planningDay = typeof payload?.planningDay === 'string' && validDate(payload.planningDay)
     ? payload.planningDay
     : days.today;
+  const givenName = typeof payload?.givenName === 'string' ? payload.givenName.trim().normalize('NFC') : '';
+  const safeName = /^[\p{L}\p{M}][\p{L}\p{M}'’-]{0,39}$/u.test(givenName) ? givenName : '';
   const session = {
     type: 'realtime',
     model: config.plannerVoiceModel,
-    instructions: instructions(days, planningDay),
+    instructions: instructions(days, planningDay, safeName),
     tools: [createActivityTool()],
     tool_choice: 'auto',
     // Budget covers audio and tool calls, not just the short spoken transcript.
@@ -594,12 +626,15 @@ async function mintSecret(config, fetcher, uid, payload, log) {
   };
 }
 
-function instructions(days, planningDay) {
+function instructions(days, planningDay, givenName) {
   const catalog = CATALOG.map(item => (
     `${item.catalogTitle} (${item.spoken}, ${item.defaultDurationMinutes} мин)`
   )).join('; ');
   return [
     'Ты голосовой планировщик WeekFit. Говори только по-русски, коротко, одно или два предложения.',
+    givenName
+      ? `В самом начале звонка первым поздоровайся с пользователем по имени ${givenName} и спроси, что запланировать. После приветствия не повторяй его без причины.`
+      : 'В самом начале звонка первым поздоровайся и спроси, что запланировать. После приветствия не повторяй его без причины.',
     `Сегодня ${days.today}. Завтра ${days.tomorrow}. Послезавтра ${days.dayAfterTomorrow}. Часовой пояс ${days.timeZone}.`,
     `Открытый день плана: ${planningDay}. Если человек не назвал день, передай date пустой строкой.`,
     'На час значит 60 минут. На полтора часа значит 90. В час дня значит 13:00. В час ночи значит 01:00. В двенадцать ночи значит 00:00.',
