@@ -749,6 +749,72 @@ final class PlanViewModel: ObservableObject {
         closeAddSheet()
     }
 
+    enum VoiceSaveError: Error {
+        case timeConflict
+        case persistence
+    }
+
+    /// Same fields and conflict rule as the add sheet. The caller already validated the intent.
+    func saveVoiceActivity(
+        _ request: PlanVoiceCreateRequest,
+        activities: [PlannedActivity],
+        modelContext: ModelContext,
+        activityRemindersEnabled: Bool,
+        completionCheckInsEnabled: Bool
+    ) throws {
+        guard let type = PlannerType.allCases.first(where: { $0.title == request.plannerTypeTitle }),
+              let option = type.options.first(where: { $0.title == request.catalogTitle }) else {
+            throw VoiceSaveError.persistence
+        }
+
+        if hasTimeConflict(
+            newStart: request.start,
+            durationMinutes: request.durationMinutes,
+            activities: activities,
+            newEventBlocksPlannerTime: type.blocksPlannerTime
+        ) {
+            throw VoiceSaveError.timeConflict
+        }
+
+        let activity = PlannedActivity(
+            date: request.start,
+            type: type.title.lowercased(),
+            title: option.title,
+            durationMinutes: request.durationMinutes,
+            icon: WeekFitActivityIconResolver.resolve(
+                storedIcon: option.icon,
+                title: option.title,
+                type: type.title.lowercased(),
+                imageName: option.imageName
+            ),
+            imageName: option.imageName,
+            colorRed: type.colorComponents.red,
+            colorGreen: type.colorComponents.green,
+            colorBlue: type.colorComponents.blue
+        )
+        AppReviewDemoPlannedActivityTagger.tagIfNeeded(activity)
+        modelContext.insert(activity)
+
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.delete(activity)
+            throw VoiceSaveError.persistence
+        }
+
+        scheduleNotificationsIfNeeded(
+            for: activity,
+            activityRemindersEnabled: activityRemindersEnabled,
+            completionCheckInsEnabled: completionCheckInsEnabled
+        )
+        ReviewEngagement.record(.planCreatedOrUpdated)
+        ProductAnalytics.planItemCreated(
+            itemType: PlanItemAnalyticsType(plannerTypeTitle: type.title)
+        )
+        selectedDate = calendar.startOfDay(for: request.start)
+        markPlannerDataChanged()
+    }
+
     private func handleSaveFailure(_ error: Error) {
         saveFailureMessage = WeekFitLocalizedString("planner.saveFailure.message")
         showSaveFailureAlert = true

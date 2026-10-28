@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { authenticate } from './auth.mjs';
 import { recognize, validateInput, ServiceError, FOOD_PROMPT_VERSION } from './recognition.mjs';
 import { createSummaryHandler, SUMMARY_PROMPT_VERSION } from './coach-summary.mjs';
+import { createPlannerVoiceHandler, plannerVoiceSettings } from './planner-voice.mjs';
 import { requirePaidSubscriptionJWS } from './subscription-proof.mjs';
 import { createConcurrencyGate } from './concurrency.mjs';
 import {
@@ -134,6 +135,7 @@ export function configuration(env = process.env) {
       ? env.COACH_SUMMARY_SINGLE_INSTANCE === '1'
       : env.COACH_SUMMARY_SINGLE_INSTANCE !== '0',
     summaryNow,
+    ...plannerVoiceSettings(env),
     ...asyncConfiguration(env),
   };
 }
@@ -171,6 +173,12 @@ export function createServer(config, dependencies = {}) {
   const openaiFetcher = dependencies.openaiFetcher
     ?? mockAdapter?.fetcher
     ?? (config.openAIMock ? forbidRealOpenAIFetch() : undefined);
+  const plannerVoice = createPlannerVoiceHandler(runtimeConfig, {
+    authenticate: auth,
+    fetch: dependencies.plannerVoiceFetch,
+    store: dependencies.plannerVoiceStore,
+    log: dependencies.plannerVoiceLog,
+  });
   const summary = createSummaryHandler(runtimeConfig, {
     ...dependencies,
     authenticate: auth,
@@ -332,6 +340,7 @@ export function createServer(config, dependencies = {}) {
     if (coachPath === '/v1/coach/day-summary' && (req.method === 'POST' || req.method === 'GET')) {
       return summary(req, res);
     }
+    if (await plannerVoice(req, res)) return;
 
     const requestId = randomUUID();
     const started = Date.now();
