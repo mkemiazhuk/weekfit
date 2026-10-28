@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import HealthKit
+import OSLog
 import UIKit
 
 struct WeekPlannerView: View {
@@ -87,6 +88,8 @@ private struct WeekPlannerLiveQueryView: View {
     @State private var hasPerformedInitialScroll = false
     /// User override for Completed disclosure, keyed by day start.
     @State private var completedExpandedByDayStart: [TimeInterval: Bool] = [:]
+    @State private var plannerVoiceEnabled = false
+    @State private var showPlannerVoice = false
 
 
     var body: some View {
@@ -139,10 +142,9 @@ private struct WeekPlannerLiveQueryView: View {
                     initials: userSettings.profileInitials,
                     hasProfileName: userSettings.hasProfileName,
                     showAvatar: true,
-                    avatarProminence: .subdued
-                ) {
-                    showProfile = true
-                }
+                    avatarProminence: .subdued,
+                    onAvatarTap: { showProfile = true }
+                )
             } content: {
                 plannerContent(
                     activitiesRevision: activitiesRevision,
@@ -187,6 +189,29 @@ private struct WeekPlannerLiveQueryView: View {
                 )
             )
         }
+        .sheet(isPresented: $showPlannerVoice) {
+            PlanRealtimeVoiceSheet(
+                planningDay: viewModel.selectedDate,
+                activities: plannedActivities,
+                onSave: { request in
+                    try viewModel.saveVoiceActivity(
+                        request,
+                        activities: plannedActivities,
+                        modelContext: modelContext,
+                        activityRemindersEnabled: activityRemindersEnabled,
+                        completionCheckInsEnabled: completionCheckInsEnabled
+                    )
+                }
+            )
+            .environmentObject(languageManager)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.hidden)
+            .weekFitSheetChrome(
+                cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
+                background: QuickActionSheetDesign.Color.sheetBackground(for: .activity)
+            )
+        }
+        .task { await refreshPlannerVoiceAccess() }
         .sheet(item: $selectedMeal) { meal in
             MealDetailsView(meal: meal)
                 .environmentObject(languageManager)
@@ -352,11 +377,31 @@ private struct WeekPlannerLiveQueryView: View {
         timelineItems: [PlanTimelineItem],
         selectedDayKind: PlanDayKind
     ) -> some View {
-        selectedDayCard(
-            activitiesRevision: activitiesRevision,
-            timelineItems: timelineItems,
-            selectedDayKind: selectedDayKind
-        )
+        VStack(spacing: 8) {
+            if plannerVoiceEnabled {
+                Button {
+                    showPlannerVoice = true
+                } label: {
+                    Text(WeekFitLocalizedString("planner.voice.talk"))
+                        .font(WeekFitType.secondary.weight(.semibold))
+                        .foregroundStyle(palette.textPrimary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .background {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(palette.cardSurface)
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("planner.voice.talk")
+            }
+            selectedDayCard(
+                activitiesRevision: activitiesRevision,
+                timelineItems: timelineItems,
+                selectedDayKind: selectedDayKind
+            )
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
     
@@ -958,6 +1003,23 @@ private extension WeekPlannerLiveQueryView {
     /// Today / future: plan can still be edited. Past days are read-only.
     private func allowsAgendaMutation(for date: Date) -> Bool {
         calendar.startOfDay(for: date) >= calendar.startOfDay(for: Date())
+    }
+
+    private func refreshPlannerVoiceAccess() async {
+        do {
+            let token = try await PhotoFoodFirebaseAuth.idToken()
+            let access = try await PlanRealtimeClient(
+                baseURL: WeekFitCloudAPI.foodPhotoBaseURL,
+                token: token
+            ).access()
+            plannerVoiceEnabled = access.enabled
+            #if DEBUG
+            Logger(subsystem: "com.weekfit.app", category: "PlannerVoice")
+                .info("accountId=\(access.accountId, privacy: .public) enabled=\(access.enabled, privacy: .public)")
+            #endif
+        } catch {
+            plannerVoiceEnabled = false
+        }
     }
 
     // MARK: - Bottom fade (identical to Meals)

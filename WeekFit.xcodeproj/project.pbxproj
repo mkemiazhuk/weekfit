@@ -604,6 +604,8 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "WeekFit uses your health and activity data to personalize your daily plan.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "WeekFit reads workouts and activity from Apple Health to keep your plan accurate. It does not write workouts to Apple Health.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "WeekFit uses your approximate location to show local weather and adjust Night Comfort to local sunset.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "WeekFit uses the microphone so you can add a planned activity by voice.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "WeekFit turns your voice into a planned activity. Audio is recognized on this iPhone.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -656,6 +658,8 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "WeekFit uses your health and activity data to personalize your daily plan.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "WeekFit reads workouts and activity from Apple Health to keep your plan accurate. It does not write workouts to Apple Health.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "WeekFit uses your approximate location to show local weather and adjust Night Comfort to local sunset.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "WeekFit uses the microphone so you can add a planned activity by voice.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "WeekFit turns your voice into a planned activity. Audio is recognized on this iPhone.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
