@@ -13,15 +13,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         case failed(String)
     }
 
-    struct Line: Identifiable, Equatable {
-        enum Role: Equatable { case person, assistant, result }
-        let id = UUID()
-        let role: Role
-        let text: String
-    }
-
     @Published private(set) var phase: Phase = .connecting
-    @Published private(set) var lines: [Line] = []
     @Published private(set) var webView: WKWebView?
 
     var planningDay = Date()
@@ -60,10 +52,6 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         switch type {
         case "state":
             applyState(payload)
-        case "transcript":
-            guard let text = payload["text"] as? String, !text.isEmpty else { return }
-            let role: Line.Role = (payload["role"] as? String) == "user" ? .person : .assistant
-            lines.append(Line(role: role, text: text))
         case "tool":
             guard let callId = payload["callId"] as? String else { return }
             let arguments = payload["arguments"] as? String ?? "{}"
@@ -144,10 +132,6 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             phase = .acting
         case "ended":
             guard !ended else { return }
-            let idle = (payload["reason"] as? String) == "idle"
-            if idle {
-                lines.append(Line(role: .result, text: WeekFitLocalizedString("planner.voice.idleEnded")))
-            }
             end()
         case "failed":
             phase = .failed(WeekFitLocalizedString("planner.voice.sessionFailed"))
@@ -240,9 +224,6 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         case .reject:
             return planRealtimeToolReply(action: action, speak: nil)
         case .alreadyPresent:
-            if let speak = commit.speak {
-                lines.append(Line(role: .result, text: speak))
-            }
             return planRealtimeToolReply(action: action, speak: commit.speak)
         case .insert:
             guard let item = commit.activity,
@@ -260,9 +241,6 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             do {
                 try onSave(request)
                 applied.insert(key)
-                if let speak = commit.speak {
-                    lines.append(Line(role: .result, text: speak))
-                }
                 return planRealtimeToolReply(action: .insert, speak: commit.speak)
             } catch {
                 return planRealtimeToolReply(action: .reject("save_failed"), speak: nil)
@@ -330,8 +308,23 @@ struct PlanRealtimeVoiceSheet: View {
 
         VStack(spacing: 0) {
             header
-            status
-            transcript
+            Spacer()
+            Image(systemName: statusSymbol)
+                .font(.system(size: 56, weight: .medium))
+                .foregroundStyle(palette.textPrimary)
+                .frame(width: 136, height: 136)
+                .background {
+                    Circle().fill(palette.cardSurface)
+                }
+                .accessibilityLabel(statusText)
+                .accessibilityIdentifier("planner.voice.realtime.status")
+            if case .failed(let message) = controller.phase {
+                Text(message)
+                    .font(WeekFitType.secondary.weight(.semibold))
+                    .foregroundStyle(palette.textSecondary)
+                    .padding(.top, 20)
+            }
+            Spacer()
             if let webView = controller.webView {
                 PlanRealtimeWebHost(webView: webView)
                     .frame(height: 1)
@@ -353,46 +346,6 @@ struct PlanRealtimeVoiceSheet: View {
             .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)
             .padding(.top, 18)
             .padding(.bottom, 8)
-    }
-
-    private var status: some View {
-        Text(statusText)
-            .font(WeekFitType.secondary.weight(.semibold))
-            .foregroundStyle(palette.textSecondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)
-            .accessibilityIdentifier("planner.voice.realtime.status")
-    }
-
-    private var transcript: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 10) {
-                    ForEach(controller.lines) { line in
-                        Text(line.text)
-                            .font(WeekFitType.body)
-                            .foregroundStyle(palette.textPrimary)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .background {
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .fill(line.role == .person
-                                          ? WeekFitTheme.workout.opacity(palette.isLight ? 0.16 : 0.28)
-                                          : palette.cardSurface)
-                            }
-                            .frame(maxWidth: .infinity, alignment: line.role == .person ? .trailing : .leading)
-                    }
-                    Color.clear.frame(height: 1).id("bottom")
-                }
-                .padding(.horizontal, WeekFitScreenLayout.horizontalPadding)
-                .padding(.vertical, 12)
-            }
-            .onChange(of: controller.lines.count) { _, _ in
-                withAnimation(.easeOut(duration: 0.2)) {
-                    proxy.scrollTo("bottom", anchor: .bottom)
-                }
-            }
-        }
     }
 
     private var endButton: some View {
@@ -430,6 +383,17 @@ struct PlanRealtimeVoiceSheet: View {
             return WeekFitLocalizedString("planner.voice.state.ended")
         case .failed(let text):
             return text
+        }
+    }
+
+    private var statusSymbol: String {
+        switch controller.phase {
+        case .connecting: return "mic"
+        case .listening: return "waveform"
+        case .speaking: return "speaker.wave.2.fill"
+        case .acting: return "ellipsis.circle"
+        case .ended: return "checkmark.circle"
+        case .failed: return "exclamationmark.circle"
         }
     }
 }
