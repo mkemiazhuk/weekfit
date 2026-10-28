@@ -164,6 +164,10 @@ struct QuickFoodLogSheet: View {
                 onClose: onClose
             )
 
+            photoCaptureActions
+                .padding(.horizontal, 18)
+                .padding(.bottom, 12)
+
             QuickActionSheetSegmentedControl(
                 segments: [
                     QuickActionSheetSegment(
@@ -185,10 +189,6 @@ struct QuickFoodLogSheet: View {
             )
             .padding(.horizontal, 18)
             .padding(.bottom, 10)
-
-            photoCaptureActions
-                .padding(.horizontal, 18)
-                .padding(.bottom, 14)
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
