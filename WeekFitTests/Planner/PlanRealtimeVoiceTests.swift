@@ -18,9 +18,19 @@ final class PlanRealtimeVoiceTests: XCTestCase {
             error: "time_conflict"
         )
         XCTAssertEqual(rejected, .reject("time_conflict"))
-        let reply = planRealtimeToolReply(action: rejected, speak: "Добавил теннис на завтра, с 13 до 14.")
+        let conflict = planRealtimeToolReply(action: rejected, speak: "Это время уже занято.")
+        XCTAssertFalse(conflict.ok)
+        XCTAssertFalse(conflict.saved)
+        XCTAssertEqual(conflict.speak, "Это время уже занято.")
+
+        let failed = planRealtimeLocalAction(
+            saved: false,
+            alreadyApplied: false,
+            alreadyOnPlan: false,
+            error: "save_failed"
+        )
+        let reply = planRealtimeToolReply(action: failed, speak: "Добавил теннис на завтра, с 13 до 14.")
         XCTAssertFalse(reply.ok)
-        XCTAssertFalse(reply.saved)
         XCTAssertNil(reply.speak)
     }
 

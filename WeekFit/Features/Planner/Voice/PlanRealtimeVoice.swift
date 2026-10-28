@@ -82,7 +82,10 @@ nonisolated func planRealtimeToolReply(
     case .insert, .alreadyPresent:
         return PlanRealtimeToolReply(ok: true, saved: true, speak: speak, error: nil)
     case .reject(let error):
-        return PlanRealtimeToolReply(ok: false, saved: false, speak: nil, error: error)
+        let spoken = error == "time_conflict"
+            || error == "start_time_required"
+            || error == "unknown_activity"
+        return PlanRealtimeToolReply(ok: false, saved: false, speak: spoken ? speak : nil, error: error)
     }
 }
 
@@ -137,7 +140,13 @@ struct PlanRealtimeClient {
         try await send(method: "GET", path: "v1/planner-voice/access", body: nil)
     }
 
-    func openSession(timeZone: String, now: Date, planningDay: String, givenName: String) async throws -> PlanRealtimeSessionSecret {
+    func openSession(
+        timeZone: String,
+        now: Date,
+        planningDay: String,
+        givenName: String,
+        language: String
+    ) async throws -> PlanRealtimeSessionSecret {
         try await send(
             method: "POST",
             path: "v1/planner-voice/session",
@@ -146,6 +155,7 @@ struct PlanRealtimeClient {
                 "now": ISO8601DateFormatter().string(from: now),
                 "planningDay": planningDay,
                 "givenName": givenName,
+                "language": language,
             ]
         )
     }

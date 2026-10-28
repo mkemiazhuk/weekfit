@@ -23,6 +23,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     var planningDay = Date()
     var activities: [PlannedActivity] = []
     var onSave: ((PlanVoiceCreateRequest) throws -> Void)?
+    var languageCode = "ru"
 
     private let bridge = PlanRealtimeScriptBridge()
     private var gate = PlanRealtimeCallGate()
@@ -30,12 +31,14 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     private var secret: PlanRealtimeSessionSecret?
     private var started = false
     private var ended = false
+    private var callLanguage = "ru"
     private let calendar = Calendar.current
     private let ringback = PlanVoiceRingback()
 
     func begin() {
         guard webView == nil, !started else { return }
         started = true
+        callLanguage = languageCode
         phase = .connecting
         ringback.start()
         Task { await connect() }
@@ -88,7 +91,8 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                 timeZone: calendar.timeZone.identifier,
                 now: Date(),
                 planningDay: planRealtimeDayString(planningDay, calendar: calendar),
-                givenName: ProfileService.resolvedGivenName()
+                givenName: ProfileService.resolvedGivenName(),
+                language: callLanguage
             )
             guard !ended else { return }
             self.secret = secret
@@ -218,6 +222,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             "timeZone": calendar.timeZone.identifier,
             "now": ISO8601DateFormatter().string(from: Date()),
             "planningDay": planRealtimeDayString(planningDay, calendar: calendar),
+            "language": callLanguage,
             "existing": planRealtimeBusyIntervals(activities, calendar: calendar),
         ]
         do {
@@ -245,7 +250,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         )
         switch action {
         case .reject:
-            return planRealtimeToolReply(action: action, speak: nil)
+            return planRealtimeToolReply(action: action, speak: commit.speak)
         case .alreadyPresent:
             return planRealtimeToolReply(action: action, speak: commit.speak)
         case .insert:
@@ -381,7 +386,12 @@ struct PlanRealtimeVoiceSheet: View {
 
     var body: some View {
         let _ = languageManager.selectedLanguage
-        let _ = controller.update(planningDay: planningDay, activities: activities, onSave: onSave)
+        let _ = controller.update(
+            planningDay: planningDay,
+            activities: activities,
+            onSave: onSave,
+            languageCode: languageManager.selectedLanguage.rawValue
+        )
 
         VStack(spacing: 0) {
             header
@@ -407,6 +417,9 @@ struct PlanRealtimeVoiceSheet: View {
         .accessibilityIdentifier("planner.voice.realtime")
         .onAppear { controller.begin() }
         .onDisappear { controller.end() }
+        .onChange(of: controller.phase) { _, phase in
+            if phase == .ended { dismiss() }
+        }
     }
 
     private var header: some View {
@@ -514,11 +527,13 @@ extension PlanRealtimeSessionController {
     func update(
         planningDay: Date,
         activities: [PlannedActivity],
-        onSave: @escaping (PlanVoiceCreateRequest) throws -> Void
+        onSave: @escaping (PlanVoiceCreateRequest) throws -> Void,
+        languageCode: String
     ) {
         self.planningDay = planningDay
         self.activities = activities
         self.onSave = onSave
+        self.languageCode = languageCode
     }
 }
 

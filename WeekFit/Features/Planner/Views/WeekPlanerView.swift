@@ -143,6 +143,11 @@ private struct WeekPlannerLiveQueryView: View {
                     hasProfileName: userSettings.hasProfileName,
                     showAvatar: true,
                     avatarProminence: .subdued,
+                    trailing: {
+                        if plannerVoiceEnabled {
+                            plannerVoiceCallButton
+                        }
+                    },
                     onAvatarTap: { showProfile = true }
                 )
             } content: {
@@ -377,32 +382,35 @@ private struct WeekPlannerLiveQueryView: View {
         timelineItems: [PlanTimelineItem],
         selectedDayKind: PlanDayKind
     ) -> some View {
-        VStack(spacing: 8) {
-            if plannerVoiceEnabled {
-                Button {
-                    showPlannerVoice = true
-                } label: {
-                    Text(WeekFitLocalizedString("planner.voice.talk"))
-                        .font(WeekFitType.secondary.weight(.semibold))
-                        .foregroundStyle(palette.textPrimary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                        .background {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(palette.cardSurface)
-                        }
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("planner.voice.talk")
-            }
-            selectedDayCard(
-                activitiesRevision: activitiesRevision,
-                timelineItems: timelineItems,
-                selectedDayKind: selectedDayKind
-            )
-        }
+        selectedDayCard(
+            activitiesRevision: activitiesRevision,
+            timelineItems: timelineItems,
+            selectedDayKind: selectedDayKind
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private var plannerVoiceCallButton: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            showPlannerVoice = true
+        } label: {
+            Image(systemName: "phone.fill")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(palette.textPrimary.opacity(0.92))
+                .frame(width: 40, height: 40)
+                .background {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(palette.cardSurface)
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(palette.textPrimary.opacity(palette.isLight ? 0.10 : 0.14), lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(WeekFitLocalizedString("planner.voice.talk"))
+        .accessibilityIdentifier("planner.voice.talk")
     }
     
     func deleteActivity(_ activity: PlannedActivity) {

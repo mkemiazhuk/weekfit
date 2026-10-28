@@ -1,39 +1,49 @@
 import { createHash } from 'node:crypto';
 import { ServiceError } from './recognition.mjs';
+import {
+  askActivityLine,
+  askTimeLine,
+  conflictLine,
+  confirmationLine,
+  greetingLine,
+  plannerVoiceLanguage,
+  plannerVoicePhrases,
+  saveFailedLine,
+  spokenActivityName,
+} from './planner-voice-copy.mjs';
 
 const DEFAULT_MODEL = 'gpt-realtime-2.1-mini';
 const VOICES = new Set(['marin', 'cedar', 'alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse']);
 
 /** Names, defaults, and spoken forms match the on-device planner catalog. Meals stay out. */
 const CATALOG = [
-  ['Cycling', 'Workout', 45, 'велосипед'],
-  ['Running', 'Workout', 45, 'бег'],
-  ['Swimming', 'Workout', 45, 'плавание'],
-  ['Hiking', 'Workout', 45, 'хайкинг'],
-  ['Snowboarding', 'Workout', 45, 'сноуборд'],
-  ['Alpine Skiing', 'Workout', 45, 'лыжи'],
-  ['Upper Body', 'Workout', 45, 'верх тела'],
-  ['Core', 'Workout', 45, 'кор'],
-  ['Lower Body', 'Workout', 45, 'низ тела'],
-  ['Full Body', 'Workout', 45, 'все тело'],
-  ['Tennis', 'Workout', 45, 'теннис'],
-  ['Padel', 'Workout', 45, 'падел'],
-  ['Squash', 'Workout', 45, 'сквош'],
-  ['High Intensity Interval Training', 'Workout', 45, 'интервальную'],
-  ['Stretching', 'Recovery', 20, 'растяжку'],
-  ['Walk', 'Recovery', 20, 'прогулку'],
-  ['Sauna', 'Recovery', 20, 'сауну'],
-  ['Yoga', 'Recovery', 20, 'йогу'],
-  ['Breathing', 'Recovery', 20, 'дыхание'],
-  ['Drink Water', 'Habit', 15, 'воду'],
-  ['Sleep Routine', 'Habit', 15, 'сон'],
-  ['No Screens', 'Habit', 15, 'без экрана'],
-  ['Morning Routine', 'Habit', 15, 'утреннюю рутину'],
-].map(([catalogTitle, plannerTypeTitle, defaultDurationMinutes, spoken]) => ({
+  ['Cycling', 'Workout', 45],
+  ['Running', 'Workout', 45],
+  ['Swimming', 'Workout', 45],
+  ['Hiking', 'Workout', 45],
+  ['Snowboarding', 'Workout', 45],
+  ['Alpine Skiing', 'Workout', 45],
+  ['Upper Body', 'Workout', 45],
+  ['Core', 'Workout', 45],
+  ['Lower Body', 'Workout', 45],
+  ['Full Body', 'Workout', 45],
+  ['Tennis', 'Workout', 45],
+  ['Padel', 'Workout', 45],
+  ['Squash', 'Workout', 45],
+  ['High Intensity Interval Training', 'Workout', 45],
+  ['Stretching', 'Recovery', 20],
+  ['Walk', 'Recovery', 20],
+  ['Sauna', 'Recovery', 20],
+  ['Yoga', 'Recovery', 20],
+  ['Breathing', 'Recovery', 20],
+  ['Drink Water', 'Habit', 15],
+  ['Sleep Routine', 'Habit', 15],
+  ['No Screens', 'Habit', 15],
+  ['Morning Routine', 'Habit', 15],
+].map(([catalogTitle, plannerTypeTitle, defaultDurationMinutes]) => ({
   catalogTitle,
   plannerTypeTitle,
   defaultDurationMinutes,
-  spoken,
   blocks: true,
 }));
 
@@ -98,6 +108,7 @@ export function calendarContext(now, timeZone) {
 }
 
 export function commitPlannerActivity(store, uid, body, now = new Date()) {
+  const language = plannerVoiceLanguage(body?.language);
   const key = typeof body?.idempotencyKey === 'string' ? body.idempotencyKey.trim() : '';
   if (!/^[A-Za-z0-9_-]{8,80}$/.test(key)) {
     return reject(400, 'invalid_idempotency_key');
@@ -108,7 +119,7 @@ export function commitPlannerActivity(store, uid, body, now = new Date()) {
   }
 
   const item = BY_TITLE.get(body?.catalogTitle);
-  if (!item) return reject(422, 'unknown_activity');
+  if (!item) return reject(422, 'unknown_activity', askActivityLine(language));
 
   const timeZone = typeof body.timeZone === 'string' ? body.timeZone : '';
   if (!validTimeZone(timeZone)) return reject(422, 'invalid_timezone');
@@ -119,7 +130,7 @@ export function commitPlannerActivity(store, uid, body, now = new Date()) {
   }
   const startTime = typeof body.startTime === 'string' ? body.startTime.trim() : '';
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime)) {
-    return reject(422, 'start_time_required');
+    return reject(422, 'start_time_required', askTimeLine(language));
   }
 
   let duration = body.durationMinutes;
@@ -139,7 +150,7 @@ export function commitPlannerActivity(store, uid, body, now = new Date()) {
   const end = new Date(start.getTime() + duration * 60_000);
   const conflictWindowEnd = new Date(start.getTime() + Math.max(duration, 15) * 60_000);
   if (item.blocks && conflicts(start, conflictWindowEnd, body.existing)) {
-    return reject(409, 'time_conflict');
+    return reject(409, 'time_conflict', conflictLine(language));
   }
 
   const activity = {
@@ -162,7 +173,7 @@ export function commitPlannerActivity(store, uid, body, now = new Date()) {
     saved: true,
     duplicate: false,
     activity,
-    speak: speakLine(item.spoken, activity, days),
+    speak: confirmationLine(item.catalogTitle, activity, days, language),
   };
   store.putIfAbsent(uid, key, saved);
   return { status: 200, body: saved };
@@ -279,6 +290,7 @@ export function consoleDocument() {
   let idleMs = 75000;
   let callNumber = 0;
   let muted = false;
+  let hangup = false;
   const pending = new Map();
 
   const post = (payload) => {
@@ -416,7 +428,15 @@ export function consoleDocument() {
           outputTokens: usage.output_tokens || usage.output_token_count || 0,
         });
       }
+      if (hangup) {
+        setTimeout(() => stop('goodbye'), 700);
+        return;
+      }
       post({ type: 'state', value: 'listening' });
+      return;
+    }
+    if (type === 'response.function_call_arguments.done' && event.name === 'end_call') {
+      hangup = true;
       return;
     }
     if (type === 'response.function_call_arguments.done' && event.name === 'create_activity') {
@@ -434,8 +454,10 @@ export function consoleDocument() {
 </html>`;
 }
 
-function reject(status, error) {
-  return { status, body: { ok: false, saved: false, error } };
+function reject(status, error, speak) {
+  const body = { ok: false, saved: false, error };
+  if (speak) body.speak = speak;
+  return { status, body };
 }
 
 function conflicts(start, end, existing) {
@@ -447,25 +469,6 @@ function conflicts(start, end, existing) {
     if (Number.isNaN(otherStart.getTime()) || Number.isNaN(otherEnd.getTime())) return false;
     return start < otherEnd && end > otherStart;
   });
-}
-
-function speakLine(spoken, activity, days) {
-  const day = activity.localDate === days.today
-    ? 'сегодня'
-    : activity.localDate === days.tomorrow
-      ? 'завтра'
-      : activity.localDate === days.dayAfterTomorrow
-        ? 'послезавтра'
-        : activity.localDate;
-  const start = clockWords(activity.localStart);
-  const end = clockWords(activity.localEnd);
-  return `Добавил ${spoken} на ${day}, с ${start} до ${end}.`;
-}
-
-function clockWords(stamp) {
-  const time = stamp.slice(11, 16);
-  const [hour, minute] = time.split(':').map(Number);
-  return minute === 0 ? String(hour) : `${hour}:${String(minute).padStart(2, '0')}`;
 }
 
 function isoDate(date, timeZone) {
@@ -562,11 +565,12 @@ async function mintSecret(config, fetcher, uid, payload, log) {
     : days.today;
   const givenName = typeof payload?.givenName === 'string' ? payload.givenName.trim().normalize('NFC') : '';
   const safeName = /^[\p{L}\p{M}][\p{L}\p{M}'’-]{0,39}$/u.test(givenName) ? givenName : '';
+  const language = plannerVoiceLanguage(payload?.language);
   const session = {
     type: 'realtime',
     model: config.plannerVoiceModel,
-    instructions: instructions(days, planningDay, safeName),
-    tools: [createActivityTool()],
+    instructions: instructions(days, planningDay, safeName, language),
+    tools: [createActivityTool(), endCallTool()],
     tool_choice: 'auto',
     // Budget covers audio and tool calls, not just the short spoken transcript.
     max_output_tokens: 2048,
@@ -626,23 +630,29 @@ async function mintSecret(config, fetcher, uid, payload, log) {
   };
 }
 
-function instructions(days, planningDay, givenName) {
+function instructions(days, planningDay, givenName, language) {
+  const phrases = plannerVoicePhrases(language);
   const catalog = CATALOG.map(item => (
-    `${item.catalogTitle} (${item.spoken}, ${item.defaultDurationMinutes} мин)`
+    `${item.catalogTitle} = ${spokenActivityName(item.catalogTitle, language)} (${item.defaultDurationMinutes} min)`
   )).join('; ');
+  const nameLine = givenName
+    ? `Say the name ${givenName} exactly as written, with natural ${phrases.englishName} pronunciation. Do not translate, spell, or replace the name.`
+    : 'No name was provided. Do not invent one.';
   return [
-    'Ты голосовой планировщик WeekFit. Говори только по-русски, коротко, одно или два предложения.',
-    givenName
-      ? `В самом начале звонка первым поздоровайся с пользователем по имени ${givenName} и спроси, что запланировать. После приветствия не повторяй его без причины.`
-      : 'В самом начале звонка первым поздоровайся и спроси, что запланировать. После приветствия не повторяй его без причины.',
-    `Сегодня ${days.today}. Завтра ${days.tomorrow}. Послезавтра ${days.dayAfterTomorrow}. Часовой пояс ${days.timeZone}.`,
-    `Открытый день плана: ${planningDay}. Если человек не назвал день, передай date пустой строкой.`,
-    'На час значит 60 минут. На полтора часа значит 90. В час дня значит 13:00. В час ночи значит 01:00. В двенадцать ночи значит 00:00.',
-    `Можно создать только активность из каталога: ${catalog}.`,
-    'Вызови create_activity, когда известны название и время начала. Если человек не назвал длительность, передай durationMinutes 0.',
-    'Если нет времени начала, спроси «Во сколько?» и не вызывай инструмент. Не проси отдельное подтверждение, когда данных достаточно.',
-    'Фразу про успешное добавление произноси только если инструмент вернул ok true и saved true. Скажи поле speak дословно.',
-    'Если ok не true, скажи, что сохранить не удалось, и предложи повторить. Не говори, что активность уже в плане.',
+    `You are the WeekFit voice planner. Speak only in ${phrases.englishName}.`,
+    `Use natural ${phrases.englishName} pronunciation and a normal pace. Say one short sentence, then stop. Never repeat yourself, the user's words, or a question you already asked. Do not ask what else to plan.`,
+    nameLine,
+    `The app language is ${language}. Do not choose the language from the device or the time zone.`,
+    `Your first words must be exactly: ${greetingLine(language, givenName)} Do not repeat that greeting later.`,
+    `Today is ${days.today}. Tomorrow is ${days.tomorrow}. The day after tomorrow is ${days.dayAfterTomorrow}. Time zone: ${days.timeZone}. Calculate dates and times in this time zone.`,
+    `The open plan day is ${planningDay}. If the person does not name a day, pass date as an empty string.`,
+    'One hour means 60 minutes. An hour and a half means 90. One in the afternoon means 13:00. One at night means 01:00. Midnight means 00:00.',
+    `Create only a catalog activity. Pass the English catalogTitle, and say the activity in ${phrases.englishName}. Catalog: ${catalog}.`,
+    'Call create_activity once the activity and start time are known. If the person did not say a duration, pass durationMinutes 0. Do not ask for an extra confirmation when the data is enough.',
+    `If the start time is missing, ask exactly "${phrases.askTime}" and do not call the tool.`,
+    'When the tool returns a speak field, say that field once and stop. Do not paraphrase it and do not add a question. Say the activity was added only when ok is true and saved is true.',
+    `If the tool returns no speak field, say exactly: ${saveFailedLine(language)}`,
+    `When the person is finished and is not naming another activity or time, say exactly "${phrases.goodbye}" and call end_call in that same response. Do not wait for a hang-up button. Treat these as done: ${phrases.closing}.${language === 'ru' ? '' : ' Also treat Russian «всё», «всё, спасибо», «спасибо», «до свидания», and «пока» as done.'}`,
   ].join('\n');
 }
 
@@ -650,17 +660,31 @@ function createActivityTool() {
   return {
     type: 'function',
     name: 'create_activity',
-    description: 'Создать одну активность в текущем плане. Не подтверждать успех до ответа инструмента.',
+    description: 'Create one activity in the current plan. Do not confirm success before the tool result.',
     parameters: {
       type: 'object',
       additionalProperties: false,
       properties: {
         catalogTitle: { type: 'string', enum: CATALOG.map(item => item.catalogTitle) },
-        date: { type: 'string', description: 'YYYY-MM-DD в часовом поясе пользователя или пустая строка, если день не назван.' },
-        startTime: { type: 'string', description: 'HH:mm, 24 часа. Пустая строка, если время не названо.' },
-        durationMinutes: { type: 'integer', description: 'Минуты. 0, если человек не назвал длительность.' },
+        date: { type: 'string', description: 'YYYY-MM-DD in the user time zone, or an empty string when the day was not spoken.' },
+        startTime: { type: 'string', description: 'HH:mm, 24-hour. Empty string when the time was not spoken.' },
+        durationMinutes: { type: 'integer', description: 'Minutes. 0 when the person did not say a duration.' },
       },
       required: ['catalogTitle', 'date', 'startTime', 'durationMinutes'],
+    },
+  };
+}
+
+function endCallTool() {
+  return {
+    type: 'function',
+    name: 'end_call',
+    description: 'Hang up after a short goodbye when the person is done, says thanks, or says goodbye. Do not use this while they are still planning.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {},
+      required: [],
     },
   };
 }
