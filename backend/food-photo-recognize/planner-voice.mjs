@@ -661,7 +661,7 @@ function instructions(days, planningDay, givenName, language, plan = []) {
     : 'No name was provided. Do not invent one.';
   return [
     `You are the WeekFit voice planner. Speak only in ${phrases.englishName}.`,
-    `Use natural ${phrases.englishName} pronunciation and a normal pace. Say one short sentence, then stop. Never repeat yourself, the user's words, or a question you already asked. Do not ask what else to plan.`,
+    `Use natural ${phrases.englishName} pronunciation and a normal pace. Say one short sentence, then stop. Never repeat yourself, the user's words, or a question you already asked. Do not add a question after a tool result.`,
     nameLine,
     `The app language is ${language}. Do not choose the language from the device or the time zone.`,
     `As soon as the call connects, speak first. Your first words must be exactly: ${greetingLine(language, givenName)} Do not wait for the user and do not repeat that greeting later.`,
@@ -679,7 +679,9 @@ function instructions(days, planningDay, givenName, language, plan = []) {
       : 'No activities were on the plan for today or tomorrow when the call started. Use list_plan before claiming the plan is empty.',
     'When the tool returns a speak field, say that field once and stop. Do not paraphrase it and do not add a question. Say the activity was added only when create_activity returns ok true and saved true. For list_plan, update_activity, and delete_activity, say the speak field and do not say that something was added.',
     `If the tool returns no speak field, say exactly: ${saveFailedLine(language)}`,
-    `When the person is finished and is not naming another activity or time, say exactly "${phrases.goodbye}" and call end_call in that same response. Do not wait for a hang-up button. Treat these as done: ${phrases.closing}.${language === 'ru' ? '' : ' Also treat Russian «всё», «всё, спасибо», «спасибо», «до свидания», and «пока» as done.'}`,
+    'Never call end_call for an acknowledgement. These are not a goodbye and do not mean the person is finished: alright, okay, ok, sure, right, thanks, thank you, спасибо, хорошо, ладно, ясно, понятно.',
+    `When the person sounds finished or says one of those, ask exactly once: "${phrases.anythingElse}" Do not call end_call in that response. If they then name another activity or time, help with that and do not ask again until they stop.`,
+    `Call end_call only after they confirm there is nothing else. Confirmations: ${phrases.closing}.${language === 'ru' ? '' : ' Also treat Russian «нет», «больше ничего», «ничего», «это всё», «всё», «до свидания», and «пока» as confirmation.'} In that same response say exactly "${phrases.goodbye}" and call end_call. Do not wait for a hang-up button.`,
   ].join('\n');
 }
 
@@ -758,7 +760,7 @@ function endCallTool() {
   return {
     type: 'function',
     name: 'end_call',
-    description: 'Hang up after a short goodbye when the person is done, says thanks, or says goodbye. Do not use this while they are still planning.',
+    description: 'Hang up only after the person confirmed there is nothing else, in the same response as the goodbye. Do not use this for alright, okay, thanks, or спасибо.',
     parameters: {
       type: 'object',
       additionalProperties: false,
