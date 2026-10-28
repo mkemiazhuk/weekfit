@@ -372,9 +372,9 @@ test('routes enforce the allowlist and never return the server key', async () =>
     assert.equal(sent.session.audio.input.transcription, undefined);
     assert.deepEqual(sent.session.output_modalities, ['audio']);
     assert.deepEqual(sent.session.tools.map(tool => tool.name), ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'end_call']);
-    assert.match(sent.session.instructions, /Never repeat yourself/);
+    assert.match(sent.session.instructions, /do not stay silent/);
     assert.match(sent.session.instructions, /До свидания!/);
-    assert.match(sent.session.instructions, /Нужно ещё что-нибудь\?/);
+    assert.match(sent.session.instructions, /Чем ещё могу помочь\?/);
     assert.match(sent.session.instructions, /Never call end_call for an acknowledgement/);
     assert.match(sent.session.instructions, /alright/);
     assert.equal(sent.session.audio.input.turn_detection.interrupt_response, true);
