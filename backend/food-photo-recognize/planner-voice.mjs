@@ -545,7 +545,8 @@ async function mintSecret(config, fetcher, uid, payload, log) {
     instructions: instructions(days, planningDay),
     tools: [createActivityTool()],
     tool_choice: 'auto',
-    max_output_tokens: 160,
+    // Budget covers audio and tool calls, not just the short spoken transcript.
+    max_output_tokens: 2048,
     output_modalities: ['audio'],
     audio: {
       input: {
