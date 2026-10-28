@@ -93,7 +93,7 @@ test('cannot generate before 20:00 or backdate requests',async t=>{let calls=0;c
 test('next local day permits one new request',async t=>{let calls=0;const dir=await directory(t);const generate=async()=>{calls++;return {result:result()};};const a=await server(t,dir,generate);await a.post(input());await new Promise(r=>a.s.close(r));const b=await server(t,dir,generate,{dependencies:{summaryNow:()=>new Date('2026-10-13T18:00:00Z')}});assert.equal((await b.post({...input(),day:'2026-10-13'})).status,200);assert.equal(calls,2);});
 test('storage misconfiguration fails closed without AI',async t=>{let calls=0;const {post}=await server(t,'',async()=>{calls++;return {result:result()};});assert.equal((await post(input())).status,503);assert.equal(calls,0);});
 test('concurrency limit is acquired before asynchronous reservation',async t=>{let running=0,peak=0;const {post}=await server(t,await directory(t),async()=>{running++;peak=Math.max(peak,running);await new Promise(r=>setTimeout(r,40));running--;return {result:result()};},{config:{summaryConcurrency:1}});const rs=await Promise.all([post(input(),'Bearer a'),post(input(),'Bearer b'),post(input(),'Bearer c')]);assert.equal(peak,1);assert.equal(rs.filter(r=>r.status===200).length,1);assert.equal(rs.filter(r=>r.status===503).length,2);});
-test('structured output has bounded tokens, no photo and no storage',async()=>{let sent;const r=await generateSummary(validateDay(input()),{apiKey:'test',summaryModel:'test-model'},async(url,opts)=>{sent=JSON.parse(opts.body);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(result())}]}]})};});assert.equal(sent.store,false);assert.equal(sent.max_output_tokens,8192);assert.equal(sent.text.format.strict,true);assert.equal(sent.reasoning,undefined);assert.equal(r.result.headline,'Итог дня');assert.match(sent.instructions,/40.65 words/);assert.equal(SUMMARY_PROMPT_VERSION,14);assert.match(sent.instructions,/personal activity, sleep and recovery coach/);assert.match(sent.instructions,/LANGUAGE LOCK/);assert.match(sent.instructions,/Russian/);assert.match(sent.instructions,/SEVEN days/);assert.match(sent.instructions,/Hard bans/);assert.match(sent.instructions,/At most ONE next-step/);assert.match(sent.instructions,/ready for load/);assert.match(sent.instructions,/single HRV/);assert.match(sent.instructions,/active calories/);assert.match(sent.instructions,/SAME cautious conclusion/);assert.match(sent.instructions,/several days/);assert.match(sent.instructions,/principal personal fitness assistant/);assert.match(sent.instructions,/30 years of experience/);assert.match(sent.instructions,/silently verify/);assert.match(sent.instructions,/Never claim professional credentials/);});
+test('structured output has bounded tokens, no photo and no storage',async()=>{let sent;const r=await generateSummary(validateDay(input()),{apiKey:'test',summaryModel:'test-model'},async(url,opts)=>{sent=JSON.parse(opts.body);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(result())}]}]})};});assert.equal(sent.store,false);assert.equal(sent.max_output_tokens,8192);assert.equal(sent.text.format.strict,true);assert.equal(sent.reasoning,undefined);assert.equal(r.result.headline,'Итог дня');assert.match(sent.instructions,/25.45 words/);assert.equal(SUMMARY_PROMPT_VERSION,15);assert.match(sent.instructions,/personal activity, sleep and recovery coach/);assert.match(sent.instructions,/LANGUAGE LOCK/);assert.match(sent.instructions,/Russian/);assert.match(sent.instructions,/SEVEN days/);assert.match(sent.instructions,/Hard bans/);assert.match(sent.instructions,/At most ONE next-step/);assert.match(sent.instructions,/ready for load/);assert.match(sent.instructions,/single HRV/);assert.match(sent.instructions,/active calories/);assert.match(sent.instructions,/SAME cautious conclusion/);assert.match(sent.instructions,/several days/);assert.match(sent.instructions,/one recommendation for this evening/);assert.match(sent.instructions,/Do not recite/);assert.match(sent.instructions,/silently verify/);assert.match(sent.instructions,/Never claim professional credentials/);});
 test('empty facts return fallback without calling the provider',async t=>{
   let calls=0;
   const {post}=await server(t,await directory(t),async()=>{calls++;return {result:result()};},{
@@ -104,7 +104,7 @@ test('empty facts return fallback without calling the provider',async t=>{
   assert.equal(res.status,200);
   const body=await res.json();
   assert.equal(body.source,'fallback');
-  assert.equal(body.promptVersion,14);
+  assert.equal(body.promptVersion,SUMMARY_PROMPT_VERSION);
   assert.equal(body.factTotal,0);
   assert.equal(body.reused,false);
   assert.match(body.today.text,/brakuje danych/i);
@@ -134,8 +134,9 @@ test('unconfirmed-conclusions v11 fixture is schema-valid yet fails quality lint
   assert.match(instructions,/single HRV reading/);
   assert.match(instructions,/active calories \/ active energy/);
   assert.match(instructions,/SAME cautious conclusion as today/);
-  assert.equal(SUMMARY_PROMPT_VERSION,14);
-  assert.match(instructions,/principal personal fitness assistant/);
+  assert.equal(SUMMARY_PROMPT_VERSION,15);
+  assert.match(instructions,/one recommendation for this evening/);
+  assert.match(instructions,/Do not recite/);
   assert.match(instructions,/Before returning JSON, silently verify/);
   assert.match(instructions,/Never claim professional credentials/);
 });

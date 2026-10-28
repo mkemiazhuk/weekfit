@@ -29,12 +29,15 @@ final class CoachWeeklyContextTests: XCTestCase {
         let baseline = facts["baseline"]!.first { $0.id == "baseline.sleepMinutes" }!
         XCTAssertTrue(baseline.text.contains("median=480.0"))
         XCTAssertTrue(baseline.text.contains("28/28"))
-        XCTAssertTrue(facts["recentActivity"]!.last!.text.contains("complete=false"))
+        let activityDays = facts["recentActivity"]!.filter { $0.id.hasPrefix("history.activity.") }
+        XCTAssertTrue(activityDays.last!.text.contains("complete=false"))
     }
     func testMissingReadingsDoNotBecomeZero() {
         let facts = context(missing: true).facts()
         XCTAssertTrue(facts["recentSleep"]!.allSatisfy { $0.text.contains("asleep=unknown") })
-        XCTAssertTrue(facts["recentActivity"]!.allSatisfy { $0.text.contains("energy=unknown") })
+        let activityDays = facts["recentActivity"]!.filter { $0.id.hasPrefix("history.activity.") }
+        XCTAssertEqual(activityDays.count, 7)
+        XCTAssertTrue(activityDays.allSatisfy { $0.text.contains("energy=unknown") })
         XCTAssertTrue(facts["baseline"]!.first { $0.id == "baseline.hrvSDNN" }!.text.contains("median=unknown"))
     }
     func testEvidenceFitsServerEnvelope() {

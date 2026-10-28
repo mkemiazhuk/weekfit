@@ -22,12 +22,16 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
 
     var planningDay = Date()
     var activities: [PlannedActivity] = []
-    var onSave: ((PlanVoiceCreateRequest) throws -> Void)?
+    var onSave: ((PlanVoiceCreateRequest) throws -> String)?
+    var onUpdate: ((PlanVoiceUpdateRequest) throws -> Void)?
+    var onDelete: ((String) throws -> Void)?
     var languageCode = "ru"
 
     private let bridge = PlanRealtimeScriptBridge()
     private var gate = PlanRealtimeCallGate()
     private var applied: Set<String> = []
+    private var refBook = PlanRealtimeRefBook()
+    private var removedIDs = Set<String>()
     private var secret: PlanRealtimeSessionSecret?
     private var started = false
     private var ended = false
@@ -39,6 +43,8 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         guard webView == nil, !started else { return }
         started = true
         callLanguage = languageCode
+        refBook = PlanRealtimeRefBook()
+        removedIDs = []
         phase = .connecting
         ringback.start()
         Task { await connect() }
@@ -69,8 +75,9 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             applyState(payload)
         case "tool":
             guard let callId = payload["callId"] as? String else { return }
+            let name = payload["name"] as? String ?? "create_activity"
             let arguments = payload["arguments"] as? String ?? "{}"
-            Task { await handleTool(callId: callId, arguments: arguments) }
+            Task { await handleTool(callId: callId, name: name, arguments: arguments) }
         case "usage":
             let responseId = payload["responseId"] as? String ?? ""
             let input = payload["inputTokens"] as? Int ?? 0
@@ -92,7 +99,16 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                 now: Date(),
                 planningDay: planRealtimeDayString(planningDay, calendar: calendar),
                 givenName: ProfileService.resolvedGivenName(),
-                language: callLanguage
+                language: callLanguage,
+                plan: currentAgenda().map {
+                    [
+                        "ref": $0.ref,
+                        "scope": $0.scope,
+                        "title": $0.title,
+                        "startTime": $0.startTime,
+                        "durationMinutes": $0.durationMinutes,
+                    ]
+                }
             )
             guard !ended else { return }
             self.secret = secret
@@ -171,7 +187,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         }
     }
 
-    private func handleTool(callId: String, arguments: String) async {
+    private func handleTool(callId: String, name: String, arguments: String) async {
         switch gate.begin(callId) {
         case .wait:
             return
@@ -181,12 +197,15 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         case .start:
             break
         }
-        let reply = await performTool(callId: callId, arguments: arguments)
+        let reply = await performTool(callId: callId, name: name, arguments: arguments)
         gate.finish(callId, reply: reply)
         deliver(callId: callId, reply: reply)
     }
 
-    private func performTool(callId: String, arguments: String) async -> String {
+    private func performTool(callId: String, name: String, arguments: String) async -> String {
+        if name != "create_activity" {
+            return performPlanTool(name: name, arguments: arguments)
+        }
         guard let draft = planRealtimeDraft(arguments) else {
             return encode(planRealtimeToolReply(action: .reject("unknown_activity"), speak: nil))
         }
@@ -277,6 +296,149 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                 return planRealtimeToolReply(action: .reject("save_failed"), speak: nil)
             }
         }
+    }
+
+    private func performPlanTool(name: String, arguments: String) -> String {
+        let agenda = currentAgenda()
+        let now = Date()
+        let today = planRealtimeDayString(now, calendar: calendar)
+        let tomorrow = planRealtimeDayString(
+            calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now,
+            calendar: calendar
+        )
+        switch name {
+        case "list_plan":
+            guard let scope = planRealtimeListScope(arguments) else {
+                return encode(notice("missing"))
+            }
+            let items = agenda
+                .filter { $0.scope == scope }
+                .map { (spoken: $0.spoken, startTime: $0.startTime) }
+            return encode(PlanRealtimeToolReply(
+                ok: true,
+                saved: true,
+                speak: planRealtimeListSpeak(scope: scope, items: items, language: callLanguage),
+                error: nil
+            ))
+        case "delete_activity":
+            guard let ref = planRealtimeDeleteRef(arguments),
+                  let entry = agenda.first(where: { $0.ref == ref }),
+                  let onDelete else {
+                return encode(notice("missing"))
+            }
+            if activities.first(where: { $0.id == entry.activityID })?.isCompleted == true {
+                return encode(notice("already_done"))
+            }
+            do {
+                try onDelete(entry.activityID)
+                removedIDs.insert(entry.activityID)
+                return encode(PlanRealtimeToolReply(
+                    ok: true,
+                    saved: true,
+                    speak: planRealtimeRemovedSpeak(
+                        spoken: entry.spoken,
+                        day: dayLabel(entry.day, today: today, tomorrow: tomorrow),
+                        language: callLanguage
+                    ),
+                    error: nil
+                ))
+            } catch PlanViewModel.VoiceSaveError.alreadyDone {
+                return encode(notice("already_done"))
+            } catch {
+                return encode(planRealtimeToolReply(action: .reject("save_failed"), speak: nil))
+            }
+        case "update_activity":
+            guard let draft = planRealtimeEditDraft(arguments),
+                  let entry = agenda.first(where: { $0.ref == draft.ref }),
+                  let activity = activities.first(where: { $0.id == entry.activityID }),
+                  let onUpdate else {
+                return encode(notice("missing"))
+            }
+            if activity.isCompleted {
+                return encode(notice("already_done"))
+            }
+            let sameKind = draft.catalogTitle.isEmpty || draft.catalogTitle == activity.title
+            if draft.date.isEmpty && draft.startTime.isEmpty && draft.durationMinutes == 0 && sameKind {
+                return encode(notice("unchanged"))
+            }
+            guard let start = planRealtimeMergedStart(
+                day: draft.date,
+                time: draft.startTime,
+                original: activity.date,
+                calendar: calendar
+            ) else {
+                return encode(notice("missing"))
+            }
+            if draft.durationMinutes != 0 && (draft.durationMinutes < 1 || draft.durationMinutes > 360) {
+                return encode(notice("missing"))
+            }
+            let duration = draft.durationMinutes == 0 ? activity.durationMinutes : draft.durationMinutes
+            do {
+                try onUpdate(PlanVoiceUpdateRequest(
+                    activityID: activity.id,
+                    start: start,
+                    durationMinutes: duration,
+                    catalogTitle: draft.catalogTitle.isEmpty ? nil : draft.catalogTitle
+                ))
+                let day = planRealtimeDayString(start, calendar: calendar)
+                let parts = calendar.dateComponents([.hour, .minute], from: start)
+                let time = String(format: "%02d:%02d", parts.hour ?? 0, parts.minute ?? 0)
+                let spoken = draft.catalogTitle.isEmpty ? entry.spoken : PlannerOptionLocalization.localizedTitle(for: draft.catalogTitle)
+                return encode(PlanRealtimeToolReply(
+                    ok: true,
+                    saved: true,
+                    speak: planRealtimeMovedSpeak(
+                        spoken: spoken,
+                        day: dayLabel(day, today: today, tomorrow: tomorrow),
+                        time: time,
+                        language: callLanguage
+                    ),
+                    error: nil
+                ))
+            } catch PlanViewModel.VoiceSaveError.timeConflict {
+                return encode(notice("conflict"))
+            } catch PlanViewModel.VoiceSaveError.alreadyDone {
+                return encode(notice("already_done"))
+            } catch {
+                return encode(planRealtimeToolReply(action: .reject("save_failed"), speak: nil))
+            }
+        default:
+            return encode(planRealtimeToolReply(action: .reject("unknown_activity"), speak: nil))
+        }
+    }
+
+    private func notice(_ kind: String) -> PlanRealtimeToolReply {
+        PlanRealtimeToolReply(
+            ok: kind == "unchanged",
+            saved: kind == "unchanged",
+            speak: planRealtimePlanNotice(kind, language: callLanguage),
+            error: kind == "unchanged" ? nil : kind
+        )
+    }
+
+    private func dayLabel(_ day: String, today: String, tomorrow: String) -> String {
+        planRealtimeDayLabel(day: day, today: today, tomorrow: tomorrow, language: callLanguage, calendar: calendar)
+    }
+
+    private func currentAgenda() -> [PlanRealtimeAgendaEntry] {
+        planRealtimeAgenda(
+            activities.compactMap { activity in
+                guard !removedIDs.contains(activity.id) else { return nil }
+                return PlanRealtimeSourceActivity(
+                    id: activity.id,
+                    title: activity.title,
+                    date: activity.date,
+                    durationMinutes: activity.durationMinutes,
+                    completed: activity.isCompleted,
+                    skipped: activity.isSkipped,
+                    voice: planRealtimeVoiceInclude(activity)
+                )
+            },
+            now: Date(),
+            calendar: calendar,
+            book: &refBook,
+            spoken: PlannerOptionLocalization.localizedTitle(for:)
+        )
     }
 
     private func deliver(callId: String, reply: String) {
@@ -385,7 +547,9 @@ private final class PlanVoiceRingback {
 struct PlanRealtimeVoiceSheet: View {
     var planningDay: Date
     var activities: [PlannedActivity]
-    var onSave: (PlanVoiceCreateRequest) throws -> Void
+    var onSave: (PlanVoiceCreateRequest) throws -> String
+    var onUpdate: (PlanVoiceUpdateRequest) throws -> Void
+    var onDelete: (String) throws -> Void
 
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var languageManager: AppLanguageManager
@@ -397,6 +561,8 @@ struct PlanRealtimeVoiceSheet: View {
             planningDay: planningDay,
             activities: activities,
             onSave: onSave,
+            onUpdate: onUpdate,
+            onDelete: onDelete,
             languageCode: languageManager.selectedLanguage.rawValue
         )
 
@@ -534,13 +700,26 @@ extension PlanRealtimeSessionController {
     func update(
         planningDay: Date,
         activities: [PlannedActivity],
-        onSave: @escaping (PlanVoiceCreateRequest) throws -> Void,
+        onSave: @escaping (PlanVoiceCreateRequest) throws -> String,
+        onUpdate: @escaping (PlanVoiceUpdateRequest) throws -> Void,
+        onDelete: @escaping (String) throws -> Void,
         languageCode: String
     ) {
         self.planningDay = planningDay
         self.activities = activities
         self.onSave = onSave
+        self.onUpdate = onUpdate
+        self.onDelete = onDelete
         self.languageCode = languageCode
+    }
+}
+
+func planRealtimeVoiceInclude(_ activity: PlannedActivity) -> Bool {
+    switch activity.timelineEventKind {
+    case .food, .drink, .bodyWeight, .mood, .coachNote:
+        return false
+    case .workout, .recovery, .sauna, .calendar, .sleep, .plannedActivity:
+        return true
     }
 }
 

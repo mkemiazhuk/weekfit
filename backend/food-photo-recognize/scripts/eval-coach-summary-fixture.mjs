@@ -49,7 +49,7 @@ for (const locale of locales) {
         || !/\b(the|you|your|today|tomorrow)\b/i.test(result.today.text)
       : /[А-Яа-яЁё]/.test(`${result.today.text}${result.now.text}${result.tomorrow.text}`),
     noUnconfirmedIssues: issues.length === 0,
-    instructionHasPrincipalBlock: /principal personal fitness assistant/.test(instructions),
+    instructionAsksForEveningAdvice: /one recommendation for this evening/.test(instructions),
     instructionHasSilentVerify: /silently verify/.test(instructions)
   };
   reports.push({

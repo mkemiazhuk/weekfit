@@ -272,8 +272,8 @@ enum CoachEveningSummaryService {
         } else if let cache = try? store.loadCache(owner: owner),
                   cache.summary.day < input.day {
             facts["recentRecaps"] = [.init(id: "history.previousRecap",
-                text: String(("Previous recap on " + cache.summary.day + ": "
-                    + cache.summary.today.text + " " + cache.summary.tomorrow.text).prefix(500)))]
+                text: String(("Previous recap " + cache.summary.day + "; theme="
+                    + cache.summary.headline + "; advice=" + cache.summary.tomorrow.text).prefix(240)))]
         }
         return CoachEveningSummaryInput(
             schemaVersion: input.schemaVersion,

@@ -101,11 +101,8 @@ final class CoachEveningSummaryStore {
             .enumerated()
             .map { index, item in
                 let theme = item.summary.headline.trimmingCharacters(in: .whitespacesAndNewlines)
-                let body = [item.summary.today.text, item.summary.tomorrow.text]
-                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                    .filter { !$0.isEmpty }
-                    .joined(separator: " ")
-                let text = String(("Previous recap \(item.day); theme=\(theme); \(body)").prefix(500))
+                let advice = item.summary.tomorrow.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                let text = String(("Previous recap \(item.day); theme=\(theme); advice=\(advice)").prefix(240))
                 return .init(id: "history.recap.\(index).\(item.day)", text: text)
             }
     }

@@ -77,6 +77,51 @@ final class PlanRealtimeVoiceTests: XCTestCase {
         XCTAssertNil(planRealtimeDraft("{}"))
     }
 
+    func testAgendaKeepsTodayDoneAndTomorrowPlanned() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Warsaw")!
+        let today = date(2026, 10, 28, 20, 0, calendar)
+        let sources = [
+            source("meal", "Lunch", date(2026, 10, 28, 13, 0, calendar), completed: true, voice: false),
+            source("done", "Tennis", date(2026, 10, 28, 13, 0, calendar), completed: true, voice: true),
+            source("later", "Walk", date(2026, 10, 28, 18, 0, calendar), completed: false, voice: true),
+            source("next", "Tennis", date(2026, 10, 29, 13, 0, calendar), completed: false, voice: true),
+            source("skip", "Yoga", date(2026, 10, 29, 9, 0, calendar), completed: false, voice: true, skipped: true),
+        ]
+        var book = PlanRealtimeRefBook()
+        let rows = planRealtimeAgenda(sources, now: today, calendar: calendar, book: &book) { $0 }
+        XCTAssertEqual(rows.map(\.ref), ["a1", "a2", "a3"])
+        XCTAssertEqual(rows.map(\.scope), ["today_done", "today_planned", "tomorrow"])
+        XCTAssertEqual(rows[2].startTime, "13:00")
+        let again = planRealtimeAgenda(sources, now: today, calendar: calendar, book: &book) { $0 }
+        XCTAssertEqual(again.map(\.ref), ["a1", "a2", "a3"])
+    }
+
+    func testPlanSpeechListsTomorrowAndAMove() {
+        XCTAssertEqual(
+            planRealtimeListSpeak(scope: "tomorrow", items: [], language: "ru"),
+            "На завтра ничего не запланировано."
+        )
+        XCTAssertEqual(
+            planRealtimeListSpeak(
+                scope: "today_done",
+                items: [(spoken: "теннис", startTime: "13:00")],
+                language: "ru"
+            ),
+            "Сегодня сделано: теннис 13:00"
+        )
+        XCTAssertEqual(
+            planRealtimeMovedSpeak(spoken: "теннис", day: "завтра", time: "15:00", language: "ru"),
+            "Перенес теннис на завтра, на 15:00."
+        )
+        XCTAssertEqual(
+            planRealtimeEditDraft(#"{"ref":"a1","date":"2026-10-29","startTime":"15:00","durationMinutes":0,"catalogTitle":""}"#)?.ref,
+            "a1"
+        )
+        XCTAssertEqual(planRealtimeListScope(#"{"scope":"today_done"}"#), "today_done")
+        XCTAssertNil(planRealtimeDeleteRef(#"{"ref":"tennis"}"#))
+    }
+
     func testDayStringUsesTheCalendarZone() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "Asia/Tokyo")!
@@ -100,5 +145,36 @@ final class PlanRealtimeVoiceTests: XCTestCase {
         utcParts.day = 29
         utcParts.hour = 10
         XCTAssertEqual(planRealtimeInstant("2026-10-29T10:00:00.000Z"), utcParts.date)
+    }
+
+    private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: Int, _ calendar: Calendar) -> Date {
+        var parts = DateComponents()
+        parts.calendar = calendar
+        parts.timeZone = calendar.timeZone
+        parts.year = year
+        parts.month = month
+        parts.day = day
+        parts.hour = hour
+        parts.minute = minute
+        return parts.date!
+    }
+
+    private func source(
+        _ id: String,
+        _ title: String,
+        _ date: Date,
+        completed: Bool,
+        voice: Bool,
+        skipped: Bool = false
+    ) -> PlanRealtimeSourceActivity {
+        PlanRealtimeSourceActivity(
+            id: id,
+            title: title,
+            date: date,
+            durationMinutes: 60,
+            completed: completed,
+            skipped: skipped,
+            voice: voice
+        )
     }
 }

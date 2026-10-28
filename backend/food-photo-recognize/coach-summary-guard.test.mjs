@@ -263,7 +263,7 @@ test('generateSummary itself performs one provider call when validation fails', 
     return true;
   });
   assert.equal(calls, 1);
-  assert.equal(SUMMARY_PROMPT_VERSION, 14);
+  assert.equal(SUMMARY_PROMPT_VERSION, 15);
 });
 
 test('unparseable output keeps usage and a null provider id when the header is absent', async () => {

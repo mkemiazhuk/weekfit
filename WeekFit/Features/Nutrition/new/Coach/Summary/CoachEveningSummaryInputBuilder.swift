@@ -79,7 +79,7 @@ enum CoachEveningSummaryInputBuilder {
         var nutrition: [Fact] = [
             fact(
                 "nutrition.completeness",
-                "Food log completeness is unknown. Zero logged intake does not prove no food was eaten. Values are journal entries, potentially estimated."
+                "Food log completeness is unknown. Logged values are journal entries, not proof of intake."
             )
         ]
         let drinkCalories = drinks.reduce(0) { $0 + $1.calories }
@@ -87,11 +87,11 @@ enum CoachEveningSummaryInputBuilder {
         if let n = input.nutritionContext {
             nutrition.append(fact(
                 "nutrition.totals",
-                "Journal intake totals today (meals + caloric drinks): \(Int(n.caloriesCurrent)) kcal; protein \(Int(n.proteinCurrent)) g; carbs \(Int(n.carbsCurrent)) g; fats \(Int(n.fatsCurrent)) g; water \(formatLiters(n.waterCurrent)) L. Meal-only journal kcal=\(mealCalories); drink journal kcal=\(drinkCalories). Incomplete log ≠ zero intake."
+                "Journal intake today: \(Int(n.caloriesCurrent)) kcal; protein \(Int(n.proteinCurrent)) g; carbs \(Int(n.carbsCurrent)) g; fats \(Int(n.fatsCurrent)) g; water \(formatLiters(n.waterCurrent)) L. Meals \(mealCalories) kcal; drinks \(drinkCalories) kcal."
             ))
             nutrition.append(fact(
                 "nutrition.goals",
-                "Current WeekFit goals: \(Int(n.caloriesGoal)) kcal; protein \(Int(n.proteinGoal)) g; carbs \(Int(n.carbsGoal)) g; fats \(Int(n.fatsGoal)) g; water \(formatLiters(n.waterGoal)) L. Do not invent additional targets. Missing food entries are not evidence of inadequate intake."
+                "Goals: \(Int(n.caloriesGoal)) kcal; protein \(Int(n.proteinGoal)) g; carbs \(Int(n.carbsGoal)) g; fats \(Int(n.fatsGoal)) g; water \(formatLiters(n.waterGoal)) L."
             ))
             if let mealsCount = n.mealsCount {
                 nutrition.append(fact(
@@ -129,7 +129,7 @@ enum CoachEveningSummaryInputBuilder {
             for (i, meal) in mealSlice.enumerated() {
                 nutrition.append(fact(
                     "nutrition.meal.\(i)",
-                    "Logged meal: \(meal.title); \(meal.calories) kcal, protein \(meal.protein) g, carbs \(meal.carbs) g, fats \(meal.fats) g, fiber \(meal.fiber) g. Time: \(timeFormatter.string(from: meal.date))."
+                    "Meal: \(meal.title); \(meal.calories) kcal; protein \(meal.protein) g; carbs \(meal.carbs) g; fats \(meal.fats) g; fiber \(meal.fiber) g; time \(timeFormatter.string(from: meal.date))."
                 ))
             }
         }
@@ -154,7 +154,7 @@ enum CoachEveningSummaryInputBuilder {
                     : "\(drink.calories) kcal, protein \(drink.protein) g, carbs \(drink.carbs) g, fats \(drink.fats) g"
                 nutrition.append(fact(
                     "nutrition.drink.\(i)",
-                    "Logged drink: \(drink.title); \(volumeHint). Time: \(timeFormatter.string(from: drink.date))."
+                    "Drink: \(drink.title); \(volumeHint); time \(timeFormatter.string(from: drink.date))."
                 ))
             }
         }
@@ -185,7 +185,7 @@ enum CoachEveningSummaryInputBuilder {
                 let state = a.isSkipped ? "skipped" : a.isCompleted ? "completed" : "planned, not confirmed completed"
                 activityFacts.append(fact(
                     "activity.item.\(i)",
-                    "\(a.title), type \(a.type), status \(state); duration \(a.effectiveDurationMinutes) min; subjective intensity unknown. Time: \(timeFormatter.string(from: a.date))."
+                    "\(a.title); type \(a.type); status \(state); durationMin \(a.effectiveDurationMinutes); time \(timeFormatter.string(from: a.date))."
                 ))
             }
             facts["activity"] = activityFacts
@@ -193,7 +193,7 @@ enum CoachEveningSummaryInputBuilder {
         if input.isHealthAccessGranted, input.actualLoad.source == .healthKitSamplesWithAppGoalEstimate {
             facts["activity", default: []].append(fact(
                 "activity.load",
-                "Today's HealthKit active energy: \(Int(input.actualLoad.activeCalories)) kcal. Expenditure estimate only — not training intensity and not food intake. Day still in progress until local midnight."
+                "HealthKit active energy today: \(Int(input.actualLoad.activeCalories)) kcal. Day still open until local midnight."
             ))
         }
         // Distance vs usual is already shown on the evening card. Do not send it to the model —
@@ -211,7 +211,7 @@ enum CoachEveningSummaryInputBuilder {
             } ?? "none"
             facts["feeling"] = [fact(
                 "feeling.checkin",
-                "User self-report for local day \(CoachEveningSummaryPolicy.dayKey(checkIn.createdAt, calendar: calendar)): feeling=\(checkIn.feeling.rawValue); clarification=\(clarification); timestamp=\(timeFormatter.string(from: checkIn.createdAt)). Subjective only — not a physiological recovery score. Do not rewrite feeling=okay as fully recovered."
+                "Self-report \(CoachEveningSummaryPolicy.dayKey(checkIn.createdAt, calendar: calendar)): feeling=\(checkIn.feeling.rawValue); clarification=\(clarification); at \(timeFormatter.string(from: checkIn.createdAt)). Subjective, not a recovery score."
             )]
         } else {
             facts["feeling"] = [fact(
@@ -242,13 +242,13 @@ enum CoachEveningSummaryInputBuilder {
                 for (i, a) in relevant.prefix(12).enumerated() {
                     tomorrowFacts.append(fact(
                         "tomorrow.item.\(i)",
-                        "Tomorrow's planned activity: \(a.title), type \(a.type), duration \(a.durationMinutes) min, at \(timeFormatter.string(from: a.date)). Subjective intensity unknown (not recorded). Planned, not completed; absence of a plan is unknown, not a rest recommendation."
+                        "Planned: \(a.title); type \(a.type); durationMin \(a.durationMinutes); at \(timeFormatter.string(from: a.date)). Not completed."
                     ))
                 }
                 for (i, meal) in mealsTomorrow.prefix(8).enumerated() {
                     tomorrowFacts.append(fact(
                         "tomorrow.meal.\(i)",
-                        "Tomorrow's planned meal: \(meal.title) at \(timeFormatter.string(from: meal.date)). Planned, not logged yet."
+                        "Planned meal: \(meal.title); at \(timeFormatter.string(from: meal.date)). Not logged."
                     ))
                 }
             }
@@ -259,14 +259,14 @@ enum CoachEveningSummaryInputBuilder {
         if let presentation {
             coachDecision.append(fact(
                 "coach.priority",
-                "Canonical Coach scenario: \(presentation.scenario.rawValue). Current priority: \(presentation.recommendation). Preserve this priority. Context: \(presentation.assessment)"
+                "Coach scenario: \(presentation.scenario.rawValue). Priority: \(presentation.recommendation). Assessment: \(presentation.assessment)"
             ))
         }
         // Explicit nutrition goal only — never invent experience, diagnoses, or restrictions.
         if let goal = ProfileService().loadManualNutritionGoal() {
             coachDecision.append(fact(
                 "profile.nutritionGoal",
-                "User-selected nutrition goal: \(goal.rawValue). Training experience, habitual schedule preferences, and medical restrictions are unknown in-app unless explicitly recorded elsewhere."
+                "Nutrition goal: \(goal.rawValue). Experience, schedule, and medical restrictions are unknown."
             ))
         } else {
             coachDecision.append(fact(
@@ -280,7 +280,7 @@ enum CoachEveningSummaryInputBuilder {
         var coverage: [Fact] = []
         coverage.append(fact(
             "coverage.today",
-            "Local day \(CoachEveningSummaryPolicy.dayKey(now, calendar: calendar)) still in progress until local midnight. Health access granted=\(input.isHealthAccessGranted). Assembled wall time=\(timeFormatter.string(from: now)). A completed calendar day later does not prove full watch wear."
+            "Local day \(CoachEveningSummaryPolicy.dayKey(now, calendar: calendar)) still open. Health access=\(input.isHealthAccessGranted). AssembledAt=\(timeFormatter.string(from: now))."
         ))
         if input.isHealthAccessGranted {
             if input.recoveryContext.sleepHours > 0 {

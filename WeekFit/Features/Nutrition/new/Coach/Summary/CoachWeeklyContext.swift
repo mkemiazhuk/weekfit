@@ -66,14 +66,14 @@ struct CoachWeeklyContext: Sendable {
             }
             return fact(
                 "history.sleep.\(d.day)",
-                "Wake-day \(d.day): asleep=\(integer(d.sleepMinutes)) min (asleep, not time-in-bed); sleepStart=\(date(d.bedStart)); wake=\(date(d.wakeTime)); awake=\(integer(d.awakeMinutes)) min; awakenings=\(integer(d.awakenings)); estimated deep=\(integer(d.deepMinutes)) min; estimated REM=\(integer(d.remMinutes)) min; coverage=\(status). Prefer Apple Sleep source when mixed; overlapping sources are not summed."
+                "Wake-day \(d.day): asleep=\(integer(d.sleepMinutes)) min; sleepStart=\(date(d.bedStart)); wake=\(date(d.wakeTime)); awakeMin=\(integer(d.awakeMinutes)); awakenings=\(integer(d.awakenings)); deepMin=\(integer(d.deepMinutes)); remMin=\(integer(d.remMinutes)); coverage=\(status)."
             )
         }
 
         result["recentVitals"] = recent.map { d in
             fact(
                 "history.vitals.\(d.day)",
-                "Wake-day \(d.day): HRV SDNN=\(number(d.hrv)) ms, aggregation=overnight_sleep_window_median, samples=\(d.hrvSamples), latest=\(date(d.hrvMeasuredAt)); resting HR=\(number(d.rhr)) bpm, aggregation=overnight_sleep_window_median, samples=\(d.rhrSamples), latest=\(date(d.rhrMeasuredAt)). RHR is not sleeping heart rate. Sparse samples may not represent the whole night."
+                "Wake-day \(d.day): hrvSDNN=\(number(d.hrv)) ms; hrvSamples=\(d.hrvSamples); hrvLatest=\(date(d.hrvMeasuredAt)); rhr=\(number(d.rhr)) bpm; rhrSamples=\(d.rhrSamples); rhrLatest=\(date(d.rhrMeasuredAt))."
             )
         }
 
@@ -81,7 +81,7 @@ struct CoachWeeklyContext: Sendable {
         var activityFacts: [Fact] = recent.map { d in
             fact(
                 "history.activity.\(d.day)",
-                "Local day \(d.day): active energy=\(number(d.activeKcal)) kcal (expenditure estimate, not intensity); Apple Exercise=\(number(d.exerciseMinutes)) min (ring minutes, not workout duration). Day complete=\(d.complete). Missing samples ≠ inactivity; complete means calendar day ended, not full watch wear. AssembledAt=\(date(assembledAt))."
+                "Local day \(d.day): energy=\(number(d.activeKcal)) kcal; exerciseMin=\(number(d.exerciseMinutes)); complete=\(d.complete)."
             )
         }
 
@@ -90,19 +90,19 @@ struct CoachWeeklyContext: Sendable {
         let truncated = sortedSessions.count > includedSessions.count
         activityFacts.append(fact(
             "history.sessionsCoverage",
-            "Recorded sessions in recent 7 local days: total=\(sortedSessions.count); included=\(includedSessions.count); truncated=\(truncated); selection=most_recent_by_start. If truncated=true, do not infer workout frequency or exposure counts from the session list alone."
+            "Sessions in recent 7 days: total=\(sortedSessions.count); included=\(includedSessions.count); truncated=\(truncated); selection=most_recent_by_start."
         ))
         for (i, session) in includedSessions.enumerated() {
             activityFacts.append(fact(
                 "history.session.\(i)",
-                "Recorded workout type=\(session.type); start=\(date(session.start)); end=\(date(session.end)); duration=\(session.minutes) min. Subjective intensity unknown. Distinct workout UUIDs may still overlap across sources — do not sum overlapping sessions."
+                "type=\(session.type); start=\(date(session.start)); end=\(date(session.end)); durationMin=\(session.minutes)."
             ))
         }
         result["recentActivity"] = activityFacts
 
         var baseline: [Fact] = [fact(
             "history.coverage",
-            "Recent window: \(recent.first?.day ?? "unknown") through \(recent.last?.day ?? "unknown"). Sleep days with samples=\(recent.filter { $0.sleepMinutes != nil }.count)/7; HRV days=\(recent.filter { $0.hrv != nil }.count)/7; RHR days=\(recent.filter { $0.rhr != nil }.count)/7. Baseline is the disjoint preceding 28 calendar days. Sleep belongs to wake-day; pair activity on D with sleep/vitals on D+1. Times are ISO instants in request timezone. AssembledAt=\(date(assembledAt)). No medical diagnosis."
+            "Recent window \(recent.first?.day ?? "unknown")..\(recent.last?.day ?? "unknown"). Sleep days=\(recent.filter { $0.sleepMinutes != nil }.count)/7; HRV days=\(recent.filter { $0.hrv != nil }.count)/7; RHR days=\(recent.filter { $0.rhr != nil }.count)/7. Baseline is the preceding 28 calendar days. Sleep belongs to wake-day. AssembledAt=\(date(assembledAt))."
         )]
 
         func addBaseline(_ name: String, _ values: [Double], aggregation: String) {
@@ -111,7 +111,7 @@ struct CoachWeeklyContext: Sendable {
                 ? (sorted[(sorted.count - 1) / 2] + sorted[sorted.count / 2]) / 2 : nil
             baseline.append(fact(
                 "baseline.\(name)",
-                "Prior 28-day reference \(name): window=\(reference.first?.day ?? "unknown")..\(reference.last?.day ?? "unknown"); median=\(number(median)); observed days=\(sorted.count)/28; min=\(number(sorted.first)); max=\(number(sorted.last)); aggregation=\(aggregation). Fewer than 7 observed days means insufficient baseline. Descriptive range only, not a clinical threshold."
+                "Prior 28-day \(name): window=\(reference.first?.day ?? "unknown")..\(reference.last?.day ?? "unknown"); median=\(number(median)); observed days=\(sorted.count)/28; min=\(number(sorted.first)); max=\(number(sorted.last)); aggregation=\(aggregation)."
             ))
         }
         addBaseline("sleepMinutes", reference.compactMap { $0.sleepMinutes.map(Double.init) }, aggregation: "wake_day_asleep_minutes")
@@ -134,7 +134,7 @@ struct CoachWeeklyContext: Sendable {
             guard !pairs.isEmpty else { return }
             baseline.append(fact(
                 "baseline.\(name).daily",
-                "Prior 28 wake/local days \(name) dated values (day=value): \(pairs.joined(separator: ", ")). Missing days omitted. Aggregates alone cannot prove repeating day-to-day links."
+                "\(name) by day: \(pairs.joined(separator: ", ")). Missing days omitted."
             ))
         }
         compactDaily("hrvSDNN") { $0.hrv }

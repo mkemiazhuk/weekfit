@@ -206,6 +206,22 @@ private struct WeekPlannerLiveQueryView: View {
                         activityRemindersEnabled: activityRemindersEnabled,
                         completionCheckInsEnabled: completionCheckInsEnabled
                     )
+                },
+                onUpdate: { request in
+                    try viewModel.updateVoiceActivity(
+                        request,
+                        activities: plannedActivities,
+                        modelContext: modelContext,
+                        activityRemindersEnabled: activityRemindersEnabled,
+                        completionCheckInsEnabled: completionCheckInsEnabled
+                    )
+                },
+                onDelete: { id in
+                    try viewModel.deleteVoiceActivity(
+                        id: id,
+                        activities: plannedActivities,
+                        modelContext: modelContext
+                    )
                 }
             )
             .environmentObject(languageManager)

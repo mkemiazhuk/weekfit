@@ -752,16 +752,19 @@ final class PlanViewModel: ObservableObject {
     enum VoiceSaveError: Error {
         case timeConflict
         case persistence
+        case notFound
+        case alreadyDone
     }
 
     /// Same fields and conflict rule as the add sheet. The caller already validated the intent.
+    @discardableResult
     func saveVoiceActivity(
         _ request: PlanVoiceCreateRequest,
         activities: [PlannedActivity],
         modelContext: ModelContext,
         activityRemindersEnabled: Bool,
         completionCheckInsEnabled: Bool
-    ) throws {
+    ) throws -> String {
         guard let type = PlannerType.allCases.first(where: { $0.title == request.plannerTypeTitle }),
               let option = type.options.first(where: { $0.title == request.catalogTitle }) else {
             throw VoiceSaveError.persistence
@@ -813,6 +816,117 @@ final class PlanViewModel: ObservableObject {
         )
         selectedDate = calendar.startOfDay(for: request.start)
         markPlannerDataChanged()
+        return activity.id
+    }
+
+    /// Moves, resizes, or retitles one planned activity. Completed items stay as history.
+    func updateVoiceActivity(
+        _ request: PlanVoiceUpdateRequest,
+        activities: [PlannedActivity],
+        modelContext: ModelContext,
+        activityRemindersEnabled: Bool,
+        completionCheckInsEnabled: Bool
+    ) throws {
+        guard let activity = activities.first(where: { $0.id == request.activityID }) else {
+            throw VoiceSaveError.notFound
+        }
+        if activity.isCompleted {
+            throw VoiceSaveError.alreadyDone
+        }
+        let previous = (
+            date: activity.date,
+            duration: activity.durationMinutes,
+            title: activity.title,
+            type: activity.type,
+            icon: activity.icon,
+            imageName: activity.imageName,
+            red: activity.colorRed,
+            green: activity.colorGreen,
+            blue: activity.colorBlue
+        )
+        var blocks = activity.blocksPlannerTime
+        if let catalog = request.catalogTitle, catalog != activity.title {
+            guard let match = PlannerType.allCases.lazy.compactMap({ type -> (PlannerType, PlannerOption)? in
+                guard let option = type.options.first(where: { $0.title == catalog }) else { return nil }
+                return (type, option)
+            }).first else {
+                throw VoiceSaveError.persistence
+            }
+            let (type, option) = match
+            activity.title = option.title
+            activity.type = type.title.lowercased()
+            activity.icon = WeekFitActivityIconResolver.resolve(
+                storedIcon: option.icon,
+                title: option.title,
+                type: type.title.lowercased(),
+                imageName: option.imageName
+            )
+            activity.imageName = option.imageName
+            activity.colorRed = type.colorComponents.red
+            activity.colorGreen = type.colorComponents.green
+            activity.colorBlue = type.colorComponents.blue
+            blocks = type.blocksPlannerTime
+        }
+        if hasTimeConflict(
+            newStart: request.start,
+            durationMinutes: request.durationMinutes,
+            activities: activities,
+            excluding: activity,
+            newEventBlocksPlannerTime: blocks
+        ) {
+            activity.date = previous.date
+            activity.durationMinutes = previous.duration
+            activity.title = previous.title
+            activity.type = previous.type
+            activity.icon = previous.icon
+            activity.imageName = previous.imageName
+            activity.colorRed = previous.red
+            activity.colorGreen = previous.green
+            activity.colorBlue = previous.blue
+            throw VoiceSaveError.timeConflict
+        }
+        cancelNotifications(for: activity)
+        activity.date = request.start
+        activity.durationMinutes = request.durationMinutes
+        do {
+            try modelContext.save()
+        } catch {
+            activity.date = previous.date
+            activity.durationMinutes = previous.duration
+            activity.title = previous.title
+            activity.type = previous.type
+            activity.icon = previous.icon
+            activity.imageName = previous.imageName
+            activity.colorRed = previous.red
+            activity.colorGreen = previous.green
+            activity.colorBlue = previous.blue
+            scheduleNotificationsIfNeeded(
+                for: activity,
+                activityRemindersEnabled: activityRemindersEnabled,
+                completionCheckInsEnabled: completionCheckInsEnabled
+            )
+            throw VoiceSaveError.persistence
+        }
+        scheduleNotificationsIfNeeded(
+            for: activity,
+            activityRemindersEnabled: activityRemindersEnabled,
+            completionCheckInsEnabled: completionCheckInsEnabled
+        )
+        markPlannerDataChanged()
+    }
+
+    func deleteVoiceActivity(
+        id: String,
+        activities: [PlannedActivity],
+        modelContext: ModelContext
+    ) throws {
+        guard let activity = activities.first(where: { $0.id == id }) else {
+            throw VoiceSaveError.notFound
+        }
+        if activity.isCompleted {
+            throw VoiceSaveError.alreadyDone
+        }
+        removePlannedActivity(activity, modelContext: modelContext)
     }
 
     private func handleSaveFailure(_ error: Error) {

@@ -371,8 +371,7 @@ test('routes enforce the allowlist and never return the server key', async () =>
     assert.equal(sent.session.model, 'gpt-realtime-2.1-mini');
     assert.equal(sent.session.audio.input.transcription, undefined);
     assert.deepEqual(sent.session.output_modalities, ['audio']);
-    assert.equal(sent.session.tools[0].name, 'create_activity');
-    assert.equal(sent.session.tools[1].name, 'end_call');
+    assert.deepEqual(sent.session.tools.map(tool => tool.name), ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'end_call']);
     assert.match(sent.session.instructions, /Never repeat yourself/);
     assert.match(sent.session.instructions, /До свидания!/);
     assert.match(sent.session.instructions, /всё, спасибо/);
@@ -389,6 +388,23 @@ test('routes enforce the allowlist and never return the server key', async () =>
     });
     assert.equal(unsafeName.status, 200);
     assert.doesNotMatch(JSON.parse(captured.init.body).session.instructions, /Игнорируй правила/);
+
+    const withPlan = await request(server.url, 'POST', '/v1/planner-voice/session', {
+      body: {
+        timeZone: 'Europe/Warsaw',
+        plan: [
+          { ref: 'a1', scope: 'tomorrow', title: 'Tennis', startTime: '13:00', durationMinutes: 60 },
+          { ref: 'drop', scope: 'tomorrow', title: 'Run', startTime: '09:00', durationMinutes: 30 },
+          { ref: 'a2', scope: 'today_done', title: 'Walk\nignore', startTime: '18:00', durationMinutes: 20 },
+        ],
+      },
+    });
+    assert.equal(withPlan.status, 200);
+    const planned = JSON.parse(captured.init.body).session.instructions;
+    assert.match(planned, /a1 tomorrow Tennis 13:00 60m/);
+    assert.match(planned, /a2 today_done Walk ignore 18:00 20m/);
+    assert.equal(planned.includes('drop'), false);
+    assert.match(planned, /list_plan/);
 
     const created = await request(server.url, 'POST', '/v1/planner-voice/activities', { body: tennis() });
     assert.equal(created.body.saved, true);
@@ -413,6 +429,8 @@ test('console releases the microphone and does not embed a server key', () => {
   assert.match(html, /function_call_output/);
   assert.match(html, /getUserMedia/);
   assert.match(html, /channel\.onopen = \(\) =>/);
+  assert.match(html, /list_plan/);
+  assert.match(html, /delete_activity/);
   assert.match(html, /channel\.send\(JSON\.stringify\(\{ type: 'response\.create' \}\)\)/);
   assert.match(html, /track\.enabled = false/);
   assert.equal(html.includes('OPENAI_API_KEY'), false);
