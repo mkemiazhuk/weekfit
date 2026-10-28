@@ -12,6 +12,12 @@ struct PlanRealtimeSessionSecret: Decodable, Equatable {
     var idleSeconds: Int
 }
 
+struct PlanRealtimeLine: Decodable, Equatable {
+    var ticket: String
+    var state: String
+    var position: Int
+}
+
 struct PlanRealtimeCommit: Decodable, Equatable {
     var ok: Bool?
     var saved: Bool
@@ -189,18 +195,32 @@ struct PlanRealtimeClient {
         try await send(method: "GET", path: "v1/planner-voice/access", body: nil)
     }
 
+    func placeInLine() async throws -> PlanRealtimeLine {
+        try await send(method: "POST", path: "v1/planner-voice/line", body: [:])
+    }
+
+    func beatLine(ticket: String) async {
+        await postLine(path: "v1/planner-voice/line/beat", ticket: ticket)
+    }
+
+    func leaveLine(ticket: String) async {
+        await postLine(path: "v1/planner-voice/line/release", ticket: ticket)
+    }
+
     func openSession(
         timeZone: String,
         now: Date,
         planningDay: String,
         givenName: String,
         language: String,
-        plan: [[String: Any]]
+        plan: [[String: Any]],
+        ticket: String
     ) async throws -> PlanRealtimeSessionSecret {
         try await send(
             method: "POST",
             path: "v1/planner-voice/session",
             body: [
+                "ticket": ticket,
                 "timeZone": timeZone,
                 "now": ISO8601DateFormatter().string(from: now),
                 "planningDay": planningDay,
@@ -209,6 +229,16 @@ struct PlanRealtimeClient {
                 "plan": plan,
             ]
         )
+    }
+
+    private func postLine(path: String, ticket: String) async {
+        var request = URLRequest(url: baseURL.appending(path: path))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 20
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["ticket": ticket])
+        _ = try? await session.data(for: request)
     }
 
     func commit(_ body: [String: Any]) async throws -> PlanRealtimeCommit {

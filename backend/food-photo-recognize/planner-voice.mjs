@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { ServiceError } from './recognition.mjs';
 import {
   askActivityLine,
@@ -62,6 +62,7 @@ export function plannerVoiceSettings(env = {}) {
     if (!Number.isInteger(n) || n < min || n > max) throw Error(`Invalid ${key}`);
     return n;
   };
+  // The allowlist is kept so an old environment value does not crash. Any signed-in account can call.
   const allowed = String(env.PLANNER_VOICE_ALLOWED_UIDS ?? '')
     .split(',')
     .map(item => item.trim())
@@ -74,6 +75,8 @@ export function plannerVoiceSettings(env = {}) {
     plannerVoiceVoice: voice,
     plannerVoiceIdleSeconds: integer('PLANNER_VOICE_IDLE_SECONDS', 75, 20, 180),
     plannerVoiceSecretSeconds: integer('PLANNER_VOICE_SECRET_SECONDS', 60, 10, 600),
+    plannerVoiceMaxCalls: integer('PLANNER_VOICE_MAX_CALLS', 5, 1, 100),
+    plannerVoiceMaxWaiting: integer('PLANNER_VOICE_MAX_WAITING', 100, 1, 500),
   };
 }
 
@@ -179,10 +182,158 @@ export function commitPlannerActivity(store, uid, body, now = new Date()) {
   return { status: 200, body: saved };
 }
 
+export function createPlannerCallLine({
+  maxCalls = 5,
+  maxWaiting = 100,
+  waitMs = 20_000,
+  holdMs = 45_000,
+  now = () => Date.now(),
+} = {}) {
+  const waiting = [];
+  const held = new Map();
+  const byUid = new Map();
+
+  const expire = (time) => {
+    for (let index = waiting.length - 1; index >= 0; index -= 1) {
+      if (time - waiting[index].beat <= waitMs) continue;
+      if (byUid.get(waiting[index].uid) === waiting[index].ticket) byUid.delete(waiting[index].uid);
+      waiting.splice(index, 1);
+    }
+    for (const [ticket, row] of held) {
+      const limit = row.phase === 'active' ? holdMs : 20_000;
+      if (time - row.beat <= limit) continue;
+      held.delete(ticket);
+      if (byUid.get(row.uid) === ticket) byUid.delete(row.uid);
+    }
+  };
+
+  const promote = (time) => {
+    while (held.size < maxCalls && waiting.length > 0) {
+      const next = waiting.shift();
+      held.set(next.ticket, { uid: next.uid, beat: time, phase: 'reserved' });
+    }
+  };
+
+  const view = (uid) => {
+    const ticket = byUid.get(uid);
+    if (!ticket) return null;
+    const row = held.get(ticket);
+    if (row) {
+      return { ticket, state: row.phase === 'active' ? 'active' : 'ready', position: 0 };
+    }
+    const index = waiting.findIndex(item => item.ticket === ticket);
+    if (index < 0) return null;
+    return { ticket, state: 'waiting', position: index + 1 };
+  };
+
+  const busy = (position) => ({
+    ok: false,
+    status: 429,
+    body: { error: 'planner_voice_busy', saved: false, state: 'waiting', position },
+  });
+
+  return {
+    place(uid) {
+      const time = now();
+      expire(time);
+      const existing = view(uid);
+      if (existing) {
+        const queued = waiting.find(item => item.ticket === existing.ticket);
+        if (queued) queued.beat = time;
+        const row = held.get(existing.ticket);
+        if (row) row.beat = time;
+        promote(time);
+        return view(uid);
+      }
+      if (held.size >= maxCalls && waiting.length >= maxWaiting) {
+        return { error: 'planner_voice_line_full', status: 503, position: waiting.length };
+      }
+      const ticket = `q_${randomBytes(9).toString('hex')}`;
+      waiting.push({ ticket, uid, beat: time });
+      byUid.set(uid, ticket);
+      promote(time);
+      return view(uid);
+    },
+
+    claim(uid, requested) {
+      const time = now();
+      expire(time);
+      promote(time);
+      let ticket = typeof requested === 'string' ? requested : '';
+      if (!ticket) {
+        const current = view(uid);
+        if (current?.state === 'waiting') return busy(current.position);
+        if (current?.state === 'ready' || current?.state === 'active') {
+          ticket = current.ticket;
+        } else if (held.size >= maxCalls) {
+          return busy(waiting.length + 1);
+        } else {
+          ticket = `q_${randomBytes(9).toString('hex')}`;
+          held.set(ticket, { uid, beat: time, phase: 'minting' });
+          byUid.set(uid, ticket);
+          return { ok: true, ticket };
+        }
+      }
+      const row = held.get(ticket);
+      if (!row || row.uid !== uid) {
+        return { ok: false, status: 409, body: { error: 'planner_voice_not_ready', saved: false } };
+      }
+      if (row.phase === 'active' || row.phase === 'minting') {
+        if (!requested && row.phase === 'active') {
+          row.phase = 'minting';
+          row.beat = time;
+          return { ok: true, ticket };
+        }
+        return { ok: false, status: 409, body: { error: 'planner_voice_already_started', saved: false } };
+      }
+      row.phase = 'minting';
+      row.beat = time;
+      return { ok: true, ticket };
+    },
+
+    activate(uid, ticket) {
+      const row = held.get(ticket);
+      if (!row || row.uid !== uid) return;
+      row.phase = 'active';
+      row.beat = now();
+    },
+
+    beat(uid, ticket) {
+      const time = now();
+      expire(time);
+      const row = held.get(ticket);
+      if (!row || row.uid !== uid || row.phase !== 'active') return false;
+      row.beat = time;
+      return true;
+    },
+
+    release(uid, ticket) {
+      const time = now();
+      const row = held.get(ticket);
+      if (row && row.uid === uid) {
+        held.delete(ticket);
+        if (byUid.get(uid) === ticket) byUid.delete(uid);
+      } else {
+        const index = waiting.findIndex(item => item.ticket === ticket && item.uid === uid);
+        if (index >= 0) {
+          waiting.splice(index, 1);
+          if (byUid.get(uid) === ticket) byUid.delete(uid);
+        }
+      }
+      expire(time);
+      promote(time);
+    },
+  };
+}
+
 export function createPlannerVoiceHandler(config, dependencies = {}) {
   const authenticate = dependencies.authenticate;
   const fetcher = dependencies.fetch ?? globalThis.fetch;
   const store = dependencies.store ?? createPlannerVoiceStore();
+  const line = dependencies.line ?? createPlannerCallLine({
+    maxCalls: config.plannerVoiceMaxCalls ?? 5,
+    maxWaiting: config.plannerVoiceMaxWaiting ?? 100,
+  });
   const log = dependencies.log ?? (entry => {
     console.info(JSON.stringify(entry));
   });
@@ -206,12 +357,53 @@ export function createPlannerVoiceHandler(config, dependencies = {}) {
         return true;
       }
 
+      if (req.method === 'POST' && path === '/v1/planner-voice/line') {
+        const uid = await requireUser(authenticate, req, config);
+        assertAllowed(config, uid);
+        const placed = line.place(uid);
+        if (placed.error) {
+          sendJson(res, placed.status, { error: placed.error, saved: false, position: placed.position });
+          return true;
+        }
+        sendJson(res, 200, placed);
+        return true;
+      }
+
+      if (req.method === 'POST' && path === '/v1/planner-voice/line/beat') {
+        const uid = await requireUser(authenticate, req, config);
+        assertAllowed(config, uid);
+        const payload = await readJson(req);
+        const alive = line.beat(uid, payload?.ticket);
+        sendJson(res, alive ? 204 : 404, alive ? {} : { error: 'not_found', saved: false });
+        return true;
+      }
+
+      if (req.method === 'POST' && path === '/v1/planner-voice/line/release') {
+        const uid = await requireUser(authenticate, req, config);
+        assertAllowed(config, uid);
+        const payload = await readJson(req);
+        line.release(uid, payload?.ticket);
+        sendJson(res, 204, {});
+        return true;
+      }
+
       if (req.method === 'POST' && path === '/v1/planner-voice/session') {
         const uid = await requireUser(authenticate, req, config);
         assertAllowed(config, uid);
         const payload = await readJson(req);
-        const secret = await mintSecret(config, fetcher, uid, payload, log);
-        sendJson(res, 200, secret);
+        const admission = line.claim(uid, payload?.ticket);
+        if (!admission.ok) {
+          sendJson(res, admission.status, admission.body);
+          return true;
+        }
+        try {
+          const secret = await mintSecret(config, fetcher, uid, payload, log);
+          line.activate(uid, admission.ticket);
+          sendJson(res, 200, secret);
+        } catch (error) {
+          line.release(uid, admission.ticket);
+          throw error;
+        }
         return true;
       }
 
@@ -771,9 +963,7 @@ function endCallTool() {
 }
 
 function isAllowed(config, uid) {
-  return config.plannerVoiceEnabled === true
-    && Array.isArray(config.plannerVoiceAllowedUids)
-    && config.plannerVoiceAllowedUids.includes(uid);
+  return config.plannerVoiceEnabled === true && typeof uid === 'string' && uid.length > 0;
 }
 
 function assertAllowed(config, uid) {

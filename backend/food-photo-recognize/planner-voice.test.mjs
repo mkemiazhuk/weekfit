@@ -8,6 +8,7 @@ import {
   calendarContext,
   commitPlannerActivity,
   consoleDocument,
+  createPlannerCallLine,
   createPlannerVoiceHandler,
   createPlannerVoiceStore,
   plannerVoiceSettings,
@@ -90,6 +91,8 @@ test('calendar date follows the user zone across midnight', () => {
 test('model defaults to gpt-realtime-2.1-mini and stays configurable', () => {
   assert.equal(plannerVoiceSettings({}).plannerVoiceModel, 'gpt-realtime-2.1-mini');
   assert.equal(plannerVoiceSettings({}).plannerVoiceEnabled, false);
+  assert.equal(plannerVoiceSettings({}).plannerVoiceMaxCalls, 5);
+  assert.equal(plannerVoiceSettings({}).plannerVoiceMaxWaiting, 100);
   assert.equal(
     plannerVoiceSettings({ PLANNER_VOICE_REALTIME_MODEL: 'gpt-realtime-2.1' }).plannerVoiceModel,
     'gpt-realtime-2.1',
@@ -291,7 +294,7 @@ test('cedar uses the same russian greeting without a larger model', async () => 
   }
 });
 
-test('empty allowlist denies every account', async () => {
+test('enabled voice admits every signed-in account', async () => {
   const settings = plannerVoiceSettings({
     PLANNER_VOICE_ENABLED: '1',
     PLANNER_VOICE_ALLOWED_UIDS: ' , ',
@@ -307,24 +310,22 @@ test('empty allowlist denies every account', async () => {
     const other = await request(server.url, 'GET', '/v1/planner-voice/access', {
       authorization: `Bearer ${token}.other`,
     });
-    assert.equal(owner.body.enabled, false);
+    assert.equal(owner.body.enabled, true);
     assert.equal(owner.body.accountId, 'local-developer');
-    assert.equal(other.body.enabled, false);
+    assert.equal(other.body.enabled, true);
     assert.equal(other.body.accountId, 'devuid:other');
     const session = await request(server.url, 'POST', '/v1/planner-voice/session', {
+      authorization: `Bearer ${token}.other`,
       body: { timeZone: 'Europe/Moscow', now: '2026-10-28T09:00:00+03:00' },
     });
-    const activity = await request(server.url, 'POST', '/v1/planner-voice/activities', { body: tennis() });
-    assert.equal(session.status, 403);
-    assert.equal(activity.status, 403);
-    assert.equal(session.body.saved, false);
-    assert.equal(activity.body.saved, false);
+    assert.equal(session.status, 200);
+    assert.equal(session.body.value, 'ek_mock');
   } finally {
     await server.close();
   }
 });
 
-test('routes enforce the allowlist and never return the server key', async () => {
+test('signed-in accounts can open a session and the server key stays hidden', async () => {
   let captured = null;
   const store = createPlannerVoiceStore();
   const handler = createPlannerVoiceHandler(config({ openAIMock: false }), {
@@ -338,19 +339,12 @@ test('routes enforce the allowlist and never return the server key', async () =>
   });
   const server = await start(handler);
   try {
-    const denied = await request(server.url, 'GET', '/v1/planner-voice/access', {
+    const admitted = await request(server.url, 'GET', '/v1/planner-voice/access', {
       authorization: `Bearer ${token}.other`,
     });
-    assert.equal(denied.status, 200);
-    assert.equal(denied.body.enabled, false);
-    assert.equal(denied.body.accountId, 'devuid:other');
-
-    const sessionDenied = await request(server.url, 'POST', '/v1/planner-voice/session', {
-      authorization: `Bearer ${token}.other`,
-      body: { timeZone: 'Europe/Moscow', now: '2026-10-28T09:00:00+03:00' },
-    });
-    assert.equal(sessionDenied.status, 403);
-    assert.equal(sessionDenied.body.saved, false);
+    assert.equal(admitted.status, 200);
+    assert.equal(admitted.body.enabled, true);
+    assert.equal(admitted.body.accountId, 'devuid:other');
     assert.equal(captured, null);
 
     const session = await request(server.url, 'POST', '/v1/planner-voice/session', {
@@ -415,7 +409,8 @@ test('routes enforce the allowlist and never return the server key', async () =>
     const other = await request(server.url, 'GET', '/v1/planner-voice/activities?idempotencyKey=call_tennis_1', {
       authorization: `Bearer ${token}.other`,
     });
-    assert.equal(other.status, 403);
+    assert.equal(other.status, 404);
+    assert.equal(other.body.saved, false);
 
     const page = await request(server.url, 'GET', '/v1/planner-voice/console');
     assert.equal(page.status, 200);
@@ -513,6 +508,85 @@ test('mock session does not call OpenAI', async () => {
       body: { responseId: 'resp_1', inputTokens: 10, outputTokens: 4 },
     });
     assert.equal(usage.status, 204);
+  } finally {
+    await server.close();
+  }
+});
+
+test('a full line keeps later callers waiting and moves them forward', async () => {
+  let clock = 1_000;
+  let minted = 0;
+  const line = createPlannerCallLine({ maxCalls: 1, maxWaiting: 2, now: () => clock });
+  const handler = createPlannerVoiceHandler(config({ openAIMock: false }), {
+    authenticate,
+    line,
+    log: () => {},
+    fetch: async () => {
+      minted += 1;
+      return new Response(JSON.stringify({ value: `ek_live_${minted}` }), { status: 200 });
+    },
+  });
+  const server = await start(handler);
+  const auth = (suffix) => ({ authorization: suffix ? `Bearer ${token}.${suffix}` : `Bearer ${token}` });
+  try {
+    const first = await request(server.url, 'POST', '/v1/planner-voice/line', auth(''));
+    const second = await request(server.url, 'POST', '/v1/planner-voice/line', auth('second'));
+    const third = await request(server.url, 'POST', '/v1/planner-voice/line', auth('third'));
+    assert.equal(first.body.state, 'ready');
+    assert.equal(first.body.position, 0);
+    assert.equal(second.body.state, 'waiting');
+    assert.equal(second.body.position, 1);
+    assert.equal(third.body.state, 'waiting');
+    assert.equal(third.body.position, 2);
+    assert.equal(minted, 0);
+    const full = await request(server.url, 'POST', '/v1/planner-voice/line', auth('fourth'));
+    assert.equal(full.status, 503);
+    assert.equal(full.body.error, 'planner_voice_line_full');
+
+    const blocked = await request(server.url, 'POST', '/v1/planner-voice/session', {
+      ...auth('second'),
+      body: { ticket: second.body.ticket, timeZone: 'Europe/Moscow', now: '2026-10-28T09:00:00+03:00' },
+    });
+    assert.equal(blocked.status, 409);
+    assert.equal(minted, 0);
+
+    const started = await request(server.url, 'POST', '/v1/planner-voice/session', {
+      body: { ticket: first.body.ticket, timeZone: 'Europe/Moscow', now: '2026-10-28T09:00:00+03:00' },
+    });
+    assert.equal(started.status, 200);
+    assert.equal(started.body.value, 'ek_live_1');
+    assert.equal(JSON.stringify(started.body).includes('sk-server-secret'), false);
+
+    const stillWaiting = await request(server.url, 'POST', '/v1/planner-voice/line', {
+      ...auth('third'),
+    });
+    assert.equal(stillWaiting.body.position, 2);
+
+    await request(server.url, 'POST', '/v1/planner-voice/line/release', {
+      body: { ticket: first.body.ticket },
+    });
+    const moved = await request(server.url, 'POST', '/v1/planner-voice/line', auth('second'));
+    const behind = await request(server.url, 'POST', '/v1/planner-voice/line', auth('third'));
+    assert.equal(moved.body.state, 'ready');
+    assert.equal(behind.body.state, 'waiting');
+    assert.equal(behind.body.position, 1);
+
+    const startedSecond = await request(server.url, 'POST', '/v1/planner-voice/session', {
+      ...auth('second'),
+      body: { ticket: moved.body.ticket, timeZone: 'Europe/Moscow', now: '2026-10-28T09:00:00+03:00' },
+    });
+    assert.equal(startedSecond.status, 200);
+    await request(server.url, 'POST', '/v1/planner-voice/line/beat', {
+      ...auth('second'),
+      body: { ticket: moved.body.ticket },
+    });
+    clock += 21_000;
+    const stillHeld = await request(server.url, 'POST', '/v1/planner-voice/line', auth('fifth'));
+    assert.equal(stillHeld.body.state, 'waiting');
+    assert.equal(stillHeld.body.position, 1);
+    clock += 30_000;
+    const afterHangup = await request(server.url, 'POST', '/v1/planner-voice/line', auth('fifth'));
+    assert.equal(afterHangup.body.state, 'ready');
   } finally {
     await server.close();
   }

@@ -7,6 +7,7 @@ import WebKit
 final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegate {
     enum Phase: Equatable {
         case connecting
+        case queued(Int)
         case connected
         case listening
         case speaking
@@ -35,6 +36,9 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     private var secret: PlanRealtimeSessionSecret?
     private var started = false
     private var ended = false
+    private var lineTicket: String?
+    private var connectTask: Task<Void, Never>?
+    private var heartbeat: Task<Void, Never>?
     private var callLanguage = "ru"
     private let calendar = Calendar.current
     private let ringback = PlanVoiceRingback()
@@ -46,8 +50,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         refBook = PlanRealtimeRefBook()
         removedIDs = []
         phase = .connecting
-        ringback.start()
-        Task { await connect() }
+        connectTask = Task { await connect() }
     }
 
     func toggleMute() {
@@ -58,6 +61,13 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     func end() {
         guard !ended else { return }
         ended = true
+        connectTask?.cancel()
+        heartbeat?.cancel()
+        let ticket = lineTicket
+        lineTicket = nil
+        if let ticket {
+            Task { await leaveLine(ticket) }
+        }
         ringback.stop()
         webView?.evaluateJavaScript("window.weekfit && window.weekfit.stop()")
         webView?.configuration.userContentController.removeScriptMessageHandler(forName: "plannerVoice")
@@ -94,6 +104,10 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     private func connect() async {
         do {
             let client = try await makeClient()
+            let ticket = try await waitForLine(client)
+            guard !ended else { return }
+            ringback.start()
+            phase = .connecting
             let secret = try await client.openSession(
                 timeZone: calendar.timeZone.identifier,
                 now: Date(),
@@ -108,10 +122,15 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                         "startTime": $0.startTime,
                         "durationMinutes": $0.durationMinutes,
                     ]
-                }
+                },
+                ticket: ticket
             )
-            guard !ended else { return }
+            guard !ended else {
+                await client.leaveLine(ticket: ticket)
+                return
+            }
             self.secret = secret
+            startHeartbeat(ticket)
             let configuration = WKWebViewConfiguration()
             configuration.allowsInlineMediaPlayback = true
             configuration.mediaTypesRequiringUserActionForPlayback = []
@@ -124,13 +143,47 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             var request = URLRequest(url: client.baseURL.appending(path: "v1/planner-voice/console"))
             request.setValue("Bearer \(client.token)", forHTTPHeaderField: "Authorization")
             view.load(request)
-        } catch PlanRealtimeClientError.forbidden {
-            ringback.stop()
-            phase = .failed(WeekFitLocalizedString("planner.voice.sessionFailed"))
         } catch {
+            guard !ended else { return }
             ringback.stop()
             phase = .failed(WeekFitLocalizedString("planner.voice.sessionFailed"))
         }
+    }
+
+    private func waitForLine(_ client: PlanRealtimeClient) async throws -> String {
+        while !ended {
+            try Task.checkCancellation()
+            let line = try await client.placeInLine()
+            lineTicket = line.ticket
+            if line.state == "active" {
+                await client.leaveLine(ticket: line.ticket)
+                try await Task.sleep(nanoseconds: 500_000_000)
+                continue
+            }
+            if line.state == "ready" {
+                return line.ticket
+            }
+            phase = .queued(max(line.position, 1))
+            try await Task.sleep(nanoseconds: 2_000_000_000)
+        }
+        throw CancellationError()
+    }
+
+    private func startHeartbeat(_ ticket: String) {
+        heartbeat?.cancel()
+        heartbeat = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 15_000_000_000)
+                if Task.isCancelled { return }
+                guard let client = try? await makeClient() else { return }
+                await client.beatLine(ticket: ticket)
+            }
+        }
+    }
+
+    private func leaveLine(_ ticket: String) async {
+        guard let client = try? await makeClient() else { return }
+        await client.leaveLine(ticket: ticket)
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -671,6 +724,8 @@ struct PlanRealtimeVoiceSheet: View {
         switch controller.phase {
         case .connecting:
             return WeekFitLocalizedString("planner.voice.state.connecting")
+        case .queued(let position):
+            return String(format: WeekFitLocalizedString("planner.voice.queue.position"), position)
         case .connected:
             return WeekFitLocalizedString("planner.voice.listening")
         case .listening:
