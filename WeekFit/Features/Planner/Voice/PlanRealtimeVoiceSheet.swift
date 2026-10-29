@@ -29,6 +29,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
 
     var planningDay = Date()
     var activities: [PlannedActivity] = []
+    var dayContext = PlanVoiceDayContext()
     var onSave: ((PlanVoiceCreateRequest) throws -> String)?
     var onUpdate: ((PlanVoiceUpdateRequest) throws -> Void)?
     var onDelete: ((String) throws -> Void)?
@@ -148,6 +149,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                         "durationMinutes": $0.durationMinutes,
                     ]
                 },
+                dayContext: dayContext.jsonObject(),
                 ticket: ticket,
                 introduced: alreadyIntroduced,
                 reconnected: reconnect
@@ -789,6 +791,7 @@ struct PlanVoiceReceipt: Equatable {
 struct PlanRealtimeVoiceSheet: View {
     var planningDay: Date
     var activities: [PlannedActivity]
+    var dayContext: PlanVoiceDayContext = PlanVoiceDayContext()
     var onSave: (PlanVoiceCreateRequest) throws -> String
     var onUpdate: (PlanVoiceUpdateRequest) throws -> Void
     var onDelete: (String) throws -> Void
@@ -808,7 +811,8 @@ struct PlanRealtimeVoiceSheet: View {
             onSave: onSave,
             onUpdate: onUpdate,
             onDelete: onDelete,
-            languageCode: languageManager.selectedLanguage.rawValue
+            languageCode: languageManager.selectedLanguage.rawValue,
+            dayContext: dayContext
         )
 
         VStack(spacing: 18) {
@@ -1141,7 +1145,8 @@ extension PlanRealtimeSessionController {
         onSave: @escaping (PlanVoiceCreateRequest) throws -> String,
         onUpdate: @escaping (PlanVoiceUpdateRequest) throws -> Void,
         onDelete: @escaping (String) throws -> Void,
-        languageCode: String
+        languageCode: String,
+        dayContext: PlanVoiceDayContext
     ) {
         self.planningDay = planningDay
         self.activities = activities
@@ -1149,6 +1154,7 @@ extension PlanRealtimeSessionController {
         self.onUpdate = onUpdate
         self.onDelete = onDelete
         self.languageCode = languageCode
+        self.dayContext = dayContext
     }
 }
 

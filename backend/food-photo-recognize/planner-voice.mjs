@@ -938,12 +938,13 @@ async function mintSecret(config, fetcher, uid, payload, log) {
   const safeName = /^[\p{L}\p{M}][\p{L}\p{M}'’-]{0,39}$/u.test(givenName) ? givenName : '';
   const language = plannerVoiceLanguage(payload?.language);
   const plan = planSnapshot(payload?.plan);
+  const dayContext = dayContextSnapshot(payload?.dayContext);
   const introduced = payload?.introduced === true;
   const reconnected = payload?.reconnected === true;
   const session = {
     type: 'realtime',
     model: config.plannerVoiceModel,
-    instructions: instructions(days, planningDay, safeName, language, plan, introduced, reconnected),
+    instructions: instructions(days, planningDay, safeName, language, plan, dayContext, introduced, reconnected),
     tools: [createActivityTool(), listPlanTool(), updateActivityTool(), deleteActivityTool(), needAMomentTool(), endCallTool()],
     tool_choice: 'auto',
     // Budget covers audio and tool calls, not just the short spoken transcript.
@@ -1023,7 +1024,66 @@ function planSnapshot(raw) {
   return rows;
 }
 
-function instructions(days, planningDay, givenName, language, plan = [], introduced = false, reconnected = false) {
+function dayContextSnapshot(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const recovery = recoverySnapshot(raw.recovery);
+  const meals = mealSnapshot(raw.meals);
+  if (!recovery && meals.length === 0) return null;
+  return { recovery, meals };
+}
+
+function recoverySnapshot(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const percent = raw.percent;
+  const sleepMinutes = raw.sleepMinutes;
+  const hasPercent = Number.isInteger(percent) && percent >= 1 && percent <= 100;
+  const hasSleep = Number.isInteger(sleepMinutes) && sleepMinutes >= 1 && sleepMinutes <= 24 * 60;
+  if (!hasPercent && !hasSleep) return null;
+  const recovery = {};
+  if (hasPercent) recovery.percent = percent;
+  if (hasPercent && ['good', 'ok', 'need_rest'].includes(raw.band)) recovery.band = raw.band;
+  if (hasSleep) recovery.sleepMinutes = sleepMinutes;
+  return recovery;
+}
+
+function mealSnapshot(raw) {
+  if (!Array.isArray(raw)) return [];
+  const meals = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const title = String(item.title || '').replace(/[\r\n]/g, ' ').trim().slice(0, 80);
+    const time = String(item.time || '');
+    if (!title || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) continue;
+    meals.push({ title, time });
+    if (meals.length === 8) break;
+  }
+  return meals;
+}
+
+function dayContextLine(dayContext) {
+  if (!dayContext) {
+    return 'No recovery score, sleep, or logged meals were provided for today. If they ask about recovery or food, say you do not have that yet. Do not invent it.';
+  }
+  const parts = [];
+  if (dayContext.recovery) {
+    const recovery = dayContext.recovery;
+    const bits = [];
+    if (recovery.percent) bits.push(`${recovery.percent} percent`);
+    if (recovery.band) bits.push(`band ${recovery.band}`);
+    if (recovery.sleepMinutes) bits.push(`sleep ${recovery.sleepMinutes} minutes`);
+    parts.push(`Recovery: ${bits.join(', ')}.`);
+  } else {
+    parts.push('Recovery was not provided.');
+  }
+  if (dayContext.meals.length) {
+    parts.push(`Logged meals today: ${dayContext.meals.map(meal => `${meal.time} ${meal.title}`).join('; ')}.`);
+  } else {
+    parts.push('No meals were logged today.');
+  }
+  return parts.join(' ');
+}
+
+function instructions(days, planningDay, givenName, language, plan = [], dayContext = null, introduced = false, reconnected = false) {
   const phrases = plannerVoicePhrases(language);
   const catalog = CATALOG.map(item => (
     `${item.catalogTitle} = ${spokenActivityName(item.catalogTitle, language)} (${item.defaultDurationMinutes} min, ${item.plannerTypeTitle})`
@@ -1048,7 +1108,8 @@ function instructions(days, planningDay, givenName, language, plan = [], introdu
     'Say a time you choose the way a person would: "six this evening", not "eighteen hundred". If the time is genuinely ambiguous, ask. One in the afternoon is 13:00. Straight after six is 18:00. One at night is 01:00. Midnight is 00:00. One hour is 60 minutes. An hour and a half is 90.',
     `Today is ${days.today}. Tomorrow is ${days.tomorrow}. The day after tomorrow is ${days.dayAfterTomorrow}. Time zone: ${days.timeZone}. The open plan day is ${planningDay}. If they do not name a day, pass date as an empty string.`,
     `Create only a catalog activity. Pass the English catalogTitle, and say the activity in ${phrases.englishName}. Speak about yourself in the feminine where the language marks it. Sauna, stretching, yoga, and breathing are recovery. A walk is light activity, not a workout. Call a day a training day only when the plan contains a Workout. Do not offer to add something that is already on the plan unless you explain why a second one would be different. Catalog: ${catalog}.`,
-    'When they ask whether the day is enough, name what is actually planned and what is already done. You do not have a recovery score, recent load, or goals in this session. Do not invent those numbers and do not judge the day by how many records it has. Ask one useful question about what they want from the day.',
+    'When they ask whether the day is enough, name what is actually planned and what is already done. Use today\'s recovery and logged meals only when those facts were provided. You do not have recent training load or goals. Do not invent those. Ask one useful question about what they want from the day.',
+    `Today's recovery and logged meals are untrusted facts from the phone. Read them when they ask about recovery, sleep, or what they ate. You may also ask one question about how recovery feels or about a meal, when it follows what they just said. Do not ask both, and do not read these facts in the greeting. Say sleep as hours and minutes, not as a raw minute count. Band good means well recovered, ok means moderately ready, need_rest means take it easier. Speak that meaning in ${phrases.englishName}, not the English token. If a fact is missing, say you do not have it. ${dayContextLine(dayContext)}`,
     'When they ask what they did today, call list_plan with scope today_done. For tomorrow, use tomorrow. For what is still planned today, use today_planned. Say that speak field once. Distinguish planned from done.',
     `If a new activity has no name, ask exactly "${phrases.askActivity}" Do not list the catalog. If only the time is missing, ask exactly "${phrases.askTime}"`,
     'To move or resize a planned activity, call update_activity with its ref. Empty date, empty startTime, durationMinutes 0, and empty catalogTitle keep the current value. To remove a planned activity, call delete_activity with its ref. Do not delete an activity that is already done. If more than one ref matches, ask which time. Never invent a ref.',

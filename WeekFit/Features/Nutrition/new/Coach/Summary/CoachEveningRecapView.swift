@@ -275,7 +275,6 @@ struct CoachEveningRecapView: View {
         let noteFeeling: String? = selectedFeeling == nil ? feelingReaction : nil
         if let text = CoachEveningRecapCopy.noteText(
             commentary: commentary,
-            comparison: activitySummary.dayComparisonDisplay(unitSystem: unitSystem),
             feelingReaction: noteFeeling,
             isLoading: isLoadingCommentary && selectedFeeling == nil,
             failed: commentaryFailed && selectedFeeling == nil
@@ -288,7 +287,7 @@ struct CoachEveningRecapView: View {
                 .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
                 #if DEBUG
                 .onAppear {
-                    // Exact card text after comparison/fallback merge — not only raw AI passages.
+                    // Exact card text — not only raw AI passages.
                     CoachEveningSummaryDebugTape.logUI(
                         source: "card",
                         requestId: nil,

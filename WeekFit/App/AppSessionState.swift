@@ -1,6 +1,11 @@
 import Foundation
 internal import Combine
 
+struct PlanActivityOpenRequest: Equatable {
+    var activityID: String
+    var day: Date
+}
+
 @MainActor
 final class AppSessionState: ObservableObject {
     // MainActorDeinitStabilization: TaskLocal bad-free on sync @MainActor XCTest teardown (see MainActorDeinitStabilization.swift).
@@ -18,6 +23,8 @@ final class AppSessionState: ObservableObject {
     /// (or Access status inside it) is already presented.
     @Published private(set) var isPresentingSettings = false
     @Published private(set) var pendingRootTab: WeekFitTab?
+    /// Today asks Plan to open one activity after the planner tab is on screen.
+    @Published var planActivityOpenRequest: PlanActivityOpenRequest?
 
     private var pendingHealthRefreshSources: [String] = []
     private var pendingCoachRefreshSources: [String] = []
@@ -85,6 +92,14 @@ final class AppSessionState: ObservableObject {
         let tab = pendingRootTab
         pendingRootTab = nil
         return tab
+    }
+
+    func requestOpenPlannedActivity(id: String, on day: Date) {
+        planActivityOpenRequest = PlanActivityOpenRequest(activityID: id, day: day)
+    }
+
+    func clearPlanActivityOpenRequest() {
+        planActivityOpenRequest = nil
     }
 
     func triggerHealthRefresh(source: String = "unspecified") {

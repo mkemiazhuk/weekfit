@@ -301,6 +301,7 @@ private struct WeekPlannerLiveQueryView: View {
                 revision: userSettings.customMealsCatalogRevision
             )
             openPendingPlanAddIfNeeded()
+            openRequestedPlanActivityIfNeeded()
             #if DEBUG
             TabSwitchProfiler.markEvent(
                 "WeekPlannerView.onAppear revisionBytes=\(activitiesRevision.count) timelineCount=\(timelineItems.count)"
@@ -311,6 +312,13 @@ private struct WeekPlannerLiveQueryView: View {
         .onChange(of: tabIsActive) { _, active in
             guard active else { return }
             openPendingPlanAddIfNeeded()
+            openRequestedPlanActivityIfNeeded()
+        }
+        .onChange(of: appSession.planActivityOpenRequest?.activityID) { _, _ in
+            openRequestedPlanActivityIfNeeded()
+        }
+        .onChange(of: activitiesRevision) { _, _ in
+            openRequestedPlanActivityIfNeeded()
         }
         .onChange(of: PendingPlanAddOpen.shared.shouldOpen) { _, shouldOpen in
             guard shouldOpen, tabIsActive else { return }
@@ -325,6 +333,19 @@ private struct WeekPlannerLiveQueryView: View {
         guard PendingPlanAddOpen.shared.consume() else { return }
         viewModel.selectedDate = calendar.startOfDay(for: Date())
         viewModel.startAdding(at: Date(), history: plannedActivities)
+    }
+
+    private func openRequestedPlanActivityIfNeeded() {
+        guard tabIsActive, let request = appSession.planActivityOpenRequest else { return }
+        guard let activity = plannedActivities.first(where: { $0.id == request.activityID }) else {
+            if !plannedActivities.isEmpty {
+                appSession.clearPlanActivityOpenRequest()
+            }
+            return
+        }
+        viewModel.selectedDate = calendar.startOfDay(for: request.day)
+        appSession.clearPlanActivityOpenRequest()
+        openTimelineActivity(activity)
     }
     
     private func plannerConfirmationSheet(_ activity: PlannedActivity) -> some View {

@@ -30,9 +30,11 @@ enum TodayCardTypography {
     /// Card descriptions — subheadline (~15) ×1.10.
     private static let cardBodyBase: CGFloat = 16.5
 
-    /// Quick-action labels (Log drink / Log food / Start activity) — footnote-scale.
-    /// Kept smaller than card titles so three columns stay calm with longer verbs.
-    private static let quickActionLabelBase: CGFloat = 13.0
+    /// Quick-action labels (Log drink / Log food / Start activity).
+    private static let quickActionLabelBase: CGFloat = 16.0
+
+    /// “Quick actions” heading only — Your day keeps `sectionLabel`.
+    private static let quickActionSectionTitleBase: CGFloat = 16.0
 
     /// Legacy support line (unused after single-label quick actions).
     private static let quickActionSupportBase: CGFloat = 12.0
@@ -75,8 +77,12 @@ enum TodayCardTypography {
         system(cardBodyBase, relativeTo: .subheadline, weight: .semibold)
     }
 
+    static var quickActionSectionTitle: Font {
+        system(quickActionSectionTitleBase, relativeTo: .subheadline, weight: .medium)
+    }
+
     static var quickActionLabel: Font {
-        system(quickActionLabelBase, relativeTo: .footnote, weight: .medium)
+        system(quickActionLabelBase, relativeTo: .subheadline, weight: .medium)
     }
 
     static var quickActionSupport: Font {

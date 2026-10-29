@@ -87,10 +87,9 @@ enum CoachEveningRecapCopy {
         }
     }
 
-    /// Blend AI note with a client-computed comparison (max two short sentences).
+    /// Evening note is the recommendation itself. Distance vs usual stays in the hero, not as the opening line.
     static func noteText(
         commentary: String?,
-        comparison: String?,
         feelingReaction: String?,
         isLoading: Bool,
         failed: Bool,
@@ -104,45 +103,14 @@ enum CoachEveningRecapCopy {
             return filtered.isEmpty ? nil : filtered
         }
         if let safeCommentary {
-            return mergeComparison(into: safeCommentary, comparison: comparison, locale: locale)
+            return safeCommentary
         }
         if isLoading { return nil }
-        let fallback = WeekFitLocalizedString("coach.eveningRecap.forEvening.fallback")
-        return mergeComparison(into: fallback, comparison: comparison, locale: locale)
-    }
-
-    private static func mergeComparison(
-        into commentary: String,
-        comparison: String?,
-        locale: String
-    ) -> String {
-        let safeCommentary = CoachEveningSummaryPolicy.filteringToRequestedLocale(
-            commentary,
+        let fallback = CoachEveningSummaryPolicy.filteringToRequestedLocale(
+            WeekFitLocalizedString("coach.eveningRecap.forEvening.fallback"),
             locale: locale
         )
-        guard let comparison, !comparison.isEmpty else { return safeCommentary }
-        let trimmed = safeCommentary.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty { return comparison }
-        // Avoid duplicating if the model already used the comparison.
-        if trimmed.localizedCaseInsensitiveContains(comparison)
-            || sharesSignificantToken(trimmed, comparison) {
-            return trimmed
-        }
-        // Comparison first, then one short takeaway sentence from commentary.
-        let takeaway = CoachEveningSummaryPolicy.firstSentence(of: trimmed)
-        let safeTakeaway = CoachEveningSummaryPolicy.filteringToRequestedLocale(
-            takeaway,
-            locale: locale
-        )
-        if safeTakeaway.isEmpty { return comparison }
-        return "\(comparison) \(safeTakeaway)"
-    }
-
-    private static func sharesSignificantToken(_ a: String, _ b: String) -> Bool {
-        let tokens = b.split(whereSeparator: { $0.isWhitespace || $0.isPunctuation })
-            .map(String.init)
-            .filter { $0.count >= 4 }
-        return tokens.contains { a.localizedCaseInsensitiveContains($0) }
+        return fallback.isEmpty ? nil : fallback
     }
 
     private static func cleanedName(_ raw: String?) -> String? {

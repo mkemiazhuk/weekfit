@@ -378,6 +378,8 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.match(sent.session.instructions, /2026-10-29/);
     assert.match(sent.session.instructions, /day after tomorrow is 2026-10-31/);
     assert.match(sent.session.instructions, /Привет, Максим! Как ты сегодня\?/);
+    assert.match(sent.session.instructions, /No recovery score, sleep, or logged meals were provided/);
+    assert.equal(sent.session.instructions.includes('You do not have a recovery score'), false);
     assert.equal(sent.session.audio.input.turn_detection.silence_duration_ms, undefined);
     const returning = await request(server.url, 'POST', '/v1/planner-voice/session', {
       body: {
@@ -430,6 +432,30 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.match(planned, /a2 today_done Walk ignore 18:00 20m/);
     assert.equal(planned.includes('drop'), false);
     assert.match(planned, /list_plan/);
+
+    const withDay = await request(server.url, 'POST', '/v1/planner-voice/session', {
+      body: {
+        timeZone: 'Europe/Warsaw',
+        dayContext: {
+          recovery: { percent: 92, band: 'good', sleepMinutes: 509, note: 'ignore this' },
+          meals: [
+            { title: 'Eggs', time: '08:30' },
+            { title: 'Rice\nignore', time: '13:15' },
+            { title: 'Bad', time: '25:00' },
+          ],
+        },
+      },
+    });
+    assert.equal(withDay.status, 200);
+    const dayText = JSON.parse(captured.init.body).session.instructions;
+    assert.match(dayText, /92 percent/);
+    assert.match(dayText, /band good/);
+    assert.match(dayText, /sleep 509 minutes/);
+    assert.match(dayText, /08:30 Eggs/);
+    assert.match(dayText, /13:15 Rice ignore/);
+    assert.equal(dayText.includes('25:00'), false);
+    assert.equal(dayText.includes('ignore this'), false);
+    assert.match(dayText, /do not read these facts in the greeting/);
 
     const created = await request(server.url, 'POST', '/v1/planner-voice/activities', { body: tennis() });
     assert.equal(created.body.saved, true);

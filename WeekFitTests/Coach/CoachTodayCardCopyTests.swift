@@ -3,6 +3,33 @@ import XCTest
 
 final class CoachTodayCardCopyTests: XCTestCase {
 
+    func testFocusCardKeepsTheFullRecommendation() {
+        let title = "Ready for a quieter evening after today's training"
+        let message = "Keep it light today and leave energy for tomorrow morning."
+        let presentation = makePresentation(
+            scenario: .protectTomorrowFresh,
+            coachTitle: title,
+            todayTitle: title,
+            todayMessage: message,
+            assessment: message
+        )
+
+        let display = CoachTodayCardCopy.focusCard(from: presentation)
+        XCTAssertEqual(display?.title, title)
+        XCTAssertEqual(display?.message, message)
+    }
+
+    func testFocusCardIsNilWithoutAPersonalHeadline() {
+        let presentation = makePresentation(
+            scenario: .stableDay,
+            coachTitle: "   ",
+            todayTitle: "",
+            todayMessage: "",
+            assessment: ""
+        )
+        XCTAssertNil(CoachTodayCardCopy.focusCard(from: presentation))
+    }
+
     func testFocusMirrorsCoachHeroWhenTitlesDifferFromUpNext() {
         let presentation = makePresentation(
             scenario: .walkRecoveryAction,

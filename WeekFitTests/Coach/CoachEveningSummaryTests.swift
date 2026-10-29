@@ -221,21 +221,21 @@ final class CoachEveningSummaryTests: XCTestCase {
         XCTAssertFalse(note.contains("20. 5"), note)
         XCTAssertFalse(note.hasSuffix("20."), note)
 
-        let withComparison = CoachEveningRecapCopy.noteText(
+        let displayed = CoachEveningRecapCopy.noteText(
             commentary: note,
-            comparison: "Шагов меньше, чем обычно.",
             feelingReaction: nil,
             isLoading: false,
             failed: false,
             locale: "ru"
         )
-        XCTAssertNotNil(withComparison)
-        XCTAssertTrue(withComparison!.contains("20.5"), withComparison!)
+        XCTAssertNotNil(displayed)
+        XCTAssertTrue(displayed!.contains("20.5"), displayed!)
         XCTAssertTrue(
-            withComparison!.contains("30.9") || withComparison!.contains("покоя"),
-            "UI takeaway truncated at decimal: \(withComparison!)"
+            displayed!.contains("30.9") || displayed!.contains("покоя"),
+            "UI takeaway truncated at decimal: \(displayed!)"
         )
-        XCTAssertFalse(withComparison!.hasSuffix("20."), withComparison!)
+        XCTAssertFalse(displayed!.hasSuffix("20."), displayed!)
+        XCTAssertFalse(displayed!.hasPrefix("Шагов меньше"), displayed!)
     }
 
     func testFallbackSourceIsAcceptedWhenFactsAreEmpty() {
@@ -286,16 +286,19 @@ final class CoachEveningSummaryTests: XCTestCase {
         )
     }
 
-    func testNoteTextDropsEnglishTakeawayWhenMergingPolishComparison() {
+    func testNoteTextDropsEnglishTakeawayWithoutDistanceLead() {
         let note = CoachEveningRecapCopy.noteText(
             commentary: "You have logged only one meal so far today and your food log completeness is unknown.",
-            comparison: "Spacer: 7,7 km mniej niż zwykle.",
             feelingReaction: nil,
             isLoading: false,
             failed: false,
             locale: "pl"
         )
-        XCTAssertEqual(note, "Spacer: 7,7 km mniej niż zwykle.")
+        XCTAssertNotEqual(note, "You have logged only one meal so far today and your food log completeness is unknown.")
+        if let note {
+            XCTAssertFalse(note.localizedCaseInsensitiveContains("walked"))
+            XCTAssertFalse(note.localizedCaseInsensitiveContains("km"))
+        }
     }
 
     func testPersistedClaimSurvivesStoreRecreationAndIsScopedToOwner() throws {

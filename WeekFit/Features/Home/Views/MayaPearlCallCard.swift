@@ -7,39 +7,35 @@ struct MayaPearlCallCard: View {
 
     @Environment(\.weekFitPalette) private var palette
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @ScaledMetric(relativeTo: .body) private var titleSize: CGFloat = 17
+    @ScaledMetric(relativeTo: .subheadline) private var messageSize: CGFloat = 15
+    @ScaledMetric(relativeTo: .body) private var iconSide: CGFloat = 44
 
     var body: some View {
         Button(action: action) {
             HStack(alignment: .center, spacing: 12) {
                 emblem
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(WeekFitLocalizedString("planner.voice.maya"))
-                        .font(.body.weight(.semibold))
+                        .font(.system(size: titleSize, weight: .semibold))
                         .foregroundStyle(nameColor)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
                     Text(WeekFitLocalizedString("today.maya.subtitle"))
-                        .font(.subheadline)
+                        .font(.system(size: messageSize, weight: .regular))
                         .foregroundStyle(subtitleColor)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.85)
+                        .fixedSize(horizontal: false, vertical: true)
                         .multilineTextAlignment(.leading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 callChip
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity, minHeight: 68, alignment: .center)
+            .padding(TodayChrome.cardPadding)
+            .frame(maxWidth: .infinity, alignment: .center)
             .background {
                 RoundedRectangle(cornerRadius: TodayChrome.cardRadius, style: .continuous)
                     .fill(cardFill)
-                    .shadow(
-                        color: Color.black.opacity(palette.isLight ? WeekFitLightTokens.cardContactShadowOpacity : 0.28),
-                        radius: palette.isLight ? 5 : 10,
-                        y: palette.isLight ? 2 : 4
-                    )
             }
             .overlay {
                 RoundedRectangle(cornerRadius: TodayChrome.cardRadius, style: .continuous)
@@ -61,7 +57,7 @@ struct MayaPearlCallCard: View {
                 .stroke(emblemInk, style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
                 .frame(width: 18, height: 12)
         }
-        .frame(width: 40, height: 40)
+        .frame(width: iconSide, height: iconSide)
         .accessibilityHidden(true)
     }
 
@@ -70,9 +66,9 @@ struct MayaPearlCallCard: View {
             Image(systemName: "phone")
                 .font(.system(size: 15, weight: .semibold))
             Text(WeekFitLocalizedString(isReturning ? "today.maya.return" : "planner.voice.call"))
-                .font(.subheadline.weight(.semibold))
+                .font(.system(size: messageSize, weight: .semibold))
                 .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                .fixedSize(horizontal: true, vertical: false)
         }
         .foregroundStyle(chipInk)
         .padding(.horizontal, 12)

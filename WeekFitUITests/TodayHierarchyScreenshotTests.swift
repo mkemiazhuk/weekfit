@@ -85,7 +85,7 @@ final class TodayHierarchyScreenshotTests: XCTestCase {
         ])
         let card = light.buttons["today.maya.call"]
         XCTAssertTrue(card.waitForExistence(timeout: 8), "Maya card did not appear on Today")
-        XCTAssertTrue(light.staticTexts["Plan your day together"].exists)
+        XCTAssertTrue(light.staticTexts["Let's talk"].exists)
         let drink = light.buttons["today.quickAction.drinks"]
         XCTAssertTrue(drink.waitForExistence(timeout: 5))
         XCTAssertLessThan(
@@ -108,7 +108,7 @@ final class TodayHierarchyScreenshotTests: XCTestCase {
             "-weekfit-language=ru"
         ])
         XCTAssertTrue(
-            russian.staticTexts["Спланируем день вместе"].waitForExistence(timeout: 8)
+            russian.staticTexts["Давай поговорим"].waitForExistence(timeout: 8)
                 || russian.staticTexts["Майя"].waitForExistence(timeout: 2)
         )
         saveScreenshot(russian, name: "today-maya-pearl-ru")

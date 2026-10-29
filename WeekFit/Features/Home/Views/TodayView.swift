@@ -109,7 +109,7 @@ struct TodayView: View {
         static let cardRadius: CGFloat = TodayChrome.cardRadius
         /// Header spacing now lives in `WeekFitScreenLayout.headerBottomSpacing`.
         static let contentTopInset: CGFloat = 0
-        static let gapBetweenCards: CGFloat = 14
+        static let gapBetweenCards: CGFloat = 18
         static let ringGroupSpacing: CGFloat = 6
         static let cardTitleBottomGap: CGFloat = 6
         static let overviewContentTopPadding: CGFloat = 10
@@ -483,6 +483,7 @@ struct TodayView: View {
             PlanRealtimeVoiceSheet(
                 planningDay: selectedDate,
                 activities: plannedActivities,
+                dayContext: voiceDayContext(),
                 onSave: { request in
                     try PlanViewModel().saveVoiceActivity(
                         request,
@@ -658,6 +659,9 @@ struct TodayView: View {
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             refreshTodayAfterAppBecameActive()
+        }
+        .task(id: todayMiddleClockID) {
+            await refreshTodayMiddleClock()
         }
         .onChange(of: returnToTodayTrigger) { _, _ in
             handleReturnToTodayRequest()
@@ -1550,17 +1554,12 @@ struct TodayView: View {
                     AnyView(quickActionsSection)
 
                 case .upcoming:
-                    // Evening and daytime: Next Up, then the focus card.
-                    if let planSlot = erasedPlanAttentionSlot(now: now, upcoming: upcoming) {
-                        planSlot
+                    if let upcoming {
+                        AnyView(upcomingActivityCard(upcoming, now: now))
                     }
-                    erasedCoachEntryPoint()
                     AnyView(quickActionsSection)
 
                 case .idle:
-                    if let planSlot = erasedPlanAttentionSlot(now: now, upcoming: nil) {
-                        planSlot
-                    }
                     erasedCoachEntryPoint()
                     AnyView(quickActionsSection)
                 }
@@ -1662,8 +1661,8 @@ struct TodayView: View {
     ) -> some View {
         let _ = accent
         return content()
-            .padding(.horizontal, TodayLayout.cardInteriorVerticalPadding)
-            .padding(.vertical, TodayLayout.cardInteriorVerticalPadding)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
             .todaySurface(elevated: false, cornerRadius: TodayLayout.cardRadius)
     }
 
@@ -2557,61 +2556,36 @@ struct TodayView: View {
     }
 
     private func upcomingActivityCard(_ activity: PlannedActivity, now: Date) -> some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            onSelectTab(.calendar)
+        let title = activityDisplayTitle(activity)
+        let caption = upNextSubtitle(for: activity)
+        return Button {
+            openUpcomingActivity(activity)
         } label: {
-            todayPremiumCard(accent: nil, featured: false) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(upNextSectionTitle(for: activity, now: now))
-                        .font(TodayCardTypography.sectionLabel)
-                        .fontDesign(.rounded)
-                        .foregroundStyle(todaySecondaryReadable)
-
-                    HStack(alignment: .center, spacing: 12) {
-                        upNextIconBadge(
-                            systemName: upNextIcon(for: activity),
-                            accent: upNextAccent(for: activity)
-                        )
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(shortDisplayTitle(activityDisplayTitle(activity)))
-                                .font(TodayCardTypography.cardTitle)
-                                .foregroundStyle(textPrimary)
-                                .lineLimit(3)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            Text(upNextSubtitle(for: activity))
-                                .font(TodayCardTypography.cardBody)
-                                .foregroundStyle(todaySecondaryReadable)
-                                .lineLimit(4)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                        if shouldShowUpNextTrailingTime(for: activity) {
-                            Text(upNextTimeText(for: activity, selectedDate: selectedDate))
-                                .font(WeekFitType.captionEmphasized)
-                                .foregroundStyle(todaySecondaryReadable)
-                                .multilineTextAlignment(.trailing)
-                                .fixedSize(horizontal: true, vertical: true)
-                        }
-
-                        todaySupportingCardChevron(color: todayMetaReadable)
-                    }
-                }
-                .padding(.horizontal, TodayLayout.cardInteriorVerticalPadding)
-                .padding(.vertical, TodayLayout.cardInteriorVerticalPadding)
-            }
+            TodayMiddleCard(
+                header: WeekFitLocalizedString("today.upNext.title"),
+                title: title,
+                message: caption,
+                systemImage: upNextIcon(for: activity),
+                tone: .sage,
+                trailingTime: activityTime(activity.date),
+                showsChevron: true
+            )
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("today.upNext.card")
         .accessibilityLabel(
             String(
                 format: WeekFitLocalizedString("today.upNext.upcomingAccessibilityFormat"),
-                shortDisplayTitle(activityDisplayTitle(activity)),
-                upNextSubtitle(for: activity)
+                title,
+                caption
             )
         )
+    }
+
+    private func openUpcomingActivity(_ activity: PlannedActivity) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        appSession.requestOpenPlannedActivity(id: activity.id, on: activity.date)
+        onSelectTab(.calendar)
     }
 
     /// Trailing clock is useful with short countdowns; hide it when the subtitle
@@ -2676,6 +2650,53 @@ struct TodayView: View {
             }
         }
         .buttonStyle(.plain)
+    }
+
+    private func voiceDayContext() -> PlanVoiceDayContext {
+        let now = Date()
+        let todayActivities = CoachCanonicalDayState.selectedDayActivities(
+            from: plannedActivities,
+            selectedDate: now
+        )
+        let meals = CoachCanonicalDayState.completedMeals(from: todayActivities).prefix(8).map { activity in
+            PlanVoiceDayContext.Meal(
+                title: activityDisplayTitle(activity),
+                time: voiceClock(activity.date)
+            )
+        }
+        let percent = healthManager.recoveryPercent
+        return PlanVoiceDayContext(
+            recoveryPercent: percent > 0 ? percent : nil,
+            recoveryBand: percent > 0 ? voiceRecoveryBand(percent) : nil,
+            sleepMinutes: healthManager.sleepMinutes > 0 ? healthManager.sleepMinutes : nil,
+            meals: Array(meals)
+        )
+    }
+
+    private func voiceRecoveryBand(_ percent: Int) -> String? {
+        switch RecoveryScoreEngine.statusTier(
+            score: percent,
+            input: healthManager.currentRecoveryScoreInput,
+            breakdown: healthManager.recoveryBreakdown
+        ) {
+        case .wellRecovered:
+            return "good"
+        case .moderatelyReady:
+            return "ok"
+        case .takeItEasier, .recoveryPriority:
+            return "need_rest"
+        case .noData:
+            return nil
+        }
+    }
+
+    private func voiceClock(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar.current
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = Calendar.current.timeZone
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
     }
 
     private func openMayaCall() {
@@ -2887,43 +2908,22 @@ struct TodayView: View {
         excludingActivityID: String? = nil
     ) -> PlannedActivity? {
         let calendar = Calendar.current
-
-        func isCandidate(_ activity: PlannedActivity) -> Bool {
-            guard !activity.isCompleted, !activity.isSkipped else { return false }
-            // Future-scheduled only — never treat an overdue plan slot as “running”.
-            guard activity.date > now else { return false }
-            if let excludingActivityID, activity.id == excludingActivityID {
-                return false
-            }
-            return true
+        guard calendar.isDate(selectedDate, inSameDayAs: now) else { return nil }
+        let candidates = plannedActivities.map {
+            TodayUpNextCandidate(
+                id: $0.id,
+                date: $0.date,
+                isCompleted: $0.isCompleted,
+                isSkipped: $0.isSkipped
+            )
         }
-
-        let upcoming = plannedActivities
-            .filter(isCandidate)
-            .sorted { $0.date < $1.date }
-
-        guard !upcoming.isEmpty else { return nil }
-
-        let viewingToday = calendar.isDate(selectedDate, inSameDayAs: now)
-        guard viewingToday else {
-            return upcoming.first {
-                calendar.isDate($0.date, inSameDayAs: selectedDate)
-            }
-        }
-
-        if let today = upcoming.first(where: { calendar.isDate($0.date, inSameDayAs: now) }) {
-            return today
-        }
-
-        guard let tomorrow = calendar.date(
-            byAdding: .day,
-            value: 1,
-            to: calendar.startOfDay(for: now)
-        ) else {
-            return nil
-        }
-
-        return upcoming.first { calendar.isDate($0.date, inSameDayAs: tomorrow) }
+        guard let id = TodayUpNextSelection.nextID(
+            among: candidates,
+            now: now,
+            calendar: calendar,
+            excludingID: excludingActivityID
+        ) else { return nil }
+        return plannedActivities.first { $0.id == id }
     }
 
     private func isCoveredByActiveSession(_ activity: PlannedActivity) -> Bool {
@@ -2971,60 +2971,39 @@ struct TodayView: View {
         }
     }
 
-    private func coachInsightCard(presentation: CoachUIPresentation) -> some View {
-        let now = Date()
-        let nextActivity = currentLiveUpNextActivity(now: now)
-            ?? nextUpcomingPlannedActivity(now: now)
-        let nextTitle = nextActivity.map {
-            shortDisplayTitle(activityDisplayTitle($0))
-        }
-        let display = CoachTodayCardCopy.display(
-            from: presentation,
-            nextActivityTitle: nextTitle
-        )
+    private func coachInsightCard(presentation: CoachUIPresentation) -> AnyView {
+        let display = CoachTodayCardCopy.focusCard(from: presentation)
         let insightIcon = todayCoachDisplayIcon(for: presentation)
-        let insightColor = todayCoachFocusAccent(for: presentation, displayIcon: insightIcon)
-        let insightTitle = display.title
-        let insightMessage = display.message
-        let challengeCue = todayRecoveryChallengeCue
-        let focusHeading = todayCoachFocusHeading()
-        let durationLabel = todayCoachFocusDurationLabel(for: presentation)
+        let focusHeading = WeekFitLocalizedString("today.coachInsight.focusToday")
+        let insightTitle = display?.title ?? ""
+        let insightMessage = display?.message ?? ""
+        guard display != nil, !insightTitle.isEmpty else {
+            return AnyView(neutralFocusCard())
+        }
 
-        // Fully extracted body (no ViewBuilder closures capturing TodayView).
-        return TodayCoachInsightCardBody(
-            focusHeading: focusHeading,
-            insightTitle: insightTitle,
-            insightMessage: insightMessage,
-            insightIcon: insightIcon,
-            insightColor: insightColor,
-            iconYOffset: coachIconOpticalYOffset(insightIcon),
-            durationLabel: durationLabel,
-            challengeCue: challengeCue,
-            textPrimary: textPrimary,
-            textSecondary: todaySecondaryReadable,
-            meta: todayMetaReadable
-        )
-        .contentShape(Rectangle())
-        .onTapGesture {
+        return AnyView(Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             ProductAnalytics.todayPrimaryActionTapped(.coach)
             onSelectTab(.coach)
+        } label: {
+            TodayMiddleCard(
+                header: focusHeading,
+                title: insightTitle,
+                message: insightMessage,
+                systemImage: insightIcon,
+                tone: .lavender,
+                showsChevron: true
+            )
         }
-        .accessibilityAddTraits(.isButton)
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("today.focus.card")
         .accessibilityLabel(
-            [
-                focusHeading,
-                insightTitle,
-                insightMessage,
-                challengeCue?.label ?? ""
-            ]
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-            .joined(separator: ". ")
+            [focusHeading, insightTitle, insightMessage]
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .joined(separator: ". ")
         )
         .accessibilityHint(WeekFitLocalizedString("today.coachInsight.opensCoach"))
-        .todaySurface(elevated: true, coachEmphasis: true, cornerRadius: TodayLayout.cardRadius)
-        .transition(.identity)
         .onAppear {
             guard presentation.planAdjustmentMode == .appliedExecuting else { return }
             let dayKey = ProposalInputFingerprintBuilder.dayKey(for: Date())
@@ -3034,7 +3013,20 @@ struct TodayView: View {
             Task { @MainActor in
                 coachCoordinator.forceRecompute(reason: "appliedAcknowledgmentViewed.todayInsight")
             }
-        }
+        })
+    }
+
+    private func neutralFocusCard() -> some View {
+        TodayMiddleCard(
+            header: WeekFitLocalizedString("today.coachInsight.focusToday"),
+            title: WeekFitLocalizedString("today.focus.neutralTitle"),
+            message: WeekFitLocalizedString("today.focus.neutralMessage"),
+            systemImage: "heart",
+            tone: .lavender,
+            showsChevron: false
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("today.focus.card")
     }
 
     // Coach sheets / morning-proposal observers live on `body` — attaching them
@@ -3042,11 +3034,10 @@ struct TodayView: View {
     // deferred Coach slot mounted ~1s after first paint.
 
     private var coachInsightWithOptionalProposalOverlay: AnyView {
-        // Compact teaser floats above the usual Coach card when Morning Adjustments
-        // chrome is available; otherwise show the Coach insight phase content.
-        let showMorningProposal = !morningProposalChromeHidden && hasMorningProposalChrome
-        if showMorningProposal {
-            return AnyView(morningAdjustmentsOverlayStack)
+        if !morningProposalChromeHidden,
+           hasMorningProposalChrome,
+           let proposalCard = morningProposalCard() {
+            return proposalCard
         }
         return AnyView(coachInsightPhaseContent)
     }
@@ -3143,14 +3134,8 @@ struct TodayView: View {
         switch todayCoachInsightPhase {
         case .insight(let presentation, _):
             return AnyView(coachInsightCard(presentation: presentation))
-        case .awaitingHealthConnect:
-            return AnyView(coachSettlingCard(needsHealthConnect: true))
-        case .awaitingMorningSync:
-            return AnyView(coachSettlingCard(needsHealthConnect: false))
-        case .preparing:
-            // Recovery rings are often already settled here — don't claim we're
-            // still “pulling in sleep”. Use the broader syncing teaser instead.
-            return AnyView(coachSettlingCard(needsHealthConnect: false, useSyncingCopy: true))
+        case .awaitingHealthConnect, .awaitingMorningSync, .preparing:
+            return AnyView(neutralFocusCard())
         }
     }
 
@@ -3172,75 +3157,37 @@ struct TodayView: View {
     }
 
     private func morningProposalReadyCard() -> some View {
-        let accent = WeekFitTheme.recovery
         let title = WeekFitLocalizedString("coach.proposal.chrome.readyTitle")
-        let review = WeekFitLocalizedString("coach.proposal.chrome.reviewCTA.short")
+        let review = WeekFitLocalizedString("coach.proposal.chrome.reviewCTA")
+        let canReview = MorningProposalPresenter.shouldPresentReview(morningProposal)
 
-        return morningProposalDismissibleChrome(accent: accent) {
+        return Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            guard MorningProposalPresenter.shouldPresentReview(morningProposal) else {
+            guard canReview else {
                 morningProposalChromeHidden = true
                 return
             }
             morningProposalChromeHidden = true
             showProposalReview = true
-        } onClose: {
-            dismissMorningProposalChrome(permanent: true)
-        } content: {
-            HStack(alignment: .top, spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(accent.opacity(palette.isLight ? 0.10 : 0.12))
-                        .frame(width: 40, height: 40)
-                        .overlay {
-                            Circle()
-                                .stroke(accent.opacity(palette.isLight ? 0.20 : 0.22), lineWidth: 1)
-                        }
-
-                    Image(systemName: "sun.horizon.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(accent.opacity(0.94))
-                }
-                .padding(.top, 2)
-                .accessibilityHidden(true)
-
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(WeekFitLocalizedString("coach.proposal.chrome.eyebrow"))
-                        .font(.caption2.weight(.bold))
-                        .fontDesign(.rounded)
-                        .tracking(1.35)
-                        .foregroundStyle(accent.opacity(0.80))
-
-                    Text(title)
-                        .font(.callout.weight(.bold))
-                        .fontDesign(.rounded)
-                        .foregroundStyle(textPrimary)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(2)
-                        .lineSpacing(1)
-                        .minimumScaleFactor(0.9)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 1)
-
-                    HStack(spacing: 4) {
-                        Text(review)
-                            .font(.footnote.weight(.semibold))
-                            .fontDesign(.rounded)
-                            .foregroundStyle(accent.opacity(0.95))
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(accent.opacity(0.72))
-                    }
-                    .padding(.top, 2)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.trailing, 18)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(WeekFitLocalizedString("coach.proposal.chrome.eyebrow")). \(title)")
-            .accessibilityHint(WeekFitLocalizedString("coach.proposal.chrome.reviewCTA"))
+        } label: {
+            TodayMiddleCard(
+                header: WeekFitLocalizedString("today.coachInsight.focusToday"),
+                title: title,
+                message: review,
+                systemImage: "sun.horizon.fill",
+                tone: .lavender,
+                showsChevron: canReview
+            )
         }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("morning.proposal.card")
+        .accessibilityLabel(title)
+        .accessibilityHint(review)
         .onAppear {
+            if let dayKey = morningProposal?.dayKey {
+                MorningProposalNotificationService.shared.cancel(dayKey: dayKey)
+                MorningProposalNotificationService.shared.markHandled(dayKey: dayKey)
+            }
             if let proposal = morningProposal {
                 MorningProposalAnalytics.proposalViewed(
                     proposalId: proposal.id,
@@ -3251,45 +3198,25 @@ struct TodayView: View {
     }
 
     private func morningProposalAppliedCard(dayKey: String) -> some View {
-        let accent = WeekFitTheme.recovery
-        return morningProposalDismissibleChrome(accent: accent) {
+        let title = WeekFitLocalizedString("coach.proposal.chrome.appliedTitle")
+        let message = WeekFitLocalizedString("coach.proposal.chrome.appliedBody")
+        return Button {
             morningProposalChromeHidden = true
-        } content: {
-            HStack(alignment: .center, spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            palette.isLight
-                                ? WeekFitLightTokens.recoverySoft
-                                : accent.opacity(0.16)
-                        )
-                        .frame(width: 40, height: 40)
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(accent)
-                }
-                .accessibilityHidden(true)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(WeekFitLocalizedString("coach.proposal.chrome.eyebrow"))
-                        .font(.caption2.weight(.bold))
-                        .fontDesign(.rounded)
-                        .tracking(1.2)
-                        .foregroundStyle(accent.opacity(0.78))
-                    Text(WeekFitLocalizedString("coach.proposal.chrome.appliedTitle"))
-                        .font(.callout.weight(.bold))
-                        .fontDesign(.rounded)
-                        .foregroundStyle(textPrimary)
-                        .lineLimit(2)
-                    Text(WeekFitLocalizedString("coach.proposal.chrome.appliedBody"))
-                        .font(.footnote)
-                        .foregroundStyle(todaySecondaryReadable)
-                        .lineLimit(2)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(.trailing, 18)
+            onSelectTab(.coach)
+        } label: {
+            TodayMiddleCard(
+                header: WeekFitLocalizedString("today.coachInsight.focusToday"),
+                title: title,
+                message: message,
+                systemImage: "checkmark",
+                tone: .lavender,
+                showsChevron: true
+            )
         }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("morning.proposal.card")
+        .accessibilityLabel("\(title). \(message)")
+        .accessibilityHint(WeekFitLocalizedString("today.coachInsight.opensCoach"))
         .onAppear {
             MorningProposalPresenter.markAppliedAcknowledgmentShown(dayKey: dayKey)
             MorningProposalAnalytics.coachAcknowledgmentViewed(dayKey: dayKey)
@@ -3537,6 +3464,31 @@ struct TodayView: View {
         debugTodayDataState(source: "refreshTodayLiveState.afterNutrition refreshHealth=\(refreshHealth)")
     }
 
+    private var todayMiddleClockID: String {
+        let now = todayViewModel.now
+        let next = nextUpcomingPlannedActivity(now: now)?.date.timeIntervalSince1970 ?? 0
+        return "\(tabIsActive)|\(Int(now.timeIntervalSince1970))|\(Int(next))"
+    }
+
+    /// Keeps “In N min” and the Up next / focus switch current while Today stays open.
+    private func refreshTodayMiddleClock() async {
+        guard tabIsActive else { return }
+        let now = Date()
+        let untilEvent = nextUpcomingPlannedActivity(now: now)?.date.timeIntervalSince(now) ?? .greatestFiniteMagnitude
+        let calendar = Calendar.current
+        let nextDay = calendar.date(
+            byAdding: .day,
+            value: 1,
+            to: calendar.startOfDay(for: now)
+        ) ?? now.addingTimeInterval(86_400)
+        let untilDay = max(0, nextDay.timeIntervalSince(now))
+        let wait = min(60, max(1, min(max(0, untilEvent), untilDay)))
+        try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+        guard !Task.isCancelled, tabIsActive else { return }
+        todayViewModel.now = Date()
+        reconcileTodayDayBoundary()
+    }
+
     private func reconcileTodayDayBoundary() {
         var date = selectedDate
         let shouldRefresh = todayViewModel.reconcileDayBoundary(
@@ -3775,8 +3727,11 @@ struct TodayView: View {
 
         todayActionSurfaceCard(accent: accent) {
             VStack(alignment: .leading, spacing: 0) {
-                todayCardSectionTitle(WeekFitLocalizedString("today.quickActions.title"))
-                    .padding(.bottom, TodayLayout.cardTitleBottomGap)
+                Text(WeekFitLocalizedString("today.quickActions.title"))
+                    .font(TodayCardTypography.quickActionSectionTitle)
+                    .foregroundStyle(todaySectionTitleColor)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.bottom, 10)
 
                 Group {
                     if shouldStackQuickActions {
@@ -3813,7 +3768,7 @@ struct TodayView: View {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             action()
         } label: {
-            VStack(spacing: 6) {
+            VStack(spacing: 8) {
                 ZStack(alignment: .top) {
                     Circle()
                         .fill(color.opacity(iconFillOpacity))
@@ -3821,13 +3776,13 @@ struct TodayView: View {
                             Circle()
                                 .stroke(color.opacity(iconStrokeOpacity), lineWidth: isEmphasized ? 1.1 : 1)
                         )
-                        .frame(width: 44, height: 44)
+                        .frame(width: 52, height: 52)
 
                     Image(systemName: icon)
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: 20, weight: .semibold))
                         .foregroundStyle(iconForeground)
                         .offset(y: quickActionIconOpticalYOffset(icon))
-                        .frame(width: 44, height: 44)
+                        .frame(width: 52, height: 52)
 
                     if let liveIndicatorColor {
                         Circle()
@@ -3863,9 +3818,9 @@ struct TodayView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .multilineTextAlignment(.center)
             }
-            .frame(maxWidth: .infinity, minHeight: 44)
+            .frame(maxWidth: .infinity, minHeight: 52)
             .contentShape(Rectangle())
-            .padding(.vertical, 2)
+            .padding(.vertical, 4)
         }
         .buttonStyle(QuickActionPressStyle())
         .accessibilityLabel(label)
@@ -3937,22 +3892,27 @@ struct TodayView: View {
     }
     
     private func upNextSubtitle(for activity: PlannedActivity) -> String {
-        if let startsIn = upNextStartsInText(for: activity) {
-            return startsIn
+        let seconds = max(0, activity.date.timeIntervalSince(todayViewModel.now))
+        let minutes = max(1, Int(ceil(seconds / 60.0)))
+        if minutes >= 60 {
+            let hours = minutes / 60
+            let remainder = minutes % 60
+            if remainder > 0 {
+                return String(
+                    format: WeekFitLocalizedString("today.upNext.inHoursMinutesFormat"),
+                    Int64(hours),
+                    Int64(remainder)
+                )
+            }
+            return String(
+                format: WeekFitLocalizedString("today.upNext.inHoursFormat"),
+                Int64(hours)
+            )
         }
-
-        let subtitle = activitySubtitle(activity)
-        let context = activityContext(activity)
-
-        if activity.type.lowercased() == "recovery" {
-            return subtitle
-        }
-
-        if subtitle == context {
-            return subtitle
-        }
-
-        return "\(subtitle) · \(context)"
+        return String(
+            format: WeekFitLocalizedString("today.upNext.inMinutesFormat"),
+            Int64(minutes)
+        )
     }
 
     /// Compact countdown near start; clock time when several hours away.

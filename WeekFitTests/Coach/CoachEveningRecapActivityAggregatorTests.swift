@@ -210,15 +210,14 @@ final class CoachEveningRecapActivityAggregatorTests: XCTestCase {
         XCTAssertTrue(text.contains("Max"))
     }
 
-    func testNoteMergesComparisonWithoutDuplicating() {
+    func testNoteDoesNotLeadWithDistanceComparison() {
         let merged = CoachEveningRecapCopy.noteText(
             commentary: "Keep the evening easy.",
-            comparison: "You walked 4 km more than usual.",
             feelingReaction: nil,
             isLoading: false,
             failed: false
         )
-        XCTAssertEqual(merged, "You walked 4 km more than usual. Keep the evening easy.")
+        XCTAssertEqual(merged, "Keep the evening easy.")
     }
 
     func testDaySignalsIncludeSupportingActivityAndSleepWithoutFalseAlarms() {

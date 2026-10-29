@@ -183,6 +183,44 @@ nonisolated struct PlanRealtimeEditDraft: Equatable {
     var catalogTitle: String
 }
 
+struct PlanVoiceDayContext: Equatable {
+    var recoveryPercent: Int?
+    var recoveryBand: String?
+    var sleepMinutes: Int?
+    var meals: [Meal] = []
+
+    struct Meal: Equatable {
+        var title: String
+        var time: String
+    }
+
+    var isEmpty: Bool {
+        recoveryPercent == nil && sleepMinutes == nil && meals.isEmpty
+    }
+
+    func jsonObject() -> [String: Any] {
+        var recovery: [String: Any] = [:]
+        if let recoveryPercent, (1...100).contains(recoveryPercent) {
+            recovery["percent"] = recoveryPercent
+        }
+        if let recoveryBand, ["good", "ok", "need_rest"].contains(recoveryBand), recovery["percent"] != nil {
+            recovery["band"] = recoveryBand
+        }
+        if let sleepMinutes, (1...(24 * 60)).contains(sleepMinutes) {
+            recovery["sleepMinutes"] = sleepMinutes
+        }
+        var body: [String: Any] = [:]
+        if !recovery.isEmpty {
+            body["recovery"] = recovery
+        }
+        let rows = meals.prefix(8).map { ["title": $0.title, "time": $0.time] }
+        if !rows.isEmpty {
+            body["meals"] = rows
+        }
+        return body
+    }
+}
+
 nonisolated struct PlanVoiceUpdateRequest: Equatable {
     var activityID: String
     var start: Date
@@ -227,24 +265,29 @@ struct PlanRealtimeClient {
         givenName: String,
         language: String,
         plan: [[String: Any]],
+        dayContext: [String: Any] = [:],
         ticket: String,
         introduced: Bool,
         reconnected: Bool = false
     ) async throws -> PlanRealtimeSessionSecret {
-        try await send(
+        var body: [String: Any] = [
+            "ticket": ticket,
+            "timeZone": timeZone,
+            "now": ISO8601DateFormatter().string(from: now),
+            "planningDay": planningDay,
+            "givenName": givenName,
+            "language": language,
+            "plan": plan,
+            "introduced": introduced,
+            "reconnected": reconnected,
+        ]
+        if !dayContext.isEmpty {
+            body["dayContext"] = dayContext
+        }
+        return try await send(
             method: "POST",
             path: "v1/planner-voice/session",
-            body: [
-                "ticket": ticket,
-                "timeZone": timeZone,
-                "now": ISO8601DateFormatter().string(from: now),
-                "planningDay": planningDay,
-                "givenName": givenName,
-                "language": language,
-                "plan": plan,
-                "introduced": introduced,
-                "reconnected": reconnected,
-            ]
+            body: body
         )
     }
 

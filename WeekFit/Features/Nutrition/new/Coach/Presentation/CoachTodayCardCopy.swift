@@ -24,6 +24,38 @@ enum CoachTodayCardCopy {
         return Display(title: title, message: message)
     }
 
+    /// Full personal recommendation for the compact Today card.
+    /// Returns nil when the presentation has no headline of its own.
+    static func focusCard(from presentation: CoachUIPresentation) -> Display? {
+        func trim(_ value: String) -> String {
+            value.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        let title = [presentation.coachTitle, presentation.todayTitle]
+            .map(trim)
+            .first { !$0.isEmpty }
+        guard let title else { return nil }
+
+        let message = [
+            presentation.assessment,
+            presentation.todayMessage,
+            presentation.recommendation,
+            presentation.nextAction
+        ]
+        .map(trim)
+        .first { !$0.isEmpty && !CoachUIPresentationDedup.isNearDuplicate($0, title) }
+
+        if let message {
+            return Display(title: title, message: message)
+        }
+
+        let stance = whyTitle(for: presentation.scenario)
+        if stance != genericStance, !CoachUIPresentationDedup.isNearDuplicate(stance, title) {
+            return Display(title: title, message: stance)
+        }
+        return Display(title: title, message: "")
+    }
+
     static func echoesActivity(_ text: String, activityTitle: String) -> Bool {
         let hay = normalize(text)
         let event = normalize(activityTitle)
@@ -153,8 +185,12 @@ enum CoachTodayCardCopy {
         case .activeRecovery, .duringRecovery:
             return WeekFitTrilingual("Soft reset", "Мягкий сброс", "轻柔放松")
         default:
-            return WeekFitTrilingual("Today's plan", "План на сегодня", "今日计划")
+            return genericStance
         }
+    }
+
+    private static var genericStance: String {
+        WeekFitTrilingual("Today's plan", "План на сегодня", "今日计划")
     }
 
     // MARK: - Text
