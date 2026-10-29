@@ -107,7 +107,7 @@ test('full command commits tennis and a missing time does not', () => {
   assert.equal(saved.body.saved, true);
   assert.equal(saved.body.activity.start, '2026-10-29T10:00:00.000Z');
   assert.equal(saved.body.activity.localEnd, '2026-10-29T14:00');
-  assert.equal(saved.body.speak, 'Добавил теннис на завтра, с 13 до 14.');
+  assert.equal(saved.body.speak, 'Добавила теннис на завтра, с 13 до 14.');
 
   const missing = commitPlannerActivity(store, 'local-developer', tennis({
     idempotencyKey: 'call_tennis_2',
@@ -150,7 +150,7 @@ test('relative evening in Tokyo crosses midnight', () => {
   assert.equal(saved.status, 200, JSON.stringify(saved.body));
   assert.equal(saved.body.activity.localStart, '2026-10-31T23:30');
   assert.equal(saved.body.activity.localEnd, '2026-11-01T01:00');
-  assert.equal(saved.body.speak, 'Добавил теннис на послезавтра, с 23:30 до 1.');
+  assert.equal(saved.body.speak, 'Добавила теннис на послезавтра, с 23:30 до 1.');
 
   const blocked = commitPlannerActivity(store, 'local-developer', tennis({
     idempotencyKey: 'call_tokyo_blocked',
@@ -167,7 +167,7 @@ test('relative evening in Tokyo crosses midnight', () => {
   }));
   assert.equal(blocked.status, 409);
   assert.equal(blocked.body.saved, false);
-  assert.equal(blocked.body.speak, 'Это время уже занято.');
+  assert.equal(blocked.body.speak, 'На это время уже что-то стоит. Выберем другое?');
   assert.equal(store.size(), 1);
 });
 
@@ -197,7 +197,7 @@ test('app language chooses the spoken lines and the time zone does not', () => {
     idempotencyKey: 'call_tennis_pl',
     language: 'pl',
   }));
-  assert.equal(polish.body.speak, 'Dodałem tenis na jutro, od 13 do 14.');
+  assert.equal(polish.body.speak, 'Dodałam tenis na jutro, od 13 do 14.');
 
   const missingTime = commitPlannerActivity(store, 'local-developer', tennis({
     idempotencyKey: 'call_tennis_pl_time',
@@ -216,7 +216,7 @@ test('app language chooses the spoken lines and the time zone does not', () => {
     }],
   }));
   assert.equal(conflict.status, 409);
-  assert.equal(conflict.body.speak, 'That time is already taken.');
+  assert.equal(conflict.body.speak, 'Something is already there then. Want another time?');
 
   const russianInTokyo = commitPlannerActivity(store, 'local-developer', tennis({
     idempotencyKey: 'call_tennis_ru_tokyo',
@@ -224,7 +224,7 @@ test('app language chooses the spoken lines and the time zone does not', () => {
     now: '2026-10-28T16:30:00Z',
     date: '2026-10-29',
   }));
-  assert.equal(russianInTokyo.body.speak, 'Добавил теннис на сегодня, с 13 до 14.');
+  assert.equal(russianInTokyo.body.speak, 'Добавила теннис на сегодня, с 13 до 14.');
 });
 
 test('marin and cedar share the russian preview and keep the mini model', () => {
@@ -235,12 +235,12 @@ test('marin and cedar share the russian preview and keep the mini model', () => 
   }
   const lines = plannerVoicePreviewPhrases('ru');
   assert.deepEqual(lines, plannerVoicePreviewPhrases('ru'));
-  assert.equal(lines.greeting, 'Привет, Макс. Чем могу помочь?');
+  assert.equal(lines.greeting, 'Привет! Я Майя, твой AI-помощник в WeekFit. Что сегодня планируем?');
   assert.equal(lines.askTime, 'Во сколько?');
-  assert.equal(lines.confirmation, 'Добавил теннис на завтра, с 13 до 14.');
-  assert.equal(lines.conflict, 'Это время уже занято.');
-  assert.equal(plannerVoicePreviewPhrases('en', 'Max').greeting, 'Hi, Max. How can I help you?');
-  assert.equal(plannerVoicePreviewPhrases('pl', 'Max').greeting, 'Cześć, Max. W czym mogę pomóc?');
+  assert.equal(lines.confirmation, 'Добавила теннис на завтра, с 13 до 14.');
+  assert.equal(lines.conflict, 'На это время уже что-то стоит. Выберем другое?');
+  assert.equal(plannerVoicePreviewPhrases('en', 'Max').greeting, "Hey! I'm Maya, your AI assistant in WeekFit. What are we planning today?");
+  assert.equal(plannerVoicePreviewPhrases('pl', 'Max').greeting, 'Cześć! Jestem Maya, twoja asystentka AI w WeekFit. Co dziś planujemy?');
 });
 
 test('cedar uses the same russian greeting without a larger model', async () => {
@@ -272,7 +272,7 @@ test('cedar uses the same russian greeting without a larger model', async () => 
     const sent = JSON.parse(captured.init.body);
     assert.equal(sent.session.model, 'gpt-realtime-2.1-mini');
     assert.equal(sent.session.audio.output.voice, 'cedar');
-    assert.match(sent.session.instructions, /Привет, Макс\. Чем могу помочь\?/);
+    assert.match(sent.session.instructions, /Привет! Я Майя, твой AI-помощник в WeekFit\. Что сегодня планируем\?/);
     assert.match(sent.session.instructions, /natural Russian pronunciation/);
     assert.equal(sent.session.instructions.includes('только по-русски'), false);
 
@@ -286,7 +286,7 @@ test('cedar uses the same russian greeting without a larger model', async () => 
     });
     assert.equal(polish.status, 200);
     const polishSession = JSON.parse(captured.init.body).session;
-    assert.match(polishSession.instructions, /Cześć, Max\. W czym mogę pomóc\?/);
+    assert.match(polishSession.instructions, /Cześć! Jestem Maya, twoja asystentka AI w WeekFit\. Co dziś planujemy\?/);
     assert.match(polishSession.instructions, /Speak only in Polish/);
     assert.equal(polishSession.model, 'gpt-realtime-2.1-mini');
   } finally {
@@ -366,15 +366,28 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(sent.session.audio.input.transcription, undefined);
     assert.deepEqual(sent.session.output_modalities, ['audio']);
     assert.deepEqual(sent.session.tools.map(tool => tool.name), ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'end_call']);
-    assert.match(sent.session.instructions, /do not stay silent/);
-    assert.match(sent.session.instructions, /До свидания!/);
-    assert.match(sent.session.instructions, /Чем ещё могу помочь\?/);
-    assert.match(sent.session.instructions, /Never call end_call for an acknowledgement/);
+    assert.match(sent.session.instructions, /Do not add it after the greeting/);
+    assert.match(sent.session.instructions, /Пока!/);
+    assert.match(sent.session.instructions, /Что-нибудь ещё\?/);
+    assert.match(sent.session.instructions, /Never call end_call for a bare acknowledgement/);
     assert.match(sent.session.instructions, /alright/);
     assert.equal(sent.session.audio.input.turn_detection.interrupt_response, true);
     assert.match(sent.session.instructions, /2026-10-29/);
     assert.match(sent.session.instructions, /day after tomorrow is 2026-10-31/);
-    assert.match(sent.session.instructions, /Привет, Максим\. Чем могу помочь\?/);
+    assert.match(sent.session.instructions, /Привет! Я Майя, твой AI-помощник в WeekFit\. Что сегодня планируем\?/);
+    assert.equal(sent.session.instructions.includes('Привет, Максим'), false);
+    const returning = await request(server.url, 'POST', '/v1/planner-voice/session', {
+      body: {
+        timeZone: 'Asia/Tokyo',
+        now: '2026-10-28T16:30:00Z',
+        givenName: 'Максим',
+        introduced: true,
+      },
+    });
+    assert.equal(returning.status, 200);
+    const returningInstructions = JSON.parse(captured.init.body).session.instructions;
+    assert.match(returningInstructions, /Привет, Максим! Что сегодня планируем\?/);
+    assert.equal(returningInstructions.includes('Я Майя'), false);
     assert.equal(sent.session.instructions.includes('только по-русски'), false);
     assert.equal(sent.session.audio.output.voice, 'marin');
     assert.equal(sent.session.model, 'gpt-realtime-2.1-mini');
@@ -479,7 +492,11 @@ test('ringing continues until the assistant starts the greeting', async () => {
   assert.equal(track.stopped, false);
   channel.onmessage({ data: JSON.stringify({ type: 'response.done', response: {} }) });
   assert.equal(track.stopped, false);
-  timers.find(timer => timer.delay === 700).callback();
+  assert.equal(timers.some(timer => timer.delay === 700), false);
+  assert.equal(timers.some(timer => timer.delay === 12000), true);
+  channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.stopped' }) });
+  assert.equal(track.stopped, false);
+  timers.find(timer => timer.delay === 250).callback();
   assert.equal(track.stopped, true);
   assert.equal(events.some(event => event.value === 'ended' && event.reason === 'goodbye'), true);
   window.weekfit.stop();

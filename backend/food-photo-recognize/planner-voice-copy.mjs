@@ -31,28 +31,34 @@ const SPOKEN = {
 const PHRASES = {
   ru: {
     englishName: 'Russian',
-    greeting: name => (name ? `Привет, ${name}. Чем могу помочь?` : 'Привет. Чем могу помочь?'),
-    goodbye: 'До свидания!',
-    anythingElse: 'Чем ещё могу помочь?',
-    closing: '«нет», «больше ничего», «ничего», «это всё», «всё», «до свидания», «пока»',
+    assistantName: 'Майя',
+    greeting: (name, introduced) => introduced
+      ? (name ? `Привет, ${name}! Что сегодня планируем?` : 'Привет! Что сегодня планируем?')
+      : 'Привет! Я Майя, твой AI-помощник в WeekFit. Что сегодня планируем?',
+    goodbye: 'Пока!',
+    anythingElse: 'Что-нибудь ещё?',
+    closing: '«нет, всё», «нет, всё, спасибо», «больше ничего», «ничего», «это всё», «всё, спасибо», «до свидания», «пока»',
     askTime: 'Во сколько?',
-    askActivity: 'Какую активность?',
-    conflict: 'Это время уже занято.',
+    askActivity: 'Что хочешь добавить?',
+    conflict: 'На это время уже что-то стоит. Выберем другое?',
     saveFailed: 'Не получилось сохранить. Повтори, пожалуйста.',
     today: 'сегодня',
     tomorrow: 'завтра',
     dayAfter: 'послезавтра',
-    added: (spoken, day, start, end) => `Добавил ${spoken} на ${day}, с ${start} до ${end}.`,
+    added: (spoken, day, start, end) => `Добавила ${spoken} на ${day}, с ${start} до ${end}.`,
   },
   en: {
     englishName: 'English',
-    greeting: name => (name ? `Hi, ${name}. How can I help you?` : 'Hi. How can I help you?'),
-    goodbye: 'Goodbye!',
-    anythingElse: 'How else can I help?',
-    closing: '"no", "nothing else", "that\'s all", "that\'s it", "no thanks", "goodbye", "bye"',
+    assistantName: 'Maya',
+    greeting: (name, introduced) => introduced
+      ? (name ? `Hey ${name}! What are we planning today?` : 'Hey! What are we planning today?')
+      : "Hey! I'm Maya, your AI assistant in WeekFit. What are we planning today?",
+    goodbye: 'Talk soon!',
+    anythingElse: 'Anything else?',
+    closing: '"no, I\'m good", "no, that\'s all", "nothing else", "that\'s all", "that\'s it", "goodbye", "bye"',
     askTime: 'What time?',
-    askActivity: 'Which activity?',
-    conflict: 'That time is already taken.',
+    askActivity: 'What do you want to add?',
+    conflict: 'Something is already there then. Want another time?',
     saveFailed: "I couldn't save that. Please try again.",
     today: 'today',
     tomorrow: 'tomorrow',
@@ -61,9 +67,12 @@ const PHRASES = {
   },
   pl: {
     englishName: 'Polish',
-    greeting: name => (name ? `Cześć, ${name}. W czym mogę pomóc?` : 'Cześć. W czym mogę pomóc?'),
-    goodbye: 'Do widzenia!',
-    anythingElse: 'W czym jeszcze mogę pomóc?',
+    assistantName: 'Maya',
+    greeting: (name, introduced) => introduced
+      ? (name ? `Cześć, ${name}! Co dziś planujemy?` : 'Cześć! Co dziś planujemy?')
+      : 'Cześć! Jestem Maya, twoja asystentka AI w WeekFit. Co dziś planujemy?',
+    goodbye: 'Na razie!',
+    anythingElse: 'Coś jeszcze?',
     closing: '«nie», «nic więcej», «to wszystko», «do widzenia», «pa»',
     askTime: 'O której?',
     askActivity: 'Jaką aktywność?',
@@ -72,13 +81,16 @@ const PHRASES = {
     today: 'dzisiaj',
     tomorrow: 'jutro',
     dayAfter: 'pojutrze',
-    added: (spoken, day, start, end) => `Dodałem ${spoken} na ${day}, od ${start} do ${end}.`,
+    added: (spoken, day, start, end) => `Dodałam ${spoken} na ${day}, od ${start} do ${end}.`,
   },
   fr: {
     englishName: 'French',
-    greeting: name => (name ? `Salut, ${name}. Comment puis-je t'aider ?` : 'Salut. Comment puis-je t\'aider ?'),
-    goodbye: 'Au revoir !',
-    anythingElse: 'Comment puis-je encore t\'aider ?',
+    assistantName: 'Maya',
+    greeting: (name, introduced) => introduced
+      ? (name ? `Salut ${name} ! On planifie quoi aujourd'hui ?` : "Salut ! On planifie quoi aujourd'hui ?")
+      : "Salut ! Je suis Maya, ton assistante IA dans WeekFit. On planifie quoi aujourd'hui ?",
+    goodbye: 'À plus !',
+    anythingElse: 'Autre chose ?',
     closing: '«non», «rien d\'autre», «c\'est tout», «au revoir»',
     askTime: 'À quelle heure ?',
     askActivity: 'Quelle activité ?',
@@ -91,9 +103,12 @@ const PHRASES = {
   },
   es: {
     englishName: 'Spanish',
-    greeting: name => (name ? `Hola, ${name}. ¿En qué puedo ayudarte?` : 'Hola. ¿En qué puedo ayudarte?'),
-    goodbye: '¡Adiós!',
-    anythingElse: '¿En qué más puedo ayudarte?',
+    assistantName: 'Maya',
+    greeting: (name, introduced) => introduced
+      ? (name ? `¡Hola, ${name}! ¿Qué planeamos hoy?` : '¡Hola! ¿Qué planeamos hoy?')
+      : '¡Hola! Soy Maya, tu asistente de IA en WeekFit. ¿Qué planeamos hoy?',
+    goodbye: '¡Hasta luego!',
+    anythingElse: '¿Algo más?',
     closing: '«no», «nada más», «eso es todo», «adiós»',
     askTime: '¿A qué hora?',
     askActivity: '¿Qué actividad?',
@@ -106,9 +121,12 @@ const PHRASES = {
   },
   de: {
     englishName: 'German',
-    greeting: name => (name ? `Hi, ${name}. Womit kann ich helfen?` : 'Hi. Womit kann ich helfen?'),
-    goodbye: 'Auf Wiedersehen!',
-    anythingElse: 'Womit kann ich noch helfen?',
+    assistantName: 'Maya',
+    greeting: (name, introduced) => introduced
+      ? (name ? `Hi ${name}! Was planen wir heute?` : 'Hi! Was planen wir heute?')
+      : 'Hi! Ich bin Maya, deine KI-Assistentin in WeekFit. Was planen wir heute?',
+    goodbye: 'Bis dann!',
+    anythingElse: 'Noch etwas?',
     closing: '«nein», «nichts weiter», «das war\'s», «auf Wiedersehen»',
     askTime: 'Um wie viel Uhr?',
     askActivity: 'Welche Aktivität?',
@@ -121,9 +139,12 @@ const PHRASES = {
   },
   'zh-Hans': {
     englishName: 'Chinese',
-    greeting: name => (name ? `你好，${name}。需要我帮什么？` : '你好。需要我帮什么？'),
-    goodbye: '再见！',
-    anythingElse: '还有什么可以帮你？',
+    assistantName: 'Maya',
+    greeting: (name, introduced) => introduced
+      ? (name ? `你好，${name}！今天想安排什么？` : '你好！今天想安排什么？')
+      : '你好！我是 Maya，WeekFit 里的 AI 助手。今天想安排什么？',
+    goodbye: '回头见！',
+    anythingElse: '还有别的吗？',
     closing: '「不用了」「没有了」「就这样」「再见」',
     askTime: '几点？',
     askActivity: '哪一项活动？',
@@ -136,9 +157,12 @@ const PHRASES = {
   },
   ja: {
     englishName: 'Japanese',
-    greeting: name => (name ? `こんにちは、${name}。何かお手伝いしましょうか？` : 'こんにちは。何かお手伝いしましょうか？'),
-    goodbye: 'さようなら！',
-    anythingElse: 'ほかに何をお手伝いしましょうか？',
+    assistantName: 'Maya',
+    greeting: (name, introduced) => introduced
+      ? (name ? `こんにちは、${name}。今日は何を予定する？` : 'こんにちは。今日は何を予定する？')
+      : 'こんにちは。Maya だよ。WeekFit の AI アシスタント。今日は何を予定する？',
+    goodbye: 'またね！',
+    anythingElse: 'ほかにある？',
     closing: '「いいえ」「ほかにはない」「以上です」「さようなら」',
     askTime: '何時にしますか？',
     askActivity: 'どのアクティビティ？',
@@ -151,14 +175,17 @@ const PHRASES = {
   },
   it: {
     englishName: 'Italian',
-    greeting: name => (name ? `Ciao, ${name}. Come posso aiutarti?` : 'Ciao. Come posso aiutarti?'),
-    goodbye: 'Arrivederci!',
-    anythingElse: 'Come posso aiutarti ancora?',
+    assistantName: 'Maya',
+    greeting: (name, introduced) => introduced
+      ? (name ? `Ciao ${name}! Cosa organizziamo oggi?` : 'Ciao! Cosa organizziamo oggi?')
+      : 'Ciao! Sono Maya, la tua assistente AI in WeekFit. Cosa organizziamo oggi?',
+    goodbye: 'A dopo!',
+    anythingElse: 'Altro?',
     closing: '«no», «nient\'altro», «è tutto», «arrivederci»',
     askTime: 'A che ora?',
     askActivity: 'Quale attività?',
     conflict: 'Quell\'orario è già occupato.',
-    saveFailed: 'Non sono riuscito a salvare. Riprova.',
+    saveFailed: 'Non sono riuscita a salvare. Riprova.',
     today: 'oggi',
     tomorrow: 'domani',
     dayAfter: 'dopodomani',
@@ -166,9 +193,12 @@ const PHRASES = {
   },
   ko: {
     englishName: 'Korean',
-    greeting: name => (name ? `안녕하세요, ${name}. 무엇을 도와드릴까요?` : '안녕하세요. 무엇을 도와드릴까요?'),
-    goodbye: '안녕히 가세요!',
-    anythingElse: '또 무엇을 도와드릴까요?',
+    assistantName: 'Maya',
+    greeting: (name, introduced) => introduced
+      ? (name ? `안녕, ${name}! 오늘 뭐 계획할까?` : '안녕! 오늘 뭐 계획할까?')
+      : '안녕! 나는 WeekFit의 AI 도우미 Maya야. 오늘 뭐 계획할까?',
+    goodbye: '나중에 봐!',
+    anythingElse: '또 있을까?',
     closing: '「아니요」, 「없어요」, 「그거예요」, 「안녕히 가세요」',
     askTime: '몇 시요?',
     askActivity: '어떤 활동이요?',
@@ -209,8 +239,8 @@ export function spokenActivityName(catalogTitle, language) {
   return names[code] ?? names.ru;
 }
 
-export function greetingLine(language, givenName) {
-  return plannerVoicePhrases(language).greeting(givenName);
+export function greetingLine(language, givenName, introduced = false) {
+  return plannerVoicePhrases(language).greeting(givenName, introduced === true);
 }
 
 export function askTimeLine(language) {

@@ -12,6 +12,18 @@ struct PlanRealtimeSessionSecret: Decodable, Equatable {
     var idleSeconds: Int
 }
 
+enum PlanRealtimeMayaMemory {
+    private static let key = "planner.voice.maya.introduced"
+
+    static var introduced: Bool {
+        UserDefaults.standard.bool(forKey: key)
+    }
+
+    static func markIntroduced() {
+        UserDefaults.standard.set(true, forKey: key)
+    }
+}
+
 struct PlanRealtimeLine: Decodable, Equatable {
     var ticket: String
     var state: String
@@ -183,6 +195,7 @@ enum PlanRealtimeClientError: Error {
     case forbidden
     case notFound
     case transport
+    case lineFull
     case invalid
 }
 
@@ -227,6 +240,7 @@ struct PlanRealtimeClient {
                 "givenName": givenName,
                 "language": language,
                 "plan": plan,
+                "introduced": PlanRealtimeMayaMemory.introduced,
             ]
         )
     }
@@ -300,6 +314,7 @@ struct PlanRealtimeClient {
         if http.statusCode == 401 { throw PlanRealtimeClientError.unauthorized }
         if http.statusCode == 403 { throw PlanRealtimeClientError.forbidden }
         if http.statusCode == 404 { throw PlanRealtimeClientError.notFound }
+        if http.statusCode == 503 { throw PlanRealtimeClientError.lineFull }
         if !(200...299).contains(http.statusCode) {
             if let decoded = try? JSONDecoder().decode(Response.self, from: data) {
                 return decoded
@@ -505,11 +520,11 @@ private let planRealtimeSpeech: [String: PlanRealtimeSpeechCopy] = [
         tomorrowEmpty: "На завтра ничего не запланировано.",
         todayDoneLead: "Сегодня сделано: ", todayPlannedLead: "На сегодня ещё: ", tomorrowLead: "На завтра: ",
         alreadyDone: "Это уже сделано, я его не убираю.",
-        missing: "Не нашёл эту активность.",
-        unchanged: "Оставил как есть.",
-        conflict: "Это время уже занято.",
-        moved: { spoken, day, time in "Перенес \(spoken) на \(day), на \(time)." },
-        removed: { spoken, day in "Убрал \(spoken) на \(day)." },
+        missing: "Не нашла эту активность.",
+        unchanged: "Оставила как есть.",
+        conflict: "На это время уже что-то стоит. Выберем другое?",
+        moved: { spoken, day, time in "Перенесла \(spoken) на \(day), на \(time)." },
+        removed: { spoken, day in "Убрала \(spoken) на \(day)." },
         more: { count in "и ещё \(count)." }
     ),
     "en": .init(
@@ -521,9 +536,9 @@ private let planRealtimeSpeech: [String: PlanRealtimeSpeechCopy] = [
         alreadyDone: "That's already done, so I'm leaving it.",
         missing: "I can't find that activity.",
         unchanged: "I left it as it is.",
-        conflict: "That time is already taken.",
-        moved: { spoken, day, time in "Moved \(spoken) to \(day) at \(time)." },
-        removed: { spoken, day in "Removed \(spoken) on \(day)." },
+        conflict: "Something is already there then. Want another time?",
+        moved: { spoken, day, time in "I moved \(spoken) to \(day) at \(time)." },
+        removed: { spoken, day in "I removed \(spoken) on \(day)." },
         more: { count in "and \(count) more." }
     ),
     "pl": .init(
@@ -533,11 +548,11 @@ private let planRealtimeSpeech: [String: PlanRealtimeSpeechCopy] = [
         tomorrowEmpty: "Na jutro nic nie jest zaplanowane.",
         todayDoneLead: "Dziś zrobione: ", todayPlannedLead: "Na dziś jeszcze: ", tomorrowLead: "Na jutro: ",
         alreadyDone: "To już jest zrobione, więc tego nie usuwam.",
-        missing: "Nie znalazłem tej aktywności.",
-        unchanged: "Zostawiłem bez zmian.",
-        conflict: "Ta godzina jest już zajęta.",
-        moved: { spoken, day, time in "Przeniosłem \(spoken) na \(day), na \(time)." },
-        removed: { spoken, day in "Usunąłem \(spoken) na \(day)." },
+        missing: "Nie znalazłam tej aktywności.",
+        unchanged: "Zostawiłam bez zmian.",
+        conflict: "Ta godzina jest już zajęta. Wybierzemy inną?",
+        moved: { spoken, day, time in "Przeniosłam \(spoken) na \(day), na \(time)." },
+        removed: { spoken, day in "Usunęłam \(spoken) na \(day)." },
         more: { count in "i jeszcze \(count)." }
     ),
     "fr": .init(

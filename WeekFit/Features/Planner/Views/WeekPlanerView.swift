@@ -194,7 +194,7 @@ private struct WeekPlannerLiveQueryView: View {
                 )
             )
         }
-        .sheet(isPresented: $showPlannerVoice) {
+        .fullScreenCover(isPresented: $showPlannerVoice) {
             PlanRealtimeVoiceSheet(
                 planningDay: viewModel.selectedDate,
                 activities: plannedActivities,
@@ -225,12 +225,7 @@ private struct WeekPlannerLiveQueryView: View {
                 }
             )
             .environmentObject(languageManager)
-            .presentationDetents([.large])
-            .presentationDragIndicator(.hidden)
-            .weekFitSheetChrome(
-                cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
-                background: QuickActionSheetDesign.Color.sheetBackground(for: .activity)
-            )
+            .interactiveDismissDisabled(true)
         }
         .task { await refreshPlannerVoiceAccess() }
         .sheet(item: $selectedMeal) { meal in
@@ -411,18 +406,28 @@ private struct WeekPlannerLiveQueryView: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             showPlannerVoice = true
         } label: {
-            Image(systemName: "phone.fill")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(palette.textPrimary.opacity(0.92))
-                .frame(width: 40, height: 40)
-                .background {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(palette.cardSurface)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 6) {
+                    Image(systemName: "phone.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                    Text(WeekFitLocalizedString("planner.voice.call"))
+                        .font(.system(size: 15, weight: .semibold))
+                        .lineLimit(1)
                 }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(palette.textPrimary.opacity(palette.isLight ? 0.10 : 0.14), lineWidth: 1)
-                }
+                Image(systemName: "phone.fill")
+                    .font(.system(size: 16, weight: .semibold))
+            }
+            .foregroundStyle(palette.textPrimary.opacity(0.92))
+            .padding(.horizontal, 10)
+            .frame(minWidth: 44, minHeight: 44)
+            .background {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(palette.cardSurface)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(palette.textPrimary.opacity(palette.isLight ? 0.10 : 0.14), lineWidth: 1)
+            }
         }
         .buttonStyle(.plain)
         .accessibilityLabel(WeekFitLocalizedString("planner.voice.talk"))

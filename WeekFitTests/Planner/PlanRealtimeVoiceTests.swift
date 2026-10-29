@@ -10,6 +10,27 @@ final class PlanRealtimeVoiceTests: XCTestCase {
         XCTAssertTrue(hashed.range(of: "^[A-Za-z0-9_-]{8,80}$", options: .regularExpression) != nil)
     }
 
+    func testMayaConfirmsAChangeInTheFeminineAndDoesNotConfirmAConflict() {
+        XCTAssertEqual(
+            planRealtimeMovedSpeak(spoken: "растяжку", day: "сегодня", time: "18:00", language: "ru"),
+            "Перенесла растяжку на сегодня, на 18:00."
+        )
+        XCTAssertEqual(
+            planRealtimeRemovedSpeak(spoken: "прогулку", day: "сегодня", language: "ru"),
+            "Убрала прогулку на сегодня."
+        )
+        XCTAssertEqual(
+            planRealtimePlanNotice("conflict", language: "ru"),
+            "На это время уже что-то стоит. Выберем другое?"
+        )
+        let conflict = planRealtimeToolReply(
+            action: .reject("time_conflict"),
+            speak: planRealtimePlanNotice("conflict", language: "ru")
+        )
+        XCTAssertFalse(conflict.saved)
+        XCTAssertFalse(conflict.ok)
+    }
+
     func testFailedSaveDoesNotLookLikeSuccess() {
         let rejected = planRealtimeLocalAction(
             saved: false,
@@ -112,7 +133,7 @@ final class PlanRealtimeVoiceTests: XCTestCase {
         )
         XCTAssertEqual(
             planRealtimeMovedSpeak(spoken: "теннис", day: "завтра", time: "15:00", language: "ru"),
-            "Перенес теннис на завтра, на 15:00."
+            "Перенесла теннис на завтра, на 15:00."
         )
         XCTAssertEqual(
             planRealtimeEditDraft(#"{"ref":"a1","date":"2026-10-29","startTime":"15:00","durationMinutes":0,"catalogTitle":""}"#)?.ref,
