@@ -1,7 +1,6 @@
 import SwiftUI
 import SwiftData
 import HealthKit
-import OSLog
 import UIKit
 
 struct WeekPlannerView: View {
@@ -88,8 +87,6 @@ private struct WeekPlannerLiveQueryView: View {
     @State private var hasPerformedInitialScroll = false
     /// User override for Completed disclosure, keyed by day start.
     @State private var completedExpandedByDayStart: [TimeInterval: Bool] = [:]
-    @State private var plannerVoiceEnabled = false
-    @State private var showPlannerVoice = false
 
 
     var body: some View {
@@ -143,11 +140,6 @@ private struct WeekPlannerLiveQueryView: View {
                     hasProfileName: userSettings.hasProfileName,
                     showAvatar: true,
                     avatarProminence: .subdued,
-                    trailing: {
-                        if plannerVoiceEnabled {
-                            plannerVoiceCallButton
-                        }
-                    },
                     onAvatarTap: { showProfile = true }
                 )
             } content: {
@@ -194,40 +186,6 @@ private struct WeekPlannerLiveQueryView: View {
                 )
             )
         }
-        .fullScreenCover(isPresented: $showPlannerVoice) {
-            PlanRealtimeVoiceSheet(
-                planningDay: viewModel.selectedDate,
-                activities: plannedActivities,
-                onSave: { request in
-                    try viewModel.saveVoiceActivity(
-                        request,
-                        activities: plannedActivities,
-                        modelContext: modelContext,
-                        activityRemindersEnabled: activityRemindersEnabled,
-                        completionCheckInsEnabled: completionCheckInsEnabled
-                    )
-                },
-                onUpdate: { request in
-                    try viewModel.updateVoiceActivity(
-                        request,
-                        activities: plannedActivities,
-                        modelContext: modelContext,
-                        activityRemindersEnabled: activityRemindersEnabled,
-                        completionCheckInsEnabled: completionCheckInsEnabled
-                    )
-                },
-                onDelete: { id in
-                    try viewModel.deleteVoiceActivity(
-                        id: id,
-                        activities: plannedActivities,
-                        modelContext: modelContext
-                    )
-                }
-            )
-            .environmentObject(languageManager)
-            .interactiveDismissDisabled(true)
-        }
-        .task { await refreshPlannerVoiceAccess() }
         .sheet(item: $selectedMeal) { meal in
             MealDetailsView(meal: meal)
                 .environmentObject(languageManager)
@@ -401,39 +359,6 @@ private struct WeekPlannerLiveQueryView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
-    private var plannerVoiceCallButton: some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            showPlannerVoice = true
-        } label: {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 6) {
-                    Image(systemName: "phone.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                    Text(WeekFitLocalizedString("planner.voice.call"))
-                        .font(.system(size: 15, weight: .semibold))
-                        .lineLimit(1)
-                }
-                Image(systemName: "phone.fill")
-                    .font(.system(size: 16, weight: .semibold))
-            }
-            .foregroundStyle(palette.textPrimary.opacity(0.92))
-            .padding(.horizontal, 10)
-            .frame(minWidth: 44, minHeight: 44)
-            .background {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(palette.cardSurface)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(palette.textPrimary.opacity(palette.isLight ? 0.10 : 0.14), lineWidth: 1)
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(WeekFitLocalizedString("planner.voice.talk"))
-        .accessibilityIdentifier("planner.voice.talk")
-    }
-    
     func deleteActivity(_ activity: PlannedActivity) {
         viewModel.removePlannedActivities(withIDs: [activity.id], modelContext: modelContext)
     }
@@ -1032,23 +957,6 @@ private extension WeekPlannerLiveQueryView {
     /// Today / future: plan can still be edited. Past days are read-only.
     private func allowsAgendaMutation(for date: Date) -> Bool {
         calendar.startOfDay(for: date) >= calendar.startOfDay(for: Date())
-    }
-
-    private func refreshPlannerVoiceAccess() async {
-        do {
-            let token = try await PhotoFoodFirebaseAuth.idToken()
-            let access = try await PlanRealtimeClient(
-                baseURL: WeekFitCloudAPI.foodPhotoBaseURL,
-                token: token
-            ).access()
-            plannerVoiceEnabled = access.enabled
-            #if DEBUG
-            Logger(subsystem: "com.weekfit.app", category: "PlannerVoice")
-                .info("accountId=\(access.accountId, privacy: .public) enabled=\(access.enabled, privacy: .public)")
-            #endif
-        } catch {
-            plannerVoiceEnabled = false
-        }
     }
 
     // MARK: - Bottom fade (identical to Meals)

@@ -78,6 +78,36 @@ final class TodayHierarchyScreenshotTests: XCTestCase {
     }
 
     @MainActor
+    func testCaptureMayaPearlCardLightAndDark() throws {
+        let light = launch(extraArguments: [
+            "-weekfit-appearance=light",
+            "-weekfit-show-maya-card"
+        ])
+        let card = light.buttons["today.maya.call"]
+        XCTAssertTrue(card.waitForExistence(timeout: 8), "Maya card did not appear on Today")
+        XCTAssertTrue(light.staticTexts["Plan your day together"].exists)
+        saveScreenshot(light, name: "today-maya-pearl-light")
+
+        let dark = launch(extraArguments: [
+            "-weekfit-appearance=dark",
+            "-weekfit-show-maya-card"
+        ])
+        XCTAssertTrue(dark.buttons["today.maya.call"].waitForExistence(timeout: 8))
+        saveScreenshot(dark, name: "today-maya-pearl-dark")
+
+        let russian = launch(extraArguments: [
+            "-weekfit-appearance=light",
+            "-weekfit-show-maya-card",
+            "-weekfit-language=ru"
+        ])
+        XCTAssertTrue(
+            russian.staticTexts["Спланируем день вместе"].waitForExistence(timeout: 8)
+                || russian.staticTexts["Майя"].waitForExistence(timeout: 2)
+        )
+        saveScreenshot(russian, name: "today-maya-pearl-ru")
+    }
+
+    @MainActor
     func testCaptureTodayLightAndDark() throws {
         let light = launch(extraArguments: ["-weekfit-appearance=light"])
         saveScreenshot(light, name: "today-light-theme")

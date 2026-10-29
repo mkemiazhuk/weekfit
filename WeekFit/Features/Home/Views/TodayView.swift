@@ -39,6 +39,12 @@ struct TodayView: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     
     @State private var showProfile = false
+    @State private var plannerVoiceEnabled = false
+    @State private var showPlannerVoice = false
+    @AppStorage(NotificationPreferenceKey.activityReminders)
+    private var activityRemindersEnabled = false
+    @AppStorage(NotificationPreferenceKey.completionCheckIns)
+    private var completionCheckInsEnabled = false
     @AppStorage(OnboardingStore.Keys.introToday) private var todayIntroDismissed = false
     @State private var drinksQuickLogToast: String?
     @State private var foodQuickLogToast: String?
@@ -473,6 +479,42 @@ struct TodayView: View {
         return root
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.today")
+        .fullScreenCover(isPresented: $showPlannerVoice) {
+            PlanRealtimeVoiceSheet(
+                planningDay: selectedDate,
+                activities: plannedActivities,
+                onSave: { request in
+                    try PlanViewModel().saveVoiceActivity(
+                        request,
+                        activities: plannedActivities,
+                        modelContext: modelContext,
+                        activityRemindersEnabled: activityRemindersEnabled,
+                        completionCheckInsEnabled: completionCheckInsEnabled
+                    )
+                },
+                onUpdate: { request in
+                    try PlanViewModel().updateVoiceActivity(
+                        request,
+                        activities: plannedActivities,
+                        modelContext: modelContext,
+                        activityRemindersEnabled: activityRemindersEnabled,
+                        completionCheckInsEnabled: completionCheckInsEnabled
+                    )
+                },
+                onDelete: { id in
+                    try PlanViewModel().deleteVoiceActivity(
+                        id: id,
+                        activities: plannedActivities,
+                        modelContext: modelContext
+                    )
+                }
+            )
+            .environmentObject(languageManager)
+            .interactiveDismissDisabled(true)
+        }
+        .task {
+            await refreshMayaAccess()
+        }
         .fullScreenCover(isPresented: $showActivityIntelligence) {
             ActivityIntelligenceView(
                 selectedDate: selectedDate,
@@ -1492,6 +1534,12 @@ struct TodayView: View {
                 AnyView(dailyStatusSection)
                 let _ = TodayStartupDiagnostics.child("dailyStatusSection complete")
 
+                if plannerVoiceEnabled {
+                    MayaPearlCallCard(isReturning: showPlannerVoice) {
+                        openMayaCall()
+                    }
+                }
+
                 switch mode {
                 case .activeSession:
                     // Your Day → In Progress → Quick Log. Hide Focus / Up next while live.
@@ -1511,8 +1559,6 @@ struct TodayView: View {
                 case .idle:
                     if let planSlot = erasedPlanAttentionSlot(now: now, upcoming: nil) {
                         planSlot
-                    } else {
-                        AnyView(emptyPlanningRow(now: now))
                     }
                     erasedCoachEntryPoint()
                     AnyView(quickActionsSection)
@@ -2631,55 +2677,30 @@ struct TodayView: View {
         .buttonStyle(.plain)
     }
 
-    private func emptyPlanningRow(now: Date) -> some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            PendingPlanAddOpen.shared.requestOpen()
-            onSelectTab(.calendar)
-        } label: {
-            todayPremiumCard(accent: nil, featured: false) {
-                HStack(alignment: .center, spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(todaySecondaryReadable.opacity(palette.isLight ? 0.10 : 0.08))
-                            .frame(width: 40, height: 40)
-                        Image(systemName: "calendar")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(todaySecondaryReadable)
-                    }
+    private func openMayaCall() {
+        guard plannerVoiceEnabled, !showPlannerVoice else { return }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        showPlannerVoice = true
+    }
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(upNextSectionTitle(for: nil, now: now))
-                            .font(TodayCardTypography.cardTitle)
-                            .foregroundStyle(textPrimary)
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
-
-                        Text(AppText.Today.noActivitiesPlanned)
-                            .font(TodayCardTypography.cardBody)
-                            .foregroundStyle(todaySecondaryReadable)
-                            .lineLimit(3)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    // Empty plan: plus only. With activities the row shows chevron instead.
-                    Image(systemName: "plus")
-                        .font(WeekFitType.button.weight(.bold))
-                        .foregroundStyle(todaySecondaryReadable)
-                        .frame(minWidth: 44, minHeight: 44)
-                }
-                .padding(.horizontal, TodayLayout.cardInteriorVerticalPadding)
-                .padding(.vertical, TodayLayout.cardInteriorVerticalPadding)
-            }
+    private func refreshMayaAccess() async {
+        #if DEBUG
+        if WeekFitUITestSupport.isActive,
+           ProcessInfo.processInfo.arguments.contains("-weekfit-show-maya-card") {
+            plannerVoiceEnabled = true
+            return
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(
-            [
-                upNextSectionTitle(for: nil, now: now),
-                String(localized: AppText.Today.noActivitiesPlanned)
-            ].joined(separator: ". ")
-        )
+        #endif
+        do {
+            let token = try await PhotoFoodFirebaseAuth.idToken()
+            let access = try await PlanRealtimeClient(
+                baseURL: WeekFitCloudAPI.foodPhotoBaseURL,
+                token: token
+            ).access()
+            plannerVoiceEnabled = access.enabled
+        } catch {
+            plannerVoiceEnabled = false
+        }
     }
 
     /// Prefer “Next Up” only when the next destination is tomorrow.

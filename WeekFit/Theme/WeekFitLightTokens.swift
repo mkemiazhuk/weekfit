@@ -134,6 +134,19 @@ enum WeekFitLightTokens {
     static let fats = Color(red: 0.851, green: 0.373, blue: 0.529) // #D95F87
     static let fiber = Color(red: 0.247, green: 0.706, blue: 0.451) // #3FB473
 
+    // MARK: - Maya Pearl call card (light only; dark uses the existing surfaces)
+
+    /// White card body on the milk canvas.
+    static let pearlCardFill = surfacePrimary
+    /// Warm gray hairline, #DEDAD4.
+    static let pearlCardBorder = Color(red: 0.871, green: 0.855, blue: 0.831)
+    /// Warm graphite for the call control, #625D57.
+    static let pearlInk = Color(red: 0.384, green: 0.365, blue: 0.341)
+    /// Light cream well behind the emblem.
+    static let pearlEmblemWell = Color(red: 0.965, green: 0.953, blue: 0.933)
+    /// Muted taupe for the emblem on the cream well.
+    static let pearlEmblemTaupe = Color(red: 0.545, green: 0.518, blue: 0.478)
+
     // Aliases for existing call sites
     static let cardPrimary = surfaceCard
     static let cardElevated = surfacePrimary
