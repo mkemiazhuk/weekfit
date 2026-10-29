@@ -36,6 +36,10 @@ enum WeekFitUITestSupport {
     static let startTabOverrideArgument = "-weekfit-start-tab="
     /// Debug-only: force in-app language for UI tests (`en` / `ru` / `zh-Hans` / `fr` / `pl` / `es` / `de` / `ja` / `it` / `ko`).
     static let languageOverrideArgument = "-weekfit-language="
+    /// Debug-only: present the Maya call screen in a fixed visual state without opening a session.
+    static let mayaPreviewArgument = "-weekfit-maya-preview="
+    /// Debug-only: draw the call screen as if Reduce Motion is on.
+    static let reduceMotionArgument = "-weekfit-reduce-motion"
     /// Debug-only: reset + present first-run onboarding (overrides the normal UI-test onboarding suppress).
     static let forceOnboardingArgument = "-weekfit-force-onboarding"
     /// Debug-only: open the real paywall via the temporary force-paywall diagnostics path.
@@ -44,6 +48,27 @@ enum WeekFitUITestSupport {
     static let skipHealthAccessArgument = "-weekfit-skip-health-access"
     /// Debug-only: mark first-run onboarding completed (useful with skip-health / paywall / sheets).
     static let completeOnboardingArgument = "-weekfit-complete-onboarding"
+
+    static var mayaPreviewPhase: String? {
+        #if DEBUG
+        guard isActive else { return nil }
+        guard let raw = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix(mayaPreviewArgument) }) else {
+            return nil
+        }
+        let value = String(raw.dropFirst(mayaPreviewArgument.count))
+        return value.isEmpty ? nil : value
+        #else
+        return nil
+        #endif
+    }
+
+    static var forcesReduceMotion: Bool {
+        #if DEBUG
+        isActive && ProcessInfo.processInfo.arguments.contains(reduceMotionArgument)
+        #else
+        false
+        #endif
+    }
 
     static var isActive: Bool {
         #if DEBUG

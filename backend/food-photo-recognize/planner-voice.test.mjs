@@ -235,12 +235,12 @@ test('marin and cedar share the russian preview and keep the mini model', () => 
   }
   const lines = plannerVoicePreviewPhrases('ru');
   assert.deepEqual(lines, plannerVoicePreviewPhrases('ru'));
-  assert.equal(lines.greeting, 'Привет! Я Майя, твой AI-помощник в WeekFit. Что сегодня планируем?');
+  assert.equal(lines.greeting, 'Привет, Макс! Как ты сегодня?');
   assert.equal(lines.askTime, 'Во сколько?');
   assert.equal(lines.confirmation, 'Добавила теннис на завтра, с 13 до 14.');
   assert.equal(lines.conflict, 'На это время уже что-то стоит. Выберем другое?');
-  assert.equal(plannerVoicePreviewPhrases('en', 'Max').greeting, "Hey! I'm Maya, your AI assistant in WeekFit. What are we planning today?");
-  assert.equal(plannerVoicePreviewPhrases('pl', 'Max').greeting, 'Cześć! Jestem Maya, twoja asystentka AI w WeekFit. Co dziś planujemy?');
+  assert.equal(plannerVoicePreviewPhrases('en', 'Max').greeting, 'Hey Max, how are you feeling today?');
+  assert.equal(plannerVoicePreviewPhrases('pl', 'Max').greeting, 'Cześć, Max! Jak się dzisiaj czujesz?');
 });
 
 test('cedar uses the same russian greeting without a larger model', async () => {
@@ -272,7 +272,10 @@ test('cedar uses the same russian greeting without a larger model', async () => 
     const sent = JSON.parse(captured.init.body);
     assert.equal(sent.session.model, 'gpt-realtime-2.1-mini');
     assert.equal(sent.session.audio.output.voice, 'cedar');
-    assert.match(sent.session.instructions, /Привет! Я Майя, твой AI-помощник в WeekFit\. Что сегодня планируем\?/);
+    assert.match(sent.session.instructions, /Привет, Макс! Как ты сегодня\?/);
+    assert.equal(sent.session.audio.input.turn_detection.type, 'semantic_vad');
+    assert.equal(sent.session.audio.input.turn_detection.eagerness, 'low');
+    assert.equal(sent.session.max_output_tokens, 2048);
     assert.match(sent.session.instructions, /natural Russian pronunciation/);
     assert.equal(sent.session.instructions.includes('только по-русски'), false);
 
@@ -286,7 +289,7 @@ test('cedar uses the same russian greeting without a larger model', async () => 
     });
     assert.equal(polish.status, 200);
     const polishSession = JSON.parse(captured.init.body).session;
-    assert.match(polishSession.instructions, /Cześć! Jestem Maya, twoja asystentka AI w WeekFit\. Co dziś planujemy\?/);
+    assert.match(polishSession.instructions, /Cześć, Max! Jak się dzisiaj czujesz\?/);
     assert.match(polishSession.instructions, /Speak only in Polish/);
     assert.equal(polishSession.model, 'gpt-realtime-2.1-mini');
   } finally {
@@ -365,7 +368,7 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(sent.session.model, 'gpt-realtime-2.1-mini');
     assert.equal(sent.session.audio.input.transcription, undefined);
     assert.deepEqual(sent.session.output_modalities, ['audio']);
-    assert.deepEqual(sent.session.tools.map(tool => tool.name), ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'end_call']);
+    assert.deepEqual(sent.session.tools.map(tool => tool.name), ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'need_a_moment', 'end_call']);
     assert.match(sent.session.instructions, /Do not add it after the greeting/);
     assert.match(sent.session.instructions, /Пока!/);
     assert.match(sent.session.instructions, /Что-нибудь ещё\?/);
@@ -374,8 +377,8 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(sent.session.audio.input.turn_detection.interrupt_response, true);
     assert.match(sent.session.instructions, /2026-10-29/);
     assert.match(sent.session.instructions, /day after tomorrow is 2026-10-31/);
-    assert.match(sent.session.instructions, /Привет! Я Майя, твой AI-помощник в WeekFit\. Что сегодня планируем\?/);
-    assert.equal(sent.session.instructions.includes('Привет, Максим'), false);
+    assert.match(sent.session.instructions, /Привет, Максим! Как ты сегодня\?/);
+    assert.equal(sent.session.audio.input.turn_detection.silence_duration_ms, undefined);
     const returning = await request(server.url, 'POST', '/v1/planner-voice/session', {
       body: {
         timeZone: 'Asia/Tokyo',
@@ -386,8 +389,21 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     });
     assert.equal(returning.status, 200);
     const returningInstructions = JSON.parse(captured.init.body).session.instructions;
-    assert.match(returningInstructions, /Привет, Максим! Что сегодня планируем\?/);
-    assert.equal(returningInstructions.includes('Я Майя'), false);
+    assert.match(returningInstructions, /Привет, Максим! Как ты сегодня\?/);
+    assert.equal(returningInstructions.includes('Я Майя, твой'), false);
+    const reconnected = await request(server.url, 'POST', '/v1/planner-voice/session', {
+      body: {
+        timeZone: 'Asia/Tokyo',
+        now: '2026-10-28T16:30:00Z',
+        givenName: 'Максим',
+        introduced: true,
+        reconnected: true,
+      },
+    });
+    assert.equal(reconnected.status, 200);
+    const reconnectedInstructions = JSON.parse(captured.init.body).session.instructions;
+    assert.match(reconnectedInstructions, /This call just reconnected/);
+    assert.equal(reconnectedInstructions.includes('Your first words must be exactly'), false);
     assert.equal(sent.session.instructions.includes('только по-русски'), false);
     assert.equal(sent.session.audio.output.voice, 'marin');
     assert.equal(sent.session.model, 'gpt-realtime-2.1-mini');
@@ -496,11 +512,76 @@ test('ringing continues until the assistant starts the greeting', async () => {
   assert.equal(timers.some(timer => timer.delay === 12000), true);
   channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.stopped' }) });
   assert.equal(track.stopped, false);
-  timers.find(timer => timer.delay === 250).callback();
+  timers.find(timer => timer.delay === 1000).callback();
   assert.equal(track.stopped, true);
   assert.equal(events.some(event => event.value === 'ended' && event.reason === 'goodbye'), true);
   window.weekfit.stop();
   assert.equal(track.stopped, true);
+});
+
+test('silence starts after playback and speech cancels a pending goodbye', async () => {
+  const script = consoleDocument().match(/<script>([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(script);
+  const sent = [];
+  const timers = new Map();
+  let nextId = 1;
+  const track = { enabled: true, stopped: false, stop() { this.stopped = true; } };
+  const stream = { getTracks: () => [track], getAudioTracks: () => [track] };
+  const channel = { readyState: 'open', send: value => sent.push(JSON.parse(value)), close() {} };
+  const window = { webkit: { messageHandlers: { plannerVoice: { postMessage() {} } } } };
+  class Peer {
+    createDataChannel() { return channel; }
+    addTrack() {}
+    async createOffer() { return { sdp: 'offer' }; }
+    async setLocalDescription() {}
+    async setRemoteDescription() {}
+    close() {}
+  }
+  const delays = () => [...timers.values()].map(timer => timer.delay);
+  const fire = (delay) => {
+    const entry = [...timers.entries()].findLast(([, timer]) => timer.delay === delay);
+    assert.ok(entry);
+    timers.delete(entry[0]);
+    entry[1].callback();
+  };
+  runInNewContext(script, {
+    window,
+    RTCPeerConnection: Peer,
+    navigator: { mediaDevices: { getUserMedia: async () => stream } },
+    document: { createElement: () => ({ setAttribute() {}, remove() {} }), body: { appendChild() {} } },
+    fetch: async () => ({ ok: true, text: async () => 'answer' }),
+    setTimeout: (callback, delay) => {
+      const id = nextId++;
+      timers.set(id, { callback, delay });
+      return id;
+    },
+    clearTimeout: (id) => { timers.delete(id); },
+  });
+  await window.weekfit.start({ ephemeralKey: 'ek_test', idleSeconds: 75, language: 'ru', givenName: 'Макс' });
+  channel.onopen();
+  channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.started' }) });
+  channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.stopped' }) });
+  assert.equal(delays().includes(20000), true);
+  channel.onmessage({ data: JSON.stringify({ type: 'input_audio_buffer.speech_started' }) });
+  assert.equal(delays().includes(20000), false);
+
+  channel.onmessage({ data: JSON.stringify({ type: 'response.function_call_arguments.done', name: 'need_a_moment', call_id: 'think_1' }) });
+  assert.equal(delays().includes(35000), true);
+  assert.equal(sent.some(item => item.type === 'response.create' && item.response), false);
+  fire(35000);
+  assert.equal(sent.some(item => item.response && item.response.instructions.includes('Макс, ты ещё здесь?')), true);
+
+  channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.started' }) });
+  channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.stopped' }) });
+  assert.equal(delays().includes(20000), true);
+  fire(20000);
+  assert.equal(sent.some(item => item.response && item.response.instructions.includes('Я завершаю звонок')), true);
+  channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.started' }) });
+  channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.stopped' }) });
+  assert.equal(delays().includes(1000), true);
+  channel.onmessage({ data: JSON.stringify({ type: 'input_audio_buffer.speech_started' }) });
+  assert.equal(delays().includes(1000), false);
+  assert.equal(track.stopped, false);
 });
 
 test('mock session does not call OpenAI', async () => {

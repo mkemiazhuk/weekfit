@@ -86,6 +86,13 @@ final class TodayHierarchyScreenshotTests: XCTestCase {
         let card = light.buttons["today.maya.call"]
         XCTAssertTrue(card.waitForExistence(timeout: 8), "Maya card did not appear on Today")
         XCTAssertTrue(light.staticTexts["Plan your day together"].exists)
+        let drink = light.buttons["today.quickAction.drinks"]
+        XCTAssertTrue(drink.waitForExistence(timeout: 5))
+        XCTAssertLessThan(
+            drink.frame.maxY,
+            light.windows.firstMatch.frame.maxY - 52,
+            "Quick actions should sit above the tab bar without scrolling"
+        )
         saveScreenshot(light, name: "today-maya-pearl-light")
 
         let dark = launch(extraArguments: [
@@ -105,6 +112,44 @@ final class TodayHierarchyScreenshotTests: XCTestCase {
                 || russian.staticTexts["Майя"].waitForExistence(timeout: 2)
         )
         saveScreenshot(russian, name: "today-maya-pearl-ru")
+    }
+
+    @MainActor
+    func testCaptureMayaCallStates() throws {
+        let listening = launchCallPreview("listening", extra: ["-weekfit-appearance=light"])
+        XCTAssertTrue(listening.staticTexts["Maya"].exists || listening.staticTexts["Майя"].exists)
+        saveScreenshot(listening, name: "maya-call-listening-light")
+
+        let speaking = launchCallPreview("speaking", extra: ["-weekfit-appearance=dark"])
+        saveScreenshot(speaking, name: "maya-call-speaking-dark")
+
+        let receipt = launchCallPreview("receipt", extra: ["-weekfit-appearance=light"])
+        XCTAssertTrue(receipt.otherElements["planner.voice.realtime.receipt"].waitForExistence(timeout: 5))
+        saveScreenshot(receipt, name: "maya-call-receipt-light")
+
+        let connecting = launchCallPreview("connecting", extra: [
+            "-weekfit-appearance=light",
+            "-weekfit-reduce-motion"
+        ])
+        saveScreenshot(connecting, name: "maya-call-connecting-reduced-motion")
+    }
+
+    @MainActor
+    private func launchCallPreview(_ phase: String, extra: [String]) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing",
+            "-weekfit-force-legacy-user",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US",
+            "-weekfit-maya-preview=\(phase)"
+        ] + extra
+        app.launch()
+        XCTAssertTrue(
+            app.otherElements["planner.voice.realtime"].waitForExistence(timeout: 20),
+            "Maya call preview did not appear"
+        )
+        return app
     }
 
     @MainActor

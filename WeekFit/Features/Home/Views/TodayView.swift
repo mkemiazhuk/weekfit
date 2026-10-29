@@ -109,14 +109,14 @@ struct TodayView: View {
         static let cardRadius: CGFloat = TodayChrome.cardRadius
         /// Header spacing now lives in `WeekFitScreenLayout.headerBottomSpacing`.
         static let contentTopInset: CGFloat = 0
-        static let gapBetweenCards: CGFloat = TodayChrome.gapBetweenCards
+        static let gapBetweenCards: CGFloat = 14
         static let ringGroupSpacing: CGFloat = 6
-        static let cardTitleBottomGap: CGFloat = 8
-        static let overviewContentTopPadding: CGFloat = 14
-        static let overviewContentBottomPadding: CGFloat = 14
+        static let cardTitleBottomGap: CGFloat = 6
+        static let overviewContentTopPadding: CGFloat = 10
+        static let overviewContentBottomPadding: CGFloat = 10
         static let overviewHorizontalPadding: CGFloat = TodayChrome.cardPadding
-        static let coachCardVerticalPadding: CGFloat = TodayChrome.cardPadding
-        static let cardInteriorVerticalPadding: CGFloat = TodayChrome.cardPadding
+        static let coachCardVerticalPadding: CGFloat = 12
+        static let cardInteriorVerticalPadding: CGFloat = 12
         static let quickTileRadius: CGFloat = 18
         static let quickTileSpacing: CGFloat = 10
         /// Recent completion window for compact summary (does not permanently pin).
@@ -1422,7 +1422,7 @@ struct TodayView: View {
 
     private var todayScreen: some View {
         let _ = TodayStartupDiagnostics.child("todayScreen begin")
-        return WeekFitScreenContainer(headerBottomSpacing: 14) {
+        return WeekFitScreenContainer(headerBottomSpacing: 12) {
 
             let _ = TodayStartupDiagnostics.child("header WeekFitTodayWeatherHeader")
             WeekFitTodayWeatherHeader(
@@ -1440,8 +1440,9 @@ struct TodayView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 todayScrollContent
                     .padding(.top, TodayLayout.contentTopInset)
-                    .padding(.bottom, 12)
+                    .padding(.bottom, 4)
             }
+            .scrollBounceBehavior(.basedOnSize)
             // Transparent — same atmosphere plane as the weather header.
             // Opaque canvas fill here painted a black/white slab over the glows.
             .weekFitTransparentScrollBackground(fillsCanvas: false)
@@ -1449,7 +1450,7 @@ struct TodayView: View {
         // Reserve the floating tab bar footprint so the last card can scroll fully clear.
         .safeAreaInset(edge: .bottom, spacing: 0) {
             Color.clear
-                .frame(height: TodayChrome.tabBarReservedHeight)
+                .frame(height: 74)
                 .accessibilityHidden(true)
         }
         // One geometry group: ancestor tab animation can't move each card on its own.
@@ -2439,7 +2440,7 @@ struct TodayView: View {
         let centerLabel = value == nil ? "—" : (centerText ?? "\(displayValue)%")
         let captionColor = valueColor ?? color
 
-        return VStack(spacing: 8) {
+        return VStack(spacing: 5) {
             WeekFitProgressRing(
                 progress: value == nil ? 0 : progress,
                 color: color,
@@ -2561,7 +2562,7 @@ struct TodayView: View {
             onSelectTab(.calendar)
         } label: {
             todayPremiumCard(accent: nil, featured: false) {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(upNextSectionTitle(for: activity, now: now))
                         .font(TodayCardTypography.sectionLabel)
                         .fontDesign(.rounded)
@@ -2686,8 +2687,12 @@ struct TodayView: View {
     private func refreshMayaAccess() async {
         #if DEBUG
         if WeekFitUITestSupport.isActive,
-           ProcessInfo.processInfo.arguments.contains("-weekfit-show-maya-card") {
+           ProcessInfo.processInfo.arguments.contains("-weekfit-show-maya-card")
+            || WeekFitUITestSupport.mayaPreviewPhase != nil {
             plannerVoiceEnabled = true
+            if WeekFitUITestSupport.mayaPreviewPhase != nil {
+                showPlannerVoice = true
+            }
             return
         }
         #endif
@@ -3808,7 +3813,7 @@ struct TodayView: View {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             action()
         } label: {
-            VStack(spacing: 8) {
+            VStack(spacing: 6) {
                 ZStack(alignment: .top) {
                     Circle()
                         .fill(color.opacity(iconFillOpacity))

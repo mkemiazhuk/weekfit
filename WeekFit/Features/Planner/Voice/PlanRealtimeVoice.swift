@@ -227,7 +227,9 @@ struct PlanRealtimeClient {
         givenName: String,
         language: String,
         plan: [[String: Any]],
-        ticket: String
+        ticket: String,
+        introduced: Bool,
+        reconnected: Bool = false
     ) async throws -> PlanRealtimeSessionSecret {
         try await send(
             method: "POST",
@@ -240,7 +242,8 @@ struct PlanRealtimeClient {
                 "givenName": givenName,
                 "language": language,
                 "plan": plan,
-                "introduced": PlanRealtimeMayaMemory.introduced,
+                "introduced": introduced,
+                "reconnected": reconnected,
             ]
         )
     }

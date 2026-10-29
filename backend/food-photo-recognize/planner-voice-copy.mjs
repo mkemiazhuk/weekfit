@@ -32,9 +32,7 @@ const PHRASES = {
   ru: {
     englishName: 'Russian',
     assistantName: 'Майя',
-    greeting: (name, introduced) => introduced
-      ? (name ? `Привет, ${name}! Что сегодня планируем?` : 'Привет! Что сегодня планируем?')
-      : 'Привет! Я Майя, твой AI-помощник в WeekFit. Что сегодня планируем?',
+    greeting: (name) => (name ? `Привет, ${name}! Как ты сегодня?` : 'Привет! Как ты сегодня?'),
     goodbye: 'Пока!',
     anythingElse: 'Что-нибудь ещё?',
     closing: '«нет, всё», «нет, всё, спасибо», «больше ничего», «ничего», «это всё», «всё, спасибо», «до свидания», «пока»',
@@ -50,9 +48,7 @@ const PHRASES = {
   en: {
     englishName: 'English',
     assistantName: 'Maya',
-    greeting: (name, introduced) => introduced
-      ? (name ? `Hey ${name}! What are we planning today?` : 'Hey! What are we planning today?')
-      : "Hey! I'm Maya, your AI assistant in WeekFit. What are we planning today?",
+    greeting: (name) => (name ? `Hey ${name}, how are you feeling today?` : 'Hey, how are you feeling today?'),
     goodbye: 'Talk soon!',
     anythingElse: 'Anything else?',
     closing: '"no, I\'m good", "no, that\'s all", "nothing else", "that\'s all", "that\'s it", "goodbye", "bye"',
@@ -68,9 +64,7 @@ const PHRASES = {
   pl: {
     englishName: 'Polish',
     assistantName: 'Maya',
-    greeting: (name, introduced) => introduced
-      ? (name ? `Cześć, ${name}! Co dziś planujemy?` : 'Cześć! Co dziś planujemy?')
-      : 'Cześć! Jestem Maya, twoja asystentka AI w WeekFit. Co dziś planujemy?',
+    greeting: (name) => (name ? `Cześć, ${name}! Jak się dzisiaj czujesz?` : 'Cześć! Jak się dzisiaj czujesz?'),
     goodbye: 'Na razie!',
     anythingElse: 'Coś jeszcze?',
     closing: '«nie», «nic więcej», «to wszystko», «do widzenia», «pa»',
@@ -86,9 +80,7 @@ const PHRASES = {
   fr: {
     englishName: 'French',
     assistantName: 'Maya',
-    greeting: (name, introduced) => introduced
-      ? (name ? `Salut ${name} ! On planifie quoi aujourd'hui ?` : "Salut ! On planifie quoi aujourd'hui ?")
-      : "Salut ! Je suis Maya, ton assistante IA dans WeekFit. On planifie quoi aujourd'hui ?",
+    greeting: (name) => (name ? `Salut ${name} ! Comment tu te sens aujourd'hui ?` : "Salut ! Comment tu te sens aujourd'hui ?"),
     goodbye: 'À plus !',
     anythingElse: 'Autre chose ?',
     closing: '«non», «rien d\'autre», «c\'est tout», «au revoir»',
@@ -104,9 +96,7 @@ const PHRASES = {
   es: {
     englishName: 'Spanish',
     assistantName: 'Maya',
-    greeting: (name, introduced) => introduced
-      ? (name ? `¡Hola, ${name}! ¿Qué planeamos hoy?` : '¡Hola! ¿Qué planeamos hoy?')
-      : '¡Hola! Soy Maya, tu asistente de IA en WeekFit. ¿Qué planeamos hoy?',
+    greeting: (name) => (name ? `¡Hola, ${name}! ¿Cómo estás hoy?` : '¡Hola! ¿Cómo estás hoy?'),
     goodbye: '¡Hasta luego!',
     anythingElse: '¿Algo más?',
     closing: '«no», «nada más», «eso es todo», «adiós»',
@@ -122,9 +112,7 @@ const PHRASES = {
   de: {
     englishName: 'German',
     assistantName: 'Maya',
-    greeting: (name, introduced) => introduced
-      ? (name ? `Hi ${name}! Was planen wir heute?` : 'Hi! Was planen wir heute?')
-      : 'Hi! Ich bin Maya, deine KI-Assistentin in WeekFit. Was planen wir heute?',
+    greeting: (name) => (name ? `Hi ${name}! Wie fühlst du dich heute?` : 'Hi! Wie fühlst du dich heute?'),
     goodbye: 'Bis dann!',
     anythingElse: 'Noch etwas?',
     closing: '«nein», «nichts weiter», «das war\'s», «auf Wiedersehen»',
@@ -140,9 +128,7 @@ const PHRASES = {
   'zh-Hans': {
     englishName: 'Chinese',
     assistantName: 'Maya',
-    greeting: (name, introduced) => introduced
-      ? (name ? `你好，${name}！今天想安排什么？` : '你好！今天想安排什么？')
-      : '你好！我是 Maya，WeekFit 里的 AI 助手。今天想安排什么？',
+    greeting: (name) => (name ? `你好，${name}！今天感觉怎么样？` : '你好！今天感觉怎么样？'),
     goodbye: '回头见！',
     anythingElse: '还有别的吗？',
     closing: '「不用了」「没有了」「就这样」「再见」',
@@ -158,9 +144,7 @@ const PHRASES = {
   ja: {
     englishName: 'Japanese',
     assistantName: 'Maya',
-    greeting: (name, introduced) => introduced
-      ? (name ? `こんにちは、${name}。今日は何を予定する？` : 'こんにちは。今日は何を予定する？')
-      : 'こんにちは。Maya だよ。WeekFit の AI アシスタント。今日は何を予定する？',
+    greeting: (name) => (name ? `こんにちは、${name}。今日の調子はどう？` : 'こんにちは。今日の調子はどう？'),
     goodbye: 'またね！',
     anythingElse: 'ほかにある？',
     closing: '「いいえ」「ほかにはない」「以上です」「さようなら」',
@@ -176,9 +160,7 @@ const PHRASES = {
   it: {
     englishName: 'Italian',
     assistantName: 'Maya',
-    greeting: (name, introduced) => introduced
-      ? (name ? `Ciao ${name}! Cosa organizziamo oggi?` : 'Ciao! Cosa organizziamo oggi?')
-      : 'Ciao! Sono Maya, la tua assistente AI in WeekFit. Cosa organizziamo oggi?',
+    greeting: (name) => (name ? `Ciao ${name}! Come ti senti oggi?` : 'Ciao! Come ti senti oggi?'),
     goodbye: 'A dopo!',
     anythingElse: 'Altro?',
     closing: '«no», «nient\'altro», «è tutto», «arrivederci»',
@@ -194,9 +176,7 @@ const PHRASES = {
   ko: {
     englishName: 'Korean',
     assistantName: 'Maya',
-    greeting: (name, introduced) => introduced
-      ? (name ? `안녕, ${name}! 오늘 뭐 계획할까?` : '안녕! 오늘 뭐 계획할까?')
-      : '안녕! 나는 WeekFit의 AI 도우미 Maya야. 오늘 뭐 계획할까?',
+    greeting: (name) => (name ? `안녕, ${name}! 오늘 기분은 어때?` : '안녕! 오늘 기분은 어때?'),
     goodbye: '나중에 봐!',
     anythingElse: '또 있을까?',
     closing: '「아니요」, 「없어요」, 「그거예요」, 「안녕히 가세요」',
