@@ -170,6 +170,7 @@ struct WeekFitApp: App {
             backgroundEnteredAt = Date()
 
         case .active:
+            Task { await WeekFitVoiceStopQueue.shared.flush() }
             activityCoordinator.refresh()
             nightComfort.handleSceneBecameActive()
             // Only drop StoreKit product cache after a real sleep/background stretch.

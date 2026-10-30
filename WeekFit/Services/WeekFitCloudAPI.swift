@@ -8,7 +8,7 @@ enum WeekFitCloudAPI {
     /// Explicit Debug-only fixture gate. Off by default — never auto-substitutes live recognition.
     static let debugUseFixtureDefaultsKey = "WeekFitUsePhotoFoodFixture"
 
-    /// Deployed food-photo recognition (Render). Release / TestFlight always use this.
+    /// Default deployed origin; explicit Sandbox builds use a separate service.
     static let productionFoodPhotoBaseURL = URL(string: "https://weekfit-food-photo.onrender.com")!
 
     /// Local-dev bearer for Mac proxy when `ALLOW_DEV_AUTH=1` (Debug overrides only).
@@ -24,8 +24,53 @@ enum WeekFitCloudAPI {
         set { AccountRemoteDeletionClient.sessionTokenProvider = newValue }
     }
 
-    /// Resolve base URL: Debug launch-arg / UserDefaults override → else production HTTPS.
+    /// Explicit test configuration. Debug may honor it. Release also needs `WEEKFIT_AI_SANDBOX`.
+    nonisolated static var sandboxBillingRequested: Bool {
+        Bundle.main.object(forInfoDictionaryKey: "WeekFitAISandboxEnabled") as? Bool == true
+    }
+
+    nonisolated static var sandboxCompiledIn: Bool {
+        #if DEBUG || WEEKFIT_AI_SANDBOX
+        true
+        #else
+        false
+        #endif
+    }
+
+    nonisolated static var billingDecision: WeekFitAISandboxDecision {
+        let raw = Bundle.main.object(forInfoDictionaryKey: "WeekFitAISandboxBaseURL") as? String
+        return WeekFitAISandboxDecision.decide(
+            usageEnabled: Bundle.main.object(forInfoDictionaryKey: "WeekFitAIUsageEnabled") as? Bool == true,
+            sandboxRequested: sandboxBillingRequested,
+            sandboxURL: raw.flatMap { URL(string: $0) },
+            compiledSandboxAllowed: sandboxCompiledIn
+        )
+    }
+
+    /// Usable Sandbox origin. Nil when Sandbox was not requested, or when it was refused.
+    nonisolated static var sandboxBillingBaseURL: URL? {
+        if case .sandbox(let url) = billingDecision.route { return url }
+        return nil
+    }
+
+    nonisolated static var sandboxRefused: Bool {
+        if case .refused = billingDecision.route { return true }
+        return false
+    }
+
+    /// Sandbox archive or the AISandbox run configuration → Debug overrides → production HTTPS.
+    /// A refused Sandbox build does not continue on to Production.
     static func bootstrapFromInfoPlistIfNeeded() {
+        switch billingDecision.route {
+        case .sandbox(let url):
+            configuredBaseURL = url
+            return
+        case .refused:
+            configuredBaseURL = nil
+            return
+        case .production:
+            break
+        }
         #if DEBUG
         if let fromLaunch = debugLaunchArgumentURL() {
             configuredBaseURL = fromLaunch
@@ -54,9 +99,10 @@ enum WeekFitCloudAPI {
         configuredBaseURL != nil
     }
 
-    /// Food photo recognition always has a default production origin after bootstrap.
+    /// Food, voice, and billing origin. A refused Sandbox build does not use Production.
     static var foodPhotoBaseURL: URL {
-        configuredBaseURL ?? productionFoodPhotoBaseURL
+        if sandboxRefused { return WeekFitAISandboxDecision.refusedBaseURL }
+        return configuredBaseURL ?? productionFoodPhotoBaseURL
     }
 
     #if DEBUG

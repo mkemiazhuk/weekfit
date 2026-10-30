@@ -193,6 +193,7 @@
 				55E7BBE32FB2403E006A4D20 /* Resources */,
 				W10000402FB2403E006A4D40 /* Embed Foundation Extensions */,
 				F10000062FB2403E006A4D35 /* Upload Crashlytics dSYM */,
+				F10000072FB2403E006A4D36 /* Stamp AI Sandbox Info.plist */,
 			);
 			buildRules = (
 			);
@@ -406,7 +407,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "PLIST=\"${PROJECT_DIR}/WeekFit/GoogleService-Info.plist\"\nBUNDLE_PLIST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\nFIREBASE_ROOT=\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics\"\nRUN_SCRIPT=\"${FIREBASE_ROOT}/run\"\nUPLOAD_SYMBOLS=\"${FIREBASE_ROOT}/upload-symbols\"\nDSYM_PATH=\"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}\"\n\nif [ ! -f \"$PLIST\" ]; then\n  if [ \"${CONFIGURATION}\" != \"Debug\" ]; then\n    echo \"error: GoogleService-Info.plist missing at $PLIST -- required for Release/Archive Firebase + Crashlytics. Copy docs/GoogleService-Info.plist.example to WeekFit/GoogleService-Info.plist.\"\n    exit 1\n  fi\n  echo \"note: GoogleService-Info.plist missing; skipping Crashlytics dSYM upload (Debug only)\"\n  exit 0\nfi\n\nif [ ! -f \"$BUNDLE_PLIST\" ] && [ \"${CONFIGURATION}\" != \"Debug\" ]; then\n  echo \"error: GoogleService-Info.plist not copied into app bundle at $BUNDLE_PLIST -- check target membership.\"\n  exit 1\nfi\n\nif [ ! -x \"$UPLOAD_SYMBOLS\" ] || [ ! -x \"$RUN_SCRIPT\" ]; then\n  echo \"error: Firebase Crashlytics scripts missing under $FIREBASE_ROOT -- resolve SPM packages and retry.\"\n  exit 1\nfi\n\necho \"note: Crashlytics dSYM upload starting (CONFIGURATION=${CONFIGURATION}, DWARF_DSYM_FOLDER_PATH=${DWARF_DSYM_FOLDER_PATH}, DWARF_DSYM_FILE_NAME=${DWARF_DSYM_FILE_NAME})\"\n\n# Debug: keep Firebase fast background run (validation still fails the build).\nif [ \"${CONFIGURATION}\" = \"Debug\" ]; then\n  \"$RUN_SCRIPT\"\n  status=$?\n  if [ $status -eq 0 ]; then\n    echo \"note: Crashlytics Debug validation passed (upload continues in background)\"\n  else\n    echo \"error: Crashlytics dSYM upload failed with exit code $status\"\n  fi\n  exit $status\nfi\n\n# Release / Archive: require dSYM, upload synchronously (Firebase run backgrounds and hides errors).\nif [ ! -d \"$DSYM_PATH\" ]; then\n  echo \"error: dSYM missing at $DSYM_PATH -- set Debug Information Format to DWARF with dSYM File for Release.\"\n  exit 1\nfi\n\necho \"note: Primary dSYM UUIDs:\"\ndwarfdump -u \"$DSYM_PATH\" || true\n\n\"$UPLOAD_SYMBOLS\" -gsp \"$PLIST\" -p ios \"$DSYM_PATH\"\nstatus=$?\nif [ $status -ne 0 ]; then\n  echo \"error: Crashlytics upload-symbols failed for $DSYM_PATH (exit $status)\"\n  exit $status\nfi\n\n# Upload companion dSYMs in the same folder (e.g. WeekFitWidget).\nfor companion in \"${DWARF_DSYM_FOLDER_PATH}\"/*.dSYM; do\n  if [ ! -d \"$companion\" ]; then\n    continue\n  fi\n  if [ \"$companion\" = \"$DSYM_PATH\" ]; then\n    continue\n  fi\n  echo \"note: Companion dSYM UUIDs ($(basename \"$companion\")):\"\n  dwarfdump -u \"$companion\" || true\n  \"$UPLOAD_SYMBOLS\" -gsp \"$PLIST\" -p ios \"$companion\"\n  cstatus=$?\n  if [ $cstatus -ne 0 ]; then\n    echo \"error: Crashlytics upload-symbols failed for $companion (exit $cstatus)\"\n    exit $cstatus\n  fi\ndone\n\necho \"note: Crashlytics dSYM upload finished successfully (synchronous Release/Archive)\"\nexit 0";
+			shellScript = "# Unsigned simulator CI does not distribute an app or upload symbols.\nif [ \"${EFFECTIVE_PLATFORM_NAME}\" = \"-iphonesimulator\" ] && [ \"${CODE_SIGNING_ALLOWED}\" = \"NO\" ]; then\n  echo \"note: Skipping Crashlytics upload for unsigned simulator build\"\n  exit 0\nfi\n\nPLIST=\"${PROJECT_DIR}/WeekFit/GoogleService-Info.plist\"\nBUNDLE_PLIST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\nFIREBASE_ROOT=\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics\"\nRUN_SCRIPT=\"${FIREBASE_ROOT}/run\"\nUPLOAD_SYMBOLS=\"${FIREBASE_ROOT}/upload-symbols\"\nDSYM_PATH=\"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}\"\n\nif [ ! -f \"$PLIST\" ]; then\n  if [ \"${CONFIGURATION}\" != \"Debug\" ] && [ \"${CONFIGURATION}\" != \"AISandbox\" ]; then\n    echo \"error: GoogleService-Info.plist missing at $PLIST -- required for Release/Archive Firebase + Crashlytics. Copy docs/GoogleService-Info.plist.example to WeekFit/GoogleService-Info.plist.\"\n    exit 1\n  fi\n  echo \"note: GoogleService-Info.plist missing; skipping Crashlytics dSYM upload (${CONFIGURATION})\"\n  exit 0\nfi\n\nif [ ! -f \"$BUNDLE_PLIST\" ] && [ \"${CONFIGURATION}\" != \"Debug\" ] && [ \"${CONFIGURATION}\" != \"AISandbox\" ]; then\n  echo \"error: GoogleService-Info.plist not copied into app bundle at $BUNDLE_PLIST -- check target membership.\"\n  exit 1\nfi\n\nif [ ! -x \"$UPLOAD_SYMBOLS\" ] || [ ! -x \"$RUN_SCRIPT\" ]; then\n  echo \"error: Firebase Crashlytics scripts missing under $FIREBASE_ROOT -- resolve SPM packages and retry.\"\n  exit 1\nfi\n\necho \"note: Crashlytics dSYM upload starting (CONFIGURATION=${CONFIGURATION}, DWARF_DSYM_FOLDER_PATH=${DWARF_DSYM_FOLDER_PATH}, DWARF_DSYM_FILE_NAME=${DWARF_DSYM_FILE_NAME})\"\n\n# Debug and the device QA configuration keep DWARF without a dSYM. Release still requires one.\nif [ \"${CONFIGURATION}\" = \"Debug\" ] || [ \"${CONFIGURATION}\" = \"AISandbox\" ]; then\n  \"$RUN_SCRIPT\"\n  status=$?\n  if [ $status -eq 0 ]; then\n    echo \"note: Crashlytics Debug validation passed (upload continues in background)\"\n  else\n    echo \"error: Crashlytics dSYM upload failed with exit code $status\"\n  fi\n  exit $status\nfi\n\n# Release / Archive: require dSYM, upload synchronously (Firebase run backgrounds and hides errors).\nif [ ! -d \"$DSYM_PATH\" ]; then\n  echo \"error: dSYM missing at $DSYM_PATH -- set Debug Information Format to DWARF with dSYM File for Release.\"\n  exit 1\nfi\n\necho \"note: Primary dSYM UUIDs:\"\ndwarfdump -u \"$DSYM_PATH\" || true\n\n\"$UPLOAD_SYMBOLS\" -gsp \"$PLIST\" -p ios \"$DSYM_PATH\"\nstatus=$?\nif [ $status -ne 0 ]; then\n  echo \"error: Crashlytics upload-symbols failed for $DSYM_PATH (exit $status)\"\n  exit $status\nfi\n\n# Upload companion dSYMs in the same folder (e.g. WeekFitWidget).\nfor companion in \"${DWARF_DSYM_FOLDER_PATH}\"/*.dSYM; do\n  if [ ! -d \"$companion\" ]; then\n    continue\n  fi\n  if [ \"$companion\" = \"$DSYM_PATH\" ]; then\n    continue\n  fi\n  echo \"note: Companion dSYM UUIDs ($(basename \"$companion\")):\"\n  dwarfdump -u \"$companion\" || true\n  \"$UPLOAD_SYMBOLS\" -gsp \"$PLIST\" -p ios \"$companion\"\n  cstatus=$?\n  if [ $cstatus -ne 0 ]; then\n    echo \"error: Crashlytics upload-symbols failed for $companion (exit $cstatus)\"\n    exit $cstatus\n  fi\ndone\n\necho \"note: Crashlytics dSYM upload finished successfully (synchronous Release/Archive)\"\nexit 0";
+		};
+		F10000072FB2403E006A4D36 /* Stamp AI Sandbox Info.plist */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "Stamp AI Sandbox Info.plist";
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/ai-sandbox-plist.stamp",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "# Stamp AI Sandbox flags into the built app. The source Info.plist stays clean for App Store archives.\nif [ \"${CONFIGURATION}\" != \"AISandbox\" ]; then\n  exit 0\nfi\nPLIST=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\nif [ ! -f \"$PLIST\" ]; then\n  echo \"error: Built Info.plist missing at $PLIST\"\n  exit 1\nfi\nURL=\"https://weekfit-food-photo.onrender.com\"\n/usr/libexec/PlistBuddy -c \"Delete :WeekFitAIUsageEnabled\" \"$PLIST\" >/dev/null 2>&1 || true\n/usr/libexec/PlistBuddy -c \"Add :WeekFitAIUsageEnabled bool true\" \"$PLIST\"\n/usr/libexec/PlistBuddy -c \"Delete :WeekFitAISandboxEnabled\" \"$PLIST\" >/dev/null 2>&1 || true\n/usr/libexec/PlistBuddy -c \"Add :WeekFitAISandboxEnabled bool true\" \"$PLIST\"\n/usr/libexec/PlistBuddy -c \"Delete :WeekFitAISandboxBaseURL\" \"$PLIST\" >/dev/null 2>&1 || true\n/usr/libexec/PlistBuddy -c \"Add :WeekFitAISandboxBaseURL string ${URL}\" \"$PLIST\"\npython3 - \"$PLIST\" \"$URL\" <<'PY'\nimport plistlib, sys\nwith open(sys.argv[1], \"rb\") as handle:\n    info = plistlib.load(handle)\nassert info.get(\"WeekFitAIUsageEnabled\") is True\nassert info.get(\"WeekFitAISandboxEnabled\") is True\nassert info.get(\"WeekFitAISandboxBaseURL\") == sys.argv[2]\nprint(\"Verified built AI Sandbox Info.plist\")\nPY\ntouch \"${DERIVED_FILE_DIR}/ai-sandbox-plist.stamp\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -840,6 +858,203 @@
 			};
 			name = Release;
 		};
+		A1B11A042FB24040006A4D20 /* AISandbox */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 7R6347XPK2;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = AISandbox;
+		};
+		A1B11A072FB24040006A4D20 /* AISandbox */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = WeekFit/WeekFit.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 4;
+				DEVELOPMENT_TEAM = 7R6347XPK2;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WeekFit/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "WeekFit Sandbox";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSCameraUsageDescription = "WeekFit uses the camera so you can add photos to custom foods.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "WeekFit uses your health and activity data to personalize your daily plan.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "WeekFit reads workouts and activity from Apple Health to keep your plan accurate. It does not write workouts to Apple Health.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "WeekFit uses your approximate location to show local weather and adjust Night Comfort to local sunset.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "WeekFit uses the microphone so you can add a planned activity by voice.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "WeekFit turns your voice into a planned activity. Audio is recognized on this iPhone.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				ITSAppUsesNonExemptEncryption = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.4.1;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.weekfit.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				INFOPLIST_KEY_WeekFitAISandboxBaseURL = "https://weekfit-food-photo.onrender.com";
+				INFOPLIST_KEY_WeekFitAISandboxEnabled = YES;
+				INFOPLIST_KEY_WeekFitAIUsageEnabled = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG WEEKFIT_AI_SANDBOX $(inherited)";
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = AISandbox;
+		};
+		A1B11A0A2FB24040006A4D20 /* AISandbox */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7R6347XPK2;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "max-k.WeekFitTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/WeekFit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/WeekFit";
+			};
+			name = AISandbox;
+		};
+		A1B11A0D2FB24040006A4D20 /* AISandbox */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7R6347XPK2;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "max-k.WeekFitUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = WeekFit;
+			};
+			name = AISandbox;
+		};
+		A1B11AC02FB2403E006A4D40 /* AISandbox */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = WeekFitWidget/WeekFitWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 31;
+				DEVELOPMENT_TEAM = 7R6347XPK2;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WeekFitWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WeekFit;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.4;
+				PRODUCT_BUNDLE_IDENTIFIER = com.weekfit.app.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = AISandbox;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -847,6 +1062,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				55E7BC042FB24040006A4D20 /* Debug */,
+				A1B11A042FB24040006A4D20 /* AISandbox */,
 				55E7BC052FB24040006A4D20 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -856,6 +1072,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				55E7BC072FB24040006A4D20 /* Debug */,
+				A1B11A072FB24040006A4D20 /* AISandbox */,
 				55E7BC082FB24040006A4D20 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -865,6 +1082,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				55E7BC0A2FB24040006A4D20 /* Debug */,
+				A1B11A0A2FB24040006A4D20 /* AISandbox */,
 				55E7BC0B2FB24040006A4D20 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -874,6 +1092,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				55E7BC0D2FB24040006A4D20 /* Debug */,
+				A1B11A0D2FB24040006A4D20 /* AISandbox */,
 				55E7BC0E2FB24040006A4D20 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -883,6 +1102,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				W10000C02FB2403E006A4D40 /* Debug */,
+				A1B11AC02FB2403E006A4D40 /* AISandbox */,
 				W10000D02FB2403E006A4D40 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;

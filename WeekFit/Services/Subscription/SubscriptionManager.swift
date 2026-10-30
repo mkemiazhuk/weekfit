@@ -61,13 +61,15 @@ final class SubscriptionManager: ObservableObject {
     /// Promo / intro / offer code / win-back do **not** unlock AI (server enforces the same).
     var canUseCloudPhotoNutritionAnalysis: Bool {
         _ = photoAIFreeTrialRevision
+        if WeekFitAIBilling.refused { return false }
+        if WeekFitAIBilling.enabled { return activeSubscription != nil && hasFullAccess }
         return hasVerifiedPaidSubscriptionProof || hasPhotoAIFreeTrialRemaining
     }
 
     /// True when the user still has the one-time free AI photo scan (and is not already paid).
     var hasPhotoAIFreeTrialRemaining: Bool {
         _ = photoAIFreeTrialRevision
-        return !hasVerifiedPaidSubscriptionProof && PhotoFoodFreeTrialStore.hasRemaining
+        return !WeekFitAIBilling.refused && !WeekFitAIBilling.enabled && !hasVerifiedPaidSubscriptionProof && PhotoFoodFreeTrialStore.hasRemaining
     }
 
     /// Mark the complimentary AI photo scan used (client UX). Server also claims once per UID.

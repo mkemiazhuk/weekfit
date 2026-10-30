@@ -10,6 +10,9 @@ struct PlanRealtimeSessionSecret: Decodable, Equatable {
     var value: String
     var model: String
     var idleSeconds: Int
+    var managed: Bool? = nil
+    var sessionId: String? = nil
+    var budgetSeconds: Int? = nil
 }
 
 enum PlanRealtimeMayaMemory {
@@ -284,6 +287,11 @@ struct PlanRealtimeClient {
         if !dayContext.isEmpty {
             body["dayContext"] = dayContext
         }
+        if WeekFitAIBilling.enabled {
+            body["idempotencyKey"] = UUID().uuidString
+            return try await WeekFitAIClient(baseURL: baseURL).request(path: "v2/ai/voice/session",
+                body: JSONSerialization.data(withJSONObject: body))
+        }
         return try await send(
             method: "POST",
             path: "v1/planner-voice/session",
@@ -293,6 +301,9 @@ struct PlanRealtimeClient {
 
     private func postLine(path: String, ticket: String) async {
         var request = URLRequest(url: baseURL.appending(path: path))
+        if WeekFitAIBilling.enabled {
+            request.setValue(WeekFitAIBilling.environment, forHTTPHeaderField: "X-WeekFit-Billing-Environment")
+        }
         request.httpMethod = "POST"
         request.timeoutInterval = 20
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -319,6 +330,9 @@ struct PlanRealtimeClient {
             "outputTokens": outputTokens,
         ]
         var request = URLRequest(url: baseURL.appending(path: "v1/planner-voice/usage"))
+        if WeekFitAIBilling.enabled {
+            request.setValue(WeekFitAIBilling.environment, forHTTPHeaderField: "X-WeekFit-Billing-Environment")
+        }
         request.httpMethod = "POST"
         request.timeoutInterval = 20
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -341,10 +355,19 @@ struct PlanRealtimeClient {
         body: [String: Any]?
     ) async throws -> Response {
         var request = URLRequest(url: url)
+        if WeekFitAIBilling.enabled {
+            request.setValue(WeekFitAIBilling.environment, forHTTPHeaderField: "X-WeekFit-Billing-Environment")
+        }
         request.httpMethod = method
         request.timeoutInterval = 20
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if WeekFitAIBilling.enabled && url.path == "/v1/planner-voice/line" {
+            guard let proof = await WeekFitAIProof.subscriptionJWS() else {
+                throw WeekFitAIUsageError.subscriptionRequired
+            }
+            request.setValue(proof, forHTTPHeaderField: "X-WeekFit-Subscription-JWS")
+        }
         if let body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -357,6 +380,7 @@ struct PlanRealtimeClient {
             throw PlanRealtimeClientError.transport
         }
         guard let http = response as? HTTPURLResponse else { throw PlanRealtimeClientError.invalid }
+        if WeekFitAIBilling.enabled && http.statusCode == 402 { throw WeekFitAIUsageError.subscriptionRequired }
         if http.statusCode == 401 { throw PlanRealtimeClientError.unauthorized }
         if http.statusCode == 403 { throw PlanRealtimeClientError.forbidden }
         if http.statusCode == 404 { throw PlanRealtimeClientError.notFound }

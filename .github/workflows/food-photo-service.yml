@@ -20,6 +20,8 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
+      - run: npm ci
+        working-directory: backend/food-photo-recognize
       - run: npm test
         working-directory: backend/food-photo-recognize
   publish:

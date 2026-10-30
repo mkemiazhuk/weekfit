@@ -2,7 +2,8 @@ FROM node:24-alpine
 LABEL org.opencontainers.image.source="https://github.com/mkemiazhuk/weekfit"
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --chown=node:node package.json ./
+COPY --chown=node:node package.json package-lock.json ./
+RUN npm ci --omit=dev
 COPY --chown=node:node *.mjs ./
 COPY --chown=node:node async ./async
 COPY --chown=node:node scripts/capacity-mock-check.mjs ./scripts/capacity-mock-check.mjs

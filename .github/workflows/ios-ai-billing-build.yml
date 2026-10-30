@@ -1,0 +1,56 @@
+name: iOS AI billing build
+on:
+  pull_request:
+    paths:
+      - 'WeekFit/**'
+      - 'WeekFit.xcodeproj/**'
+      - 'Scripts/archive_ai_sandbox.sh'
+      - 'Scripts/archive_for_app_store.sh'
+      - '.github/workflows/ios-ai-billing-build.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-ai-billing-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  simulator:
+    runs-on: macos-26
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check AI usage translations
+        run: python3 Scripts/verify-ai-usage-localizations.py
+      - name: Configure isolated Sandbox archive flags for Release check
+        if: matrix.configuration == 'Release'
+        run: |
+          python3 - <<'PYTHON'
+          import plistlib
+          path = 'WeekFit/Info.plist'
+          with open(path, 'rb') as f:
+              p = plistlib.load(f)
+          p.update(WeekFitAIUsageEnabled=True, WeekFitAISandboxEnabled=True,
+                   WeekFitAISandboxBaseURL='https://sandbox-build-check.invalid')
+          with open(path, 'wb') as f:
+              plistlib.dump(p, f)
+          PYTHON
+      - name: Build simulator app without signing
+        run: |
+          BUILD_FLAGS=()
+          if [[ "${{ matrix.configuration }}" == "Release" ]]; then
+            BUILD_FLAGS+=('SWIFT_ACTIVE_COMPILATION_CONDITIONS=$(inherited) WEEKFIT_AI_SANDBOX')
+          fi
+          xcodebuild -project WeekFit.xcodeproj -scheme WeekFit \
+            -configuration ${{ matrix.configuration }} -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath /tmp/weekfit-derived ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO "${BUILD_FLAGS[@]}" build
+      - name: Test AI usage refresh recovery
+        if: matrix.configuration == 'Debug'
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(v["udid"] for k,vs in d["devices"].items() if "iOS" in k for v in vs if "iPhone" in v["name"]))')
+          xcodebuild -project WeekFit.xcodeproj -scheme WeekFit -configuration Debug \
+            -destination "platform=iOS Simulator,id=$DEVICE_ID" \
+            -derivedDataPath /tmp/weekfit-derived ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO \
+            -only-testing:WeekFitTests/WeekFitAIUsageRefreshTests test

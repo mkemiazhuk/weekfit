@@ -340,7 +340,13 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
             await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseBefore(product: product)
             // StoreKit 2: `Product.purchase()` presents the system sheet and returns
             // the transaction for this attempt. Do not call `AppStore.sync()` here.
-            let result = try await product.purchase()
+            let result: Product.PurchaseResult
+            if WeekFitAIBilling.enabled {
+                let accountToken = try await WeekFitAIClient().checkoutAccountToken()
+                result = try await product.purchase(options: [.appAccountToken(accountToken)])
+            } else {
+                result = try await product.purchase()
+            }
             switch result {
             case .success(let verification):
                 switch verification {
@@ -409,6 +415,16 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
             for await result in Transaction.updates {
                 switch result {
                 case .verified(let transaction):
+                    if WeekFitAIBilling.isTopUp(transaction.productID) {
+                        // A subscription observer must never finish an undelivered consumable.
+                        if WeekFitAIBilling.enabled {
+                            do {
+                                _ = try await WeekFitAIClient().deliver(result.jwsRepresentation)
+                                await transaction.finish()
+                            } catch { /* Retain unfinished for durable redelivery. */ }
+                        }
+                        continue
+                    }
                     // Same strategy as direct purchase: deliver entitlements, then finish.
                     await onChange(WeekFitVerifiedTransactionNotice(transaction))
                     await self?.completeVerifiedTransactionUpdate(transaction)

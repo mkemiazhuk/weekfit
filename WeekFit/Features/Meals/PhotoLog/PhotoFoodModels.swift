@@ -135,6 +135,7 @@ enum PhotoFoodRecognitionError: Error, Equatable, Sendable {
     case unauthorized
     /// Cloud AI photo analysis requires an active paid WeekFit subscription.
     case subscriptionRequired
+    case quotaExhausted
     case network
     case rateLimited
     case invalidImage
@@ -143,6 +144,8 @@ enum PhotoFoodRecognitionError: Error, Equatable, Sendable {
     case invalidResponse
     case providerFailure
     case unavailable
+    /// Sandbox billing was requested, but this build will not use Production.
+    case sandboxMisconfigured
     case timedOut
     case server(String)
     case cancelled
@@ -155,6 +158,8 @@ enum PhotoFoodRecognitionError: Error, Equatable, Sendable {
             return "today.photoLog.error.authUnavailable"
         case .unauthorized:
             return "today.photoLog.error.unauthorized"
+        case .quotaExhausted:
+            return "ai.usage.exhausted"
         case .subscriptionRequired:
             return "today.photoLog.error.subscriptionRequired"
         case .network:
@@ -173,6 +178,8 @@ enum PhotoFoodRecognitionError: Error, Equatable, Sendable {
             return "today.photoLog.error.provider"
         case .unavailable:
             return "today.photoLog.error.unavailable"
+        case .sandboxMisconfigured:
+            return "ai.usage.sandboxMisconfigured"
         case .timedOut:
             return "today.photoLog.error.timedOut"
         case .server:

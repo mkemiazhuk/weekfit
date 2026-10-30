@@ -94,6 +94,8 @@ struct QuickFoodLogSheet: View {
     @EnvironmentObject private var languageManager: AppLanguageManager
     @EnvironmentObject private var subscriptionManager: SubscriptionManager
 
+    @State private var aiUsage: WeekFitAIUsage?
+    @State private var showAIUsage = false
     @State private var revealContent = false
     @State private var sortAscending = true
     @State private var photoCoordinator: PhotoFoodLogCoordinator?
@@ -207,6 +209,10 @@ struct QuickFoodLogSheet: View {
             .id(selectedTab)
         }
         .accessibilityIdentifier("sheet.quickFoodLog")
+        .task(id: showPhotoFlow) {
+            if WeekFitAIBilling.enabled { aiUsage = try? await WeekFitAIClient().usage() }
+        }
+        .sheet(isPresented: $showAIUsage) { NavigationStack { WeekFitAIUsageView() } }
         .onAppear {
             PhotoFoodAnalytics.noteLogFoodOpened()
             revealContent = false
@@ -427,6 +433,24 @@ struct QuickFoodLogSheet: View {
                 .accessibilityIdentifier("quickFood.ai.choosePhoto")
             }
 
+            if WeekFitAIBilling.enabled {
+                Button { showAIUsage = true } label: {
+                    HStack {
+                        Text(WeekFitLocalizedString("ai.usage.photos"))
+                        Spacer()
+                        if let aiUsage {
+                            Text(aiUsage.grandfatheredPhotos
+                                ? WeekFitLocalizedString("ai.usage.existingAccess")
+                                : aiUsage.photos.total.formatted())
+                        }
+                        Image(systemName: "chevron.right")
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(WeekFitTheme.secondaryText)
+                }
+                .buttonStyle(.plain)
+            }
+
             Text(WeekFitLocalizedString(aiAccessCaptionKey))
                 .font(.system(size: 11, weight: .medium, design: .rounded))
                 .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.58))
@@ -442,6 +466,10 @@ struct QuickFoodLogSheet: View {
     }
 
     private var aiAccessCaptionKey: String {
+        if WeekFitAIBilling.enabled {
+            return subscriptionManager.canUseCloudPhotoNutritionAnalysis
+                ? "today.photoLog.aiAssistant.included" : "today.photoLog.aiAssistant.requiresSubscription"
+        }
         if subscriptionManager.hasVerifiedPaidSubscriptionProof {
             return "today.photoLog.aiAssistant.included"
         }

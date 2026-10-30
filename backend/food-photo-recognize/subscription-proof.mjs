@@ -15,7 +15,7 @@ export const WEEKFIT_BUNDLE_IDS = new Set([
  * Apple Root CA - G3 (ECC), used to anchor StoreKit Transaction JWS `x5c` chains.
  * https://www.apple.com/certificateauthority/
  */
-const APPLE_ROOT_CA_G3_PEM = `-----BEGIN CERTIFICATE-----
+export const APPLE_ROOT_CA_G3_PEM = `-----BEGIN CERTIFICATE-----
 MIICQzCCAcmgAwIBAgIILcX8iNLFS5UwCgYIKoZIzj0EAwMwZzEbMBkGA1UEAwwS
 QXBwbGUgUm9vdCBDQSAtIEczMSYwJAYDVQQLDB1BcHBsZSBDZXJ0aWZpY2F0aW9u
 IEF1dGhvcml0eTETMBEGA1UECgwKQXBwbGUgSW5jLjELMAkGA1UEBhMCVVMwHhcN

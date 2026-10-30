@@ -8,8 +8,9 @@ import { randomUUID } from 'node:crypto';
 import { authenticate } from './auth.mjs';
 import { recognize, validateInput, ServiceError, FOOD_PROMPT_VERSION } from './recognition.mjs';
 import { createSummaryHandler, SUMMARY_PROMPT_VERSION } from './coach-summary.mjs';
-import { createPlannerVoiceHandler, plannerVoiceSettings } from './planner-voice.mjs';
+import { createPlannerVoiceHandler, plannerVoiceSettings, createPlannerCallLine } from './planner-voice.mjs';
 import { requirePaidSubscriptionJWS } from './subscription-proof.mjs';
+import { createBillingRouter } from './billing-router.mjs';
 import { createConcurrencyGate } from './concurrency.mjs';
 import {
   createIdempotencyStore,
@@ -75,6 +76,9 @@ export function configuration(env = process.env) {
   }
   return {
     apiKey: env.OPENAI_API_KEY ?? '',
+    billingEnabled: env.AI_BILLING_ENABLED === '1',
+    sandboxBillingEnabled: env.AI_BILLING_SANDBOX_ENABLED === '1',
+    sandboxPhotoBudget: integer('BILLING_SANDBOX_PHOTO_BUDGET', 20, 0, 200),
     openAIMock,
     mockDelayMs: integer('FOOD_PHOTO_MOCK_DELAY_MS', 50, 0, 120000),
     mockScenario,
@@ -161,6 +165,13 @@ export function createServer(config, dependencies = {}) {
     persistentDataDir,
     photoLedgerDir: config.photoLedgerDir || (persistentDataDir ? explicitLedger : ''),
   };
+  const voiceLine = createPlannerCallLine({ maxCalls: config.plannerVoiceMaxCalls ?? 5,
+    maxWaiting: config.plannerVoiceMaxWaiting ?? 100 });
+  const billing = createBillingRouter(runtimeConfig, {
+    line: voiceLine,
+    authenticate: auth,
+    ...dependencies.billing,
+  });
   const mockAdapter = dependencies.mockAdapter
     ?? (config.openAIMock
       ? createMockOpenAIAdapter({
@@ -177,6 +188,7 @@ export function createServer(config, dependencies = {}) {
     authenticate: auth,
     fetch: dependencies.plannerVoiceFetch,
     store: dependencies.plannerVoiceStore,
+    line: voiceLine,
     log: dependencies.plannerVoiceLog,
   });
   const summary = createSummaryHandler(runtimeConfig, {
@@ -336,6 +348,12 @@ export function createServer(config, dependencies = {}) {
   };
 
   const server = http.createServer(async (req, res) => {
+    if (await billing.handle(req, res)) return;
+    if (config.billingEnabled && req.method === 'POST' && [
+      '/v1/food/photo-recognize', '/v1/food/photo-analyze', '/v1/planner-voice/session',
+    ].includes(req.url)) {
+      return send(res, 426, { error: 'app_update_required' });
+    }
     const coachPath = (req.url ?? '').split('?')[0];
     if (coachPath === '/v1/coach/day-summary' && (req.method === 'POST' || req.method === 'GET')) {
       return summary(req, res);
@@ -762,6 +780,7 @@ export function createServer(config, dependencies = {}) {
   };
   server.asyncReady = asyncReady;
   server.on('close', () => summary.stop?.());
+  server.on('close', () => { void billing.close(); });
   const originalClose = server.close.bind(server);
   let closeStarted = false;
   server.close = function closeServer(callback) {
@@ -774,7 +793,13 @@ export function createServer(config, dependencies = {}) {
       try { summary.stop?.(); } catch { /* already stopped */ }
       server.closeIdleConnections?.();
       server.closeAllConnections?.();
-      return originalClose(callback);
+      return originalClose((error) => {
+        // Render's SIGTERM callback may exit the process: await provider hangup first.
+        Promise.resolve(billing.close()).then(
+          () => callback?.(error),
+          () => callback?.(error ?? new Error('billing_shutdown_failed')),
+        );
+      });
     }
     if (typeof callback === 'function') queueMicrotask(callback);
     return server;

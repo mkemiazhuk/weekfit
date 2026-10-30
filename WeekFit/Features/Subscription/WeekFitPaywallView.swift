@@ -151,6 +151,12 @@ struct WeekFitPaywallView: View {
 
     private var valueList: some View {
         VStack(spacing: Layout.benefitStackSpacing) {
+            if WeekFitAIBilling.enabled {
+                Text(WeekFitLocalizedString("ai.usage.paywallAllowance"))
+                    .font(.footnote)
+                    .foregroundStyle(WeekFitTheme.secondaryText)
+                    .multilineTextAlignment(.center)
+            }
             valueRow(
                 icon: "sparkles",
                 title: WeekFitLocalizedString("paywall.value.coach.title"),

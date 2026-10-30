@@ -228,6 +228,11 @@ final class PhotoFoodLogCoordinator {
             break
         }
 
+        guard !WeekFitAIBilling.refused else {
+            finishWithError(.sandboxMisconfigured, method: method, generation: generation, clock: clock)
+            return
+        }
+
         guard canUseCloudPhotoNutritionAnalysis() else {
             PhotoFoodDiagnostics.event(
                 "subscriptionRequired",
@@ -503,7 +508,7 @@ final class PhotoFoodLogCoordinator {
 
     private static func analyticsReason(for error: PhotoFoodRecognitionError) -> SafeAnalyticsFailureReason {
         switch error {
-        case .network, .timedOut, .unavailable, .providerFailure:
+        case .network, .timedOut, .unavailable, .providerFailure, .sandboxMisconfigured:
             return .lookupFailed
         case .unauthorized, .notConfigured, .authUnavailable, .subscriptionRequired:
             return .unavailable
