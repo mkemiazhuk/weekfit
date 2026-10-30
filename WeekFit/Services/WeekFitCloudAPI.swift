@@ -8,7 +8,7 @@ enum WeekFitCloudAPI {
     /// Explicit Debug-only fixture gate. Off by default — never auto-substitutes live recognition.
     static let debugUseFixtureDefaultsKey = "WeekFitUsePhotoFoodFixture"
 
-    /// Deployed food-photo recognition (Render). Release / TestFlight always use this.
+    /// Default deployed origin; explicit Sandbox builds use a separate service.
     static let productionFoodPhotoBaseURL = URL(string: "https://weekfit-food-photo.onrender.com")!
 
     /// Local-dev bearer for Mac proxy when `ALLOW_DEV_AUTH=1` (Debug overrides only).
@@ -24,8 +24,31 @@ enum WeekFitCloudAPI {
         set { AccountRemoteDeletionClient.sessionTokenProvider = newValue }
     }
 
-    /// Resolve base URL: Debug launch-arg / UserDefaults override → else production HTTPS.
+    /// Explicit test archive configuration. App Store receipts never enable this route.
+    nonisolated static var sandboxBillingRequested: Bool {
+        Bundle.main.object(forInfoDictionaryKey: "WeekFitAISandboxEnabled") as? Bool == true
+    }
+
+    nonisolated static var sandboxBillingBaseURL: URL? {
+        guard sandboxBillingRequested else { return nil }
+        #if !DEBUG
+        guard Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" else { return nil }
+        #endif
+        guard let raw = Bundle.main.object(forInfoDictionaryKey: "WeekFitAISandboxBaseURL") as? String,
+              let url = URL(string: raw), url.scheme == "https",
+              let host = url.host, !host.isEmpty,
+              host != productionFoodPhotoBaseURL.host,
+              url.user == nil, url.password == nil, url.query == nil, url.fragment == nil,
+              url.path.isEmpty || url.path == "/" else { return nil }
+        return url
+    }
+
+    /// Explicit Sandbox archive → Debug overrides → default production HTTPS.
     static func bootstrapFromInfoPlistIfNeeded() {
+        if let sandboxURL = sandboxBillingBaseURL {
+            configuredBaseURL = sandboxURL
+            return
+        }
         #if DEBUG
         if let fromLaunch = debugLaunchArgumentURL() {
             configuredBaseURL = fromLaunch

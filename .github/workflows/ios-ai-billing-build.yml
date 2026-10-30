@@ -15,12 +15,28 @@ jobs:
   simulator:
     runs-on: macos-26
     timeout-minutes: 30
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
     steps:
       - uses: actions/checkout@v6
       - name: Check AI usage translations
         run: python3 Scripts/verify-ai-usage-localizations.py
+      - name: Configure isolated Sandbox archive flags for Release check
+        if: matrix.configuration == 'Release'
+        run: |
+          python3 - <<'PYTHON'
+          import plistlib
+          path = 'WeekFit/Info.plist'
+          with open(path, 'rb') as f:
+              p = plistlib.load(f)
+          p.update(WeekFitAIUsageEnabled=True, WeekFitAISandboxEnabled=True,
+                   WeekFitAISandboxBaseURL='https://sandbox-build-check.invalid')
+          with open(path, 'wb') as f:
+              plistlib.dump(p, f)
+          PYTHON
       - name: Build simulator app without signing
         run: >-
           xcodebuild -project WeekFit.xcodeproj -scheme WeekFit
-          -configuration Debug -destination 'generic/platform=iOS Simulator'
+          -configuration ${{ matrix.configuration }} -destination 'generic/platform=iOS Simulator'
           -derivedDataPath /tmp/weekfit-derived ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO build

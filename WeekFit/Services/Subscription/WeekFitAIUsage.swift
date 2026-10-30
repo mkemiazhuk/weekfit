@@ -5,7 +5,10 @@ internal import Combine
 /// Coordinated release switch. Absent in existing builds: production behavior is unchanged.
 nonisolated enum WeekFitAIBilling {
     static var enabled: Bool {
-        Bundle.main.object(forInfoDictionaryKey: "WeekFitAIUsageEnabled") as? Bool == true
+        if WeekFitCloudAPI.sandboxBillingRequested && WeekFitCloudAPI.sandboxBillingBaseURL == nil {
+            return false
+        }
+        return Bundle.main.object(forInfoDictionaryKey: "WeekFitAIUsageEnabled") as? Bool == true
     }
     static let products = ["com.weekfit.topup.photos20", "com.weekfit.topup.photos50",
                            "com.weekfit.topup.voice15", "com.weekfit.topup.voice30"]
