@@ -353,6 +353,12 @@ struct PlanRealtimeClient {
         request.timeoutInterval = 20
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if WeekFitAIBilling.enabled && url.path == "/v1/planner-voice/line" {
+            guard let proof = await WeekFitAIProof.subscriptionJWS() else {
+                throw WeekFitAIUsageError.subscriptionRequired
+            }
+            request.setValue(proof, forHTTPHeaderField: "X-WeekFit-Subscription-JWS")
+        }
         if let body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -365,6 +371,7 @@ struct PlanRealtimeClient {
             throw PlanRealtimeClientError.transport
         }
         guard let http = response as? HTTPURLResponse else { throw PlanRealtimeClientError.invalid }
+        if WeekFitAIBilling.enabled && http.statusCode == 402 { throw WeekFitAIUsageError.subscriptionRequired }
         if http.statusCode == 401 { throw PlanRealtimeClientError.unauthorized }
         if http.statusCode == 403 { throw PlanRealtimeClientError.forbidden }
         if http.statusCode == 404 { throw PlanRealtimeClientError.notFound }

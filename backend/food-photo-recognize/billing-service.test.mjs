@@ -12,14 +12,14 @@ async function fixture(t, overrides={}) {
  const dir=mkdtempSync(path.join(tmpdir(),'billing-api-'));
  const sub={environment:'Sandbox',originalTransactionId:'1',productId:'com.weekfit.subscription.annual',
   active:true,anchor:Date.now()-86400000,accessUntil:Date.now()+86400000};
- let calls=0,hangups=0,observer;
+ let calls=0,hangups=0,observer,hangupFails=false;
  const service=createBillingService({billingEnabled:true,dataDirExplicit:true,dataDir:dir,stateBackend:'file',allowSingleNode:true,
   plannerVoiceEnabled:true,plannerVoiceModel:'gpt-realtime-2.1-mini',plannerVoiceIdleSeconds:75,apiKey:'unit-test-only',model:'gpt-6.1-sol'}, {
   authenticate:async header=>{if(!header)throw new ServiceError('unauthorized',401);return header;},
   apple:{environment:'Sandbox',subscription:async jws=>{if(jws!=='test-proof')throw new ServiceError('subscription_required',402);return sub;},
    purchase:async jws=>JSON.parse(jws),notification:async()=>({type:'TEST'})},
   analyze:async()=>{calls++;await new Promise(r=>setTimeout(r,10));if(overrides.failure)throw Error('provider');return {result:{isFood:true,name:'Rice'},usage:{input_tokens:100,output_tokens:30}};},
-  fetcher:async url=>{if(url.endsWith('/hangup')){hangups++;return new Response(null,{status:200});}
+  fetcher:async url=>{if(url.endsWith('/hangup')){hangups++;return new Response(null,{status:hangupFails?503:200});}
    return new Response('answer-sdp',{status:201,headers:{location:'/v1/realtime/calls/rtc_test'}});},
   connectObserver:(id,onEvent)=>{observer=onEvent;return {close(){},terminate(){}};},log:()=>{},
  });
@@ -32,7 +32,7 @@ async function fixture(t, overrides={}) {
   return {status:response.status,body:await response.json()};
  };
  t.after(async()=>{await service.close();server.closeAllConnections();await new Promise(r=>server.close(r));rmSync(dir,{recursive:true,force:true});});
- return {send,sub,service,calls:()=>calls,hangups:()=>hangups,event:e=>observer(e)};
+ return {send,sub,service,calls:()=>calls,hangups:()=>hangups,event:e=>observer(e),failHangup:value=>hangupFails=value};
 }
 test('API subscription gate, shared-device balance, paid delivery replay and photo concurrency',async t=>{
  const f=await fixture(t);
@@ -68,4 +68,21 @@ test('managed voice never returns provider credentials, rejects parallel calls a
  await new Promise(r=>setTimeout(r,650));
  assert.equal(f.hangups(),1);
  assert.equal((await f.send('/v2/ai/voice/status',{body:{sessionId:'voice_session1'}})).body.active,false);
+});
+
+test('failed provider hangup keeps credit reserved and blocks a second call until closure is confirmed',async t=>{
+ const f=await fixture(t);
+ await f.send('/v2/ai/voice/session',{body:{idempotencyKey:'voice_failure',timeZone:'Europe/Warsaw',language:'en'}});
+ await f.send('/v2/ai/voice/connect',{body:{sessionId:'voice_failure',sdp:'offer'}});
+ f.event({type:'response.created'});f.failHangup(true);
+ assert.equal((await f.send('/v2/ai/voice/stop',{body:{sessionId:'voice_failure'}})).status,503);
+ assert.equal((await f.send('/v2/ai/usage')).body.voice.included,0);
+ assert.equal((await f.send('/v2/ai/voice/session',{body:{idempotencyKey:'voice_blocked',timeZone:'Europe/Warsaw',language:'en'}})).status,409);
+ f.failHangup(false);
+ assert.equal((await f.send('/v2/ai/voice/stop',{body:{sessionId:'voice_failure'}})).status,200);
+ assert.equal((await f.send('/v2/ai/voice/status',{body:{sessionId:'voice_failure'}})).body.active,false);
+});
+test('unsubscribed callers cannot occupy the voice admission line',async t=>{
+ const f=await fixture(t);f.sub.active=false;
+ assert.equal((await f.send('/v1/planner-voice/line',{body:{}})).status,402);
 });

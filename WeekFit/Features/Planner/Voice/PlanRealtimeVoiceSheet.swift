@@ -106,7 +106,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                     struct Answer: Decodable { let sdp: String }
                     let answer: Answer = try await WeekFitAIClient().request(path: "v2/ai/voice/connect",
                         body: JSONEncoder().encode(["sessionId": id, "sdp": sdp]))
-                    webView?.evaluateJavaScript("window.weekfit.sdpAnswer(\(jsLiteral(answer.sdp)))")
+                    _ = try await webView?.evaluateJavaScript("window.weekfit.sdpAnswer(\(jsLiteral(answer.sdp)))")
                 } catch {
                     phase = .failed(WeekFitAIErrorMessage(error))
                     end()

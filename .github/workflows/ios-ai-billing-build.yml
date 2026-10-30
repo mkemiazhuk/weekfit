@@ -23,4 +23,4 @@ jobs:
         run: >-
           xcodebuild -project WeekFit.xcodeproj -scheme WeekFit
           -configuration Debug -destination 'generic/platform=iOS Simulator'
-          -derivedDataPath /tmp/weekfit-derived CODE_SIGNING_ALLOWED=NO build
+          -derivedDataPath /tmp/weekfit-derived ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO build

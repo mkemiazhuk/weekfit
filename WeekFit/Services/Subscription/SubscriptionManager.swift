@@ -68,7 +68,7 @@ final class SubscriptionManager: ObservableObject {
     /// True when the user still has the one-time free AI photo scan (and is not already paid).
     var hasPhotoAIFreeTrialRemaining: Bool {
         _ = photoAIFreeTrialRevision
-        return !hasVerifiedPaidSubscriptionProof && PhotoFoodFreeTrialStore.hasRemaining
+        return !WeekFitAIBilling.enabled && !hasVerifiedPaidSubscriptionProof && PhotoFoodFreeTrialStore.hasRemaining
     }
 
     /// Mark the complimentary AI photo scan used (client UX). Server also claims once per UID.

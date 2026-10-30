@@ -35,7 +35,7 @@ export function createBillingService(config, { authenticate, apple, store, fetch
     { maxVoiceCalls: config.plannerVoiceMaxCalls ?? 5 });
   const gate = createConcurrencyGate({ maxConcurrent: config.maxConcurrency ?? 4, maxQueue: 1000,
     queueWaitMs: 120000, retryAfterSeconds: 5 });
-  const inflight = new Map(), sessions = new Map();
+  const inflight = new Map(), sessions = new Map(), stopping = new Map();
   let closing = false;
   const context = async (req, requireActive = true) => {
     const uid = await authenticate(req.headers.authorization, config);
@@ -52,17 +52,25 @@ export function createBillingService(config, { authenticate, apple, store, fetch
     });
     if (!response.ok && response.status !== 404 && response.status !== 410) error('voice_stop_pending', 503);
   };
-  const stop = async (wallet, key, uncertain = false) => {
-    const op = store.operation(wallet, key);
-    if (!op || op.state !== 'reserved') return;
-    await hangup(op); // Keep reserved (and prohibit a second call) until provider confirms closure.
-    const seconds = !uncertain && op.started ? Math.min(op.included + op.purchased, Math.max(0, Math.ceil((Date.now() - op.started) / 1000))) : 0;
-    store.settle(wallet, key, seconds);
-    const live = sessions.get(`${wallet}:${key}`);
-    live?.socket?.close();
-    if (live?.uid && live?.ticket) line?.release(live.uid, live.ticket);
-    sessions.delete(`${wallet}:${key}`);
-    log({ event: 'billing_voice_settled', seconds });
+  const stop = (wallet, key, uncertain = false) => {
+    const identifier = `${wallet}:${key}`;
+    if (stopping.has(identifier)) return stopping.get(identifier);
+    const task = (async () => {
+      const op = store.operation(wallet, key);
+      if (!op || op.state !== 'reserved') return;
+      await hangup(op); // Keep reserved until provider confirms closure.
+      const seconds = !uncertain && op.started
+        ? Math.min(op.included + op.purchased, Math.max(0, Math.ceil((Date.now() - op.started) / 1000))) : 0;
+      store.settle(wallet, key, seconds);
+      const live = sessions.get(identifier);
+      live?.socket?.close();
+      if (live?.uid && live?.ticket) line?.release(live.uid, live.ticket);
+      sessions.delete(identifier);
+      log({ event: 'billing_voice_settled', seconds });
+    })();
+    stopping.set(identifier, task);
+    void task.finally(() => { if (stopping.get(identifier) === task) stopping.delete(identifier); }).catch(() => {});
+    return task;
   };
   const attachObserver = connectObserver ?? ((callId, onEvent, onFailure) => {
     const socket = new WebSocket(`wss://api.openai.com/v1/realtime?call_id=${encodeURIComponent(callId)}`,
@@ -90,10 +98,12 @@ export function createBillingService(config, { authenticate, apple, store, fetch
 
   async function handle(req, res) {
     const route = (req.url ?? '').split('?')[0];
-    if (!route.startsWith('/v2/ai/') && route !== '/v2/billing/notifications') return false;
+    const paidLineEntry = route === '/v1/planner-voice/line' && req.method === 'POST';
+    if (!paidLineEntry && !route.startsWith('/v2/ai/') && route !== '/v2/billing/notifications') return false;
     try {
       await ready;
       if (closing) error('billing_unavailable', 503);
+      if (paidLineEntry) { await context(req); return false; }
       if (route === '/v2/billing/notifications' && req.method === 'POST') {
         const body = await json(req);
         const notification = await apple.notification(body.signedPayload);
@@ -197,6 +207,14 @@ export function createBillingService(config, { authenticate, apple, store, fetch
                 usage: event.response.usage, source: 'server_sideband' });
             }
           }, () => { void stop(wallet.id, key).catch(() => {}); });
+          // Do not let a client start generating audio before metering is attached.
+          if (live.socket.readyState === WebSocket.CONNECTING) {
+            await new Promise((resolve, reject) => {
+              live.socket.once('open', resolve);
+              live.socket.once('error', reject);
+              live.socket.once('close', () => reject(new Error('voice_observer_closed')));
+            });
+          }
           const sdp = await response.text();
           send(res, 200, { sdp }); return true;
         } catch (e) {
