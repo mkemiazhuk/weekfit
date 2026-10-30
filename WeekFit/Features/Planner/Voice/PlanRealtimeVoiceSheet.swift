@@ -1034,7 +1034,7 @@ struct PlanRealtimeVoiceSheet: View {
             labeledControl(
                 title: WeekFitLocalizedString("planner.voice.audioRoute"),
                 identifier: "planner.voice.realtime.route",
-                value: routeName
+                value: externalRouteName
             ) {
                 PlanRealtimeRouteButton(tint: UIColor(palette.textPrimary))
                     .frame(width: 60, height: 60)
@@ -1053,9 +1053,17 @@ struct PlanRealtimeVoiceSheet: View {
         }
     }
 
-    private var routeName: String {
+    /// Built-in speaker already has the «Звук» caption. Show a second line only for headphones, a car, or another route.
+    private var externalRouteName: String? {
         let _ = routeRevision
-        return AVAudioSession.sharedInstance().currentRoute.outputs.first?.portName ?? ""
+        guard let output = AVAudioSession.sharedInstance().currentRoute.outputs.first else { return nil }
+        switch output.portType {
+        case .builtInSpeaker, .builtInReceiver:
+            return nil
+        default:
+            let name = output.portName.trimmingCharacters(in: .whitespacesAndNewlines)
+            return name.isEmpty ? nil : name
+        }
     }
 
     private func labeledControl<Content: View>(

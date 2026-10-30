@@ -15,15 +15,23 @@ final class CoachEveningSummaryStore {
         var receivedAt: Date
         /// Fingerprint that produced this summary (`day:YYYY-MM-DD` in once-per-day mode).
         var inputFingerprint: String?
+        /// Tomorrow events the recommendation was written from. Absent on older caches.
+        var tomorrowBasis: CoachEveningTomorrowBasis?
 
-        init(summary: CoachEveningSummary, receivedAt: Date, inputFingerprint: String? = nil) {
+        init(
+            summary: CoachEveningSummary,
+            receivedAt: Date,
+            inputFingerprint: String? = nil,
+            tomorrowBasis: CoachEveningTomorrowBasis? = nil
+        ) {
             self.summary = summary
             self.receivedAt = receivedAt
             self.inputFingerprint = inputFingerprint
+            self.tomorrowBasis = tomorrowBasis
         }
 
         private enum CodingKeys: String, CodingKey {
-            case summary, receivedAt, inputFingerprint
+            case summary, receivedAt, inputFingerprint, tomorrowBasis
         }
 
         init(from decoder: Decoder) throws {
@@ -31,6 +39,7 @@ final class CoachEveningSummaryStore {
             summary = try c.decode(CoachEveningSummary.self, forKey: .summary)
             receivedAt = try c.decode(Date.self, forKey: .receivedAt)
             inputFingerprint = try c.decodeIfPresent(String.self, forKey: .inputFingerprint)
+            tomorrowBasis = try c.decodeIfPresent(CoachEveningTomorrowBasis.self, forKey: .tomorrowBasis)
         }
     }
 

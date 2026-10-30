@@ -1,4 +1,5 @@
 import Foundation
+import WeekFitPlanner
 internal import Combine
 
 /// Result of one generation attempt (HTTP or test double).
@@ -35,6 +36,8 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
     @Published private(set) var lastAppliedUISource: String?
     /// Non-nil when the visible summary is not the user's current local day.
     @Published private(set) var summaryDayCaption: String?
+    /// Tomorrow plan the stored recommendation was written from. Nil on older caches.
+    @Published private(set) var tomorrowBasis: CoachEveningTomorrowBasis?
 
     private let store: CoachEveningSummaryStore
     private let generate: (CoachEveningSummaryInput, String) async throws -> CoachEveningSummaryGenerationResult
@@ -61,13 +64,21 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         let key: FlightKey
         let clientRequestId: String
         let fingerprint: String?
+        let tomorrowBasis: CoachEveningTomorrowBasis?
         var task: Task<Void, Never>
         var waiterSources: [String] = []
 
-        init(key: FlightKey, clientRequestId: String, fingerprint: String?, task: Task<Void, Never>) {
+        init(
+            key: FlightKey,
+            clientRequestId: String,
+            fingerprint: String?,
+            tomorrowBasis: CoachEveningTomorrowBasis?,
+            task: Task<Void, Never>
+        ) {
             self.key = key
             self.clientRequestId = clientRequestId
             self.fingerprint = fingerprint
+            self.tomorrowBasis = tomorrowBasis
             self.task = task
         }
     }
@@ -92,6 +103,20 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         summary.map(CoachEveningSummaryPolicy.displayCommentary(from:))
     }
 
+    /// Current plan against the saved tomorrow basis. Does not call the model.
+    func resolvedNote(
+        activities: [PlannedActivity],
+        calendar: Calendar = .current
+    ) -> CoachEveningResolvedNote? {
+        guard let summary else { return nil }
+        return CoachEveningSummaryPolicy.resolvedNote(
+            from: summary,
+            basis: tomorrowBasis,
+            activities: activities,
+            calendar: calendar
+        )
+    }
+
     /// Restore lasting cache for the owner. Does not call AI.
     /// Independent of HealthKit, coach snapshot, clock, evening window, and daily claims.
     /// Repeat calls for the same owner and record do not re-read disk or republish the summary.
@@ -112,6 +137,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             summary = nil
             receivedAt = nil
             cachedFingerprint = nil
+            tomorrowBasis = nil
             summaryDayCaption = nil
             self.owner = owner
         }
@@ -149,6 +175,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
                     summary = nil
                     receivedAt = nil
                     cachedFingerprint = nil
+                    tomorrowBasis = nil
                     summaryDayCaption = nil
                 }
                 satisfiedRestoreToken = restoreToken(owner: owner, summary: nil)
@@ -176,6 +203,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         summary = nil
         receivedAt = nil
         cachedFingerprint = nil
+        tomorrowBasis = nil
         lastRefreshFailed = false
     }
 
@@ -184,6 +212,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         input: CoachEveningSummaryInput,
         owner: String,
         fingerprint: String,
+        tomorrowBasis: CoachEveningTomorrowBasis? = nil,
         now: Date = Date(),
         calendar: Calendar = .current,
         source: String = "coach",
@@ -235,6 +264,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             self.summary = nil
             receivedAt = nil
             cachedFingerprint = nil
+            self.tomorrowBasis = nil
         }
 
         if let summary,
@@ -269,6 +299,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             fingerprint: CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow
                 ? dayFingerprint
                 : fingerprint,
+            tomorrowBasis: tomorrowBasis,
             source: source,
             isStillEligible: isStillEligible
         )
@@ -294,6 +325,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
     func refresh(
         input: CoachEveningSummaryInput,
         owner: String,
+        tomorrowBasis: CoachEveningTomorrowBasis? = nil,
         now: Date = Date(),
         calendar: Calendar = .current,
         source: String = "manual"
@@ -342,6 +374,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             fingerprint: CoachEveningSummaryPolicy.enforcesOncePerDayAndEveningWindow
                 ? "day:\(input.day):\(input.locale)"
                 : "manual:\(UUID().uuidString)",
+            tomorrowBasis: tomorrowBasis,
             source: source,
             isStillEligible: { true }
         )
@@ -351,6 +384,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
     func startIfNeeded(
         input: CoachEveningSummaryInput,
         owner: String,
+        tomorrowBasis: CoachEveningTomorrowBasis? = nil,
         now: Date = Date(),
         calendar: Calendar = .current,
         source: String = "root"
@@ -360,6 +394,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             input: input,
             owner: owner,
             fingerprint: "day:\(input.day):\(input.locale)",
+            tomorrowBasis: tomorrowBasis,
             now: now,
             calendar: calendar,
             source: source,
@@ -373,6 +408,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         input: CoachEveningSummaryInput,
         owner: String,
         fingerprint: String?,
+        tomorrowBasis: CoachEveningTomorrowBasis?,
         source: String,
         isStillEligible: @escaping () -> Bool
     ) {
@@ -440,7 +476,13 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         )
 
         // Assign flight before the Task body can race completion on a fast stub.
-        let flight = InFlight(key: key, clientRequestId: clientRequestId, fingerprint: fingerprint, task: Task {})
+        let flight = InFlight(
+            key: key,
+            clientRequestId: clientRequestId,
+            fingerprint: fingerprint,
+            tomorrowBasis: tomorrowBasis,
+            task: Task {}
+        )
         flight.waiterSources = [source]
         inFlight = flight
 
@@ -451,6 +493,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
                 key: key,
                 clientRequestId: clientRequestId,
                 fingerprint: fingerprint,
+                tomorrowBasis: tomorrowBasis,
                 isStillEligible: isStillEligible
             )
         }
@@ -469,6 +512,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         key: FlightKey,
         clientRequestId: String,
         fingerprint: String?,
+        tomorrowBasis: CoachEveningTomorrowBasis?,
         isStillEligible: @escaping () -> Bool
     ) async {
         defer {
@@ -540,6 +584,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             summary = result.summary
             receivedAt = received
             cachedFingerprint = fingerprint
+            self.tomorrowBasis = tomorrowBasis
             lastRefreshFailed = false
             lastAppliedRequestId = requestId
             lastAppliedUISource = result.summary.source == "fallback" ? "fallback" : "http"
@@ -550,7 +595,12 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
             var diskSaved = true
             do {
                 try store.saveCache(
-                    .init(summary: result.summary, receivedAt: received, inputFingerprint: fingerprint),
+                    .init(
+                        summary: result.summary,
+                        receivedAt: received,
+                        inputFingerprint: fingerprint,
+                        tomorrowBasis: tomorrowBasis
+                    ),
                     owner: key.owner
                 )
                 CoachEveningSummaryDiagnostics.event(
@@ -708,7 +758,12 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         logSummaryTextIfEnabled(result.summary, source: "status", requestId: result.requestId)
         do {
             try store.saveCache(
-                .init(summary: result.summary, receivedAt: receivedAt ?? Date(), inputFingerprint: cachedFingerprint),
+                .init(
+                    summary: result.summary,
+                    receivedAt: receivedAt ?? Date(),
+                    inputFingerprint: cachedFingerprint,
+                    tomorrowBasis: tomorrowBasis
+                ),
                 owner: owner
             )
         } catch {
@@ -819,6 +874,7 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
         summary = cache.summary
         receivedAt = cache.receivedAt
         cachedFingerprint = cache.inputFingerprint
+        tomorrowBasis = cache.tomorrowBasis
         lastRefreshFailed = false
         lastAppliedUISource = "disk"
         lastAppliedRequestId = nil

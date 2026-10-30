@@ -452,3 +452,11 @@ test('schema sends supported bounds and snapshot evidence ids, not string length
   assert.match(buildInstructions(day), /at most 6 entries/);
   assert.match(buildInstructions(day), /at most 10 ids/);
 });
+
+test('instructions call a workout planned only when that event is in the input', () => {
+  const text = buildInstructions(input());
+  assert.match(text, /only when a matching tomorrow\.item or tomorrow\.meal fact is present/);
+  assert.match(text, /tomorrow\.none/);
+  assert.match(text, /phrased explicitly as a suggestion/);
+  assert.match(text, /must sound like a suggestion/);
+});

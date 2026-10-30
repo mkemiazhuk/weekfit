@@ -349,7 +349,7 @@ Fact legend: asleep is minutes asleep, not time in bed. coverage is samples_pres
 Display contract: the app shows today.text followed by tomorrow.text, capped at THREE sentences. now.text is only a fallback. Do not rely on headline or limitations being visible.
 - headline: at most six words, the advice itself, no digits.
 - today: ONE sentence for this evening. Say what to do tonight because of how they recovered. No digits, hours, percentages, scores, kilometers, calories, medians, or measurement names.
-- tomorrow: ONE sentence with At most ONE next-step for tomorrow. Name the change (keep the session, make it easier, protect the morning, leave the plan as it is). Same ban on recited measurements.
+- tomorrow: ONE sentence with At most ONE next-step for tomorrow. Name the change (keep the session, make it easier, protect the morning, leave the plan as it is). Same ban on recited measurements. Call a workout, meal, or session planned only when a matching tomorrow.item or tomorrow.meal fact is present in the input. If the facts contain tomorrow.none, do not name any planned workout. An activity that is not in those facts must be phrased explicitly as a suggestion, never as something already on the plan.
 - now: one sentence with the SAME cautious conclusion as today plus that single next step. No stronger claim and no extra recommendation.
 - today + tomorrow: usually 25–45 words in English, hard cap 70. No lists, praise, lectures, or promises of readiness.
 - If readings are too thin or conflicting, say so in today without quoting figures and tell them to keep tomorrow's existing plan. sparse/rare measurements must be acknowledged that way. Do not invent a training change. Unknown sleep is not a reason to prescribe a sleep schedule.
@@ -357,11 +357,11 @@ Display contract: the app shows today.text followed by tomorrow.text, capped at 
 
 Evidence: cite the fact ids that justified the advice. Any comparison to the personal reference must cite the matching baseline fact ID and the dated fact. Do not cite previous recaps as proof. Empty evidence is allowed only for an explicit not-enough-to-advise line.
 
-Hard bans: do not restate numbers the card or recovery details already show; do not cancel, skip, or avoid training from a single HRV reading; do not infer a hard session from calories; do not turn yesterday's feeling into today's symptom; do not give homework to fill the food log.
+Hard bans: do not restate numbers the card or recovery details already show; do not cancel, skip, or avoid training from a single HRV reading; do not infer a hard session from calories; do not turn yesterday's feeling into today's symptom; do not give homework to fill the food log; do not describe a workout as planned, scheduled, or already on tomorrow's plan unless that event is among the tomorrow facts.
 
 Before returning JSON, silently verify: one evening sentence, one tomorrow sentence, no recited measurements, no readiness praise, no skipped training from a single HRV, and the advice stays honest if missing data stayed unknown.
 
-Shape to follow, not facts to copy: "Tonight, keep the evening quiet and get to bed on time. Tomorrow, do the planned session but leave out any extra intensity." Choose the action from this person's facts. If recovery looks ordinary, say to keep tomorrow's plan. If the signal is thin, say so and do not invent a change. Never write a measurement report such as training duration, hours of sleep, a recovery score, or heart-rate variability versus a usual level.`;
+Shape to follow, not facts to copy: "Tonight, keep the evening quiet and get to bed on time. Tomorrow, do the planned session but leave out any extra intensity." Use "planned" only when that session is in the tomorrow facts. If you offer an activity that is not listed, the sentence must sound like a suggestion. Choose the action from this person's facts. If recovery looks ordinary and a tomorrow plan is present, say to keep that plan. If the signal is thin, say so and do not invent a change. Never write a measurement report such as training duration, hours of sleep, a recovery score, or heart-rate variability versus a usual level.`;
 }
 
 /**

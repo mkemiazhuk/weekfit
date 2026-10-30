@@ -134,7 +134,16 @@ struct WeekFitRootView: View {
             return
         }
         #endif
-        eveningSummary.startIfNeeded(input: request, owner: owner, now: now)
+        eveningSummary.startIfNeeded(
+            input: request,
+            owner: owner,
+            tomorrowBasis: CoachEveningTomorrowBasis.capture(
+                activities: Array(plannedActivities),
+                now: now,
+                calendar: .current
+            ),
+            now: now
+        )
     }
 
     private var rootShellWithHealthHandlers: some View {

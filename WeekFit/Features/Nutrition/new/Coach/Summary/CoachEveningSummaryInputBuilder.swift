@@ -220,40 +220,33 @@ enum CoachEveningSummaryInputBuilder {
             )]
         }
 
-        // MARK: Tomorrow plans
-        if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) {
-            let planned = CoachCanonicalDayState.selectedDayActivities(
-                from: activities,
-                selectedDate: tomorrow,
-                calendar: calendar
-            )
-            .filter { !$0.isCompleted && !$0.isSkipped }
-            let relevant = CoachCanonicalDayState.coachRelevantActivities(from: planned)
-            let mealsTomorrow = planned.filter {
-                CoachCanonicalDayState.isNutritionLog($0) && !CoachCanonicalDayState.isHydrationLog($0)
-            }
-            var tomorrowFacts: [Fact] = []
-            if relevant.isEmpty && mealsTomorrow.isEmpty {
+        // MARK: Tomorrow plans — next local calendar day, same selection as the saved basis.
+        let tomorrowPlan = CoachEveningTomorrowBasis.select(
+            activities: activities,
+            now: now,
+            calendar: calendar
+        )
+        var tomorrowFacts: [Fact] = []
+        if tomorrowPlan.basis.assertedEmpty {
+            tomorrowFacts.append(fact(
+                "tomorrow.none",
+                "No activities or meals planned for tomorrow yet."
+            ))
+        } else {
+            for (i, a) in tomorrowPlan.activities.enumerated() {
                 tomorrowFacts.append(fact(
-                    "tomorrow.none",
-                    "No activities or meals planned for tomorrow yet."
+                    "tomorrow.item.\(i)",
+                    "Planned: \(a.title); type \(a.type); durationMin \(a.durationMinutes); at \(timeFormatter.string(from: a.date)). Not completed."
                 ))
-            } else {
-                for (i, a) in relevant.prefix(12).enumerated() {
-                    tomorrowFacts.append(fact(
-                        "tomorrow.item.\(i)",
-                        "Planned: \(a.title); type \(a.type); durationMin \(a.durationMinutes); at \(timeFormatter.string(from: a.date)). Not completed."
-                    ))
-                }
-                for (i, meal) in mealsTomorrow.prefix(8).enumerated() {
-                    tomorrowFacts.append(fact(
-                        "tomorrow.meal.\(i)",
-                        "Planned meal: \(meal.title); at \(timeFormatter.string(from: meal.date)). Not logged."
-                    ))
-                }
             }
-            facts["tomorrow"] = tomorrowFacts
+            for (i, meal) in tomorrowPlan.meals.enumerated() {
+                tomorrowFacts.append(fact(
+                    "tomorrow.meal.\(i)",
+                    "Planned meal: \(meal.title); at \(timeFormatter.string(from: meal.date)). Not logged."
+                ))
+            }
         }
+        facts["tomorrow"] = tomorrowFacts
 
         var coachDecision: [Fact] = []
         if let presentation {

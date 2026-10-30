@@ -6,6 +6,8 @@ struct CoachEveningRecapView: View {
     let activitySummary: CoachEveningRecapActivitySummary
     let daySignals: [CoachEveningRecapSignal]
     let commentary: String?
+    /// Today and tomorrow kept apart. Tomorrow is omitted when its plan basis is stale.
+    var resolvedNote: CoachEveningResolvedNote? = nil
     /// Set when the note belongs to a previous local day ("Yesterday" or a date).
     var summaryDayCaption: String? = nil
     let isLoadingCommentary: Bool
@@ -273,38 +275,15 @@ struct CoachEveningRecapView: View {
     private var noteBody: some View {
         // After feeling is chosen, keep the AI/local note — reaction lives in the pill.
         let noteFeeling: String? = selectedFeeling == nil ? feelingReaction : nil
-        if let text = CoachEveningRecapCopy.noteText(
+        if let resolvedNote {
+            resolvedNoteBody(resolvedNote, feelingReaction: noteFeeling)
+        } else if let text = CoachEveningRecapCopy.noteText(
             commentary: commentary,
             feelingReaction: noteFeeling,
             isLoading: isLoadingCommentary && selectedFeeling == nil,
             failed: commentaryFailed && selectedFeeling == nil
         ) {
-            Text(text)
-                .font(WeekFitType.body.weight(.medium))
-                .fontDesign(.rounded)
-                .foregroundStyle(primary.opacity(0.95))
-                .fixedSize(horizontal: false, vertical: true)
-                .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
-                #if DEBUG
-                .onAppear {
-                    // Exact card text — not only raw AI passages.
-                    CoachEveningSummaryDebugTape.logUI(
-                        source: "card",
-                        requestId: nil,
-                        generatedAt: nil,
-                        displayedNote: text
-                    )
-                }
-                .onLongPressGesture {
-                    // Explicit developer action: write last INPUT/OUTPUT tape to Application Support.
-                    do {
-                        let url = try CoachEveningSummaryDebugTape.exportLastToApplicationSupport()
-                        print("[CoachSummary][EXPORT] saved \(url.lastPathComponent)")
-                    } catch {
-                        print("[CoachSummary][EXPORT] failed error=\(String(describing: type(of: error)))")
-                    }
-                }
-                #endif
+            noteParagraph(text)
         } else if isLoadingCommentary, selectedFeeling == nil {
             HStack(spacing: 8) {
                 ProgressView()
@@ -314,6 +293,68 @@ struct CoachEveningRecapView: View {
                     .foregroundStyle(secondary)
             }
         }
+    }
+
+    @ViewBuilder
+    private func resolvedNoteBody(
+        _ note: CoachEveningResolvedNote,
+        feelingReaction: String?
+    ) -> some View {
+        if let feelingReaction, !feelingReaction.isEmpty {
+            noteParagraph(feelingReaction)
+        } else {
+            let today = note.today.trimmingCharacters(in: .whitespacesAndNewlines)
+            let tomorrow = note.tomorrow?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if today.isEmpty, tomorrow?.isEmpty != false, !note.planChanged {
+                if let fallback = CoachEveningRecapCopy.noteText(
+                    commentary: nil,
+                    feelingReaction: nil,
+                    isLoading: isLoadingCommentary && selectedFeeling == nil,
+                    failed: commentaryFailed && selectedFeeling == nil
+                ) {
+                    noteParagraph(fallback)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    if !today.isEmpty {
+                        noteParagraph(today)
+                    }
+                    if let tomorrow, !tomorrow.isEmpty {
+                        noteParagraph(tomorrow)
+                    }
+                    if note.planChanged {
+                        noteParagraph(WeekFitLocalizedString("coach.eveningRecap.planChanged"))
+                    }
+                }
+            }
+        }
+    }
+
+    private func noteParagraph(_ text: String) -> some View {
+        Text(text)
+            .font(WeekFitType.body.weight(.medium))
+            .fontDesign(.rounded)
+            .foregroundStyle(primary.opacity(0.95))
+            .fixedSize(horizontal: false, vertical: true)
+            .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
+            #if DEBUG
+            .onAppear {
+                CoachEveningSummaryDebugTape.logUI(
+                    source: "card",
+                    requestId: nil,
+                    generatedAt: nil,
+                    displayedNote: text
+                )
+            }
+            .onLongPressGesture {
+                do {
+                    let url = try CoachEveningSummaryDebugTape.exportLastToApplicationSupport()
+                    print("[CoachSummary][EXPORT] saved \(url.lastPathComponent)")
+                } catch {
+                    print("[CoachSummary][EXPORT] failed error=\(String(describing: type(of: error)))")
+                }
+            }
+            #endif
     }
 
     // MARK: - Feeling

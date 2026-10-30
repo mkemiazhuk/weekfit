@@ -1,5 +1,6 @@
 import Foundation
 import NaturalLanguage
+import WeekFitPlanner
 
 struct CoachEveningSummaryInput: Codable, Sendable {
     struct Fact: Codable, Sendable {
@@ -182,6 +183,27 @@ enum CoachEveningSummaryPolicy {
         let joined = clampCommentary(parts.joined(separator: " "), maxSentences: 3)
         // Drop English (or otherwise mismatched) sentences under a non-matching UI language.
         return filteringToRequestedLocale(joined, locale: summary.locale)
+    }
+
+    /// Today stays. Tomorrow is shown only when its saved event basis still matches the plan.
+    /// A missing basis (older cache) cannot be checked, so the dependent sentence is hidden.
+    static func resolvedNote(
+        from summary: CoachEveningSummary,
+        basis: CoachEveningTomorrowBasis?,
+        activities: [PlannedActivity],
+        calendar: Calendar = .current
+    ) -> CoachEveningResolvedNote {
+        let today = filteringToRequestedLocale(summary.today.text, locale: summary.locale)
+        let tomorrow = filteringToRequestedLocale(summary.tomorrow.text, locale: summary.locale)
+        let current = basis?.stillMatches(activities: activities, calendar: calendar) == true
+        if current {
+            return CoachEveningResolvedNote(
+                today: today,
+                tomorrow: tomorrow.isEmpty ? nil : tomorrow,
+                planChanged: false
+            )
+        }
+        return CoachEveningResolvedNote(today: today, tomorrow: nil, planChanged: true)
     }
 
     /// Rejects clear language leaks (e.g. English under `pl`) while staying permissive on short/ambiguous text.

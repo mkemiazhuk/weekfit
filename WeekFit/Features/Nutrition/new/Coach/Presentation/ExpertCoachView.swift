@@ -401,13 +401,14 @@ struct ExpertCoachView: View {
                     CoachEveningRecapView(
                         activitySummary: eveningRecapActivity,
                         daySignals: eveningRecapSignals,
-                        commentary: eveningSummary.displayCommentary,
+                        commentary: nil,
+                        resolvedNote: eveningSummary.resolvedNote(activities: Array(plannedActivities)),
                         summaryDayCaption: eveningSummary.summaryDayCaption,
                         isLoadingCommentary: eveningSummary.isRefreshing
-                            && eveningSummary.displayCommentary == nil
+                            && eveningSummary.summary == nil
                             && eveningRecapFeeling == nil,
                         commentaryFailed: eveningSummary.lastRefreshFailed
-                            && eveningSummary.displayCommentary == nil
+                            && eveningSummary.summary == nil
                             && eveningRecapFeeling == nil,
                         selectedFeeling: eveningRecapFeeling,
                         unitSystem: unitsStore.resolvedSystem,
@@ -668,11 +669,17 @@ struct ExpertCoachView: View {
             return
         }
 
+        let tomorrowBasis = CoachEveningTomorrowBasis.capture(
+            activities: Array(plannedActivities),
+            now: Date(),
+            calendar: .current
+        )
         if CoachEveningSummaryPolicy.allowsManualRefreshAnytime {
             // DEBUG unrestricted: always mint a new cloud summary for prompt/locale testing.
             eveningSummary.refresh(
                 input: request,
                 owner: owner,
+                tomorrowBasis: tomorrowBasis,
                 now: Date(),
                 source: "coach.\(source).unrestricted"
             )
@@ -681,6 +688,7 @@ struct ExpertCoachView: View {
                 input: request,
                 owner: owner,
                 fingerprint: fingerprint,
+                tomorrowBasis: tomorrowBasis,
                 now: Date(),
                 isStillEligible: { [plannedActivities] in
                     CoachEveningRecapEligibility.shouldShowEveningRecap(
