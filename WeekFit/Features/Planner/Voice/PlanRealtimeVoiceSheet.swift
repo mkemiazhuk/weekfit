@@ -73,11 +73,13 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     func end() {
         guard !ended else { return }
         ended = true
+        if let id = secret?.sessionId {
+            WeekFitVoiceStopLedger.remember(id)
+        }
         connectTask?.cancel()
         heartbeat?.cancel()
-        if let id = secret?.sessionId {
-            Task { let _: WeekFitAIUsage? = try? await WeekFitAIClient().request(path: "v2/ai/voice/stop",
-                body: JSONEncoder().encode(["sessionId": id])) }
+        if secret?.sessionId != nil {
+            Task { await WeekFitVoiceStopQueue.shared.flush() }
         }
         let ticket = lineTicket
         lineTicket = nil
@@ -92,6 +94,12 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         webView = nil
         if case .failed = phase { return }
         phase = .ended
+    }
+
+    private func rememberVoiceStop(_ sessionId: String?) {
+        guard let sessionId else { return }
+        WeekFitVoiceStopLedger.remember(sessionId)
+        Task { await WeekFitVoiceStopQueue.shared.flush() }
     }
 
     func receive(_ body: Any) {
@@ -142,6 +150,10 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     }
 
     private func connect() async {
+        if WeekFitAIBilling.refused {
+            phase = .failed(WeekFitLocalizedString("ai.usage.sandboxMisconfigured"))
+            return
+        }
         guard await ensureMicrophone() else { return }
         do {
             let client = try await makeClient()
@@ -172,11 +184,12 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                 introduced: alreadyIntroduced,
                 reconnected: reconnect
             )
+            self.secret = secret
             guard !ended else {
+                rememberVoiceStop(secret.sessionId)
                 await client.leaveLine(ticket: ticket)
                 return
             }
-            self.secret = secret
             remainingSeconds = secret.budgetSeconds
             startHeartbeat(ticket)
             let configuration = WKWebViewConfiguration()
@@ -374,11 +387,13 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         ringback.stop()
         phase = .failed(WeekFitLocalizedString("planner.voice.sessionFailed"))
+        end()
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         ringback.stop()
         phase = .failed(WeekFitLocalizedString("planner.voice.sessionFailed"))
+        end()
     }
 
     func webView(
@@ -712,6 +727,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     }
 
     private func makeClient() async throws -> PlanRealtimeClient {
+        if WeekFitAIBilling.refused { throw WeekFitAIUsageError.misconfigured }
         let token = try await PhotoFoodFirebaseAuth.idToken()
         return PlanRealtimeClient(baseURL: WeekFitCloudAPI.foodPhotoBaseURL, token: token)
     }

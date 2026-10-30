@@ -44,6 +44,9 @@ struct PhotoFoodRecognitionClient: PhotoFoodRecognizing {
         onStage: @escaping @Sendable (PhotoFoodNetworkStage) -> Void
     ) async throws -> PhotoFoodAPIResponse {
         let clock = PhotoFoodDiagnostics.AnalysisClock(analysisId: analysisId)
+        if WeekFitAIBilling.refused {
+            throw PhotoFoodRecognitionError.sandboxMisconfigured
+        }
         if WeekFitAIBilling.enabled {
             guard imageJPEG.count > 64, imageJPEG.count <= PhotoFoodImagePreparer.maxUploadBytes else {
                 throw PhotoFoodRecognitionError.invalidImage

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Explicit, isolated TestFlight archive. Never modifies the release checkout.
+# Device runs from Xcode use the "WeekFit Sandbox QA" scheme (configuration AISandbox).
+# Do not upload either artifact to App Store Review.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SANDBOX_URL="${1:?Usage: bash Scripts/archive_ai_sandbox.sh https://sandbox-host [build-number]}"

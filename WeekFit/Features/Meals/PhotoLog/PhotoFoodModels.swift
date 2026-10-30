@@ -144,6 +144,8 @@ enum PhotoFoodRecognitionError: Error, Equatable, Sendable {
     case invalidResponse
     case providerFailure
     case unavailable
+    /// Sandbox billing was requested, but this build will not use Production.
+    case sandboxMisconfigured
     case timedOut
     case server(String)
     case cancelled
@@ -176,6 +178,8 @@ enum PhotoFoodRecognitionError: Error, Equatable, Sendable {
             return "today.photoLog.error.provider"
         case .unavailable:
             return "today.photoLog.error.unavailable"
+        case .sandboxMisconfigured:
+            return "ai.usage.sandboxMisconfigured"
         case .timedOut:
             return "today.photoLog.error.timedOut"
         case .server:

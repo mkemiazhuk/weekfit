@@ -33,7 +33,7 @@
       </Testables>
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Debug"
+      buildConfiguration = "AISandbox"
       selectedDebuggerIdentifier = ""
       selectedLauncherIdentifier = "Xcode.IDEFoundation.Launcher.PosixSpawn"
       launchStyle = "0"
@@ -76,14 +76,16 @@
          </CommandLineArgument>
       </CommandLineArguments>
       <!--
+        AISandbox configuration embeds WeekFitAIUsageEnabled, WeekFitAISandboxEnabled,
+        and WeekFitAISandboxBaseURL into the built app, plus WEEKFIT_AI_SANDBOX.
         No StoreKit Configuration file: on a physical device with a Sandbox
-        Apple ID, Product.products uses App Store Connect Poland (etc.) prices.
-        Local WeekFit.storekit (4.99 / 34.99 USD) is only for Simulator / Xcode
-        StoreKit Testing when that file is selected in the scheme.
+        Apple ID, Product.products uses App Store Connect prices.
+        Local WeekFit.storekit is only for Simulator StoreKit Testing when that
+        file is selected. Do not archive this scheme for App Store Review.
       -->
    </LaunchAction>
    <ProfileAction
-      buildConfiguration = "Release"
+      buildConfiguration = "AISandbox"
       shouldUseLaunchSchemeArgsEnv = "YES"
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"

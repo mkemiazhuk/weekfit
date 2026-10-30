@@ -686,6 +686,12 @@ export function consoleDocument() {
         idleMs = Math.max(20000, Number(options.idleSeconds || 75) * 1000);
         post({ type: 'state', value: 'connecting' });
         pc = new RTCPeerConnection();
+        pc.onconnectionstatechange = () => {
+          if (!pc || thisCall !== callNumber) return;
+          if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+            post({ type: 'state', value: 'ended', reason: 'connection' });
+          }
+        };
         remoteAudio = document.createElement('audio');
         remoteAudio.autoplay = true;
         remoteAudio.setAttribute('playsinline', '');

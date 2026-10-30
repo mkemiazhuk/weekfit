@@ -24,30 +24,52 @@ enum WeekFitCloudAPI {
         set { AccountRemoteDeletionClient.sessionTokenProvider = newValue }
     }
 
-    /// Explicit test archive configuration, compiled only into dedicated Sandbox archives.
+    /// Explicit test configuration. Debug may honor it. Release also needs `WEEKFIT_AI_SANDBOX`.
     nonisolated static var sandboxBillingRequested: Bool {
         Bundle.main.object(forInfoDictionaryKey: "WeekFitAISandboxEnabled") as? Bool == true
     }
 
-    nonisolated static var sandboxBillingBaseURL: URL? {
-        guard sandboxBillingRequested else { return nil }
+    nonisolated static var sandboxCompiledIn: Bool {
         #if DEBUG || WEEKFIT_AI_SANDBOX
-        guard let raw = Bundle.main.object(forInfoDictionaryKey: "WeekFitAISandboxBaseURL") as? String,
-              let url = URL(string: raw), url.scheme == "https",
-              let host = url.host, !host.isEmpty,
-              url.user == nil, url.password == nil, url.query == nil, url.fragment == nil,
-              url.path.isEmpty || url.path == "/" else { return nil }
-        return url
+        true
         #else
-        return nil
+        false
         #endif
     }
 
-    /// Explicit Sandbox archive → Debug overrides → default production HTTPS.
+    nonisolated static var billingDecision: WeekFitAISandboxDecision {
+        let raw = Bundle.main.object(forInfoDictionaryKey: "WeekFitAISandboxBaseURL") as? String
+        return WeekFitAISandboxDecision.decide(
+            usageEnabled: Bundle.main.object(forInfoDictionaryKey: "WeekFitAIUsageEnabled") as? Bool == true,
+            sandboxRequested: sandboxBillingRequested,
+            sandboxURL: raw.flatMap { URL(string: $0) },
+            compiledSandboxAllowed: sandboxCompiledIn
+        )
+    }
+
+    /// Usable Sandbox origin. Nil when Sandbox was not requested, or when it was refused.
+    nonisolated static var sandboxBillingBaseURL: URL? {
+        if case .sandbox(let url) = billingDecision.route { return url }
+        return nil
+    }
+
+    nonisolated static var sandboxRefused: Bool {
+        if case .refused = billingDecision.route { return true }
+        return false
+    }
+
+    /// Sandbox archive or the AISandbox run configuration → Debug overrides → production HTTPS.
+    /// A refused Sandbox build does not continue on to Production.
     static func bootstrapFromInfoPlistIfNeeded() {
-        if let sandboxURL = sandboxBillingBaseURL {
-            configuredBaseURL = sandboxURL
+        switch billingDecision.route {
+        case .sandbox(let url):
+            configuredBaseURL = url
             return
+        case .refused:
+            configuredBaseURL = nil
+            return
+        case .production:
+            break
         }
         #if DEBUG
         if let fromLaunch = debugLaunchArgumentURL() {
@@ -77,9 +99,10 @@ enum WeekFitCloudAPI {
         configuredBaseURL != nil
     }
 
-    /// Food photo recognition always has a default production origin after bootstrap.
+    /// Food, voice, and billing origin. A refused Sandbox build does not use Production.
     static var foodPhotoBaseURL: URL {
-        configuredBaseURL ?? productionFoodPhotoBaseURL
+        if sandboxRefused { return WeekFitAISandboxDecision.refusedBaseURL }
+        return configuredBaseURL ?? productionFoodPhotoBaseURL
     }
 
     #if DEBUG

@@ -198,4 +198,64 @@ final class PlanRealtimeVoiceTests: XCTestCase {
             voice: voice
         )
     }
+
+    func testUsageBalanceDecodesReservedAndUsedTime() throws {
+        let settled = """
+        {"appAccountToken":"AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE","active":true,
+         "productId":"com.weekfit.subscription.monthly","periodStart":1,"periodEnd":2,
+         "grandfatheredPhotos":false,
+         "photos":{"included":30,"purchased":0},"voice":{"included":260,"purchased":0,"reserved":0,"used":40},
+         "voiceFinalizing":false}
+        """
+        let usage = try JSONDecoder().decode(WeekFitAIUsage.self, from: Data(settled.utf8))
+        XCTAssertEqual(usage.voice.included, 260)
+        XCTAssertEqual(usage.voice.used, 40)
+        XCTAssertEqual(usage.voice.reserved, 0)
+        XCTAssertFalse(usage.voiceFinalizing)
+        let legacy = """
+        {"appAccountToken":"AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE","active":true,
+         "productId":"com.weekfit.subscription.monthly","periodStart":1,"periodEnd":2,
+         "grandfatheredPhotos":false,"photos":{"included":30,"purchased":0},"voice":{"included":0,"purchased":0}}
+        """
+        let older = try JSONDecoder().decode(WeekFitAIUsage.self, from: Data(legacy.utf8))
+        XCTAssertEqual(older.voice.reserved, 0)
+        XCTAssertFalse(older.voiceFinalizing)
+    }
+
+    func testFailedVoiceStopStaysPendingAndRetryDoesNotOpenAnotherCall() async {
+        let suiteName = "WeekFitVoiceStopTests"
+        let suite = UserDefaults(suiteName: suiteName)!
+        suite.removePersistentDomain(forName: suiteName)
+        let previous = WeekFitVoiceStopLedger.defaults
+        WeekFitVoiceStopLedger.defaults = suite
+        defer { WeekFitVoiceStopLedger.defaults = previous }
+        let probe = StopProbe()
+        await WeekFitVoiceStopQueue.shared.setTransport { sessionId in
+            if probe.record(sessionId) { throw URLError(.networkConnectionLost) }
+        }
+        defer { Task { await WeekFitVoiceStopQueue.shared.resetTransport() } }
+        let sessionId = "voice_stop_test_1"
+        await WeekFitVoiceStopQueue.shared.enqueue(sessionId)
+        XCTAssertEqual(WeekFitVoiceStopLedger.pending(), [sessionId])
+        XCTAssertEqual(probe.calls, [sessionId])
+        probe.fail = false
+        await WeekFitVoiceStopQueue.shared.flush()
+        XCTAssertTrue(WeekFitVoiceStopLedger.pending().isEmpty)
+        await WeekFitVoiceStopQueue.shared.flush()
+        XCTAssertEqual(probe.calls, [sessionId, sessionId])
+        await WeekFitVoiceStopQueue.shared.resetTransport()
+    }
+}
+
+private final class StopProbe: @unchecked Sendable {
+    let lock = NSLock()
+    var calls: [String] = []
+    var fail = true
+
+    func record(_ sessionId: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        calls.append(sessionId)
+        return fail
+    }
 }

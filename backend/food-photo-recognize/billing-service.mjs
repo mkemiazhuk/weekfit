@@ -25,14 +25,14 @@ const send = (res, status, body) => {
 };
 
 export function createBillingService(config, { authenticate, apple, store, fetcher = fetch,
-  analyze = recognize, connectObserver, line, log = entry => console.info(JSON.stringify(entry)) } = {}) {
+  analyze = recognize, connectObserver, line, now: clock = Date.now, log = entry => console.info(JSON.stringify(entry)) } = {}) {
   if (!config.billingEnabled) return { handle: async () => false, close() {} };
   if (!config.dataDirExplicit || config.stateBackend === 'redis' || !config.allowSingleNode) {
     throw Error('AI billing requires one API process and an explicit persistent DATA_DIR');
   }
   apple ??= createAppleBilling();
   store ??= new BillingStore(path.join(config.dataDir, `billing-${apple.environment}.sqlite`),
-    { maxVoiceCalls: config.plannerVoiceMaxCalls ?? 5 });
+    { maxVoiceCalls: config.plannerVoiceMaxCalls ?? 5, now: clock });
   const gate = createConcurrencyGate({ maxConcurrent: config.maxConcurrency ?? 4, maxQueue: 1000,
     queueWaitMs: 120000, retryAfterSeconds: 5 });
   const inflight = new Map(), sessions = new Map(), stopping = new Map();
@@ -47,28 +47,67 @@ export function createBillingService(config, { authenticate, apple, store, fetch
     if (requireActive && !subscription.active) error('subscription_required', 402);
     return { subscription, wallet: store.wallet(subscription), uid };
   };
+  const now = () => store.now();
   const hangup = async (op) => {
-    if (!op.callId) return;
+    if (!op.callId) return 'no_call';
     const response = await fetcher(`https://api.openai.com/v1/realtime/calls/${encodeURIComponent(op.callId)}/hangup`, {
       method: 'POST', headers: { Authorization: `Bearer ${config.apiKey}` }, signal: AbortSignal.timeout(5000),
     });
-    if (!response.ok && response.status !== 404 && response.status !== 410) error('voice_stop_pending', 503);
+    if (response.status === 404 || response.status === 410) return 'already_closed';
+    if (!response.ok) error('voice_stop_pending', 503);
+    return 'closed';
   };
-  const stop = (wallet, key, uncertain = false) => {
+  const chargeSeconds = op => {
+    if (!op?.started || op.ended == null) return 0;
+    const end = op.deadline != null ? Math.min(op.ended, op.deadline) : op.ended;
+    return Math.min(op.included + op.purchased, Math.max(0, Math.ceil((end - op.started) / 1000)));
+  };
+  const releaseLive = (identifier) => {
+    const live = sessions.get(identifier);
+    live?.socket?.close();
+    if (live?.uid && live?.ticket) line?.release(live.uid, live.ticket);
+    sessions.delete(identifier);
+  };
+  // reason 'restart' must not invent an end time before the provider answers.
+  // Every other reason records the end before hangup, so a later retry cannot extend the charge.
+  const stop = (wallet, key, reason = 'client') => {
     const identifier = `${wallet}:${key}`;
     if (stopping.has(identifier)) return stopping.get(identifier);
     const task = (async () => {
-      const op = store.operation(wallet, key);
+      let op = store.operation(wallet, key);
       if (!op || op.state !== 'reserved') return;
-      await hangup(op); // Keep reserved until provider confirms closure.
-      const seconds = !uncertain && op.started
-        ? Math.min(op.included + op.purchased, Math.max(0, Math.ceil((Date.now() - op.started) / 1000))) : 0;
+      log({ event: 'billing_voice_stop_requested', operation: key, reason });
+      if (reason !== 'restart' && op.ended == null) {
+        const at = now();
+        const endAt = op.deadline != null ? Math.min(at, op.deadline) : at;
+        op = store.markEnded(wallet, key, endAt) ?? op;
+      }
+      let provider;
+      try {
+        provider = await hangup(op);
+      } catch (e) {
+        log({ event: 'billing_voice_provider_stop', operation: key, result: 'failed' });
+        throw e;
+      }
+      log({ event: 'billing_voice_provider_stop', operation: key, result: provider });
+      op = store.operation(wallet, key);
+      if (!op || op.state !== 'reserved') return;
+      let seconds;
+      if (reason === 'restart' && op.ended == null && (provider === 'already_closed' || provider === 'no_call')) {
+        // The process that owned the call is gone and the provider is already closed.
+        // There is no stored end, so the full reserve must not be kept or billed to the deadline.
+        seconds = 0;
+      } else {
+        if (op.ended == null) {
+          const at = now();
+          op = store.markEnded(wallet, key, op.deadline != null ? Math.min(at, op.deadline) : at) ?? op;
+        }
+        seconds = op.started ? chargeSeconds(op) : 0;
+      }
       store.settle(wallet, key, seconds);
-      const live = sessions.get(identifier);
-      live?.socket?.close();
-      if (live?.uid && live?.ticket) line?.release(live.uid, live.ticket);
-      sessions.delete(identifier);
-      log({ event: 'billing_voice_settled', seconds });
+      releaseLive(identifier);
+      log({ event: 'billing_voice_settled', operation: key, seconds, end: op.ended == null ? 'unknown' : 'stored' });
+      log({ event: 'billing_voice_reserve_released', operation: key, released: op.included + op.purchased - seconds });
     })();
     stopping.set(identifier, task);
     void task.finally(() => { if (stopping.get(identifier) === task) stopping.delete(identifier); }).catch(() => {});
@@ -89,8 +128,25 @@ export function createBillingService(config, { authenticate, apple, store, fetch
         // Photos are processed in this process only. On restart the old attempt is refunded
         // and its idempotency key stays terminal; it can never generate a second provider call.
         if (!inflight.has(`${op.wallet}:${op.key}`)) store.settle(op.wallet, op.key, 0);
-      } else if (!live || (op.deadline && Date.now() >= op.deadline) || (!op.started && Date.now() - op.created >= 30000)) {
-        await stop(op.wallet, op.key, !live).catch(() => log({ event: 'billing_voice_stop_pending' }));
+      } else {
+        const at = now();
+        let reason = null;
+        if (!live && op.ended == null) reason = 'restart';
+        else if (op.ended != null) reason = 'ended';
+        else if (op.deadline && at >= op.deadline) {
+          store.markEnded(op.wallet, op.key, op.deadline);
+          reason = 'deadline';
+        } else if (!op.started && at - op.created >= 30000) reason = 'not_started';
+        else if (op.started) {
+          const seen = op.seen ?? 0;
+          const quietFor = at - Math.max(seen, op.started);
+          if (quietFor >= 45000) {
+            const endAt = seen >= op.started ? seen : Math.min(at, op.deadline ?? at);
+            store.markEnded(op.wallet, op.key, endAt);
+            reason = 'client_silent';
+          }
+        }
+        if (reason) await stop(op.wallet, op.key, reason).catch(() => log({ event: 'billing_voice_stop_pending', operation: op.key }));
       }
     }
   };
@@ -176,6 +232,7 @@ export function createBillingService(config, { authenticate, apple, store, fetch
         let op;
         try { op = store.reserve(wallet, subscription, 'voice', key, hash(JSON.stringify(body)), 3600); }
         catch (e) { if (admission?.ticket) line.release(ctx.uid, admission.ticket); throw e; }
+        store.noteSeen(wallet.id, key, now());
         if (op.state !== 'reserved' || sessions.has(`${wallet.id}:${key}`) || op.callId) error('voice_already_active', 409);
         sessions.set(`${wallet.id}:${key}`, { session: plannerSessionConfiguration(config, body),
           uid: ctx.uid, ticket: admission?.ticket });
@@ -210,7 +267,7 @@ export function createBillingService(config, { authenticate, apple, store, fetch
               store.recordUsage(wallet.id, event.response.id, { feature: 'voice', model: config.plannerVoiceModel,
                 usage: event.response.usage, source: 'server_sideband' });
             }
-          }, () => { void stop(wallet.id, key).catch(() => {}); });
+          }, () => { store.markEnded(wallet.id, key, now()); void stop(wallet.id, key, 'observer').catch(() => {}); });
           // Do not let a client start generating audio before metering is attached.
           if (live.socket.readyState === WebSocket.CONNECTING) {
             await new Promise((resolve, reject) => {
@@ -222,18 +279,23 @@ export function createBillingService(config, { authenticate, apple, store, fetch
           const sdp = await response.text();
           send(res, 200, { sdp }); return true;
         } catch (e) {
-          await stop(wallet.id, key).catch(() => {});
+          await stop(wallet.id, key, 'connect_failed').catch(() => {});
           throw e;
         }
       }
       if (route === '/v2/ai/voice/stop' && req.method === 'POST') {
-        await stop(wallet.id, body.sessionId);
+        // Ownership is the wallet from the signed subscription, even after that subscription expires.
+        if (typeof body.sessionId !== 'string') error('invalid_usage_request', 400);
+        await stop(wallet.id, body.sessionId, 'client');
         send(res, 200, store.snapshot(wallet, subscription)); return true;
       }
       if (route === '/v2/ai/voice/status' && req.method === 'POST') {
+        if (typeof body.sessionId === 'string') store.noteSeen(wallet.id, body.sessionId, now());
         const op = store.operation(wallet.id, body.sessionId);
-        send(res, 200, { active: op?.state === 'reserved', remainingSeconds: op?.state === 'reserved'
-          ? Math.max(0, Math.ceil(((op.deadline ?? Date.now() + (op.included + op.purchased) * 1000) - Date.now()) / 1000)) : 0 });
+        const at = now();
+        const active = op?.state === 'reserved' && op.ended == null;
+        send(res, 200, { active, remainingSeconds: active
+          ? Math.max(0, Math.ceil(((op.deadline ?? at + (op.included + op.purchased) * 1000) - at) / 1000)) : 0 });
         return true;
       }
       error('not_found', 404);

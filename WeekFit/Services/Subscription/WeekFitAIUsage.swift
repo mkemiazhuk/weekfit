@@ -1,16 +1,14 @@
 import Foundation
+import os
 import StoreKit
 internal import Combine
 
 /// Coordinated release switch. Absent in existing builds: production behavior is unchanged.
 nonisolated enum WeekFitAIBilling {
-    static var enabled: Bool {
-        if WeekFitCloudAPI.sandboxBillingRequested && WeekFitCloudAPI.sandboxBillingBaseURL == nil {
-            return false
-        }
-        return Bundle.main.object(forInfoDictionaryKey: "WeekFitAIUsageEnabled") as? Bool == true
-    }
-    static var environment: String { WeekFitCloudAPI.sandboxBillingRequested ? "Sandbox" : "Production" }
+    static var enabled: Bool { WeekFitCloudAPI.billingDecision.billingEnabled }
+    /// Sandbox was requested, but this build must not call Production.
+    static var refused: Bool { WeekFitCloudAPI.sandboxRefused }
+    static var environment: String { WeekFitCloudAPI.billingDecision.environmentHeader }
     static let products = ["com.weekfit.topup.photos20", "com.weekfit.topup.photos50",
                            "com.weekfit.topup.voice15", "com.weekfit.topup.voice30"]
     static func isTopUp(_ id: String) -> Bool { products.contains(id) }
@@ -20,7 +18,21 @@ nonisolated struct WeekFitAIUsage: Decodable, Sendable {
     struct Balance: Decodable, Sendable {
         let included: Int
         let purchased: Int
+        let reserved: Int
+        let used: Int
         var total: Int { included + purchased }
+
+        private enum CodingKeys: String, CodingKey {
+            case included, purchased, reserved, used
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            included = try container.decode(Int.self, forKey: .included)
+            purchased = try container.decode(Int.self, forKey: .purchased)
+            reserved = try container.decodeIfPresent(Int.self, forKey: .reserved) ?? 0
+            used = try container.decodeIfPresent(Int.self, forKey: .used) ?? 0
+        }
     }
     let appAccountToken: UUID
     let active: Bool
@@ -30,11 +42,30 @@ nonisolated struct WeekFitAIUsage: Decodable, Sendable {
     let grandfatheredPhotos: Bool
     let photos: Balance
     let voice: Balance
+    let voiceFinalizing: Bool
     var resetDate: Date { Date(timeIntervalSince1970: periodEnd / 1000) }
+
+    private enum CodingKeys: String, CodingKey {
+        case appAccountToken, active, productId, periodStart, periodEnd
+        case grandfatheredPhotos, photos, voice, voiceFinalizing
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        appAccountToken = try container.decode(UUID.self, forKey: .appAccountToken)
+        active = try container.decode(Bool.self, forKey: .active)
+        productId = try container.decode(String.self, forKey: .productId)
+        periodStart = try container.decode(Double.self, forKey: .periodStart)
+        periodEnd = try container.decode(Double.self, forKey: .periodEnd)
+        grandfatheredPhotos = try container.decode(Bool.self, forKey: .grandfatheredPhotos)
+        photos = try container.decode(Balance.self, forKey: .photos)
+        voice = try container.decode(Balance.self, forKey: .voice)
+        voiceFinalizing = try container.decodeIfPresent(Bool.self, forKey: .voiceFinalizing) ?? false
+    }
 }
 
 nonisolated enum WeekFitAIUsageError: Error, Equatable {
-    case subscriptionRequired, quotaExhausted, unavailable, pending, verification
+    case subscriptionRequired, quotaExhausted, unavailable, pending, verification, misconfigured
     var localizationKey: String {
         switch self {
         case .subscriptionRequired: "ai.usage.subscriptionRequired"
@@ -42,6 +73,7 @@ nonisolated enum WeekFitAIUsageError: Error, Equatable {
         case .pending: "ai.usage.pending"
         case .verification: "ai.usage.verification"
         case .unavailable: "ai.usage.unavailable"
+        case .misconfigured: "ai.usage.sandboxMisconfigured"
         }
     }
 }
@@ -78,7 +110,11 @@ nonisolated struct WeekFitAIClient: Sendable {
 
     func request<Response: Decodable>(path: String, method: String = "POST", body: Data? = nil,
                                      idempotencyKey: String? = nil, requiresProof: Bool = true) async throws -> Response {
+        if WeekFitCloudAPI.sandboxRefused { throw WeekFitAIUsageError.misconfigured }
         let origin = await MainActor.run { baseURL ?? WeekFitCloudAPI.foodPhotoBaseURL }
+        if origin.host == WeekFitAISandboxDecision.refusedBaseURL.host {
+            throw WeekFitAIUsageError.misconfigured
+        }
         let proof = await WeekFitAIProof.subscriptionJWS()
         if requiresProof && proof == nil { throw WeekFitAIUsageError.subscriptionRequired }
         func perform(refresh: Bool) async throws -> (Data, URLResponse) {
@@ -119,6 +155,76 @@ nonisolated struct WeekFitAIClient: Sendable {
 }
 private nonisolated struct WeekFitAIErrorBody: Decodable { let error: String }
 
+extension Notification.Name {
+    static let weekfitVoiceStopFinished = Notification.Name("weekfit.voice.stop.finished")
+}
+
+/// Durable session ids for a voice stop that has not been acknowledged yet.
+/// A retry posts stop only. It never opens another call.
+enum WeekFitVoiceStopLedger {
+    static var defaults = UserDefaults.standard
+    private static let storageKey = "weekfit.ai.voice.pendingStops"
+
+    static func remember(_ sessionId: String) {
+        guard isOperationID(sessionId) else { return }
+        var ids = pending()
+        guard !ids.contains(sessionId) else { return }
+        ids.append(sessionId)
+        defaults.set(ids, forKey: storageKey)
+    }
+
+    static func forget(_ sessionId: String) {
+        defaults.set(pending().filter { $0 != sessionId }, forKey: storageKey)
+    }
+
+    static func pending() -> [String] {
+        defaults.stringArray(forKey: storageKey) ?? []
+    }
+
+    static func isOperationID(_ value: String) -> Bool {
+        value.range(of: "^[A-Za-z0-9_-]{8,100}$", options: .regularExpression) != nil
+    }
+}
+
+actor WeekFitVoiceStopQueue {
+    static let shared = WeekFitVoiceStopQueue()
+    private var transport: @Sendable (String) async throws -> Void = WeekFitVoiceStopQueue.liveStop
+    private let log = Logger(subsystem: "com.weekfit.app", category: "AIVoice")
+
+    func setTransport(_ transport: @escaping @Sendable (String) async throws -> Void) {
+        self.transport = transport
+    }
+
+    func resetTransport() {
+        transport = Self.liveStop
+    }
+
+    func enqueue(_ sessionId: String) async {
+        WeekFitVoiceStopLedger.remember(sessionId)
+        log.notice("voice_stop_requested operation=\(sessionId, privacy: .public)")
+        await flush()
+    }
+
+    func flush() async {
+        let send = transport
+        for sessionId in WeekFitVoiceStopLedger.pending() {
+            do {
+                try await send(sessionId)
+                WeekFitVoiceStopLedger.forget(sessionId)
+                log.notice("voice_stop_finished operation=\(sessionId, privacy: .public)")
+                NotificationCenter.default.post(name: .weekfitVoiceStopFinished, object: sessionId)
+            } catch {
+                log.error("voice_stop_failed operation=\(sessionId, privacy: .public) kind=\(String(describing: type(of: error)), privacy: .public)")
+            }
+        }
+    }
+
+    private static func liveStop(_ sessionId: String) async throws {
+        let body = try JSONEncoder().encode(["sessionId": sessionId])
+        let _: WeekFitAIUsage = try await WeekFitAIClient().request(path: "v2/ai/voice/stop", body: body)
+    }
+}
+
 @MainActor
 final class WeekFitAIUsageStore: ObservableObject {
     @Published private(set) var usage: WeekFitAIUsage?
@@ -129,9 +235,17 @@ final class WeekFitAIUsageStore: ObservableObject {
     private var refreshing = false
 
     func refresh() async {
+        if WeekFitAIBilling.refused {
+            usage = nil
+            products = []
+            requiresSubscription = false
+            message = WeekFitLocalizedString("ai.usage.sandboxMisconfigured")
+            return
+        }
         guard WeekFitAIBilling.enabled, !refreshing else { return }
         refreshing = true
         defer { refreshing = false }
+        await WeekFitVoiceStopQueue.shared.flush()
         do {
             // Pending consumables must be delivered after a network failure or app termination.
             for await result in Transaction.unfinished {

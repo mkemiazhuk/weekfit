@@ -2709,6 +2709,10 @@ struct TodayView: View {
 
     private func openMayaCall() {
         guard plannerVoiceEnabled, !showPlannerVoice else { return }
+        if WeekFitAIBilling.refused {
+            showAIUsage = true
+            return
+        }
         if WeekFitAIBilling.enabled {
             guard !openingMaya else { return }
             openingMaya = true

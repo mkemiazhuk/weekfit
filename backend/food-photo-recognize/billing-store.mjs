@@ -61,6 +61,9 @@ export class BillingStore {
         quantity INTEGER, reference TEXT, at INTEGER);
       CREATE TABLE IF NOT EXISTS usage (id TEXT PRIMARY KEY, wallet TEXT, value TEXT NOT NULL);
       PRAGMA user_version=1;`));
+    const columns = new Set(this.db.prepare(this.sql('PRAGMA table_info(operations)')).all().map(row => row.name));
+    if (!columns.has('ended')) this.db.exec(this.sql('ALTER TABLE operations ADD COLUMN ended INTEGER'));
+    if (!columns.has('seen')) this.db.exec(this.sql('ALTER TABLE operations ADD COLUMN seen INTEGER'));
   }
   sql(statement) {
     // Only fixed SQL identifiers are rewritten; user values are always bound parameters.
@@ -139,11 +142,25 @@ export class BillingStore {
     this.settleRefundDebt(wallet.id, subscription);
     const period = monthlyWindow(subscription.anchor, this.now());
     const photos = this.remaining(wallet.id, 'photos', period.start, subscription.grandfatheredPhotos);
-    const voice = this.remaining(wallet.id, 'voice', period.start);
+    const voice = this.voiceBalance(wallet.id, period.start);
     return { appAccountToken: wallet.token, active: subscription.active, productId: subscription.productId,
       periodStart: period.start, periodEnd: Math.min(period.end, subscription.accessUntil || period.end),
       grandfatheredPhotos: Boolean(subscription.grandfatheredPhotos),
-      photos, voice, limits: ALLOWANCES };
+      photos: { ...photos, reserved: 0, used: Math.max(0, ALLOWANCES.photos - photos.included) },
+      voice, limits: ALLOWANCES, voiceFinalizing: voice.finalizing };
+  }
+  voiceBalance(wallet, periodStart) {
+    const remaining = this.remaining(wallet, 'voice', periodStart);
+    const reservedRows = this.db.prepare(this.sql(
+      "SELECT included, purchased, ended FROM operations WHERE wallet=? AND resource='voice' AND state='reserved'")).all(wallet);
+    const reservedIncluded = reservedRows.reduce((sum, row) => sum + row.included, 0);
+    const reservedPurchased = reservedRows.reduce((sum, row) => sum + row.purchased, 0);
+    const granted = this.get("SELECT COALESCE(SUM(quantity),0) AS n FROM purchases WHERE wallet=? AND resource='voice' AND refunded=0", wallet)?.n ?? 0;
+    return { included: remaining.included, purchased: remaining.purchased,
+      reserved: reservedIncluded + reservedPurchased,
+      used: Math.max(0, ALLOWANCES.voice - remaining.included - reservedIncluded)
+        + Math.max(0, granted - remaining.purchased - reservedPurchased),
+      finalizing: reservedRows.some(row => row.ended != null) };
   }
   grant(wallet, transaction) {
     this.assertEnvironment(transaction.environment);
@@ -218,6 +235,18 @@ export class BillingStore {
   }
   attachCall(wallet, key, callId) {
     this.run("UPDATE operations SET callId=? WHERE wallet=? AND key=? AND state='reserved'", callId, wallet, key);
+  }
+  noteSeen(wallet, key, at) {
+    this.run("UPDATE operations SET seen=? WHERE wallet=? AND key=? AND state='reserved'", at, wallet, key);
+  }
+  // The first reliable end wins. A later retry must not move the timestamp forward.
+  markEnded(wallet, key, at) {
+    return this.atomic(() => {
+      const op = this.operation(wallet, key);
+      if (!op || op.state !== 'reserved' || op.ended != null) return op;
+      this.run('UPDATE operations SET ended=? WHERE wallet=? AND key=? AND ended IS NULL', at, wallet, key);
+      return this.operation(wallet, key);
+    });
   }
   startCall(wallet, key) {
     return this.atomic(() => {

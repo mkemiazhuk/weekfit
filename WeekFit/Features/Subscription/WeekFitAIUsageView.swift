@@ -16,7 +16,19 @@ struct WeekFitAIUsageView: View {
                 Section(WeekFitLocalizedString("ai.usage.included")) {
                     LabeledContent(WeekFitLocalizedString("ai.usage.photos"), value: usage.grandfatheredPhotos
                         ? WeekFitLocalizedString("ai.usage.existingAccess") : usage.photos.included.formatted())
-                    LabeledContent(WeekFitLocalizedString("ai.usage.voice"), value: clock(usage.voice.included))
+                    if usage.voiceFinalizing {
+                        Text(WeekFitLocalizedString("ai.usage.finalizing"))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        LabeledContent(WeekFitLocalizedString("ai.usage.voice"), value: clock(usage.voice.included))
+                    }
+                    if usage.voice.reserved > 0 {
+                        LabeledContent(WeekFitLocalizedString("ai.usage.voiceReserved"), value: clock(usage.voice.reserved))
+                    }
+                    if usage.voice.used > 0 {
+                        LabeledContent(WeekFitLocalizedString("ai.usage.voiceUsed"), value: clock(usage.voice.used))
+                    }
                     if usage.active {
                         LabeledContent(WeekFitLocalizedString("ai.usage.renews")) {
                             Text(usage.resetDate, format: .dateTime.day().month().year())
@@ -32,7 +44,8 @@ struct WeekFitAIUsageView: View {
                 if usage.active {
                     Section(WeekFitLocalizedString("ai.usage.topUp")) {
                         ForEach(store.products, id: \.id) { product in
-                            if !(usage.grandfatheredPhotos && product.id.contains("photos")) {
+                            let voiceHeld = (usage.voiceFinalizing || usage.voice.reserved > 0) && product.id.contains("voice")
+                            if !voiceHeld && !(usage.grandfatheredPhotos && product.id.contains("photos")) {
                                 Button { Task { await store.buy(product) } } label: {
                                     HStack {
                                         Text(product.displayName)
@@ -69,6 +82,15 @@ struct WeekFitAIUsageView: View {
         .refreshable { await store.refresh() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await store.refresh() } }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .weekfitVoiceStopFinished)) { _ in
+            Task { await store.refresh() }
+        }
+        .task(id: store.usage?.voiceFinalizing) {
+            guard store.usage?.voiceFinalizing == true else { return }
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            await store.refresh()
         }
         .manageSubscriptionsSheet(isPresented: $showManage)
         .sheet(isPresented: $showPaywall, onDismiss: { Task { await store.refresh() } }) {

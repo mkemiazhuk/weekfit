@@ -976,6 +976,66 @@
         }
       }
     },
+    "ai.usage.sandboxMisconfigured": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Diese Testversion ist für die AI-Sandbox gedacht, kann sie aber nicht verwenden. Produktion wird nicht kontaktiert. Bitte erneut aus der Scheme WeekFit Sandbox QA starten." } },
+        "en": { "stringUnit": { "state": "translated", "value": "This test build is set to the AI Sandbox but cannot use it. Production was not contacted. Run again from the WeekFit Sandbox QA scheme." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Esta compilación de prueba está en el Sandbox de IA, pero no puede usarlo. No se contactó con Producción. Vuelve a ejecutarla desde el esquema WeekFit Sandbox QA." } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Cette version de test vise le bac à sable IA, mais ne peut pas l’utiliser. La production n’a pas été contactée. Relancez depuis le schéma WeekFit Sandbox QA." } },
+        "it": { "stringUnit": { "state": "translated", "value": "Questa build di prova è impostata sulla sandbox IA, ma non può usarla. La produzione non è stata contattata. Riavvia dallo scheme WeekFit Sandbox QA." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "このテストビルドはAIサンドボックス向けですが、接続できません。本番環境には接続していません。スキーム WeekFit Sandbox QA から再実行してください。" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "이 테스트 빌드는 AI 샌드박스용이지만 사용할 수 없습니다. 프로덕션에는 연결하지 않았습니다. WeekFit Sandbox QA 스킴으로 다시 실행하세요." } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Ta kompilacja testowa jest ustawiona na piaskownicę AI, ale nie może z niej skorzystać. Produkcja nie została użyta. Uruchom ponownie ze schematu WeekFit Sandbox QA." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Эта тестовая сборка настроена на AI Sandbox, но не может его использовать. Production не вызывался. Запустите снова из схемы WeekFit Sandbox QA." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "此测试版本设置为 AI 沙盒，但无法使用。未连接正式环境。请从 WeekFit Sandbox QA 方案重新运行。" } }
+      }
+    },
+    "ai.usage.finalizing": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Restzeit nach dem Anruf wird aktualisiert" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Updating the balance after the call" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Actualizando el saldo después de la llamada" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Mise à jour du solde après l’appel" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Aggiornamento del saldo dopo la chiamata" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "通話後の残り時間を更新しています" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "통화 후 잔여 시간을 업데이트하는 중" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Aktualizujemy saldo po rozmowie" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Обновляем остаток после звонка" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在更新通话后的剩余时间" } }
+      }
+    },
+    "ai.usage.voiceReserved": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Reserviert" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Reserved" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Reservado" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Réservé" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Riservato" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "予約済み" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "예약됨" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Zarezerwowano" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Зарезервировано" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "已预留" } }
+      }
+    },
+    "ai.usage.voiceUsed": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Verbraucht" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Used" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Usado" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Utilisé" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Usato" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "使用済み" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "사용함" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Wykorzystano" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Использовано" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "已使用" } }
+      }
+    },
     "ai.usage.unavailable": {
       "extractionState": "manual",
       "localizations": {
