@@ -66,3 +66,12 @@ test('first checkout and a new subscription lineage recover the same purchased w
  assert.deepEqual(store.checkoutWallet('anonymous-first-device','Sandbox'),checkout);
  assert.deepEqual(store.wallet({...sub,originalTransactionId:'first-purchase',appAccountToken:checkout.token}),checkout);
 });
+
+test('spent refund debt is repaid once, not deducted again in every future month',t=>{
+ const {store,sub,wallet,purchase,setNow}=setup(t);store.grant(wallet,purchase());
+ for(let i=0;i<40;i++){const key=`photo_${String(i).padStart(4,'0')}`;store.reserve(wallet,sub,'photos',key,'image');store.settle(wallet.id,key,1);}
+ store.refund(purchase());setNow(Date.UTC(2024,1,29,12));
+ assert.equal(store.snapshot(wallet,sub).photos.included,20);
+ assert.equal(store.snapshot(wallet,sub).photos.included,20);
+ setNow(Date.UTC(2024,2,31,12));assert.equal(store.snapshot(wallet,sub).photos.included,30);
+});

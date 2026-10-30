@@ -105,7 +105,23 @@ export class BillingStore {
     // Refund debt is settled before allowing new usage, including the monthly allowance.
     return { included: Math.max(0, included + Math.min(0, purchased)), purchased: Math.max(0, purchased) };
   }
+  settleRefundDebt(wallet, subscription) {
+    if (!subscription.active) return;
+    const period = monthlyWindow(subscription.anchor, this.now());
+    this.atomic(() => {
+      for (const resource of ['photos', 'voice']) {
+        const used = this.get('SELECT used FROM periods WHERE wallet=? AND start=? AND resource=?', wallet, period.start, resource)?.used ?? 0;
+        const balance = this.get('SELECT amount FROM balances WHERE wallet=? AND resource=?', wallet, resource)?.amount ?? 0;
+        const amount = Math.min(Math.max(0, -balance), Math.max(0, ALLOWANCES[resource] - used));
+        if (!amount) continue;
+        this.run(`INSERT INTO periods VALUES(?,?,?,?) ON CONFLICT(wallet,start,resource) DO UPDATE SET used=used+excluded.used`, wallet, period.start, resource, amount);
+        this.adjust(wallet, resource, amount);
+        this.audit(wallet, 'refund_debt_settlement', resource, amount, String(period.start));
+      }
+    });
+  }
   snapshot(wallet, subscription) {
+    this.settleRefundDebt(wallet.id, subscription);
     const period = monthlyWindow(subscription.anchor, this.now());
     const photos = this.remaining(wallet.id, 'photos', period.start, subscription.grandfatheredPhotos);
     const voice = this.remaining(wallet.id, 'voice', period.start);
@@ -159,6 +175,7 @@ export class BillingStore {
   reserve(wallet, subscription, resource, key, fingerprint, maxUnits = 1) {
     if (!['photos','voice'].includes(resource) || !/^[A-Za-z0-9_-]{8,100}$/.test(key) || !Number.isSafeInteger(maxUnits) || maxUnits < 1) fail('invalid_usage_request', 400);
     if (!subscription.active) fail('subscription_required', 402);
+    this.settleRefundDebt(wallet.id, subscription);
     return this.atomic(() => {
       const prior = this.operation(wallet.id, key);
       if (prior) {

@@ -37,6 +37,7 @@ export function createBillingService(config, { authenticate, apple, store, fetch
     queueWaitMs: 120000, retryAfterSeconds: 5 });
   const inflight = new Map(), sessions = new Map(), stopping = new Map();
   let closing = false;
+  let closeTask;
   const context = async (req, requireActive = true) => {
     const uid = await authenticate(req.headers.authorization, config);
     const jws = req.headers['x-weekfit-subscription-jws'];
@@ -239,11 +240,15 @@ export function createBillingService(config, { authenticate, apple, store, fetch
     }
     return true;
   }
-  return { handle, store, async close() {
+  return { handle, store, close() {
+    if (closeTask) return closeTask;
     closing = true; clearInterval(timer);
-    await Promise.allSettled(store.pending().filter(op => op.resource === 'voice').map(op => stop(op.wallet, op.key)));
-    await Promise.allSettled([...inflight.values()]);
-    for (const live of sessions.values()) live.socket?.terminate();
-    store.close();
+    closeTask = (async () => {
+      await Promise.allSettled(store.pending().filter(op => op.resource === 'voice').map(op => stop(op.wallet, op.key)));
+      await Promise.allSettled([...inflight.values()]);
+      for (const live of sessions.values()) live.socket?.terminate();
+      store.close();
+    })();
+    return closeTask;
   } };
 }

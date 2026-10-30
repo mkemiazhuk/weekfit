@@ -34,7 +34,7 @@ SQLite WAL/FULL stores balances, periods, reservations, purchase/refund tombston
 
 An interrupted consumable remains unfinished until server acknowledgment. The subscription transaction observer must not finish consumables as if they were subscriptions. Recovery uses Transaction.unfinished plus the server wallet. Restore Purchases alone does not restore spent consumable transactions.
 
-Refunds reverse credited quantities once, including a negative purchased balance if already consumed. That debt offsets further allowance use. Refund-before-delivery is tombstoned. Server notification handling verifies Apple's signed envelope and transaction. Refund reversal notifications are not auto-recredited: reconcile them explicitly before adding support.
+Refunds reverse credited quantities once, including a negative purchased balance if already consumed. That debt offsets an active monthly allowance once and is recorded as a refund adjustment; it is not deducted again in every future month. Expired months cannot repay debt. Refund-before-delivery is tombstoned. Server notification handling verifies Apple's signed envelope and transaction. Refund reversal notifications are not auto-recredited: reconcile them explicitly before adding support.
 
 ## Backend secrets and environment
 

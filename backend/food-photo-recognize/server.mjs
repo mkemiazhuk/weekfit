@@ -791,7 +791,13 @@ export function createServer(config, dependencies = {}) {
       try { summary.stop?.(); } catch { /* already stopped */ }
       server.closeIdleConnections?.();
       server.closeAllConnections?.();
-      return originalClose(callback);
+      return originalClose((error) => {
+        // Render's SIGTERM callback may exit the process: await provider hangup first.
+        Promise.resolve(billing.close()).then(
+          () => callback?.(error),
+          () => callback?.(error ?? new Error('billing_shutdown_failed')),
+        );
+      });
     }
     if (typeof callback === 'function') queueMicrotask(callback);
     return server;
