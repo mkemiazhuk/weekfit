@@ -4,6 +4,8 @@ on:
     paths:
       - 'WeekFit/**'
       - 'WeekFit.xcodeproj/**'
+      - 'Scripts/archive_ai_sandbox.sh'
+      - 'Scripts/archive_for_app_store.sh'
       - '.github/workflows/ios-ai-billing-build.yml'
   workflow_dispatch:
 permissions:
