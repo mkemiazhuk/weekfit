@@ -122,7 +122,7 @@ nonisolated struct WeekFitAIClient: Sendable {
             var request = URLRequest(url: origin.appending(path: path))
             request.setValue(WeekFitAIBilling.environment, forHTTPHeaderField: "X-WeekFit-Billing-Environment")
             request.httpMethod = method
-            request.timeoutInterval = 180
+            request.timeoutInterval = path == "v2/ai/usage" ? 20 : 180
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             if let proof { request.setValue(proof, forHTTPHeaderField: "X-WeekFit-Subscription-JWS") }
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -136,6 +136,10 @@ nonisolated struct WeekFitAIClient: Sendable {
         }
         guard let http = response as? HTTPURLResponse else { throw WeekFitAIUsageError.unavailable }
         let code = (try? JSONDecoder().decode(WeekFitAIErrorBody.self, from: data))?.error
+        if !(200...299).contains(http.statusCode) {
+            Logger(subsystem: "com.weekfit.app", category: "AIUsage").error(
+                "ai_request_failed path=\(path, privacy: .public) status=\(http.statusCode) code=\(code ?? "unknown", privacy: .public)")
+        }
         if http.statusCode == 402 { throw WeekFitAIUsageError.subscriptionRequired }
         if code == "quota_exhausted" { throw WeekFitAIUsageError.quotaExhausted }
         guard (200...299).contains(http.statusCode) else { throw WeekFitAIUsageError.unavailable }
@@ -232,37 +236,116 @@ final class WeekFitAIUsageStore: ObservableObject {
     @Published private(set) var isBusy = false
     @Published private(set) var message: String?
     @Published private(set) var requiresSubscription = false
-    private var refreshing = false
+    @Published private(set) var isRefreshing = false
+    private let loadUsage: () async throws -> WeekFitAIUsage
+    private let loadProducts: () async throws -> [Product]
+    private let recoverPurchases: () async throws -> WeekFitAIUsage?
+    private let flushStops: () async -> Void
+    private let isEnabled: () -> Bool
+    private let isRefused: () -> Bool
+    private let retryPause: () async throws -> Void
+    private let log = Logger(subsystem: "com.weekfit.app", category: "AIUsage")
+
+    init(loadUsage: @escaping () async throws -> WeekFitAIUsage = { try await WeekFitAIClient().usage() },
+         loadProducts: @escaping () async throws -> [Product] = {
+             try await Product.products(for: WeekFitAIBilling.products)
+                 .filter { $0.type == .consumable }.sorted { $0.price < $1.price }
+         },
+         recoverPurchases: @escaping () async throws -> WeekFitAIUsage? = {
+             var latest: WeekFitAIUsage?
+             for await result in Transaction.unfinished {
+                 if case .verified(let tx) = result, WeekFitAIBilling.isTopUp(tx.productID) {
+                     latest = try await WeekFitAIClient().deliver(result.jwsRepresentation)
+                     await tx.finish()
+                 }
+             }
+             return latest
+         },
+         flushStops: @escaping () async -> Void = { await WeekFitVoiceStopQueue.shared.flush() },
+         isEnabled: @escaping () -> Bool = { WeekFitAIBilling.enabled },
+         isRefused: @escaping () -> Bool = { WeekFitAIBilling.refused },
+         retryPause: @escaping () async throws -> Void = { try await Task.sleep(for: .milliseconds(400)) }) {
+        self.loadUsage = loadUsage
+        self.loadProducts = loadProducts
+        self.recoverPurchases = recoverPurchases
+        self.flushStops = flushStops
+        self.isEnabled = isEnabled
+        self.isRefused = isRefused
+        self.retryPause = retryPause
+    }
+
+    private func readUsage() async throws -> WeekFitAIUsage {
+        do { return try await loadUsage() }
+        catch {
+            // Retry a read only. Never automatically repeat a purchase or provider call.
+            let transient = (error as? WeekFitAIUsageError) == .unavailable
+                || ((error as? URLError).map { $0.code != .cancelled } ?? false)
+            guard transient, !Task.isCancelled else { throw error }
+            try await retryPause()
+            try Task.checkCancellation()
+            return try await loadUsage()
+        }
+    }
+
+    private func report(_ error: Error, stage: String) {
+        log.error("ai_usage_refresh_failed stage=\(stage, privacy: .public) kind=\(String(describing: type(of: error)), privacy: .public)")
+    }
 
     func refresh() async {
-        if WeekFitAIBilling.refused {
+        if isRefused() {
             usage = nil
             products = []
             requiresSubscription = false
             message = WeekFitLocalizedString("ai.usage.sandboxMisconfigured")
             return
         }
-        guard WeekFitAIBilling.enabled, !refreshing else { return }
-        refreshing = true
-        defer { refreshing = false }
-        await WeekFitVoiceStopQueue.shared.flush()
+        guard isEnabled(), !isRefreshing else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
+        message = nil
+
+        // Publish the balance first: stop recovery, unfinished deliveries and StoreKit
+        // product availability must not prevent opening the balance screen.
         do {
-            // Pending consumables must be delivered after a network failure or app termination.
-            for await result in Transaction.unfinished {
-                if case .verified(let tx) = result, WeekFitAIBilling.isTopUp(tx.productID) {
-                    _ = try await WeekFitAIClient().deliver(result.jwsRepresentation)
-                    await tx.finish()
-                }
-            }
-            usage = try await WeekFitAIClient().usage()
-            products = try await Product.products(for: WeekFitAIBilling.products)
-                .filter { $0.type == .consumable }.sorted { $0.price < $1.price }
-            message = nil
+            usage = try await readUsage()
             requiresSubscription = false
         } catch {
+            if error is CancellationError || (error as? URLError)?.code == .cancelled { return }
             requiresSubscription = (error as? WeekFitAIUsageError) == .subscriptionRequired
             if requiresSubscription { usage = nil }
             message = WeekFitAIErrorMessage(error)
+            report(error, stage: "balance")
+        }
+        guard !Task.isCancelled else { return }
+        do {
+            products = try await loadProducts()
+        } catch {
+            if Task.isCancelled { return }
+            // Keep a loaded balance and any previously loaded product list.
+            report(error, stage: "products")
+        }
+        guard !Task.isCancelled else { return }
+        do {
+            if let delivered = try await recoverPurchases() {
+                usage = delivered
+                requiresSubscription = false
+                message = nil
+            }
+        } catch {
+            if Task.isCancelled { return }
+            message = WeekFitAIErrorMessage(error)
+            report(error, stage: "purchase_delivery")
+        }
+        // Flush after the independent read; a slow provider hangup must not hide the page.
+        let hadPendingStops = !WeekFitVoiceStopLedger.pending().isEmpty
+        await flushStops()
+        if hadPendingStops && WeekFitVoiceStopLedger.pending().isEmpty && !Task.isCancelled {
+            do {
+                usage = try await readUsage()
+                requiresSubscription = false
+            } catch {
+                report(error, stage: "balance_after_stop")
+            }
         }
     }
 

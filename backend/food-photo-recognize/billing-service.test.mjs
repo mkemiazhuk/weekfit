@@ -184,3 +184,18 @@ test('unsubscribed callers cannot occupy the voice admission line',async t=>{
  const f=await fixture(t);f.sub.active=false;
  assert.equal((await f.send('/v1/planner-voice/line',{body:{}})).status,402);
 });
+
+test('usage failures expose a safe diagnostic without proofs or internal errors', async t => {
+ const logs=[];
+ const f=await fixture(t,{}, {logs});
+ const invalid=await f.send('/v2/ai/usage',{headers:{'X-WeekFit-Subscription-JWS':'invalid-private-proof'}});
+ assert.equal(invalid.status,402);
+ assert.deepEqual(logs.at(-1),{event:'billing_request_failed',route:'/v2/ai/usage',status:402,code:'subscription_required',kind:'service'});
+ f.service.store.snapshot=()=>{throw Error('private-provider-response');};
+ const failed=await f.send('/v2/ai/usage');
+ assert.equal(failed.status,503);
+ assert.equal(logs.at(-1).kind,'unexpected');
+ assert.equal(logs.at(-1).code,'billing_unavailable');
+ assert.ok(!JSON.stringify(logs).includes('invalid-private-proof'));
+ assert.ok(!JSON.stringify(logs).includes('private-provider-response'));
+});

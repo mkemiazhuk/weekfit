@@ -12,6 +12,9 @@ struct WeekFitAIUsageView: View {
 
     var body: some View {
         List {
+            if store.isRefreshing && store.usage == nil {
+                Section { ProgressView() }
+            }
             if let usage = store.usage {
                 Section(WeekFitLocalizedString("ai.usage.included")) {
                     LabeledContent(WeekFitLocalizedString("ai.usage.photos"), value: usage.grandfatheredPhotos
@@ -72,6 +75,7 @@ struct WeekFitAIUsageView: View {
             }
             Section {
                 Button(WeekFitLocalizedString("ai.usage.refresh")) { Task { await store.refresh() } }
+                    .disabled(store.isRefreshing)
                 Button(WeekFitLocalizedString("ai.usage.manage")) { showManage = true }
             }
         }

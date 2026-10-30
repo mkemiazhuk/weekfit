@@ -301,7 +301,11 @@ export function createBillingService(config, { authenticate, apple, store, fetch
       error('not_found', 404);
     } catch (e) {
       const code = e instanceof ServiceError ? e.code : 'billing_unavailable';
-      send(res, e instanceof ServiceError ? e.status : 503, { error: code });
+      const status = e instanceof ServiceError ? e.status : 503;
+      // No headers, proofs, transaction IDs, user IDs or provider response bodies.
+      log({ event: 'billing_request_failed', route, status, code,
+        kind: e instanceof ServiceError ? 'service' : 'unexpected' });
+      send(res, status, { error: code });
     }
     return true;
   }
