@@ -24,16 +24,14 @@ enum WeekFitCloudAPI {
         set { AccountRemoteDeletionClient.sessionTokenProvider = newValue }
     }
 
-    /// Explicit test archive configuration. App Store receipts never enable this route.
+    /// Explicit test archive configuration, compiled only into dedicated Sandbox archives.
     nonisolated static var sandboxBillingRequested: Bool {
         Bundle.main.object(forInfoDictionaryKey: "WeekFitAISandboxEnabled") as? Bool == true
     }
 
     nonisolated static var sandboxBillingBaseURL: URL? {
         guard sandboxBillingRequested else { return nil }
-        #if !DEBUG
-        guard Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" else { return nil }
-        #endif
+        #if DEBUG || WEEKFIT_AI_SANDBOX
         guard let raw = Bundle.main.object(forInfoDictionaryKey: "WeekFitAISandboxBaseURL") as? String,
               let url = URL(string: raw), url.scheme == "https",
               let host = url.host, !host.isEmpty,
@@ -41,6 +39,9 @@ enum WeekFitCloudAPI {
               url.user == nil, url.password == nil, url.query == nil, url.fragment == nil,
               url.path.isEmpty || url.path == "/" else { return nil }
         return url
+        #else
+        return nil
+        #endif
     }
 
     /// Explicit Sandbox archive → Debug overrides → default production HTTPS.

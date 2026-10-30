@@ -44,7 +44,7 @@ BUILD_ARGS=()
 if [[ -n "$BUILD_NUMBER" ]]; then BUILD_ARGS+=("CURRENT_PROJECT_VERSION=$BUILD_NUMBER"); fi
 xcodebuild archive -project WeekFit.xcodeproj -scheme WeekFit -configuration Release \
     -destination 'generic/platform=iOS' -archivePath "$ARCHIVE_PATH" \
-    CODE_SIGN_STYLE=Automatic "${BUILD_ARGS[@]}"
+    CODE_SIGN_STYLE=Automatic 'SWIFT_ACTIVE_COMPILATION_CONDITIONS=$(inherited) WEEKFIT_AI_SANDBOX' "${BUILD_ARGS[@]}"
 python3 - "$ARCHIVE_PATH/Products/Applications/WeekFit.app/Info.plist" "$SANDBOX_URL" <<'PY'
 import plistlib, sys
 with open(sys.argv[1], 'rb') as f:

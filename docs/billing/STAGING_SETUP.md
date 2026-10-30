@@ -75,11 +75,13 @@ Upload the resulting `build/WeekFit-AI-Sandbox.xcarchive` for internal TestFligh
 only. The script does not upload automatically or provide signing credentials.
 
 The explicit `WeekFitAISandboxEnabled` flag plus HTTPS
-`WeekFitAISandboxBaseURL` opt this archive into staging. Non-Debug builds additionally
-require a Sandbox app receipt; if missing or production, AI billing stays disabled.
+`WeekFitAISandboxBaseURL` opt this archive into staging. Release builds additionally
+require the explicit WEEKFIT_AI_SANDBOX compilation condition set by this script.
+Normal Release builds ignore the Sandbox route and disable Sandbox billing.
 The Sandbox origin cannot equal the production host and cannot contain credentials,
-query, fragment or a path. Debug permits receipt-free local testing. App Store
-release builds must not contain these Sandbox flags. TestFlight receipt detection,
+query, fragment or a path. Debug permits local testing. The normal App Store archive script rejects Sandbox
+plist settings. The dedicated Sandbox archive must never be submitted for App Store
+release. Real TestFlight environment validation,
 real purchase delivery, live voice events/hangup, backgrounding and outage behavior
 still require real-device validation; simulator build success does not certify them.
 
