@@ -478,7 +478,8 @@ struct TodayView: View {
         .animation(nil, value: tabIsActive)
         let _ = TodayStartupDiagnostics.step(7, "body evaluation complete", detail: "modifiers attaching")
 
-        return root
+        // Bound SwiftUI generic inference at stable root modifier boundaries.
+        let presented = root
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.today")
         .sheet(isPresented: $showAIUsage) { NavigationStack { WeekFitAIUsageView() } }
@@ -554,6 +555,7 @@ struct TodayView: View {
                 recoveryBreakdown: healthManager.recoveryBreakdown
             )
         }
+        let healthObserved = AnyView(presented)
         .task(id: todayViewModel.healthRefreshID) {
             guard tabIsActive else { return }
             let taskName = "today.refreshHealthAndNutrition"
@@ -659,6 +661,7 @@ struct TodayView: View {
                 todayViewModel.triggerHealthRefresh()
             }
         }
+        let eventObserved = AnyView(healthObserved)
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             refreshTodayAfterAppBecameActive()
@@ -722,6 +725,7 @@ struct TodayView: View {
             TodayStartupDiagnostics.taskSuccess(taskName)
         }
         // Sheets/observers stay on root (not under Coach card) — stack-safe, no staged UI.
+        let actionSheets = AnyView(eventObserved)
         .sheet(item: $activityToConfirm) { activity in
             missedConfirmationSheet(activity)
                 .presentationDetents([.fraction(0.40)])
@@ -868,6 +872,7 @@ struct TodayView: View {
         .onChange(of: languageManager.selectedLanguage) { _, _ in
             refreshQuickLogLocalizedRows()
         }
+        return AnyView(actionSheets)
         .sheet(isPresented: $showDirectDrinkLogSheet) {
             ZStack {
                 QuickActionSheetDesign.Color.sheetBackground(for: .drinks)
