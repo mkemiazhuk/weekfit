@@ -29,7 +29,7 @@ nonisolated struct WeekFitAIUsage: Decodable, Sendable {
     var resetDate: Date { Date(timeIntervalSince1970: periodEnd / 1000) }
 }
 
-nonisolated enum WeekFitAIUsageError: Error {
+nonisolated enum WeekFitAIUsageError: Error, Equatable {
     case subscriptionRequired, quotaExhausted, unavailable, pending, verification
     var localizationKey: String {
         switch self {
@@ -120,6 +120,7 @@ final class WeekFitAIUsageStore: ObservableObject {
     @Published private(set) var products: [Product] = []
     @Published private(set) var isBusy = false
     @Published private(set) var message: String?
+    @Published private(set) var requiresSubscription = false
     private var refreshing = false
 
     func refresh() async {
@@ -138,7 +139,12 @@ final class WeekFitAIUsageStore: ObservableObject {
             products = try await Product.products(for: WeekFitAIBilling.products)
                 .filter { $0.type == .consumable }.sorted { $0.price < $1.price }
             message = nil
-        } catch { message = WeekFitAIErrorMessage(error) }
+            requiresSubscription = false
+        } catch {
+            requiresSubscription = (error as? WeekFitAIUsageError) == .subscriptionRequired
+            if requiresSubscription { usage = nil }
+            message = WeekFitAIErrorMessage(error)
+        }
     }
 
     func buy(_ product: Product) async {

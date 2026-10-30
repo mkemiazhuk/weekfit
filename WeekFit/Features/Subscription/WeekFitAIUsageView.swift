@@ -49,7 +49,7 @@ struct WeekFitAIUsageView: View {
                     }
                 }
             }
-            if store.usage?.active != true {
+            if store.usage?.active == false || store.requiresSubscription {
                 Section {
                     Button(WeekFitLocalizedString("ai.usage.subscribe")) { showPaywall = true }
                 }
