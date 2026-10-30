@@ -13,6 +13,7 @@ struct PhotoFoodFlowHost: View {
     var onRequestPaidSubscription: (() -> Void)? = nil
 
     @Environment(\.weekFitPalette) private var palette
+    @State private var showAIUsage = false
 
     private var foodAccent: Color { QuickFoodAccent.actionOrange }
 
@@ -43,6 +44,9 @@ struct PhotoFoodFlowHost: View {
             }
         }
         .background(QuickActionSheetDesign.Color.sheetBackground(for: .food).ignoresSafeArea())
+        .sheet(isPresented: $showAIUsage) {
+            NavigationStack { WeekFitAIUsageView() }
+        }
         .onChange(of: coordinator.phase) { _, newPhase in
             let id = coordinator.lastAnalysisId ?? "none"
             PhotoFoodDiagnostics.event(
@@ -118,7 +122,11 @@ struct PhotoFoodFlowHost: View {
                 .padding(.horizontal, 24)
 
             VStack(spacing: 12) {
-                if error == .subscriptionRequired {
+                if error == .quotaExhausted {
+                    primaryActionButton(title: WeekFitLocalizedString("ai.usage.topUp")) {
+                        showAIUsage = true
+                    }
+                } else if error == .subscriptionRequired {
                     primaryActionButton(
                         title: WeekFitLocalizedString("today.photoLog.error.subscriptionRequired.cta")
                     ) {

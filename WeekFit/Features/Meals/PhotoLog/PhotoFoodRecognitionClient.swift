@@ -44,6 +44,27 @@ struct PhotoFoodRecognitionClient: PhotoFoodRecognizing {
         onStage: @escaping @Sendable (PhotoFoodNetworkStage) -> Void
     ) async throws -> PhotoFoodAPIResponse {
         let clock = PhotoFoodDiagnostics.AnalysisClock(analysisId: analysisId)
+        if WeekFitAIBilling.enabled {
+            guard imageJPEG.count > 64, imageJPEG.count <= PhotoFoodImagePreparer.maxUploadBytes else {
+                throw PhotoFoodRecognitionError.invalidImage
+            }
+            onStage(.authenticating)
+            let body = PhotoFoodRecognizeRequest(imageBase64: imageJPEG.base64EncodedString(),
+                mimeType: "image/jpeg", locale: Self.recognitionLocaleIdentifier(), note: note)
+            do {
+                onStage(.uploading)
+                return try await WeekFitAIClient(baseURL: baseURLOverride ?? WeekFitCloudAPI.foodPhotoBaseURL)
+                    .request(path: "v2/ai/photo", body: JSONEncoder().encode(body), idempotencyKey: analysisId)
+            } catch WeekFitAIUsageError.subscriptionRequired {
+                throw PhotoFoodRecognitionError.subscriptionRequired
+            } catch WeekFitAIUsageError.quotaExhausted {
+                throw PhotoFoodRecognitionError.quotaExhausted
+            } catch is CancellationError {
+                throw PhotoFoodRecognitionError.cancelled
+            } catch {
+                throw PhotoFoodRecognitionError.unavailable
+            }
+        }
         guard imageJPEG.count > 64, imageJPEG.count <= PhotoFoodImagePreparer.maxUploadBytes else {
             throw PhotoFoodRecognitionError.invalidImage
         }

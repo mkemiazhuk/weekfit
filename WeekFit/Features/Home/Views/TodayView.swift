@@ -41,6 +41,8 @@ struct TodayView: View {
     @State private var showProfile = false
     @State private var plannerVoiceEnabled = false
     @State private var showPlannerVoice = false
+    @State private var showAIUsage = false
+    @State private var openingMaya = false
     @AppStorage(NotificationPreferenceKey.activityReminders)
     private var activityRemindersEnabled = false
     @AppStorage(NotificationPreferenceKey.completionCheckIns)
@@ -479,6 +481,7 @@ struct TodayView: View {
         return root
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.today")
+        .sheet(isPresented: $showAIUsage) { NavigationStack { WeekFitAIUsageView() } }
         .fullScreenCover(isPresented: $showPlannerVoice) {
             PlanRealtimeVoiceSheet(
                 planningDay: selectedDate,
@@ -2701,6 +2704,19 @@ struct TodayView: View {
 
     private func openMayaCall() {
         guard plannerVoiceEnabled, !showPlannerVoice else { return }
+        if WeekFitAIBilling.enabled {
+            guard !openingMaya else { return }
+            openingMaya = true
+            Task {
+                defer { openingMaya = false }
+                do {
+                    let usage = try await WeekFitAIClient().usage()
+                    if usage.active && usage.voice.total > 0 { showPlannerVoice = true }
+                    else { showAIUsage = true }
+                } catch { showAIUsage = true }
+            }
+            return
+        }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         showPlannerVoice = true
     }

@@ -495,6 +495,7 @@ export function consoleDocument() {
   let toolFollowUp = false;
   let sessionLanguage = 'ru';
   let sessionName = '';
+  let sdpResolve = null;
   const pending = new Map();
   const CHECK = {
     ru: { there: (n) => (n ? n + ', ты ещё здесь?' : 'Ты ещё здесь?'), bye: 'Я завершаю звонок. Пока!' },
@@ -661,6 +662,7 @@ export function consoleDocument() {
   }
 
   window.weekfit = {
+    sdpAnswer: (sdp) => { if (sdpResolve) { sdpResolve(sdp); sdpResolve = null; } },
     stop: () => stop('user'),
     setMuted: (value) => {
       muted = Boolean(value);
@@ -714,6 +716,16 @@ export function consoleDocument() {
         };
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
+        if (options.managed) {
+          const answer = new Promise((resolve, reject) => {
+            sdpResolve = resolve;
+            setTimeout(() => { if (sdpResolve === resolve) { sdpResolve = null; reject(new Error('connect_timeout')); } }, 25000);
+          });
+          post({ type: 'sdp', sdp: offer.sdp });
+          const sdp = await answer;
+          if (thisCall === callNumber && pc) await pc.setRemoteDescription({ type: 'answer', sdp });
+          return;
+        }
         const response = await fetch('https://api.openai.com/v1/realtime/calls', {
           method: 'POST',
           body: offer.sdp,
@@ -924,7 +936,7 @@ function localStamp(date, timeZone) {
   return `${value('year')}-${value('month')}-${value('day')}T${hour}:${value('minute')}`;
 }
 
-async function mintSecret(config, fetcher, uid, payload, log) {
+export function plannerSessionConfiguration(config, payload) {
   if (!config.plannerVoiceModel) throw new ServiceError('planner_voice_unconfigured', 503);
   const now = payload?.now ? new Date(payload.now) : new Date();
   if (Number.isNaN(now.getTime())) throw new ServiceError('invalid_now', 422);
@@ -962,6 +974,11 @@ async function mintSecret(config, fetcher, uid, payload, log) {
       output: { voice: config.plannerVoiceVoice || 'marin' },
     },
   };
+  return session;
+}
+
+async function mintSecret(config, fetcher, uid, payload, log) {
+  const session = plannerSessionConfiguration(config, payload);
   if (config.openAIMock) {
     log({ event: 'planner_voice_session', account: accountHash(uid), model: session.model, mock: true });
     return {

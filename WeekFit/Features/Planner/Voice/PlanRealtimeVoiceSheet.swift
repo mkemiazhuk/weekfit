@@ -20,6 +20,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
 
     @Published private(set) var phase: Phase = .connecting
     @Published private(set) var connectedAt: Date?
+    @Published private(set) var remainingSeconds: Int?
     @Published private(set) var muted = false
     @Published private(set) var webView: WKWebView?
     @Published private(set) var receipt: PlanVoiceReceipt?
@@ -74,6 +75,10 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         ended = true
         connectTask?.cancel()
         heartbeat?.cancel()
+        if let id = secret?.sessionId {
+            Task { let _: WeekFitAIUsage? = try? await WeekFitAIClient().request(path: "v2/ai/voice/stop",
+                body: JSONEncoder().encode(["sessionId": id])) }
+        }
         let ticket = lineTicket
         lineTicket = nil
         if let ticket {
@@ -94,6 +99,19 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         switch type {
         case "state":
             applyState(payload)
+        case "sdp":
+            guard let sdp = payload["sdp"] as? String, let id = secret?.sessionId else { return }
+            Task {
+                do {
+                    struct Answer: Decodable { let sdp: String }
+                    let answer: Answer = try await WeekFitAIClient().request(path: "v2/ai/voice/connect",
+                        body: JSONEncoder().encode(["sessionId": id, "sdp": sdp]))
+                    webView?.evaluateJavaScript("window.weekfit.sdpAnswer(\(jsLiteral(answer.sdp)))")
+                } catch {
+                    phase = .failed(error.localizedDescription)
+                    end()
+                }
+            }
         case "tool":
             guard let callId = payload["callId"] as? String else { return }
             let name = payload["name"] as? String ?? "create_activity"
@@ -159,6 +177,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                 return
             }
             self.secret = secret
+            remainingSeconds = secret.budgetSeconds
             startHeartbeat(ticket)
             let configuration = WKWebViewConfiguration()
             configuration.allowsInlineMediaPlayback = true
@@ -172,6 +191,10 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             var request = URLRequest(url: client.baseURL.appending(path: "v1/planner-voice/console"))
             request.setValue("Bearer \(client.token)", forHTTPHeaderField: "Authorization")
             view.load(request)
+        } catch let error as WeekFitAIUsageError {
+            guard !ended else { return }
+            ringback.stop()
+            phase = .failed(error.localizedDescription)
         } catch PlanRealtimeClientError.lineFull {
             guard !ended else { return }
             ringback.stop()
@@ -325,6 +348,15 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                 if Task.isCancelled { return }
                 guard let client = try? await makeClient() else { return }
                 await client.beatLine(ticket: ticket)
+                if let id = secret?.sessionId {
+                    do {
+                        struct Status: Decodable { let active: Bool; let remainingSeconds: Int }
+                        let status: Status = try await WeekFitAIClient().request(path: "v2/ai/voice/status",
+                            body: JSONEncoder().encode(["sessionId": id]))
+                        remainingSeconds = status.remainingSeconds
+                        if !status.active { end(); return }
+                    } catch { end(); return }
+                }
             }
         }
     }
@@ -692,6 +724,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     private func json(_ secret: PlanRealtimeSessionSecret) -> String? {
         let object: [String: Any] = [
             "ephemeralKey": secret.value,
+            "managed": secret.managed ?? false,
             "idleSeconds": secret.idleSeconds,
             "language": callLanguage,
             "givenName": ProfileService.resolvedGivenName(),
@@ -802,6 +835,7 @@ struct PlanRealtimeVoiceSheet: View {
     @EnvironmentObject private var languageManager: AppLanguageManager
     @StateObject private var controller = PlanRealtimeSessionController()
     @State private var routeRevision = 0
+    @State private var showAIUsage = false
 
     var body: some View {
         let _ = languageManager.selectedLanguage
@@ -825,6 +859,9 @@ struct PlanRealtimeVoiceSheet: View {
                     .opacity(0.01)
                     .accessibilityHidden(true)
             }
+            if WeekFitAIBilling.enabled, case .failed = controller.phase {
+                Button(WeekFitLocalizedString("ai.usage.title")) { showAIUsage = true }
+            }
             controls
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -837,6 +874,7 @@ struct PlanRealtimeVoiceSheet: View {
                 controller.begin()
             }
         }
+        .sheet(isPresented: $showAIUsage) { NavigationStack { WeekFitAIUsageView() } }
         .onDisappear { controller.end() }
         .onChange(of: controller.phase) { _, phase in
             if phase == .ended { dismiss() }
@@ -875,6 +913,10 @@ struct PlanRealtimeVoiceSheet: View {
                     .font(.subheadline)
                     .foregroundStyle(palette.textSecondary)
                     .multilineTextAlignment(.center)
+            }
+            if let seconds = controller.remainingSeconds, seconds <= 60 {
+                Text(WeekFitLocalizedString("ai.usage.lastMinute"))
+                    .font(.footnote).foregroundStyle(palette.textSecondary)
             }
             if controller.muted, controller.connectedAt != nil {
                 Label(WeekFitLocalizedString("planner.voice.micOff"), systemImage: "mic.slash")

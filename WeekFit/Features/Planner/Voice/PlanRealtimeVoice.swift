@@ -10,6 +10,9 @@ struct PlanRealtimeSessionSecret: Decodable, Equatable {
     var value: String
     var model: String
     var idleSeconds: Int
+    var managed: Bool? = nil
+    var sessionId: String? = nil
+    var budgetSeconds: Int? = nil
 }
 
 enum PlanRealtimeMayaMemory {
@@ -283,6 +286,11 @@ struct PlanRealtimeClient {
         ]
         if !dayContext.isEmpty {
             body["dayContext"] = dayContext
+        }
+        if WeekFitAIBilling.enabled {
+            body["idempotencyKey"] = UUID().uuidString
+            return try await WeekFitAIClient(baseURL: baseURL).request(path: "v2/ai/voice/session",
+                body: JSONSerialization.data(withJSONObject: body))
         }
         return try await send(
             method: "POST",

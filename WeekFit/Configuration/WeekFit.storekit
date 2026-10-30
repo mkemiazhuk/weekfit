@@ -1,103 +1,145 @@
 {
-  "identifier" : "WeekFitSubscriptions",
-  "nonRenewableSubscriptions" : [
-
-  ],
-  "products" : [
-
-  ],
-  "settings" : {
-    "_applicationInternalID" : "6776311371",
-    "_developerTeamID" : "7R6347XPK2",
-    "_failTransactionsEnabled" : false,
-    "_locale" : "en_US",
-    "_storefront" : "USA",
-    "_storeKitErrors" : [
-
-    ]
-  },
-  "subscriptionGroups" : [
+  "identifier": "WeekFitSubscriptions",
+  "nonRenewableSubscriptions": [],
+  "products": [
     {
-      "id" : "21451820",
-      "localizations" : [
+      "displayPrice": "1.29",
+      "familyShareable": false,
+      "internalID": "AI-photos20",
+      "localizations": [
         {
-          "description" : "",
-          "displayName" : "WeekFit Premium",
-          "locale" : "en_US"
+          "description": "Additional AI usage. Requires an active Premium subscription. Purchased balance does not expire.",
+          "displayName": "20 photo recognitions",
+          "locale": "en_US"
         }
       ],
-      "name" : "WeekFit Premium",
-      "subscriptions" : [
+      "productID": "com.weekfit.topup.photos20",
+      "referenceName": "20 photo recognitions",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "2.49",
+      "familyShareable": false,
+      "internalID": "AI-photos50",
+      "localizations": [
         {
-          "adHocOffers" : [
-
-          ],
-          "codeOffers" : [
-
-          ],
-          "displayPrice" : "34.99",
-          "familyShareable" : false,
-          "groupNumber" : 1,
-          "internalID" : "21451821",
-          "introductoryOffer" : {
-            "displayPrice" : "0",
-            "internalID" : "21451823",
-            "paymentMode" : "free",
-            "subscriptionPeriod" : "P3D"
-          },
-          "localizations" : [
+          "description": "Additional AI usage. Requires an active Premium subscription. Purchased balance does not expire.",
+          "displayName": "50 photo recognitions",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "com.weekfit.topup.photos50",
+      "referenceName": "50 photo recognitions",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "1.79",
+      "familyShareable": false,
+      "internalID": "AI-voice15",
+      "localizations": [
+        {
+          "description": "Additional AI usage. Requires an active Premium subscription. Purchased balance does not expire.",
+          "displayName": "15 minutes with Maya",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "com.weekfit.topup.voice15",
+      "referenceName": "15 minutes with Maya",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "2.99",
+      "familyShareable": false,
+      "internalID": "AI-voice30",
+      "localizations": [
+        {
+          "description": "Additional AI usage. Requires an active Premium subscription. Purchased balance does not expire.",
+          "displayName": "30 minutes with Maya",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "com.weekfit.topup.voice30",
+      "referenceName": "30 minutes with Maya",
+      "type": "Consumable"
+    }
+  ],
+  "settings": {
+    "_applicationInternalID": "6776311371",
+    "_developerTeamID": "7R6347XPK2",
+    "_failTransactionsEnabled": false,
+    "_locale": "en_US",
+    "_storefront": "USA",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [
+    {
+      "id": "21451820",
+      "localizations": [
+        {
+          "description": "",
+          "displayName": "WeekFit Premium",
+          "locale": "en_US"
+        }
+      ],
+      "name": "WeekFit Premium",
+      "subscriptions": [
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "34.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "21451821",
+          "introductoryOffer": null,
+          "localizations": [
             {
-              "description" : "AI coaching, workouts, recovery and nutrition insights",
-              "displayName" : "WeekFit Annual",
-              "locale" : "en_US"
+              "description": "AI coaching, workouts, recovery and nutrition insights",
+              "displayName": "WeekFit Annual",
+              "locale": "en_US"
             },
             {
-              "description" : "Персональные рекомендации, тренировки, восстановление и питание",
-              "displayName" : "WeekFit на год",
-              "locale" : "ru"
+              "description": "Персональные рекомендации, тренировки, восстановление и питание",
+              "displayName": "WeekFit на год",
+              "locale": "ru"
             }
           ],
-          "productID" : "com.weekfit.subscription.annual",
-          "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "WeekFit Annual",
-          "subscriptionGroupID" : "21451820",
-          "type" : "RecurringSubscription"
+          "productID": "com.weekfit.subscription.annual",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "WeekFit Annual",
+          "subscriptionGroupID": "21451820",
+          "type": "RecurringSubscription"
         },
         {
-          "adHocOffers" : [
-
-          ],
-          "codeOffers" : [
-
-          ],
-          "displayPrice" : "4.99",
-          "familyShareable" : false,
-          "groupNumber" : 2,
-          "internalID" : "21451822",
-          "introductoryOffer" : null,
-          "localizations" : [
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "4.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "21451822",
+          "introductoryOffer": null,
+          "localizations": [
             {
-              "description" : "AI coaching, workouts, recovery and nutrition insights",
-              "displayName" : "WeekFit Monthly",
-              "locale" : "en_US"
+              "description": "AI coaching, workouts, recovery and nutrition insights",
+              "displayName": "WeekFit Monthly",
+              "locale": "en_US"
             },
             {
-              "description" : "Персональные рекомендации, тренировки, восстановление и питание",
-              "displayName" : "WeekFit на месяц",
-              "locale" : "ru"
+              "description": "Персональные рекомендации, тренировки, восстановление и питание",
+              "displayName": "WeekFit на месяц",
+              "locale": "ru"
             }
           ],
-          "productID" : "com.weekfit.subscription.monthly",
-          "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "WeekFit Monthly",
-          "subscriptionGroupID" : "21451820",
-          "type" : "RecurringSubscription"
+          "productID": "com.weekfit.subscription.monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "WeekFit Monthly",
+          "subscriptionGroupID": "21451820",
+          "type": "RecurringSubscription"
         }
       ]
     }
   ],
-  "version" : {
-    "major" : 3,
-    "minor" : 0
+  "version": {
+    "major": 3,
+    "minor": 0
   }
 }

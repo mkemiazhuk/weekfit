@@ -548,6 +548,16 @@ private extension ProfileView {
                 SettingsGroupDivider()
             }
 
+            if WeekFitAIBilling.enabled {
+                NavigationLink {
+                    WeekFitAIUsageView().settingsNavigationPush()
+                } label: {
+                    Label(WeekFitLocalizedString("ai.usage.title"), systemImage: "sparkles")
+                        .foregroundStyle(textPrimary)
+                }
+                SettingsGroupDivider()
+            }
+
             Button {
                 settingsPaywallInstanceID = UUID().uuidString
                 showWeekFitAccessPaywall = true

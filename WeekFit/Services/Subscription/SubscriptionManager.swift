@@ -61,6 +61,7 @@ final class SubscriptionManager: ObservableObject {
     /// Promo / intro / offer code / win-back do **not** unlock AI (server enforces the same).
     var canUseCloudPhotoNutritionAnalysis: Bool {
         _ = photoAIFreeTrialRevision
+        if WeekFitAIBilling.enabled { return activeSubscription != nil && hasFullAccess }
         return hasVerifiedPaidSubscriptionProof || hasPhotoAIFreeTrialRemaining
     }
 
