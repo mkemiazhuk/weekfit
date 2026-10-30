@@ -32,12 +32,16 @@ export function monthlyWindow(anchor, now) {
 }
 
 export class BillingStore {
-  constructor(filename, { now = Date.now, maxVoiceCalls = 5 } = {}) {
+  constructor(filename, { now = Date.now, maxVoiceCalls = 5, database, environment } = {}) {
     mkdirSync(dirname(filename), { recursive: true });
-    this.db = new DatabaseSync(filename);
+    if (environment != null && !['Sandbox', 'Production'].includes(environment)) throw Error('Invalid billing environment');
+    this.environment = environment;
+    this.prefix = environment === 'Sandbox' ? 'sandbox_' : environment === 'Production' ? 'prod_' : '';
+    this.ownsDatabase = !database;
+    this.db = database ?? new DatabaseSync(filename);
     this.now = now;
     this.maxVoiceCalls = maxVoiceCalls;
-    this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000; PRAGMA locking_mode=EXCLUSIVE;
+    this.db.exec(this.sql(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000; PRAGMA locking_mode=EXCLUSIVE;
       CREATE TABLE IF NOT EXISTS wallets (id TEXT PRIMARY KEY, token TEXT UNIQUE NOT NULL);
       CREATE TABLE IF NOT EXISTS subscriptions (id TEXT PRIMARY KEY, wallet TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS checkout_identities (id TEXT PRIMARY KEY, wallet TEXT NOT NULL);
@@ -56,20 +60,29 @@ export class BillingStore {
       CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY, wallet TEXT, event TEXT, resource TEXT,
         quantity INTEGER, reference TEXT, at INTEGER);
       CREATE TABLE IF NOT EXISTS usage (id TEXT PRIMARY KEY, wallet TEXT, value TEXT NOT NULL);
-      PRAGMA user_version=1;`);
+      PRAGMA user_version=1;`));
+  }
+  sql(statement) {
+    // Only fixed SQL identifiers are rewritten; user values are always bound parameters.
+    return this.prefix ? statement.replace(/\b(wallets|subscriptions|checkout_identities|purchases|periods|balances|operations|audit|usage|one_voice_call)\b/g,
+      name => this.prefix + name) : statement;
+  }
+  assertEnvironment(environment) {
+    if (this.environment && environment !== this.environment) fail('billing_environment_mismatch', 403);
   }
   atomic(fn) {
     this.db.exec('BEGIN IMMEDIATE');
     try { const result = fn(); this.db.exec('COMMIT'); return result; }
     catch (e) { this.db.exec('ROLLBACK'); throw e; }
   }
-  get(sql, ...args) { return this.db.prepare(sql).get(...args); }
-  run(sql, ...args) { return this.db.prepare(sql).run(...args); }
+  get(sql, ...args) { return this.db.prepare(this.sql(sql)).get(...args); }
+  run(sql, ...args) { return this.db.prepare(this.sql(sql)).run(...args); }
   audit(wallet, event, resource, quantity, reference) {
     this.run('INSERT INTO audit(wallet,event,resource,quantity,reference,at) VALUES(?,?,?,?,?,?)',
       wallet, event, resource, quantity, reference, this.now());
   }
   checkoutWallet(uid, environment) {
+    this.assertEnvironment(environment);
     const identity = hash(`${environment}:${uid}`);
     return this.atomic(() => {
       let row = this.get('SELECT wallet FROM checkout_identities WHERE id=?', identity);
@@ -84,6 +97,7 @@ export class BillingStore {
   }
   // Restored StoreKit subscription lineage, NOT the ephemeral Firebase anonymous UID.
   wallet(subscription) {
+    this.assertEnvironment(subscription.environment);
     const id = `${subscription.environment}:${subscription.originalTransactionId}`;
     return this.atomic(() => {
       let row = this.get('SELECT wallet FROM subscriptions WHERE id=?', id);
@@ -121,6 +135,7 @@ export class BillingStore {
     });
   }
   snapshot(wallet, subscription) {
+    this.assertEnvironment(subscription.environment);
     this.settleRefundDebt(wallet.id, subscription);
     const period = monthlyWindow(subscription.anchor, this.now());
     const photos = this.remaining(wallet.id, 'photos', period.start, subscription.grandfatheredPhotos);
@@ -131,6 +146,7 @@ export class BillingStore {
       photos, voice, limits: ALLOWANCES };
   }
   grant(wallet, transaction) {
+    this.assertEnvironment(transaction.environment);
     const pack = TOPUPS[transaction.productId];
     if (!pack || transaction.type !== 'Consumable' || transaction.appAccountToken?.toLowerCase() !== wallet.token.toLowerCase()) {
       fail('purchase_owner_mismatch', 403);
@@ -150,6 +166,7 @@ export class BillingStore {
     });
   }
   refund(transaction) {
+    this.assertEnvironment(transaction.environment);
     const id = `${transaction.environment}:${transaction.transactionId}`;
     this.atomic(() => {
       const prior = this.get('SELECT * FROM purchases WHERE id=?', id);
@@ -173,6 +190,7 @@ export class BillingStore {
   }
   operation(wallet, key) { return this.get('SELECT * FROM operations WHERE wallet=? AND key=?', wallet, key); }
   reserve(wallet, subscription, resource, key, fingerprint, maxUnits = 1) {
+    this.assertEnvironment(subscription.environment);
     if (!['photos','voice'].includes(resource) || !/^[A-Za-z0-9_-]{8,100}$/.test(key) || !Number.isSafeInteger(maxUnits) || maxUnits < 1) fail('invalid_usage_request', 400);
     if (!subscription.active) fail('subscription_required', 402);
     this.settleRefundDebt(wallet.id, subscription);
@@ -227,7 +245,7 @@ export class BillingStore {
       return this.operation(wallet, key);
     });
   }
-  pending() { return this.db.prepare("SELECT * FROM operations WHERE state='reserved'").all(); }
+  pending() { return this.db.prepare(this.sql("SELECT * FROM operations WHERE state='reserved'")).all(); }
   claimPhotoAttempt(wallet, key, limit) {
     this.atomic(() => {
       const day = new Date(this.now()); day.setUTCHours(0,0,0,0);
@@ -239,5 +257,5 @@ export class BillingStore {
   recordUsage(wallet, id, value) {
     return this.run('INSERT OR IGNORE INTO usage VALUES(?,?,?)', hash(`${wallet}:${id}`), wallet, JSON.stringify(value)).changes === 1;
   }
-  close() { this.db.close(); }
+  close() { if (this.ownsDatabase) this.db.close(); }
 }

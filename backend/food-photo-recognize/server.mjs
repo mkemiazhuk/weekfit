@@ -10,7 +10,7 @@ import { recognize, validateInput, ServiceError, FOOD_PROMPT_VERSION } from './r
 import { createSummaryHandler, SUMMARY_PROMPT_VERSION } from './coach-summary.mjs';
 import { createPlannerVoiceHandler, plannerVoiceSettings, createPlannerCallLine } from './planner-voice.mjs';
 import { requirePaidSubscriptionJWS } from './subscription-proof.mjs';
-import { createBillingService } from './billing-service.mjs';
+import { createBillingRouter } from './billing-router.mjs';
 import { createConcurrencyGate } from './concurrency.mjs';
 import {
   createIdempotencyStore,
@@ -77,6 +77,8 @@ export function configuration(env = process.env) {
   return {
     apiKey: env.OPENAI_API_KEY ?? '',
     billingEnabled: env.AI_BILLING_ENABLED === '1',
+    sandboxBillingEnabled: env.AI_BILLING_SANDBOX_ENABLED === '1',
+    sandboxPhotoBudget: integer('BILLING_SANDBOX_PHOTO_BUDGET', 20, 0, 200),
     openAIMock,
     mockDelayMs: integer('FOOD_PHOTO_MOCK_DELAY_MS', 50, 0, 120000),
     mockScenario,
@@ -165,7 +167,7 @@ export function createServer(config, dependencies = {}) {
   };
   const voiceLine = createPlannerCallLine({ maxCalls: config.plannerVoiceMaxCalls ?? 5,
     maxWaiting: config.plannerVoiceMaxWaiting ?? 100 });
-  const billing = createBillingService(runtimeConfig, {
+  const billing = createBillingRouter(runtimeConfig, {
     line: voiceLine,
     authenticate: auth,
     ...dependencies.billing,

@@ -301,6 +301,9 @@ struct PlanRealtimeClient {
 
     private func postLine(path: String, ticket: String) async {
         var request = URLRequest(url: baseURL.appending(path: path))
+        if WeekFitAIBilling.enabled {
+            request.setValue(WeekFitAIBilling.environment, forHTTPHeaderField: "X-WeekFit-Billing-Environment")
+        }
         request.httpMethod = "POST"
         request.timeoutInterval = 20
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -327,6 +330,9 @@ struct PlanRealtimeClient {
             "outputTokens": outputTokens,
         ]
         var request = URLRequest(url: baseURL.appending(path: "v1/planner-voice/usage"))
+        if WeekFitAIBilling.enabled {
+            request.setValue(WeekFitAIBilling.environment, forHTTPHeaderField: "X-WeekFit-Billing-Environment")
+        }
         request.httpMethod = "POST"
         request.timeoutInterval = 20
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -349,6 +355,9 @@ struct PlanRealtimeClient {
         body: [String: Any]?
     ) async throws -> Response {
         var request = URLRequest(url: url)
+        if WeekFitAIBilling.enabled {
+            request.setValue(WeekFitAIBilling.environment, forHTTPHeaderField: "X-WeekFit-Billing-Environment")
+        }
         request.httpMethod = method
         request.timeoutInterval = 20
         request.setValue("application/json", forHTTPHeaderField: "Accept")

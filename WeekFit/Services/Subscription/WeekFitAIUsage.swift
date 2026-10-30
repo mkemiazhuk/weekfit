@@ -10,6 +10,7 @@ nonisolated enum WeekFitAIBilling {
         }
         return Bundle.main.object(forInfoDictionaryKey: "WeekFitAIUsageEnabled") as? Bool == true
     }
+    static var environment: String { WeekFitCloudAPI.sandboxBillingRequested ? "Sandbox" : "Production" }
     static let products = ["com.weekfit.topup.photos20", "com.weekfit.topup.photos50",
                            "com.weekfit.topup.voice15", "com.weekfit.topup.voice30"]
     static func isTopUp(_ id: String) -> Bool { products.contains(id) }
@@ -83,6 +84,7 @@ nonisolated struct WeekFitAIClient: Sendable {
         func perform(refresh: Bool) async throws -> (Data, URLResponse) {
             let token = try await PhotoFoodFirebaseAuth.idToken(forcingRefresh: refresh)
             var request = URLRequest(url: origin.appending(path: path))
+            request.setValue(WeekFitAIBilling.environment, forHTTPHeaderField: "X-WeekFit-Billing-Environment")
             request.httpMethod = method
             request.timeoutInterval = 180
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

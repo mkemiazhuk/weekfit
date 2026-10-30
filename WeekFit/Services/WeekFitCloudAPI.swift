@@ -35,7 +35,6 @@ enum WeekFitCloudAPI {
         guard let raw = Bundle.main.object(forInfoDictionaryKey: "WeekFitAISandboxBaseURL") as? String,
               let url = URL(string: raw), url.scheme == "https",
               let host = url.host, !host.isEmpty,
-              host != productionFoodPhotoBaseURL.host,
               url.user == nil, url.password == nil, url.query == nil, url.fragment == nil,
               url.path.isEmpty || url.path == "/" else { return nil }
         return url

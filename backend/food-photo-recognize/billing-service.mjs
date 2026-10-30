@@ -43,6 +43,7 @@ export function createBillingService(config, { authenticate, apple, store, fetch
     const jws = req.headers['x-weekfit-subscription-jws'];
     if (typeof jws !== 'string' || jws.length > 200000) error('subscription_required', 402);
     const subscription = await apple.subscription(jws);
+    if (subscription.environment !== apple.environment) error('billing_environment_mismatch', 403);
     if (requireActive && !subscription.active) error('subscription_required', 402);
     return { subscription, wallet: store.wallet(subscription), uid };
   };
@@ -109,6 +110,7 @@ export function createBillingService(config, { authenticate, apple, store, fetch
         const body = await json(req);
         const notification = await apple.notification(body.signedPayload);
         if (['REFUND','REVOKE'].includes(notification.type) && notification.transaction) {
+          if (notification.transaction.environment !== apple.environment) error('billing_environment_mismatch', 403);
           store.refund(notification.transaction);
         }
         send(res, 200, { ok: true }); return true;
@@ -128,6 +130,7 @@ export function createBillingService(config, { authenticate, apple, store, fetch
       if (route === '/v2/ai/purchases' && req.method === 'POST') {
         // Delivery of a purchase completed while subscribed must still succeed after expiry.
         const transaction = await apple.purchase(body.signedTransaction);
+        if (transaction.environment !== apple.environment) error('billing_environment_mismatch', 403);
         store.grant(wallet, transaction);
         send(res, 200, store.snapshot(wallet, subscription)); return true;
       }
@@ -150,7 +153,7 @@ export function createBillingService(config, { authenticate, apple, store, fetch
             try {
               slot = await gate.acquire();
               store.claimPhotoAttempt(wallet.id, key, config.maxProviderCallsPerDay ?? config.globalDailyLimit ?? 200);
-              const output = await analyze(input, { ...config, observerAttemptKey: hash(`${wallet.id}:${key}`) });
+              const output = await analyze(input, { ...config, observerAttemptKey: hash(`${apple.environment}:${wallet.id}:${key}`) });
               const result = { ...output.result, model: config.model };
               store.settle(wallet.id, key, result.isFood ? 1 : 0, result);
               store.recordUsage(wallet.id, `photo:${key}`, { feature: 'photo', model: config.model,

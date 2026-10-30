@@ -11,9 +11,9 @@ python3 - "$SANDBOX_URL" "$BUILD_NUMBER" <<'PY'
 import sys
 from urllib.parse import urlsplit
 u = urlsplit(sys.argv[1])
-if (u.scheme != 'https' or not u.hostname or u.hostname == 'weekfit-food-photo.onrender.com'
+if (u.scheme != 'https' or not u.hostname
     or u.username or u.password or u.query or u.fragment or u.path not in ('', '/')):
-    sys.exit('Supply a separate HTTPS Sandbox origin without credentials or path.')
+    sys.exit('Supply an HTTPS origin without credentials or path.')
 if sys.argv[2] and not sys.argv[2].isdigit():
     sys.exit('Build number must contain only digits.')
 PY

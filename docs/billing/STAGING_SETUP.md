@@ -21,43 +21,75 @@ Never store the downloaded .p8 in this repository or a build artifact.
 Apple also requires the Account Holder to review an updated Developer Program
 License Agreement before submitting app updates. Do not accept it implicitly.
 
-## Intended isolated Render service
+## Same Render service, separate tables
 
-The existing production service `weekfit-food-photo` follows main, has one
-instance and a 1 GB disk at /var/data. Leave its billing flag and routes unchanged.
-Create `weekfit-ai-sandbox` in My Workspace, Frankfurt, from
-`mkemiazhuk/weekfit`, branch `feat/premium-ai-allowances`, with auto-deploy off.
-Use the same Dockerfile/context as production:
-`backend/food-photo-recognize/Dockerfile`, `backend/food-photo-recognize`.
-Use one 0.5c-512mb instance and a separate 1 GB disk mounted at /var/data.
-Configure /readyz as the health endpoint. Never share the production wallet disk.
+Use the existing `weekfit-food-photo` service in My Workspace, Frankfurt
+(`srv-db6fccdckfvc73d98l8g`). It has one instance and a 1 GB disk at /var/data.
+Do not create another service, disk or paid compute resource for these tests.
 
-Upload the approved key as a Render secret file named `SubscriptionKey.p8`.
-Configure the following through the Dashboard (source of truth for this service):
+One connection to `/var/data/billing.sqlite` owns two disjoint sets of tables:
+`prod_wallets` / `sandbox_wallets`, `prod_subscriptions` / `sandbox_subscriptions`,
+`prod_checkout_identities` / `sandbox_checkout_identities`, `prod_purchases` /
+`sandbox_purchases`, `prod_periods` / `sandbox_periods`, `prod_balances` /
+`sandbox_balances`, `prod_operations` / `sandbox_operations`, `prod_audit` /
+`sandbox_audit` and `prod_usage` / `sandbox_usage`. Each also has its own unique
+one-active-voice-call index. Transactions stay within one namespace. One API
+process owns the SQLite connection, including exclusive locking and WAL/FULL.
 
-| Variable | Value |
+`AI_BILLING_SANDBOX_ENABLED=1` enables Sandbox independently.
+Leave `AI_BILLING_ENABLED=0` during testing: production legacy routes remain
+available, and the new Production billing path stays off. Sandbox requests use
+`X-WeekFit-Billing-Environment: Sandbox`. Missing header selects Production;
+unknown values are rejected on billing routes. This header selects a verifier,
+never proves access: subscription, purchase and notification signatures are
+verified using the pinned Apple environment before accessing a namespace.
+App-account tokens cannot link wallets across the two table sets.
+
+Voice queue identities, activity-save receipts, sessions, idempotency, refunds,
+usage records and audit entries are isolated. Voice admission shares the existing
+global capacity cap. Sandbox allows one active call and one concurrent photo
+analysis, with a separate daily photo provider-attempt budget of 20 by default
+(`BILLING_SANDBOX_PHOTO_BUDGET`). Sandbox still uses paid OpenAI calls. The host,
+disk, CPU, provider account and process remain shared resources.
+
+Upload the separately approved Apple key as the existing service's Render secret
+file named `SubscriptionKey.p8`. Dashboard remains the configuration source of truth:
+
+| Variable | Testing value |
 | --- | --- |
-| AI_BILLING_ENABLED | 1 |
-| BILLING_APPLE_ENVIRONMENT | Sandbox |
+| AI_BILLING_ENABLED | 0 (preserve current production behavior) |
+| AI_BILLING_SANDBOX_ENABLED | 1 |
 | BILLING_APPLE_KEY_PATH | /etc/secrets/SubscriptionKey.p8 |
-| BILLING_APPLE_KEY_ID | Newly created key ID |
+| BILLING_APPLE_KEY_ID | Newly approved key ID |
 | BILLING_APPLE_ISSUER_ID | d551cf68-155e-4c65-8e31-288e1b2752e5 |
-| BILLING_EXISTING_PHOTO_CUTOFF | 1970-01-01T00:00:00Z (Sandbox only: exercise photo quota) |
 | DATA_DIR | /var/data |
 | STATE_BACKEND | file |
 | ALLOW_SINGLE_NODE_ASYNC | 1 |
 | ALLOW_DEV_AUTH | 0 |
 | FIREBASE_PROJECT_ID | weekfitai |
 | PLANNER_VOICE_ENABLED | 1 |
-| PLANNER_VOICE_MAX_CALLS | 1 |
-| OPENAI_API_KEY | Explicitly supplied staging/provider key |
+| BILLING_SANDBOX_PHOTO_BUDGET | 20 |
 
-Preserve any additional provider/Firebase configuration required by the deployed
-source. Do not enable a partially configured service. Verify live deploy status,
-/healthz and /readyz without printing secrets, and send Apple's test notification
-to `https://<actual-created-host>/v2/billing/notifications` using Sandbox only.
-Do not change the production notification URL until production is prepared.
-The Sandbox-only cutoff above is not the future production migration date.
+Preserve existing provider, Firebase, Coach and legacy photo settings and secrets.
+The router pins Production and Sandbox internally; it does not use a globally
+selected BILLING_APPLE_ENVIRONMENT. Sandbox fixes its migration cutoff at the
+Unix epoch so test subscriptions exercise photo quotas. Before later enabling
+Production, set BILLING_EXISTING_PHOTO_CUTOFF to the confirmed real migration
+instant; do not use the Sandbox cutoff for real subscribers.
+
+Notification URLs on the same host:
+- Production: `https://weekfit-food-photo.onrender.com/v2/billing/notifications`
+- Sandbox: `https://weekfit-food-photo.onrender.com/v2/billing/notifications/sandbox`
+
+Their environment is fixed by the path. A conflicting header or a signed
+transaction for another environment is rejected. Configure and test Sandbox
+notifications first; do not point production notifications at Sandbox.
+
+No billing ledger has been activated by this PR. If an earlier deployment already
+created `billing-Production.sqlite` or `billing-Sandbox.sqlite`, startup explicitly
+refuses rather than silently replacing their balances. Back up and migrate those
+files into the namespaced schema before enabling this version. Never delete them
+as a workaround. Existing other production data files are unchanged.
 
 ## Internal TestFlight archive
 
@@ -65,7 +97,7 @@ On a Mac with Xcode, signing and the ignored Firebase plist configured, run from
 the committed PR branch:
 
 ```sh
-bash Scripts/archive_ai_sandbox.sh https://ACTUAL-SANDBOX-HOST NEW_BUILD_NUMBER
+bash Scripts/archive_ai_sandbox.sh https://weekfit-food-photo.onrender.com NEW_BUILD_NUMBER
 ```
 
 The script archives an isolated detached worktree, adds Sandbox settings only to
@@ -78,8 +110,9 @@ The explicit `WeekFitAISandboxEnabled` flag plus HTTPS
 `WeekFitAISandboxBaseURL` opt this archive into staging. Release builds additionally
 require the explicit WEEKFIT_AI_SANDBOX compilation condition set by this script.
 Normal Release builds ignore the Sandbox route and disable Sandbox billing.
-The Sandbox origin cannot equal the production host and cannot contain credentials,
-query, fragment or a path. Debug permits local testing. The normal App Store archive script rejects Sandbox
+The origin may be the same production host; it cannot contain credentials,
+query, fragment or a path. The Sandbox build sends the environment header on
+AI billing and voice requests. Debug permits local testing. The normal App Store archive script rejects Sandbox
 plist settings. The dedicated Sandbox archive must never be submitted for App Store
 release. Real TestFlight environment validation,
 real purchase delivery, live voice events/hangup, backgrounding and outage behavior
@@ -87,8 +120,8 @@ still require real-device validation; simulator build success does not certify t
 
 ## Launch gates still open
 
-- Approved key creation, secure Render secret provisioning, separate paid staging
-  service/disk creation and successful Sandbox deployment.
+- Approved key creation, secure Render secret provisioning, existing-service
+  configuration and successful Sandbox deployment.
 - Apple test notification and all four real Sandbox purchases, refund/redelivery,
   expiry, resubscription and reinstall with preserved purchased balance.
 - Live iPhone voice and photo QA, including control-server crash handling.

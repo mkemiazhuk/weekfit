@@ -18,8 +18,8 @@ Confirm available price points in App Store Connect. UI uses StoreKit displayPri
 
 ## Access and migration
 
-- Billing is off unless `AI_BILLING_ENABLED=1` on the backend and `WeekFitAIUsageEnabled` is true (Boolean) in the app Info.plist. This key is deliberately absent by default.
-- When enabled, old POST photo/session endpoints return 426. Coordinate release; do not enable the server while old builds still need those endpoints. Existing asynchronous jobs must be drained before switching. Coach Summary routes are unchanged.
+- Production billing is off unless `AI_BILLING_ENABLED=1` and the app opts in. Sandbox can be enabled independently with `AI_BILLING_SANDBOX_ENABLED=1` on the same existing service; see STAGING_SETUP.md. Both flags are off by default. App `WeekFitAIUsageEnabled` remains absent by default.
+- When Production billing is enabled, old Production POST photo/session endpoints return 426. Sandbox alone does not change legacy Production behavior. Coordinate release; do not enable the server while old builds still need those endpoints. Existing asynchronous jobs must be drained before switching. Coach Summary routes are unchanged.
 - Active subscriptions and signed billing grace grant AI access, including offer codes and other offers. Billing retry without grace does not. Cancellation preserves the paid period. Apple server status, not a client boolean or old JWS expiry alone, is authoritative.
 - `BILLING_EXISTING_PHOTO_CUTOFF` is a required explicit UTC rollout instant. Standard paying subscription lineages originally purchased before that instant retain their previous photo access. Their photo top-ups are hidden. A numerical 1,000,000-unit internal reservation ceiling is a defensive implementation bound; UI never calls this unlimited. This exception must be checked against the final historical promises before rollout. New voice allowance is 300 seconds for all active subscriptions.
 - The legacy AppTransaction cutoff (19 August 2026) and existing tab entitlements are unchanged. Legacy-only access does not grant the new cloud voice/photo subscription access.
@@ -30,7 +30,7 @@ Confirm available price points in App Store Connect. UI uses StoreKit displayPri
 
 The wallet is derived from Apple's verified original subscription transaction ID plus environment, not the Firebase anonymous UID. A restored subscription JWS recovers the same wallet on another device/install. New subscriptions and consumables use the server-issued UUID as StoreKit appAccountToken. A pre-purchase authenticated checkout endpoint issues this UUID for first-time subscribers; an existing expired subscription recovers the previous UUID before resubscribing. When Apple creates a new subscription lineage, its signed appAccountToken links it back to the old wallet, preserving top-ups. A consumable is credited once per environment/transaction ID, after live Apple transaction verification and matching that token. A signed transaction is a sensitive bearer proof: never log it.
 
-SQLite WAL/FULL stores balances, periods, reservations, purchase/refund tombstones, audit events and metering. Exclusive database locking intentionally prevents a second API process from sweeping another process's reservations. **One API process, one persistent disk only.** Redis/multi-instance billing is rejected at startup. Back up the billing SQLite database using SQLite's backup API or a consistent stopped-volume snapshot; copying only the main file while WAL is active is not a backup. Never delete this database as ordinary cache cleanup.
+SQLite WAL/FULL stores balances, periods, reservations, purchase/refund tombstones, audit events and metering in billing.sqlite. Separate prod_* and sandbox_* tables share one connection on the existing service; signed Apple environments and store guards prevent crossing namespaces. Exclusive database locking intentionally prevents a second API process from sweeping another process's reservations. **One API process, one persistent disk only.** Redis/multi-instance billing is rejected at startup. Back up the billing SQLite database using SQLite's backup API or a consistent stopped-volume snapshot; copying only the main file while WAL is active is not a backup. Never delete this database as ordinary cache cleanup.
 
 An interrupted consumable remains unfinished until server acknowledgment. The subscription transaction observer must not finish consumables as if they were subscriptions. Recovery uses Transaction.unfinished plus the server wallet. Restore Purchases alone does not restore spent consumable transactions.
 
@@ -47,18 +47,18 @@ AI_BILLING_ENABLED=1
 DATA_DIR=/persistent/mount/path
 ALLOW_SINGLE_NODE_ASYNC=1
 STATE_BACKEND=file
-BILLING_APPLE_ENVIRONMENT=Sandbox
+AI_BILLING_SANDBOX_ENABLED=0
 BILLING_APPLE_KEY_PATH=/mounted/secrets/SubscriptionKey.p8
 BILLING_APPLE_KEY_ID=<App Store Connect In-App Purchase key ID>
 BILLING_APPLE_ISSUER_ID=<issuer UUID>
 BILLING_EXISTING_PHOTO_CUTOFF=<confirmed rollout instant in ISO-8601 UTC>
 ```
 
-`BILLING_APPLE_ENVIRONMENT` is either Sandbox or Production. Do not accept sandbox transactions on the production service. Use a separate staging service/app Debug base URL for sandbox. Local StoreKit .storekit transactions are not signed by Apple's production roots and cannot fund a live server; use StoreKit Sandbox for end-to-end verification. The local fixture supports purchase-sheet/UI testing only.
+The router pins separate Sandbox and Production Apple verifiers on the same service. Sandbox traffic is explicitly selected with X-WeekFit-Billing-Environment: Sandbox and must pass the Sandbox verifier; it cannot credit prod_* tables. Missing header selects Production. See STAGING_SETUP.md for Sandbox-only activation while preserving existing production endpoints. Local StoreKit .storekit transactions are not signed by Apple's production roots and cannot fund a live server; use StoreKit Sandbox for end-to-end verification. The local fixture supports purchase-sheet/UI testing only.
 
 The Apple verifier pins the existing Apple G3 root, verifies bundle `com.weekfit.app`, App Store ID 6776311371 in production, environment, chain, signature and online certificate checks. Keep the `.p8` file outside Git and images. Existing OPENAI_API_KEY, Firebase and voice enable settings remain required. Never create a secret in a user-visible file.
 
-App Store Connect notification URL: `https://<billing-host>/v2/billing/notifications`. Configure both environment URLs correctly and send Apple's test notification before launch. The first consumable type needs review with an app version. Create/localize all four products and disclose active subscription requirement and non-expiring purchased balance in all supported storefront metadata.
+App Store Connect notification URLs: `https://<billing-host>/v2/billing/notifications` for Production and `https://<billing-host>/v2/billing/notifications/sandbox` for Sandbox. Configure both environment URLs correctly and send Apple's test notification before launch. The first consumable type needs review with an app version. Create/localize all four products and disclose active subscription requirement and non-expiring purchased balance in all supported storefront metadata.
 
 ## Managed voice
 
