@@ -58,3 +58,11 @@ test('restart retains wallet, pending reservations, balances and idempotency',t=
  s=new BillingStore(file,{now:()=>anchor});t.after(()=>s.close());assert.deepEqual(s.wallet(sub),wallet);assert.equal(s.pending().length,1);
  s.settle(wallet.id,'photo_0001',0);assert.equal(s.snapshot(wallet,sub).photos.included,30);
 });
+test('first checkout and a new subscription lineage recover the same purchased wallet through signed appAccountToken',t=>{
+ const {store,sub,wallet,purchase}=setup(t);store.grant(wallet,purchase());
+ const renewed={...sub,originalTransactionId:'new-lineage',appAccountToken:wallet.token};
+ assert.deepEqual(store.wallet(renewed),wallet);assert.equal(store.snapshot(store.wallet(renewed),renewed).photos.purchased,20);
+ const checkout=store.checkoutWallet('anonymous-first-device','Sandbox');
+ assert.deepEqual(store.checkoutWallet('anonymous-first-device','Sandbox'),checkout);
+ assert.deepEqual(store.wallet({...sub,originalTransactionId:'first-purchase',appAccountToken:checkout.token}),checkout);
+});

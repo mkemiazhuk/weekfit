@@ -102,6 +102,12 @@ export function createBillingService(config, { authenticate, apple, store, fetch
         }
         send(res, 200, { ok: true }); return true;
       }
+      if (route === '/v2/ai/account' && req.method === 'GET') {
+        const uid = await authenticate(req.headers.authorization, config);
+        const wallet = req.headers['x-weekfit-subscription-jws']
+          ? (await context(req, false)).wallet : store.checkoutWallet(uid, apple.environment);
+        send(res, 200, { appAccountToken: wallet.token }); return true;
+      }
       const ctx = await context(req, route !== '/v2/ai/usage' && route !== '/v2/ai/purchases' && route !== '/v2/ai/voice/stop');
       const { wallet, subscription } = ctx;
       if (route === '/v2/ai/usage' && req.method === 'GET') {
@@ -133,7 +139,7 @@ export function createBillingService(config, { authenticate, apple, store, fetch
             try {
               slot = await gate.acquire();
               store.claimPhotoAttempt(wallet.id, key, config.maxProviderCallsPerDay ?? config.globalDailyLimit ?? 200);
-              const output = await analyze(input, config);
+              const output = await analyze(input, { ...config, observerAttemptKey: hash(`${wallet.id}:${key}`) });
               const result = { ...output.result, model: config.model };
               store.settle(wallet.id, key, result.isFood ? 1 : 0, result);
               store.recordUsage(wallet.id, `photo:${key}`, { feature: 'photo', model: config.model,

@@ -108,7 +108,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                         body: JSONEncoder().encode(["sessionId": id, "sdp": sdp]))
                     webView?.evaluateJavaScript("window.weekfit.sdpAnswer(\(jsLiteral(answer.sdp)))")
                 } catch {
-                    phase = .failed(error.localizedDescription)
+                    phase = .failed(WeekFitAIErrorMessage(error))
                     end()
                 }
             }
@@ -194,7 +194,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         } catch let error as WeekFitAIUsageError {
             guard !ended else { return }
             ringback.stop()
-            phase = .failed(error.localizedDescription)
+            phase = .failed(WeekFitAIErrorMessage(error))
         } catch PlanRealtimeClientError.lineFull {
             guard !ended else { return }
             ringback.stop()

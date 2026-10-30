@@ -38,7 +38,7 @@ export function createAppleBilling(env = process.env, dependencies = {}) {
         const active = [1,4].includes(row.status) && !tx.revocationDate && accessUntil > Date.now();
         if (!Number.isFinite(tx.originalPurchaseDate) || tx.originalPurchaseDate > Date.now()) throw Error('anchor');
         return { environment, originalTransactionId: tx.originalTransactionId, productId: tx.productId,
-          active, anchor: tx.originalPurchaseDate, accessUntil,
+          active, anchor: tx.originalPurchaseDate, accessUntil, appAccountToken: tx.appAccountToken,
           grandfatheredPhotos: tx.originalPurchaseDate < grandfatherBefore && !tx.offerType && tx.price !== 0 };
       } catch (error) {
         if (error instanceof ServiceError) throw error;

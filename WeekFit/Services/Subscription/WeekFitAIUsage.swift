@@ -29,17 +29,23 @@ nonisolated struct WeekFitAIUsage: Decodable, Sendable {
     var resetDate: Date { Date(timeIntervalSince1970: periodEnd / 1000) }
 }
 
-nonisolated enum WeekFitAIUsageError: Error, LocalizedError {
+nonisolated enum WeekFitAIUsageError: Error {
     case subscriptionRequired, quotaExhausted, unavailable, pending, verification
-    var errorDescription: String? {
+    var localizationKey: String {
         switch self {
-        case .subscriptionRequired: WeekFitLocalizedString("ai.usage.subscriptionRequired")
-        case .quotaExhausted: WeekFitLocalizedString("ai.usage.exhausted")
-        case .pending: WeekFitLocalizedString("ai.usage.pending")
-        case .verification: WeekFitLocalizedString("ai.usage.verification")
-        case .unavailable: WeekFitLocalizedString("ai.usage.unavailable")
+        case .subscriptionRequired: "ai.usage.subscriptionRequired"
+        case .quotaExhausted: "ai.usage.exhausted"
+        case .pending: "ai.usage.pending"
+        case .verification: "ai.usage.verification"
+        case .unavailable: "ai.usage.unavailable"
         }
     }
+}
+
+@MainActor
+func WeekFitAIErrorMessage(_ error: Error) -> String {
+    if let error = error as? WeekFitAIUsageError { return WeekFitLocalizedString(error.localizationKey) }
+    return WeekFitLocalizedString("ai.usage.unavailable")
 }
 
 /// Server looks up live subscription status (including grace) with Apple. The JWS is
@@ -48,13 +54,13 @@ nonisolated enum WeekFitAIProof {
     static func subscriptionJWS() async -> String? {
         for await result in Transaction.currentEntitlements {
             if case .verified(let tx) = result,
-               WeekFitSubscriptionProductID(rawValue: tx.productID) != nil {
+               ["com.weekfit.subscription.monthly", "com.weekfit.subscription.annual"].contains(tx.productID) {
                 return result.jwsRepresentation
             }
         }
         for await result in Transaction.all {
             if case .verified(let tx) = result,
-               WeekFitSubscriptionProductID(rawValue: tx.productID) != nil {
+               ["com.weekfit.subscription.monthly", "com.weekfit.subscription.annual"].contains(tx.productID) {
                 return result.jwsRepresentation
             }
         }
@@ -62,20 +68,22 @@ nonisolated enum WeekFitAIProof {
     }
 }
 
-nonisolated struct WeekFitAIClient {
-    var baseURL: URL = WeekFitCloudAPI.foodPhotoBaseURL
+nonisolated struct WeekFitAIClient: Sendable {
+    var baseURL: URL? = nil
     var session: URLSession = .shared
 
     func request<Response: Decodable>(path: String, method: String = "POST", body: Data? = nil,
-                                     idempotencyKey: String? = nil) async throws -> Response {
-        guard let proof = await WeekFitAIProof.subscriptionJWS() else { throw WeekFitAIUsageError.subscriptionRequired }
+                                     idempotencyKey: String? = nil, requiresProof: Bool = true) async throws -> Response {
+        let origin = await MainActor.run { baseURL ?? WeekFitCloudAPI.foodPhotoBaseURL }
+        let proof = await WeekFitAIProof.subscriptionJWS()
+        if requiresProof && proof == nil { throw WeekFitAIUsageError.subscriptionRequired }
         func perform(refresh: Bool) async throws -> (Data, URLResponse) {
             let token = try await PhotoFoodFirebaseAuth.idToken(forcingRefresh: refresh)
-            var request = URLRequest(url: baseURL.appending(path: path))
+            var request = URLRequest(url: origin.appending(path: path))
             request.httpMethod = method
             request.timeoutInterval = 180
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            request.setValue(proof, forHTTPHeaderField: WeekFitPaidSubscriptionProof.httpHeaderName)
+            if let proof { request.setValue(proof, forHTTPHeaderField: "X-WeekFit-Subscription-JWS") }
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             if let idempotencyKey { request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key") }
             request.httpBody = body
@@ -91,6 +99,11 @@ nonisolated struct WeekFitAIClient {
         if code == "quota_exhausted" { throw WeekFitAIUsageError.quotaExhausted }
         guard (200...299).contains(http.statusCode) else { throw WeekFitAIUsageError.unavailable }
         return try JSONDecoder().decode(Response.self, from: data)
+    }
+    func checkoutAccountToken() async throws -> UUID {
+        struct Account: Decodable { let appAccountToken: UUID }
+        let account: Account = try await request(path: "v2/ai/account", method: "GET", requiresProof: false)
+        return account.appAccountToken
     }
     func usage() async throws -> WeekFitAIUsage {
         try await request(path: "v2/ai/usage", method: "GET")
@@ -125,15 +138,18 @@ final class WeekFitAIUsageStore: ObservableObject {
             products = try await Product.products(for: WeekFitAIBilling.products)
                 .filter { $0.type == .consumable }.sorted { $0.price < $1.price }
             message = nil
-        } catch { message = error.localizedDescription }
+        } catch { message = WeekFitAIErrorMessage(error) }
     }
 
     func buy(_ product: Product) async {
-        guard !isBusy, let usage, usage.active else { return }
+        guard !isBusy, usage?.active == true else { return }
         isBusy = true
         defer { isBusy = false }
         do {
-            switch try await product.purchase(options: [.appAccountToken(usage.appAccountToken)]) {
+            let latest = try await WeekFitAIClient().usage()
+            self.usage = latest
+            guard latest.active else { throw WeekFitAIUsageError.subscriptionRequired }
+            switch try await product.purchase(options: [.appAccountToken(latest.appAccountToken)]) {
             case .success(let result):
                 guard case .verified(let tx) = result else { throw WeekFitAIUsageError.verification }
                 self.usage = try await WeekFitAIClient().deliver(result.jwsRepresentation)
@@ -144,6 +160,6 @@ final class WeekFitAIUsageStore: ObservableObject {
             case .userCancelled: break
             @unknown default: throw WeekFitAIUsageError.unavailable
             }
-        } catch { message = error.localizedDescription }
+        } catch { message = WeekFitAIErrorMessage(error) }
     }
 }

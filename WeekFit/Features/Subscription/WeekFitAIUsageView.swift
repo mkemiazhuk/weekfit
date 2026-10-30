@@ -17,8 +17,10 @@ struct WeekFitAIUsageView: View {
                     LabeledContent(WeekFitLocalizedString("ai.usage.photos"), value: usage.grandfatheredPhotos
                         ? WeekFitLocalizedString("ai.usage.existingAccess") : usage.photos.included.formatted())
                     LabeledContent(WeekFitLocalizedString("ai.usage.voice"), value: clock(usage.voice.included))
-                    LabeledContent(WeekFitLocalizedString("ai.usage.renews")) {
-                        Text(usage.resetDate, format: .dateTime.day().month().year())
+                    if usage.active {
+                        LabeledContent(WeekFitLocalizedString("ai.usage.renews")) {
+                            Text(usage.resetDate, format: .dateTime.day().month().year())
+                        }
                     }
                 }
                 Section(WeekFitLocalizedString("ai.usage.purchased")) {
@@ -77,6 +79,9 @@ struct WeekFitAIUsageView: View {
     }
     private func clock(_ seconds: Int) -> String {
         let formatter = DateComponentsFormatter()
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = WeekFitCurrentLocale()
+        formatter.calendar = calendar
         formatter.allowedUnits = [.minute, .second]
         formatter.unitsStyle = .abbreviated
         return formatter.string(from: TimeInterval(seconds)) ?? "0"

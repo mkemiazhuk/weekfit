@@ -340,7 +340,13 @@ final class LiveWeekFitStoreKitService: WeekFitStoreKitServicing {
             await WeekFitStoreKitTimelineDiagnostics.shared.recordPurchaseBefore(product: product)
             // StoreKit 2: `Product.purchase()` presents the system sheet and returns
             // the transaction for this attempt. Do not call `AppStore.sync()` here.
-            let result = try await product.purchase()
+            let result: Product.PurchaseResult
+            if WeekFitAIBilling.enabled {
+                let accountToken = try await WeekFitAIClient().checkoutAccountToken()
+                result = try await product.purchase(options: [.appAccountToken(accountToken)])
+            } else {
+                result = try await product.purchase()
+            }
             switch result {
             case .success(let verification):
                 switch verification {

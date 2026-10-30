@@ -40,6 +40,7 @@ export class BillingStore {
     this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000; PRAGMA locking_mode=EXCLUSIVE;
       CREATE TABLE IF NOT EXISTS wallets (id TEXT PRIMARY KEY, token TEXT UNIQUE NOT NULL);
       CREATE TABLE IF NOT EXISTS subscriptions (id TEXT PRIMARY KEY, wallet TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS checkout_identities (id TEXT PRIMARY KEY, wallet TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS purchases (id TEXT PRIMARY KEY, wallet TEXT NOT NULL, product TEXT NOT NULL,
         resource TEXT NOT NULL, quantity INTEGER NOT NULL, refunded INTEGER NOT NULL DEFAULT 0);
       CREATE TABLE IF NOT EXISTS periods (wallet TEXT, start INTEGER, resource TEXT, used INTEGER NOT NULL DEFAULT 0,
@@ -68,13 +69,28 @@ export class BillingStore {
     this.run('INSERT INTO audit(wallet,event,resource,quantity,reference,at) VALUES(?,?,?,?,?,?)',
       wallet, event, resource, quantity, reference, this.now());
   }
+  checkoutWallet(uid, environment) {
+    const identity = hash(`${environment}:${uid}`);
+    return this.atomic(() => {
+      let row = this.get('SELECT wallet FROM checkout_identities WHERE id=?', identity);
+      if (!row) {
+        const wallet = hash(`checkout:${identity}`);
+        this.run('INSERT OR IGNORE INTO wallets VALUES(?,?)', wallet, randomUUID());
+        this.run('INSERT INTO checkout_identities VALUES(?,?)', identity, wallet);
+        row = { wallet };
+      }
+      return { id: row.wallet, token: this.get('SELECT token FROM wallets WHERE id=?', row.wallet).token };
+    });
+  }
   // Restored StoreKit subscription lineage, NOT the ephemeral Firebase anonymous UID.
   wallet(subscription) {
     const id = `${subscription.environment}:${subscription.originalTransactionId}`;
     return this.atomic(() => {
       let row = this.get('SELECT wallet FROM subscriptions WHERE id=?', id);
       if (!row) {
-        const wallet = hash(id);
+        const linked = subscription.appAccountToken
+          ? this.get('SELECT id FROM wallets WHERE token=?', subscription.appAccountToken.toLowerCase()) : null;
+        const wallet = linked?.id ?? hash(id);
         this.run('INSERT OR IGNORE INTO wallets VALUES(?,?)', wallet, randomUUID());
         this.run('INSERT INTO subscriptions VALUES(?,?)', id, wallet);
         row = { wallet };
