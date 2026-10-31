@@ -86,11 +86,12 @@ final class CoachEveningSummaryCoordinator: ObservableObject {
     init(
         store: CoachEveningSummaryStore? = nil,
         timeoutSeconds: TimeInterval = 20,
-        readStatus: @escaping (CoachEveningSummaryInput, String) async -> CoachEveningSummaryServerRead = { input, owner in
-            await CoachEveningSummaryService.read(input, owner: owner)
+        readStatus: @escaping (CoachEveningSummaryInput, String) async -> CoachEveningSummaryServerRead = { input, _ in
+            // Cloud summary is paused. Do not call CoachEveningSummaryService.
+            .completed(CoachEveningLocalSummary.make(input))
         },
-        generate: @escaping (CoachEveningSummaryInput, String) async throws -> CoachEveningSummaryGenerationResult = { input, owner in
-            try await CoachEveningSummaryService.generate(input, owner: owner)
+        generate: @escaping (CoachEveningSummaryInput, String) async throws -> CoachEveningSummaryGenerationResult = { input, _ in
+            CoachEveningLocalSummary.make(input)
         }
     ) {
         self.store = store ?? CoachEveningSummaryStore()

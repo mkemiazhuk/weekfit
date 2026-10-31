@@ -40,14 +40,6 @@ struct CoachEveningRecapView: View {
         )
     }
 
-    private var feelingReaction: String? {
-        guard let selectedFeeling else { return nil }
-        return CoachEveningRecapCopy.feelingReaction(
-            feeling: selectedFeeling,
-            tone: activitySummary.dayTone
-        )
-    }
-
     private var usesCompactHero: Bool {
         dynamicTypeSize.isAccessibilitySize
     }
@@ -273,60 +265,9 @@ struct CoachEveningRecapView: View {
 
     @ViewBuilder
     private var noteBody: some View {
-        // After feeling is chosen, keep the AI/local note — reaction lives in the pill.
-        let noteFeeling: String? = selectedFeeling == nil ? feelingReaction : nil
-        if let resolvedNote {
-            resolvedNoteBody(resolvedNote, feelingReaction: noteFeeling)
-        } else if let text = CoachEveningRecapCopy.noteText(
-            commentary: commentary,
-            feelingReaction: noteFeeling,
-            isLoading: isLoadingCommentary && selectedFeeling == nil,
-            failed: commentaryFailed && selectedFeeling == nil
-        ) {
-            noteParagraph(text)
-        } else if isLoadingCommentary, selectedFeeling == nil {
-            HStack(spacing: 8) {
-                ProgressView()
-                Text(WeekFitLocalizedString("coach.eveningRecap.forEvening.loading"))
-                    .font(WeekFitType.secondary.weight(.medium))
-                    .fontDesign(.rounded)
-                    .foregroundStyle(secondary)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func resolvedNoteBody(
-        _ note: CoachEveningResolvedNote,
-        feelingReaction: String?
-    ) -> some View {
-        if let feelingReaction, !feelingReaction.isEmpty {
-            noteParagraph(feelingReaction)
-        } else {
-            let today = note.today.trimmingCharacters(in: .whitespacesAndNewlines)
-            let tomorrow = note.tomorrow?.trimmingCharacters(in: .whitespacesAndNewlines)
-            if today.isEmpty, tomorrow?.isEmpty != false, !note.planChanged {
-                if let fallback = CoachEveningRecapCopy.noteText(
-                    commentary: nil,
-                    feelingReaction: nil,
-                    isLoading: isLoadingCommentary && selectedFeeling == nil,
-                    failed: commentaryFailed && selectedFeeling == nil
-                ) {
-                    noteParagraph(fallback)
-                }
-            } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    if !today.isEmpty {
-                        noteParagraph(today)
-                    }
-                    if let tomorrow, !tomorrow.isEmpty {
-                        noteParagraph(tomorrow)
-                    }
-                    if note.planChanged {
-                        noteParagraph(WeekFitLocalizedString("coach.eveningRecap.planChanged"))
-                    }
-                }
-            }
+        // Evening commentary is paused. Cached AI text was showing in the wrong language.
+        if resolvedNote?.planChanged == true {
+            noteParagraph(WeekFitLocalizedString("coach.eveningRecap.planChanged"))
         }
     }
 

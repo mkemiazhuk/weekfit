@@ -42,12 +42,19 @@ nonisolated struct WeekFitAIUsage: Decodable, Sendable {
     let grandfatheredPhotos: Bool
     let photos: Balance
     let voice: Balance
+    /// Monthly allowance from the server. Absent on older responses, so the UI must not invent a denominator.
+    let limits: Limits?
     let voiceFinalizing: Bool
     var resetDate: Date { Date(timeIntervalSince1970: periodEnd / 1000) }
 
+    struct Limits: Decodable, Sendable, Equatable {
+        let photos: Int
+        let voice: Int
+    }
+
     private enum CodingKeys: String, CodingKey {
         case appAccountToken, active, productId, periodStart, periodEnd
-        case grandfatheredPhotos, photos, voice, voiceFinalizing
+        case grandfatheredPhotos, photos, voice, limits, voiceFinalizing
     }
 
     init(from decoder: Decoder) throws {
@@ -60,8 +67,17 @@ nonisolated struct WeekFitAIUsage: Decodable, Sendable {
         grandfatheredPhotos = try container.decode(Bool.self, forKey: .grandfatheredPhotos)
         photos = try container.decode(Balance.self, forKey: .photos)
         voice = try container.decode(Balance.self, forKey: .voice)
+        limits = try container.decodeIfPresent(Limits.self, forKey: .limits)
         voiceFinalizing = try container.decodeIfPresent(Bool.self, forKey: .voiceFinalizing) ?? false
     }
+}
+
+enum WeekFitAIPurchasePhase: Equatable {
+    case idle
+    case purchasing(productID: String)
+    case crediting(productID: String)
+    case pending
+    case failed(String)
 }
 
 nonisolated enum WeekFitAIUsageError: Error, Equatable {
@@ -163,6 +179,23 @@ extension Notification.Name {
     static let weekfitVoiceStopFinished = Notification.Name("weekfit.voice.stop.finished")
 }
 
+/// Last balance the server already returned. The usage screen can show it without another round trip.
+@MainActor
+enum WeekFitAIUsageCache {
+    private(set) static var latest: WeekFitAIUsage?
+    private(set) static var storedAt: Date?
+
+    static func store(_ usage: WeekFitAIUsage, at date: Date = Date()) {
+        latest = usage
+        storedAt = date
+    }
+
+    static func isFresh(since start: Date) -> Bool {
+        guard let storedAt else { return false }
+        return storedAt >= start
+    }
+}
+
 /// Durable session ids for a voice stop that has not been acknowledged yet.
 /// A retry posts stop only. It never opens another call.
 enum WeekFitVoiceStopLedger {
@@ -225,7 +258,8 @@ actor WeekFitVoiceStopQueue {
 
     private static func liveStop(_ sessionId: String) async throws {
         let body = try JSONEncoder().encode(["sessionId": sessionId])
-        let _: WeekFitAIUsage = try await WeekFitAIClient().request(path: "v2/ai/voice/stop", body: body)
+        let usage: WeekFitAIUsage = try await WeekFitAIClient().request(path: "v2/ai/voice/stop", body: body)
+        await WeekFitAIUsageCache.store(usage)
     }
 }
 
@@ -237,6 +271,8 @@ final class WeekFitAIUsageStore: ObservableObject {
     @Published private(set) var message: String?
     @Published private(set) var requiresSubscription = false
     @Published private(set) var isRefreshing = false
+    @Published private(set) var purchasePhase: WeekFitAIPurchasePhase = .idle
+    @Published private(set) var didCreditPurchase = false
     private let loadUsage: () async throws -> WeekFitAIUsage
     private let loadProducts: () async throws -> [Product]
     private let recoverPurchases: () async throws -> WeekFitAIUsage?
@@ -291,6 +327,15 @@ final class WeekFitAIUsageStore: ObservableObject {
         log.error("ai_usage_refresh_failed stage=\(stage, privacy: .public) kind=\(String(describing: type(of: error)), privacy: .public)")
     }
 
+    func preparePurchase() {
+        purchasePhase = .idle
+        didCreditPurchase = false
+    }
+
+    func acknowledgePurchaseCredit() {
+        didCreditPurchase = false
+    }
+
     func refresh() async {
         if isRefused() {
             usage = nil
@@ -303,11 +348,17 @@ final class WeekFitAIUsageStore: ObservableObject {
         isRefreshing = true
         defer { isRefreshing = false }
         message = nil
+        let started = Date()
+        if usage == nil, WeekFitVoiceStopLedger.pending().isEmpty {
+            usage = WeekFitAIUsageCache.latest
+        }
 
         // Publish the balance first: stop recovery, unfinished deliveries and StoreKit
         // product availability must not prevent opening the balance screen.
         do {
-            usage = try await readUsage()
+            let fresh = try await readUsage()
+            usage = fresh
+            WeekFitAIUsageCache.store(fresh)
             requiresSubscription = false
         } catch {
             if error is CancellationError || (error as? URLError)?.code == .cancelled { return }
@@ -328,6 +379,7 @@ final class WeekFitAIUsageStore: ObservableObject {
         do {
             if let delivered = try await recoverPurchases() {
                 usage = delivered
+                WeekFitAIUsageCache.store(delivered)
                 requiresSubscription = false
                 message = nil
             }
@@ -340,8 +392,16 @@ final class WeekFitAIUsageStore: ObservableObject {
         let hadPendingStops = !WeekFitVoiceStopLedger.pending().isEmpty
         await flushStops()
         if hadPendingStops && WeekFitVoiceStopLedger.pending().isEmpty && !Task.isCancelled {
+            // The stop response already carries the settled balance; skip a second read.
+            if WeekFitAIUsageCache.isFresh(since: started), let settled = WeekFitAIUsageCache.latest {
+                usage = settled
+                requiresSubscription = false
+                return
+            }
             do {
-                usage = try await readUsage()
+                let fresh = try await readUsage()
+                usage = fresh
+                WeekFitAIUsageCache.store(fresh)
                 requiresSubscription = false
             } catch {
                 report(error, stage: "balance_after_stop")
@@ -350,24 +410,46 @@ final class WeekFitAIUsageStore: ObservableObject {
     }
 
     func buy(_ product: Product) async {
-        guard !isBusy, usage?.active == true else { return }
+        guard !isBusy else { return }
+        guard usage?.active == true else {
+            purchasePhase = .failed(WeekFitLocalizedString("ai.usage.subscriptionRequired"))
+            return
+        }
         isBusy = true
+        purchasePhase = .purchasing(productID: product.id)
         defer { isBusy = false }
         do {
             let latest = try await WeekFitAIClient().usage()
             self.usage = latest
-            guard latest.active else { throw WeekFitAIUsageError.subscriptionRequired }
+            WeekFitAIUsageCache.store(latest)
+            guard latest.active else {
+                purchasePhase = .failed(WeekFitLocalizedString("ai.usage.subscriptionRequired"))
+                return
+            }
             switch try await product.purchase(options: [.appAccountToken(latest.appAccountToken)]) {
             case .success(let result):
                 guard case .verified(let tx) = result else { throw WeekFitAIUsageError.verification }
-                self.usage = try await WeekFitAIClient().deliver(result.jwsRepresentation)
-                // Never finish a paid consumable until the durable server acknowledges it.
+                purchasePhase = .crediting(productID: product.id)
+                do {
+                    self.usage = try await WeekFitAIClient().deliver(result.jwsRepresentation)
+                    if let usage { WeekFitAIUsageCache.store(usage) }
+                } catch {
+                    // Leave the transaction unfinished so the next refresh can deliver it.
+                    purchasePhase = .failed(WeekFitLocalizedString("ai.balance.creditFailed"))
+                    return
+                }
                 await tx.finish()
-                message = nil
-            case .pending: throw WeekFitAIUsageError.pending
-            case .userCancelled: break
-            @unknown default: throw WeekFitAIUsageError.unavailable
+                purchasePhase = .idle
+                didCreditPurchase = true
+            case .pending:
+                purchasePhase = .pending
+            case .userCancelled:
+                purchasePhase = .idle
+            @unknown default:
+                throw WeekFitAIUsageError.unavailable
             }
-        } catch { message = WeekFitAIErrorMessage(error) }
+        } catch {
+            purchasePhase = .failed(WeekFitAIErrorMessage(error))
+        }
     }
 }

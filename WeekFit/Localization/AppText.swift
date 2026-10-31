@@ -705,7 +705,7 @@ private func WeekFitQuantityFormatLanguageCode(for locale: Locale) -> String {
 }
 
 private func WeekFitBundleLocalizedString(_ key: String, locale: Locale) -> String {
-    let table: String? = key.hasPrefix("ai.usage.") ? "AIUsage" : nil
+    let table: String? = key.hasPrefix("ai.usage.") || key.hasPrefix("ai.balance.") ? "AIUsage" : nil
     for resource in WeekFitLocalizationLprojResourceCandidates(for: locale) {
         guard let languageBundlePath = Bundle.main.path(forResource: resource, ofType: "lproj"),
               let languageBundle = Bundle(path: languageBundlePath) else {

@@ -14,14 +14,14 @@ async function fixture(t, overrides={}, options={}) {
  const clock={t:Date.now()};
  const sub={environment:'Sandbox',originalTransactionId:'1',productId:'com.weekfit.subscription.annual',
   active:true,anchor:clock.t-86400000,accessUntil:clock.t+86400000};
- let calls=0,hangups=0,observer,hangupFails=false,connectFails=false;
+ let calls=0,hangups=0,observer,hangupFails=false,hangupThrow=null,connectFails=false;
  const service=createBillingService({billingEnabled:true,dataDirExplicit:true,dataDir:dir,stateBackend:'file',allowSingleNode:true,
   plannerVoiceEnabled:true,plannerVoiceModel:'gpt-realtime-2.1-mini',plannerVoiceIdleSeconds:75,apiKey:'unit-test-only',model:'gpt-6.1-sol'}, {
   authenticate:async header=>{if(!header)throw new ServiceError('unauthorized',401);return header;},
   apple:{environment:'Sandbox',subscription:async jws=>{if(jws!=='test-proof')throw new ServiceError('subscription_required',402);return sub;},
    purchase:async jws=>JSON.parse(jws),notification:async()=>({type:'TEST'})},
   analyze:async()=>{calls++;await new Promise(r=>setTimeout(r,10));if(overrides.failure)throw Error('provider');return {result:{isFood:true,name:'Rice'},usage:{input_tokens:100,output_tokens:30}};},
-  fetcher:async url=>{if(url.endsWith('/hangup')){hangups++;return new Response(null,{status:hangupFails?503:200});}
+  fetcher:async url=>{if(url.endsWith('/hangup')){hangups++;if(hangupThrow)throw hangupThrow;return new Response(null,{status:hangupFails?503:200});}
    if(url.endsWith('/calls')&&connectFails)return new Response('no',{status:502});
    return new Response('answer-sdp',{status:201,headers:{location:'/v1/realtime/calls/rtc_test'}});},
   connectObserver:(id,onEvent)=>{observer=onEvent;return {close(){},terminate(){}};},log:entry=>{options.logs?.push(entry);},
@@ -37,6 +37,7 @@ async function fixture(t, overrides={}, options={}) {
  };
  t.after(async()=>{await service.close();server.closeAllConnections();await new Promise(r=>server.close(r));rmSync(dir,{recursive:true,force:true});});
  return {send,sub,service,calls:()=>calls,hangups:()=>hangups,event:e=>observer(e),failHangup:value=>hangupFails=value,
+  failHangupThrow(error){hangupThrow=error;},
   advance(ms){clock.t+=ms;},failConnect:value=>{connectFails=value;}};
 }
 test('API subscription gate, shared-device balance, paid delivery replay and photo concurrency',async t=>{
@@ -80,12 +81,32 @@ test('failed provider hangup keeps credit reserved and blocks a second call unti
  await f.send('/v2/ai/voice/session',{body:{idempotencyKey:'voice_failure',timeZone:'Europe/Warsaw',language:'en'}});
  await f.send('/v2/ai/voice/connect',{body:{sessionId:'voice_failure',sdp:'offer'}});
  f.event({type:'response.created'});f.failHangup(true);
- assert.equal((await f.send('/v2/ai/voice/stop',{body:{sessionId:'voice_failure'}})).status,503);
+ const denied=await f.send('/v2/ai/voice/stop',{body:{sessionId:'voice_failure'}});
+ assert.equal(denied.status,503);
+ assert.equal(denied.body.error,'voice_stop_pending');
  assert.equal((await f.send('/v2/ai/usage')).body.voice.included,0);
  assert.equal((await f.send('/v2/ai/voice/session',{body:{idempotencyKey:'voice_blocked',timeZone:'Europe/Warsaw',language:'en'}})).status,409);
  f.failHangup(false);
  assert.equal((await f.send('/v2/ai/voice/stop',{body:{sessionId:'voice_failure'}})).status,200);
  assert.equal((await f.send('/v2/ai/voice/status',{body:{sessionId:'voice_failure'}})).body.active,false);
+});
+test('a timed out provider hangup stays reserved and is not reported as billing down',async t=>{
+ const logs=[];
+ const f=await fixture(t,{},{logs});
+ await f.send('/v2/ai/voice/session',{body:{idempotencyKey:'voice_timeout',timeZone:'Europe/Warsaw',language:'en'}});
+ await f.send('/v2/ai/voice/connect',{body:{sessionId:'voice_timeout',sdp:'offer'}});
+ f.event({type:'response.created'});
+ f.failHangupThrow(Object.assign(new Error('aborted'),{name:'TimeoutError'}));
+ const stopped=await f.send('/v2/ai/voice/stop',{body:{sessionId:'voice_timeout'}});
+ assert.equal(stopped.status,503);
+ assert.equal(stopped.body.error,'voice_stop_pending');
+ const held=(await f.send('/v2/ai/usage')).body;
+ assert.equal(held.voiceFinalizing,true);
+ assert.equal(held.voice.reserved,300);
+ assert.ok(logs.some(entry=>entry.event==='billing_voice_provider_stop'&&entry.result==='failed'&&entry.cause==='timeout'));
+ f.failHangupThrow(null);
+ assert.equal((await f.send('/v2/ai/voice/stop',{body:{sessionId:'voice_timeout'}})).status,200);
+ assert.equal((await f.send('/v2/ai/usage')).body.voiceFinalizing,false);
 });
 test('a forty second call leaves 260 seconds when stop is retried long after the hangup',async t=>{
  const logs=[];

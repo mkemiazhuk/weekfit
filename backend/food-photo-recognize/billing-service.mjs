@@ -35,7 +35,7 @@ export function createBillingService(config, { authenticate, apple, store, fetch
     { maxVoiceCalls: config.plannerVoiceMaxCalls ?? 5, now: clock });
   const gate = createConcurrencyGate({ maxConcurrent: config.maxConcurrency ?? 4, maxQueue: 1000,
     queueWaitMs: 120000, retryAfterSeconds: 5 });
-  const inflight = new Map(), sessions = new Map(), stopping = new Map();
+  const inflight = new Map(), sessions = new Map(), stopping = new Map(), providerNotBefore = new Map();
   let closing = false;
   let closeTask;
   const context = async (req, requireActive = true) => {
@@ -50,11 +50,17 @@ export function createBillingService(config, { authenticate, apple, store, fetch
   const now = () => store.now();
   const hangup = async (op) => {
     if (!op.callId) return 'no_call';
-    const response = await fetcher(`https://api.openai.com/v1/realtime/calls/${encodeURIComponent(op.callId)}/hangup`, {
-      method: 'POST', headers: { Authorization: `Bearer ${config.apiKey}` }, signal: AbortSignal.timeout(5000),
-    });
+    let response;
+    try {
+      response = await fetcher(`https://api.openai.com/v1/realtime/calls/${encodeURIComponent(op.callId)}/hangup`, {
+        method: 'POST', headers: { Authorization: `Bearer ${config.apiKey}` }, signal: AbortSignal.timeout(15000),
+      });
+    } catch (e) {
+      const timedOut = e?.name === 'TimeoutError' || e?.name === 'AbortError';
+      throw new ServiceError('voice_stop_pending', 503, { detail: timedOut ? 'timeout' : 'network' });
+    }
     if (response.status === 404 || response.status === 410) return 'already_closed';
-    if (!response.ok) error('voice_stop_pending', 503);
+    if (!response.ok) throw new ServiceError('voice_stop_pending', 503, { detail: `http_${response.status}` });
     return 'closed';
   };
   const chargeSeconds = op => {
@@ -73,6 +79,8 @@ export function createBillingService(config, { authenticate, apple, store, fetch
   const stop = (wallet, key, reason = 'client') => {
     const identifier = `${wallet}:${key}`;
     if (stopping.has(identifier)) return stopping.get(identifier);
+    // The call end is already stored. Automatic retries wait, so a timed-out hangup is not fired again immediately.
+    if (reason !== 'client' && (providerNotBefore.get(identifier) ?? 0) > now()) return Promise.resolve();
     const task = (async () => {
       let op = store.operation(wallet, key);
       if (!op || op.state !== 'reserved') return;
@@ -86,9 +94,12 @@ export function createBillingService(config, { authenticate, apple, store, fetch
       try {
         provider = await hangup(op);
       } catch (e) {
-        log({ event: 'billing_voice_provider_stop', operation: key, result: 'failed' });
-        throw e;
+        providerNotBefore.set(identifier, now() + 5000);
+        const cause = e instanceof ServiceError && e.detail ? e.detail : 'unknown';
+        log({ event: 'billing_voice_provider_stop', operation: key, result: 'failed', cause });
+        throw e instanceof ServiceError ? e : new ServiceError('voice_stop_pending', 503, { detail: cause });
       }
+      providerNotBefore.delete(identifier);
       log({ event: 'billing_voice_provider_stop', operation: key, result: provider });
       op = store.operation(wallet, key);
       if (!op || op.state !== 'reserved') return;

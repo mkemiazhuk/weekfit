@@ -552,9 +552,45 @@ private extension ProfileView {
                 NavigationLink {
                     WeekFitAIUsageView().settingsNavigationPush()
                 } label: {
-                    Label(WeekFitLocalizedString("ai.usage.title"), systemImage: "sparkles")
-                        .foregroundStyle(textPrimary)
+                    HStack(spacing: 13) {
+                        ZStack {
+                            Circle()
+                                .fill(palette.isLight
+                                      ? WeekFitLightTokens.internalTile
+                                      : WeekFitTheme.whiteOpacity(0.10))
+                            Image(systemName: "sparkles")
+                                .font(.body.weight(.semibold))
+                                .symbolRenderingMode(.monochrome)
+                                .foregroundStyle(textPrimary)
+                        }
+                        .frame(width: 34, height: 34)
+                        .accessibilityHidden(true)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(WeekFitLocalizedString("ai.usage.title"))
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(textPrimary)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.88)
+                            Text(WeekFitLocalizedString("ai.usage.menuDetail"))
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(textSecondary)
+                                .lineLimit(2)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(textTertiary)
+                            .accessibilityHidden(true)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .settingsRowTouchTarget(minHeight: 64)
                 }
+                .buttonStyle(PressableScaleButtonStyle())
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("settings.aiUsage")
                 SettingsGroupDivider()
             }
 

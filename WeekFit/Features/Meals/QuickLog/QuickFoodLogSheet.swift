@@ -434,29 +434,48 @@ struct QuickFoodLogSheet: View {
             }
 
             if WeekFitAIBilling.enabled {
+                Rectangle()
+                    .fill(WeekFitTheme.borderSoft)
+                    .frame(height: 0.5)
+                    .padding(.horizontal, -16)
+                    .accessibilityHidden(true)
+
                 Button { showAIUsage = true } label: {
-                    HStack {
-                        Text(WeekFitLocalizedString("ai.usage.photos"))
-                        Spacer()
+                    HStack(spacing: 8) {
+                        Text(WeekFitLocalizedString("ai.usage.availablePhotos"))
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(WeekFitTheme.primaryText)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.85)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 8)
                         if let aiUsage {
                             Text(aiUsage.grandfatheredPhotos
                                 ? WeekFitLocalizedString("ai.usage.existingAccess")
                                 : aiUsage.photos.total.formatted())
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundStyle(WeekFitTheme.primaryText)
+                                .monospacedDigit()
                         }
                         Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.55))
                     }
-                    .font(.footnote)
-                    .foregroundStyle(WeekFitTheme.secondaryText)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("quickFood.ai.photosLeft")
             }
 
-            Text(WeekFitLocalizedString(aiAccessCaptionKey))
-                .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.58))
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-                .fixedSize(horizontal: false, vertical: true)
+            if let captionKey = aiAccessCaptionKey {
+                Text(WeekFitLocalizedString(captionKey))
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.58))
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 15)
@@ -465,10 +484,11 @@ struct QuickFoodLogSheet: View {
         .weekFitPremiumCard(emphasis: .standard, accent: foodAccent, cornerRadius: 20)
     }
 
-    private var aiAccessCaptionKey: String {
+    private var aiAccessCaptionKey: String? {
         if WeekFitAIBilling.enabled {
+            // The number above is photos still available, not the Premium allowance.
             return subscriptionManager.canUseCloudPhotoNutritionAnalysis
-                ? "today.photoLog.aiAssistant.included" : "today.photoLog.aiAssistant.requiresSubscription"
+                ? nil : "today.photoLog.aiAssistant.requiresSubscription"
         }
         if subscriptionManager.hasVerifiedPaidSubscriptionProof {
             return "today.photoLog.aiAssistant.included"

@@ -850,6 +850,27 @@ final class CoachEveningSummaryTests: XCTestCase {
         XCTAssertFalse(try store.claim(owner: "local", day: "2026-10-12"))
         XCTAssertNil(try store.loadCache(owner: "local"))
     }
+
+    func testLocalSummaryCountsFinishedActivitiesAndDoesNotUseTheCloudShape() {
+        let input = CoachEveningSummaryInput(
+            schemaVersion: 1,
+            day: "2026-10-30",
+            timezone: "UTC",
+            locale: "en",
+            phase: "evening",
+            facts: [
+                "activity": [
+                    .init(id: "activity.item.0", text: "Run; type run; status completed; durationMin 30; time 08:00."),
+                    .init(id: "activity.item.1", text: "Walk; type walk; status planned, not confirmed completed; durationMin 20; time 18:00.")
+                ]
+            ]
+        )
+        let result = CoachEveningLocalSummary.make(input)
+        XCTAssertEqual(result.requestId, "local")
+        XCTAssertEqual(result.summary.source, "fallback")
+        XCTAssertTrue(result.summary.today.text.contains("1 of 2"))
+        XCTAssertTrue(result.summary.isValid(for: input))
+    }
 }
 
 /// Tiny async latch for in-flight refresh tests.

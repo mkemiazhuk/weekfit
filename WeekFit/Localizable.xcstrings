@@ -62312,6 +62312,81 @@
         }
       }
     },
+    "coach.eveningRecap.local.headline" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Heute" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Today" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Hoy" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aujourd’hui" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Oggi" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "今日" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오늘" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Dziś" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Сегодня" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "今天" } }
+      }
+    },
+    "coach.eveningRecap.local.progress" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Heute sind %d von %d geplanten Aktivitäten erledigt." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You finished %d of %d planned activities today." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Hoy completaste %d de %d actividades planeadas." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Vous avez terminé %d des %d activités prévues aujourd’hui." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Oggi hai completato %d di %d attività previste." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "今日は%d件終えました。予定は%d件でした。" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오늘 %d개를 마쳤습니다. 계획은 %d개였습니다." } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Dziś ukończono %d z %d zaplanowanych aktywności." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Сегодня сделано %d из %d запланированных." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "今天完成了 %d 项，计划共 %d 项。" } }
+      }
+    },
+    "coach.eveningRecap.local.rest" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Für heute war nichts geplant. Ein ruhiger Tag zählt auch." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Nothing was planned for today. An easy day still counts." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Hoy no había nada planeado. Un día tranquilo también cuenta." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Rien n’était prévu aujourd’hui. Une journée calme compte aussi." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Oggi non c’era nulla in programma. Anche una giornata tranquilla conta." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "今日の予定はありませんでした。ゆっくりした日も大切です。" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오늘 예정된 일은 없습니다. 편한 하루도 충분합니다." } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Na dziś nic nie było zaplanowane. Spokojny dzień też się liczy." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "На сегодня ничего не запланировано. Спокойный день тоже считается." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "今天没有安排。轻松的一天也算数。" } }
+      }
+    },
+    "coach.eveningRecap.local.now" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "So steht der Tag im Moment." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "That's where today stands." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Así va el día por ahora." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Voilà où en est la journée." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Per ora la giornata è così." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "今日はここまでです。" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "오늘은 여기까지입니다." } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Na tym dzień na razie stoi." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "На этом день пока и остановился." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "今天目前就是这样。" } }
+      }
+    },
+    "coach.eveningRecap.local.tomorrow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Morgen kann dem Plan folgen, den du schon hast." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tomorrow can follow the plan you already have." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mañana puede seguir el plan que ya tienes." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Demain peut suivre le plan que vous avez déjà." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Domani può seguire il piano che hai già." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "明日は、すでにある予定のままで大丈夫です。" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "내일은 이미 있는 계획을 따르면 됩니다." } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Jutro może iść według planu, który już jest." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Завтра можно идти по плану, который уже есть." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "明天可以照着已有的计划走。" } }
+      }
+    },
     "coach.eveningRecap.forEvening.fallback" : {
       "extractionState" : "manual",
       "localizations" : {
