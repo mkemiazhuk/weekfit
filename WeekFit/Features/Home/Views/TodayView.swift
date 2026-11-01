@@ -43,6 +43,10 @@ struct TodayView: View {
     @State private var showPlannerVoice = false
     @State private var showAIUsage = false
     @State private var aiTopUpPack: WeekFitAIBalancePack?
+    @EnvironmentObject private var subscriptionManager: SubscriptionManager
+    @State private var showMayaPaywall = false
+    @State private var mayaPaywallID = UUID().uuidString
+    @State private var mayaPaywallHadAccess = false
     @State private var openingMaya = false
     @AppStorage(NotificationPreferenceKey.activityReminders)
     private var activityRemindersEnabled = false
@@ -485,6 +489,17 @@ struct TodayView: View {
         .accessibilityIdentifier("screen.today")
         .sheet(isPresented: $showAIUsage) { WeekFitAIBalanceSheet() }
         .sheet(item: $aiTopUpPack) { pack in WeekFitAIBalanceSheet(pack: pack) }
+        .fullScreenCover(isPresented: $showMayaPaywall, onDismiss: resumeMayaAfterPaywall) {
+            WeekFitPaywallView(
+                source: .mayaCall,
+                currentTab: "today",
+                paywallInstanceID: mayaPaywallID,
+                allowsDismiss: true,
+                requiresPaidSubscription: true
+            )
+            .environmentObject(subscriptionManager)
+            .environment(\.weekFitPalette, palette)
+        }
         .fullScreenCover(isPresented: $showPlannerVoice) {
             PlanRealtimeVoiceSheet(
                 planningDay: selectedDate,
@@ -1550,7 +1565,7 @@ struct TodayView: View {
                 let _ = TodayStartupDiagnostics.child("dailyStatusSection complete")
 
                 if plannerVoiceEnabled {
-                    MayaPearlCallCard(isReturning: showPlannerVoice) {
+                    MayaPearlCallCard(isReturning: showPlannerVoice, isOpening: openingMaya) {
                         openMayaCall()
                     }
                 }
@@ -2717,6 +2732,12 @@ struct TodayView: View {
         }
         if WeekFitAIBilling.enabled {
             guard !openingMaya else { return }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            // The server only accepts a proof StoreKit holds on this device, so no local subscription means no call.
+            guard subscriptionManager.canUseCloudPhotoNutritionAnalysis else {
+                presentMayaPaywall()
+                return
+            }
             openingMaya = true
             Task {
                 defer { openingMaya = false }
@@ -2726,13 +2747,27 @@ struct TodayView: View {
                     // Seconds still held by the last call come back when the server opens the next one.
                     if usage.active && usage.voice.total + usage.voice.reserved > 0 { showPlannerVoice = true }
                     else if usage.active { aiTopUpPack = .time }
-                    else { showAIUsage = true }
+                    else { presentMayaPaywall() }
+                } catch WeekFitAIUsageError.subscriptionRequired {
+                    presentMayaPaywall()
                 } catch { showAIUsage = true }
             }
             return
         }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         showPlannerVoice = true
+    }
+
+    private func presentMayaPaywall() {
+        mayaPaywallHadAccess = subscriptionManager.canUseCloudPhotoNutritionAnalysis
+        mayaPaywallID = UUID().uuidString
+        showMayaPaywall = true
+    }
+
+    /// Only a subscription bought on the paywall reopens the call; a plain close must not loop back.
+    private func resumeMayaAfterPaywall() {
+        guard !mayaPaywallHadAccess, subscriptionManager.canUseCloudPhotoNutritionAnalysis else { return }
+        openMayaCall()
     }
 
     private func refreshMayaAccess() async {

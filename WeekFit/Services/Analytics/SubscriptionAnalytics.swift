@@ -349,6 +349,8 @@ enum SubscriptionAnalyticsSource: String, Sendable {
     case tab
     /// Cloud AI photo nutrition gate (paid subscription only).
     case photoFood
+    /// Maya call without an active subscription.
+    case mayaCall
     case other
 }
 

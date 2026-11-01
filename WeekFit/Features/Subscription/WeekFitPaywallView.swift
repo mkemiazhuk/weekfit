@@ -13,7 +13,6 @@ struct WeekFitPaywallView: View {
     /// Optional hero copy override (e.g. AI photo nutrition paywall).
     var heroTitleKey: String? = nil
     var heroSubtitleKey: String? = nil
-
     @EnvironmentObject private var subscriptionManager: SubscriptionManager
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
@@ -74,10 +73,6 @@ struct WeekFitPaywallView: View {
         static let heroToBenefits: CGFloat = 18
         static let benefitsToPlans: CGFloat = 18
         static let benefitStackSpacing: CGFloat = 10
-        static let benefitRowVertical: CGFloat = 12
-        static let benefitRowHorizontal: CGFloat = 16
-        static let benefitIconSize: CGFloat = 26
-        static let benefitTitleToBody: CGFloat = 3
         static let planStackSpacing: CGFloat = 12
         static let planCardVertical: CGFloat = 14
         static let planCardLineSpacing: CGFloat = 5
@@ -92,8 +87,12 @@ struct WeekFitPaywallView: View {
         VStack(spacing: 0) {
             navBar
             VStack(alignment: .leading, spacing: 0) {
-                OnboardingTitle(text: WeekFitLocalizedString(heroTitleKey ?? "paywall.title"))
-                OnboardingSubtitle(text: WeekFitLocalizedString(heroSubtitleKey ?? "paywall.subtitle"))
+                OnboardingTitle(text: WeekFitLocalizedString(
+                    heroTitleKey ?? (WeekFitAIBilling.enabled ? "ai.usage.paywallTitle" : "paywall.title")
+                ))
+                OnboardingSubtitle(text: WeekFitLocalizedString(
+                    heroSubtitleKey ?? (WeekFitAIBilling.enabled ? "ai.usage.paywallSubtitle" : "paywall.subtitle")
+                ))
                     .padding(.top, Layout.heroTitleToSubtitle)
                 valueList
                     .padding(.top, Layout.heroToBenefits)
@@ -152,11 +151,31 @@ struct WeekFitPaywallView: View {
     private var valueList: some View {
         VStack(spacing: Layout.benefitStackSpacing) {
             if WeekFitAIBilling.enabled {
-                Text(WeekFitLocalizedString("ai.usage.paywallAllowance"))
-                    .font(.footnote)
-                    .foregroundStyle(WeekFitTheme.secondaryText)
-                    .multilineTextAlignment(.center)
+                valueRow(
+                    icon: "waveform",
+                    title: WeekFitLocalizedString("ai.usage.paywallMayaTitle"),
+                    subtitle: WeekFitLocalizedString("ai.usage.paywallMayaBody"),
+                    allowance: WeekFitLocalizedString("ai.usage.paywallMayaAllowance")
+                )
+                valueRow(
+                    icon: "camera",
+                    title: WeekFitLocalizedString("ai.usage.paywallPhotoTitle"),
+                    subtitle: WeekFitLocalizedString("ai.usage.paywallPhotoBody"),
+                    allowance: WeekFitLocalizedString("ai.usage.paywallPhotoAllowance")
+                )
+                valueRow(
+                    icon: "sparkles",
+                    title: WeekFitLocalizedString("ai.usage.paywallCoachTitle"),
+                    subtitle: WeekFitLocalizedString("ai.usage.paywallCoachBody")
+                )
+            } else {
+                legacyValueRows
             }
+        }
+    }
+
+    private var legacyValueRows: some View {
+        Group {
             valueRow(
                 icon: "sparkles",
                 title: WeekFitLocalizedString("paywall.value.coach.title"),
@@ -175,29 +194,8 @@ struct WeekFitPaywallView: View {
         }
     }
 
-    private func valueRow(icon: String, title: String, subtitle: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(WeekFitTheme.brandGold)
-                .frame(width: Layout.benefitIconSize, height: Layout.benefitIconSize)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: Layout.benefitTitleToBody) {
-                Text(title)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundStyle(palette.textPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(subtitle)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(palette.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, Layout.benefitRowHorizontal)
-        .padding(.vertical, Layout.benefitRowVertical)
-        .weekFitPremiumCard(emphasis: .compact, cornerRadius: OnboardingLayout.cardCornerRadius)
-        .accessibilityElement(children: .combine)
+    private func valueRow(icon: String, title: String, subtitle: String, allowance: String? = nil) -> some View {
+        WeekFitPaywallValueRow(icon: icon, title: title, subtitle: subtitle, allowance: allowance)
     }
 
     private var planOptions: some View {
@@ -207,6 +205,14 @@ struct WeekFitPaywallView: View {
             }
             if let monthly = subscriptionManager.monthlyProduct {
                 planCard(for: monthly, kind: .monthly)
+            }
+            if WeekFitAIBilling.enabled {
+                Text(WeekFitLocalizedString("ai.usage.paywallFootnote"))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(palette.textTertiary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity)
             }
             if subscriptionManager.productsFailedToLoad {
                 Text(WeekFitLocalizedString("paywall.error.products"))
@@ -483,6 +489,53 @@ struct WeekFitPaywallView: View {
             outcome: subscriptionManager.lastOutcome,
             source: subscriptionManager.lastOutcomeSource
         )
+    }
+}
+
+struct WeekFitPaywallValueRow: View {
+    var icon: String
+    var title: String
+    var subtitle: String
+    var allowance: String? = nil
+
+    @Environment(\.weekFitPalette) private var palette
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(WeekFitTheme.brandGold)
+                .frame(width: 26, height: 26)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(title)
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundStyle(palette.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    if let allowance {
+                        Text(allowance)
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(WeekFitTheme.brandGold)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background { Capsule().fill(WeekFitTheme.brandGold.opacity(0.16)) }
+                    }
+                }
+                Text(subtitle)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(palette.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .weekFitPremiumCard(emphasis: .compact, cornerRadius: OnboardingLayout.cardCornerRadius)
+        .accessibilityElement(children: .combine)
     }
 }
 

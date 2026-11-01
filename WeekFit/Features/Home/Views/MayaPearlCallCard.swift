@@ -3,6 +3,7 @@ import SwiftUI
 /// Quiet call entry on Today. One button: the phone chip is visual, not a second control.
 struct MayaPearlCallCard: View {
     var isReturning: Bool
+    var isOpening = false
     var action: () -> Void
 
     @Environment(\.weekFitPalette) private var palette
@@ -63,8 +64,14 @@ struct MayaPearlCallCard: View {
 
     private var callChip: some View {
         HStack(spacing: 6) {
-            Image(systemName: "phone")
-                .font(.system(size: 15, weight: .semibold))
+            if isOpening {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(chipInk)
+            } else {
+                Image(systemName: "phone")
+                    .font(.system(size: 15, weight: .semibold))
+            }
             Text(WeekFitLocalizedString(isReturning ? "today.maya.return" : "planner.voice.call"))
                 .font(.system(size: messageSize, weight: .semibold))
                 .lineLimit(1)

@@ -168,6 +168,54 @@ final class WeekFitAIBalanceTests: XCTestCase {
     }
 
     @MainActor
+    func testRenderPaywallAIBenefits() throws {
+        let directory = URL(fileURLWithPath: "/Users/maxk/Dev/WeekFit/.tmp/ai-balance-shots", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        for appearance in [WeekFitAppearance.light, WeekFitAppearance.dark] {
+            WeekFitPaletteStore.update(appearance: appearance, blend: 0)
+            let palette = WeekFitSemanticPalette.interpolated(blend: 0, appearance: appearance)
+            for name in ["en", "ru", "de", "fr", "es", "it", "pl", "ja", "ko", "zh-Hans"] {
+                let locale = Locale(identifier: name)
+                func t(_ key: String) -> String { WeekFitLocalizedString(key, locale: locale) }
+                let view = VStack(alignment: .leading, spacing: 10) {
+                    Text(t("ai.usage.paywallTitle"))
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundStyle(palette.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(t("ai.usage.paywallSubtitle"))
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(palette.textSecondary)
+                        .padding(.bottom, 8)
+                    WeekFitPaywallValueRow(icon: "waveform", title: t("ai.usage.paywallMayaTitle"),
+                                           subtitle: t("ai.usage.paywallMayaBody"),
+                                           allowance: t("ai.usage.paywallMayaAllowance"))
+                    WeekFitPaywallValueRow(icon: "camera", title: t("ai.usage.paywallPhotoTitle"),
+                                           subtitle: t("ai.usage.paywallPhotoBody"),
+                                           allowance: t("ai.usage.paywallPhotoAllowance"))
+                    WeekFitPaywallValueRow(icon: "sparkles", title: t("ai.usage.paywallCoachTitle"),
+                                           subtitle: t("ai.usage.paywallCoachBody"))
+                    Text(t("ai.usage.paywallFootnote"))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(palette.textTertiary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 8)
+                }
+                .padding(24)
+                .frame(width: 402)
+                .background(palette.appScreenBackground)
+                .environment(\.weekFitPalette, palette)
+                .environment(\.colorScheme, appearance == .light ? .light : .dark)
+                let renderer = ImageRenderer(content: view)
+                renderer.scale = 2
+                let data = try XCTUnwrap(renderer.uiImage?.pngData())
+                XCTAssertGreaterThan(data.count, 10_000)
+                try data.write(to: directory.appendingPathComponent("paywall-\(name)-\(appearance).png"))
+            }
+        }
+    }
+
+    @MainActor
     func testRenderBalanceInLightAndDark() throws {
         let content = try content(photosIncluded: 30, voiceIncluded: 0, voicePurchased: 852, periodEnd: future)
         let directory = URL(fileURLWithPath: "/Users/maxk/Dev/WeekFit/.tmp/ai-balance-shots", isDirectory: true)
