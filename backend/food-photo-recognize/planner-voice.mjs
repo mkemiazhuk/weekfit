@@ -483,7 +483,12 @@ export function consoleDocument() {
   let callNumber = 0;
   let muted = false;
   let hangup = false;
+  let hangupConfirmed = false;
+  let goodbyeLocked = false;
+  let greetingPending = false;
+  let micOpen = false;
   let audioPlaying = false;
+  let responseAudio = false;
   let goodbyeFallback = null;
   let goodbyeTail = null;
   let presence = null;
@@ -513,6 +518,20 @@ export function consoleDocument() {
   const post = (payload) => {
     const handler = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.plannerVoice;
     if (handler) handler.postMessage(payload);
+  };
+
+  const applyMic = () => {
+    if (local) local.getAudioTracks().forEach((track) => { track.enabled = micOpen && !muted; });
+  };
+
+  const openMic = () => {
+    micOpen = true;
+    applyMic();
+  };
+
+  const closeMic = () => {
+    micOpen = false;
+    applyMic();
   };
 
   const armIdle = () => {
@@ -571,7 +590,10 @@ export function consoleDocument() {
       if (ending) stop('silence');
       return;
     }
-    if (ending) hangup = true;
+    if (ending) {
+      hangup = true;
+      hangupConfirmed = false;
+    }
     channel.send(JSON.stringify({
       type: 'response.create',
       response: { instructions: 'Say exactly this and nothing else: ' + text },
@@ -601,6 +623,7 @@ export function consoleDocument() {
 
   function cancelGoodbye() {
     hangup = false;
+    hangupConfirmed = false;
     if (goodbyeFallback) clearTimeout(goodbyeFallback);
     if (goodbyeTail) clearTimeout(goodbyeTail);
     goodbyeFallback = null;
@@ -666,11 +689,12 @@ export function consoleDocument() {
     stop: () => stop('user'),
     setMuted: (value) => {
       muted = Boolean(value);
-      if (local) local.getAudioTracks().forEach((track) => { track.enabled = !muted; });
+      applyMic();
     },
+    // Older apps call this when the greeting starts; the microphone waits for the greeting to finish.
     answered: () => {
-      if (!local) return;
-      local.getAudioTracks().forEach((track) => { track.enabled = !muted; });
+      if (!local || greetingPending || goodbyeLocked) return;
+      openMic();
     },
     toolResult: (callId, output) => {
       const resolve = pending.get(callId);
@@ -683,6 +707,13 @@ export function consoleDocument() {
       try {
         release();
         thisCall = ++callNumber;
+        hangup = false;
+        hangupConfirmed = false;
+        goodbyeLocked = false;
+        greetingPending = false;
+        micOpen = false;
+        audioPlaying = false;
+        responseAudio = false;
         idleMs = Math.max(20000, Number(options.idleSeconds || 75) * 1000);
         post({ type: 'state', value: 'connecting' });
         pc = new RTCPeerConnection();
@@ -707,6 +738,7 @@ export function consoleDocument() {
         watchLevel(local, 'input');
         // Don't send locally played ringback audio to the assistant.
         local.getAudioTracks().forEach((track) => { track.enabled = false; });
+        micOpen = false;
         local.getTracks().forEach((track) => pc.addTrack(track, local));
         channel = pc.createDataChannel('oai-events');
         channel.onmessage = (event) => onEvent(event.data);
@@ -716,9 +748,24 @@ export function consoleDocument() {
         channel.onopen = () => {
           if (thisCall !== callNumber || !local || !channel) return;
           post({ type: 'state', value: 'connected' });
-          // Keep the microphone closed while the phone is still ringing.
-          if (!reopen) channel.send(JSON.stringify({ type: 'response.create' }));
+          post({ type: 'state', value: 'answered' });
           armIdle();
+          if (reopen) {
+            openMic();
+            return;
+          }
+          // Echo cancellation needs a moment on the speaker: an open microphone hears the
+          // greeting, the server treats it as speech, and cuts the greeting off.
+          greetingPending = true;
+          setTimeout(() => {
+            if (thisCall !== callNumber || !channel || channel.readyState !== 'open') return;
+            channel.send(JSON.stringify({ type: 'response.create' }));
+          }, 400);
+          setTimeout(() => {
+            if (thisCall !== callNumber || !greetingPending) return;
+            greetingPending = false;
+            if (!goodbyeLocked) openMic();
+          }, 10000);
         };
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
@@ -757,6 +804,7 @@ export function consoleDocument() {
     try { event = JSON.parse(raw); } catch (e) { return; }
     const type = event.type || '';
     if (type === 'input_audio_buffer.speech_started') {
+      if (goodbyeLocked) return;
       clearPresence();
       cancelGoodbye();
       if (presenceAsked) returnedAfterCheck = true;
@@ -765,17 +813,23 @@ export function consoleDocument() {
       return;
     }
     if (type === 'response.created') {
-      post({ type: 'state', value: 'speaking' });
+      responseAudio = false;
+      if (!goodbyeLocked) post({ type: 'state', value: 'speaking' });
       return;
     }
     if (type === 'output_audio_buffer.started') {
       audioPlaying = true;
+      responseAudio = true;
       clearPresence();
       return;
     }
     if (type === 'output_audio_buffer.stopped' || type === 'output_audio_buffer.cleared') {
       const wasPlaying = audioPlaying;
       audioPlaying = false;
+      if (greetingPending && wasPlaying) {
+        greetingPending = false;
+        if (!goodbyeLocked) openMic();
+      }
       if (hangup) finishGoodbye();
       else if (wasPlaying) {
         toolFollowUp = false;
@@ -796,7 +850,14 @@ export function consoleDocument() {
       }
       if (hangup) {
         post({ type: 'state', value: 'ending' });
-        armGoodbyeFallback();
+        // They said goodbye themselves: an echoed «пока» must not reopen the call.
+        if (hangupConfirmed) {
+          goodbyeLocked = true;
+          closeMic();
+        }
+        // The goodbye audio can finish before end_call arrives; don't wait for a stop that already happened.
+        if (!audioPlaying && responseAudio) finishGoodbye();
+        else armGoodbyeFallback();
         return;
       }
       if (!audioPlaying && !toolBusy && !presence && !closing) armPresence();
@@ -810,6 +871,7 @@ export function consoleDocument() {
     }
     if (type === 'response.function_call_arguments.done' && event.name === 'end_call') {
       hangup = true;
+      hangupConfirmed = true;
       clearPresence();
       return;
     }

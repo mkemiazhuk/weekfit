@@ -1,5 +1,7 @@
 import SwiftUI
 import HealthKit
+import SwiftData
+import WeekFitPlanner
 internal import Combine
 
 struct RecoveryDetailsView: View {
@@ -8,12 +10,14 @@ struct RecoveryDetailsView: View {
 
     @StateObject private var viewModel = RecoveryDetailsViewModel()
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var languageManager: AppLanguageManager
     @EnvironmentObject private var healthManager: HealthManager
     @State private var activeDate: Date
     @State private var didRecordRecoveryDetailsView = false
     @State private var didRecordStressIndexView = false
     @State private var showStressIndexSheet = false
+    @State private var morningHint: StressIndexMorningHint?
 
     // Kept for compatibility with existing navigation from Today.
     // The details screen recalculates recovery for the selected date.
@@ -63,13 +67,15 @@ struct RecoveryDetailsView: View {
         .fullScreenCover(isPresented: $showStressIndexSheet) {
             StressIndexDetailSheet(
                 result: viewModel.stressIndex,
-                recoveryScore: viewModel.snapshot.recoveryScore
+                recoveryScore: viewModel.snapshot.recoveryScore,
+                morningHint: morningHint
             )
         }
     }
 
     private func load(date: Date) async {
         await viewModel.load(for: date, healthManager: healthManager)
+        morningHint = resolveMorningHint(for: date)
         // Engagement is based on opening Recovery after Health processing — never on score values.
         guard !didRecordRecoveryDetailsView, !viewModel.authorizationFailed else { return }
         didRecordRecoveryDetailsView = true
@@ -80,11 +86,43 @@ struct RecoveryDetailsView: View {
             AppAnalytics.shared.track(.stressIndexViewed)
         }
     }
+
+    /// Past days are skipped: the hint ends with "let's see how today goes".
+    private func resolveMorningHint(for date: Date) -> StressIndexMorningHint? {
+        let calendar = Calendar.current
+        guard calendar.isDateInToday(date),
+              let input = viewModel.snapshot.recoveryInput else { return nil }
+
+        let today = calendar.startOfDay(for: date)
+        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: today) else { return nil }
+        // Drinks after midnight still belong to last night until the user went to bed.
+        let cutoff = max(today, viewModel.snapshot.bedStart ?? today)
+
+        let descriptor = FetchDescriptor<PlannedActivity>(
+            predicate: #Predicate { activity in
+                activity.type == "drink"
+                    && !activity.isSkipped
+                    && activity.date >= yesterday
+                    && activity.date < cutoff
+            }
+        )
+        let drinks = (try? modelContext.fetch(descriptor)) ?? []
+        let alcohol = StressIndexAlcohol.combine(
+            drinks.compactMap { StressIndexAlcohol.classify(title: $0.title, imageName: $0.imageName) }
+        )
+
+        return StressIndexMorningHint.resolve(
+            result: viewModel.stressIndex,
+            priorDayLoad: input.priorDayLoad,
+            alcohol: alcohol
+        )
+    }
 }
 
 private struct StressIndexDetailSheet: View {
     let result: StressIndexResult
     let recoveryScore: Int
+    let morningHint: StressIndexMorningHint?
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -254,7 +292,7 @@ private struct StressIndexDetailSheet: View {
                 .font(.system(size: RecoveryTypography.stressSectionTitle, weight: .semibold, design: .rounded))
                 .foregroundStyle(WeekFitTheme.primaryText)
 
-            Text(StressIndexCopy.meaningBody(for: result, recoveryScore: recoveryScore))
+            Text(morningHint?.text ?? StressIndexCopy.meaningBody(for: result, recoveryScore: recoveryScore))
                 .font(.system(size: RecoveryTypography.stressBody, weight: .medium, design: .rounded))
                 .foregroundStyle(WeekFitTheme.whiteOpacity(0.62))
                 .lineSpacing(3)

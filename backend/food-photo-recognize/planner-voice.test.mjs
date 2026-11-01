@@ -522,20 +522,33 @@ test('ringing continues until the assistant starts the greeting', async () => {
   assert.equal(track.enabled, false);
   assert.equal(sent.length, 0);
   channel.onopen();
-  assert.equal(events.at(-1).value, 'connected');
+  assert.deepEqual(events.slice(-2).map(event => event.value), ['connected', 'answered']);
   assert.equal(track.enabled, false);
+  assert.equal(sent.length, 0);
+  timers.find(timer => timer.delay === 400).callback();
   assert.deepEqual(JSON.parse(JSON.stringify(sent)), [{ type: 'response.create' }]);
   channel.onmessage({ data: JSON.stringify({ type: 'response.created' }) });
   assert.equal(events.at(-1).value, 'speaking');
   assert.equal(track.enabled, false);
   window.weekfit.answered();
+  assert.equal(track.enabled, false);
+  channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.started' }) });
+  assert.equal(track.enabled, false);
+  channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.stopped' }) });
   assert.equal(track.enabled, true);
+
+  channel.onmessage({ data: JSON.stringify({ type: 'response.created' }) });
+  channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.started' }) });
   channel.onmessage({ data: JSON.stringify({ type: 'response.function_call_arguments.done', name: 'end_call', call_id: 'call_bye' }) });
   assert.equal(track.stopped, false);
   channel.onmessage({ data: JSON.stringify({ type: 'response.done', response: {} }) });
+  assert.equal(events.at(-1).value, 'ending');
+  assert.equal(track.enabled, false);
   assert.equal(track.stopped, false);
-  assert.equal(timers.some(timer => timer.delay === 700), false);
   assert.equal(timers.some(timer => timer.delay === 12000), true);
+  assert.equal(timers.some(timer => timer.delay === 1000), false);
+  channel.onmessage({ data: JSON.stringify({ type: 'input_audio_buffer.speech_started' }) });
+  assert.equal(events.at(-1).value, 'ending');
   channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.stopped' }) });
   assert.equal(track.stopped, false);
   timers.find(timer => timer.delay === 1000).callback();
@@ -543,6 +556,46 @@ test('ringing continues until the assistant starts the greeting', async () => {
   assert.equal(events.some(event => event.value === 'ended' && event.reason === 'goodbye'), true);
   window.weekfit.stop();
   assert.equal(track.stopped, true);
+});
+
+test('a goodbye that finished playing before end_call still hangs up right away', async () => {
+  const script = consoleDocument().match(/<script>([\s\S]*?)<\/script>/)?.[1];
+  const events = [];
+  const timers = [];
+  const track = { enabled: true, stopped: false, stop() { this.stopped = true; } };
+  const stream = { getTracks: () => [track], getAudioTracks: () => [track] };
+  const channel = { readyState: 'open', send() {}, close() {} };
+  const window = { webkit: { messageHandlers: { plannerVoice: { postMessage: event => events.push(event) } } } };
+  class Peer {
+    createDataChannel() { return channel; }
+    addTrack() {}
+    async createOffer() { return { sdp: 'offer' }; }
+    async setLocalDescription() {}
+    async setRemoteDescription() {}
+    close() {}
+  }
+  runInNewContext(script, {
+    window,
+    RTCPeerConnection: Peer,
+    navigator: { mediaDevices: { getUserMedia: async () => stream } },
+    document: { createElement: () => ({ setAttribute() {}, remove() {} }), body: { appendChild() {} } },
+    fetch: async () => ({ ok: true, text: async () => 'answer' }),
+    setTimeout: (callback, delay) => { timers.push({ callback, delay }); return timers.length; },
+    clearTimeout() {},
+  });
+  await window.weekfit.start({ ephemeralKey: 'ek_test', idleSeconds: 75, reconnected: true });
+  channel.onopen();
+  assert.equal(track.enabled, true);
+  channel.onmessage({ data: JSON.stringify({ type: 'response.created' }) });
+  channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.started' }) });
+  channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.stopped' }) });
+  channel.onmessage({ data: JSON.stringify({ type: 'response.function_call_arguments.done', name: 'end_call', call_id: 'call_bye' }) });
+  channel.onmessage({ data: JSON.stringify({ type: 'response.done', response: {} }) });
+  assert.equal(events.at(-1).value, 'ending');
+  assert.equal(timers.some(timer => timer.delay === 12000), false);
+  timers.find(timer => timer.delay === 1000).callback();
+  assert.equal(track.stopped, true);
+  assert.equal(events.at(-1).value, 'ended');
 });
 
 test('silence starts after playback and speech cancels a pending goodbye', async () => {

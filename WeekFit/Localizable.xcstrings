@@ -364512,6 +364512,461 @@
         }
       }
     },
+    "recovery.stressIndex.morning.beer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vielleicht macht sich das Bier von gestern noch bemerkbar. Schauen wir, wie der Tag verläuft."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Looks like yesterday’s beer may still be making itself felt. Let’s see how the day goes."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puede que la cerveza de ayer todavía se note. Veamos cómo va el día."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La bière d’hier se fait peut-être encore sentir. Voyons comment se passe la journée."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forse la birra di ieri si fa ancora sentire. Vediamo come va la giornata."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨日のビールがまだ響いているのかもしれません。今日の様子を見てみましょう。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "어제 마신 맥주의 영향이 아직 남아 있을 수 있습니다. 오늘 하루 어떻게 지나는지 지켜봅시다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Możliwe, że wczorajsze piwo jeszcze daje o sobie znać. Zobaczmy, jak minie dzień."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Похоже, вчерашнее пиво могло дать о себе знать. Посмотрим, как пройдёт день."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨天喝的啤酒可能还有些影响。看看今天过得怎么样吧。"
+          }
+        }
+      }
+    },
+    "recovery.stressIndex.morning.wine" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vielleicht macht sich der Wein von gestern noch bemerkbar. Schauen wir, wie der Tag verläuft."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Looks like yesterday’s wine may still be making itself felt. Let’s see how the day goes."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puede que el vino de ayer todavía se note. Veamos cómo va el día."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le vin d’hier se fait peut-être encore sentir. Voyons comment se passe la journée."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forse il vino di ieri si fa ancora sentire. Vediamo come va la giornata."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨日のワインがまだ響いているのかもしれません。今日の様子を見てみましょう。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "어제 마신 와인의 영향이 아직 남아 있을 수 있습니다. 오늘 하루 어떻게 지나는지 지켜봅시다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Możliwe, że wczorajsze wino jeszcze daje o sobie znać. Zobaczmy, jak minie dzień."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Похоже, вчерашнее вино могло дать о себе знать. Посмотрим, как пройдёт день."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨天喝的葡萄酒可能还有些影响。看看今天过得怎么样吧。"
+          }
+        }
+      }
+    },
+    "recovery.stressIndex.morning.alcohol" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vielleicht macht sich der Alkohol von gestern noch bemerkbar. Schauen wir, wie der Tag verläuft."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Looks like yesterday’s drinks may still be making themselves felt. Let’s see how the day goes."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puede que el alcohol de ayer todavía se note. Veamos cómo va el día."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’alcool d’hier se fait peut-être encore sentir. Voyons comment se passe la journée."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forse l’alcol di ieri si fa ancora sentire. Vediamo come va la giornata."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨日のお酒がまだ響いているのかもしれません。今日の様子を見てみましょう。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "어제 마신 술의 영향이 아직 남아 있을 수 있습니다. 오늘 하루 어떻게 지나는지 지켜봅시다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Możliwe, że wczorajszy alkohol jeszcze daje o sobie znać. Zobaczmy, jak minie dzień."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Похоже, выпитое вчера могло дать о себе знать. Посмотрим, как пройдёт день."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨天喝的酒可能还有些影响。看看今天过得怎么样吧。"
+          }
+        }
+      }
+    },
+    "recovery.stressIndex.morning.beerAfterLoad" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestern war ein aktiver Tag, und es gab auch Bier. Ihr Körper erholt sich vielleicht noch. Schauen wir, wie der Tag verläuft."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yesterday was an active day, with beer too. Your body may still be catching up. Let’s see how the day goes."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayer fue un día activo, y también hubo cerveza. Puede que su cuerpo aún se esté recuperando. Veamos cómo va el día."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hier, la journée a été active, avec de la bière aussi. Votre corps récupère peut-être encore. Voyons comment se passe la journée."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ieri è stata una giornata attiva, con anche della birra. Forse il corpo si sta ancora riprendendo. Vediamo come va la giornata."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨日はよく動いた日で、ビールも飲んでいました。体がまだ回復の途中かもしれません。今日の様子を見てみましょう。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "어제는 활동량이 많았고 맥주도 마셨습니다. 몸이 아직 회복 중일 수 있습니다. 오늘 하루 어떻게 지나는지 지켜봅시다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wczoraj był aktywny dzień, było też piwo. Możliwe, że organizm jeszcze się regeneruje. Zobaczmy, jak minie dzień."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вчера было и активно, и с пивом. Возможно, организм ещё восстанавливается. Посмотрим, как пройдёт день."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨天活动量不小，也喝了啤酒。身体可能还在恢复。看看今天过得怎么样吧。"
+          }
+        }
+      }
+    },
+    "recovery.stressIndex.morning.wineAfterLoad" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestern war ein aktiver Tag, und es gab auch Wein. Ihr Körper erholt sich vielleicht noch. Schauen wir, wie der Tag verläuft."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yesterday was an active day, with wine too. Your body may still be catching up. Let’s see how the day goes."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayer fue un día activo, y también hubo vino. Puede que su cuerpo aún se esté recuperando. Veamos cómo va el día."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hier, la journée a été active, avec du vin aussi. Votre corps récupère peut-être encore. Voyons comment se passe la journée."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ieri è stata una giornata attiva, con anche del vino. Forse il corpo si sta ancora riprendendo. Vediamo come va la giornata."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨日はよく動いた日で、ワインも飲んでいました。体がまだ回復の途中かもしれません。今日の様子を見てみましょう。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "어제는 활동량이 많았고 와인도 마셨습니다. 몸이 아직 회복 중일 수 있습니다. 오늘 하루 어떻게 지나는지 지켜봅시다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wczoraj był aktywny dzień, było też wino. Możliwe, że organizm jeszcze się regeneruje. Zobaczmy, jak minie dzień."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вчера было и активно, и с вином. Возможно, организм ещё восстанавливается. Посмотрим, как пройдёт день."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨天活动量不小，也喝了葡萄酒。身体可能还在恢复。看看今天过得怎么样吧。"
+          }
+        }
+      }
+    },
+    "recovery.stressIndex.morning.alcoholAfterLoad" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestern war ein aktiver Tag, und es gab auch Alkohol. Ihr Körper erholt sich vielleicht noch. Schauen wir, wie der Tag verläuft."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yesterday was an active day, with drinks too. Your body may still be catching up. Let’s see how the day goes."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayer fue un día activo, y también hubo alcohol. Puede que su cuerpo aún se esté recuperando. Veamos cómo va el día."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hier, la journée a été active, avec de l’alcool aussi. Votre corps récupère peut-être encore. Voyons comment se passe la journée."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ieri è stata una giornata attiva, con anche dell’alcol. Forse il corpo si sta ancora riprendendo. Vediamo come va la giornata."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨日はよく動いた日で、お酒も飲んでいました。体がまだ回復の途中かもしれません。今日の様子を見てみましょう。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "어제는 활동량이 많았고 술도 마셨습니다. 몸이 아직 회복 중일 수 있습니다. 오늘 하루 어떻게 지나는지 지켜봅시다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wczoraj był aktywny dzień, był też alkohol. Możliwe, że organizm jeszcze się regeneruje. Zobaczmy, jak minie dzień."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вчера было и активно, и с алкоголем. Возможно, организм ещё восстанавливается. Посмотрим, как пройдёт день."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨天活动量不小，也喝了酒。身体可能还在恢复。看看今天过得怎么样吧。"
+          }
+        }
+      }
+    },
+    "recovery.stressIndex.morning.unlogged" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vielleicht hat Sie gestern etwas aus Ihrem gewohnten Rhythmus gebracht. Schauen wir, wie Sie sich heute fühlen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Looks like something threw you off your usual rhythm yesterday. Let’s see how you feel today."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parece que ayer algo le sacó de su ritmo habitual. Veamos cómo se siente hoy."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On dirait que quelque chose vous a sorti de votre rythme habituel hier. Voyons comment vous vous sentez aujourd’hui."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sembra che ieri qualcosa abbia scombussolato il suo solito ritmo. Vediamo come si sente oggi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨日、何かでいつものリズムが崩れたのかもしれません。今日の調子を見てみましょう。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "어제 무언가로 평소 리듬이 흐트러졌을 수 있습니다. 오늘 컨디션이 어떤지 지켜봅시다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wygląda na to, że wczoraj coś wybiło organizm z codziennego rytmu. Zobaczmy, jak będzie dziś."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Похоже, вчера что-то выбило вас из привычного ритма. Посмотрим, как вы будете себя чувствовать сегодня."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨天可能有什么打乱了平时的节奏。看看今天感觉如何吧。"
+          }
+        }
+      }
+    },
     "recovery.stressIndex.meaning.high" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -20,6 +20,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
 
     @Published private(set) var phase: Phase = .connecting
     @Published private(set) var connectedAt: Date?
+    @Published private(set) var endingAt: Date?
     @Published private(set) var remainingSeconds: Int?
     @Published private(set) var muted = false
     @Published private(set) var webView: WKWebView?
@@ -52,6 +53,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     private var reconnecting = false
     private var keepsReceipt = false
     private var receiptHide: Task<Void, Never>?
+    private var endingWatchdog: Task<Void, Never>?
     private let calendar = Calendar.current
     private let ringback = PlanVoiceRingback()
 
@@ -78,6 +80,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         }
         connectTask?.cancel()
         heartbeat?.cancel()
+        endingWatchdog?.cancel()
         if secret?.sessionId != nil {
             Task { await WeekFitVoiceStopQueue.shared.flush() }
         }
@@ -407,24 +410,30 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     }
 
     private func applyState(_ payload: [String: Any]) {
-        switch payload["value"] as? String {
+        let value = payload["value"] as? String
+        if value != "ending", value != "ended" {
+            endingWatchdog?.cancel()
+            endingWatchdog = nil
+            endingAt = nil
+        }
+        switch value {
         case "connecting":
             phase = .connecting
         case "connected":
             phase = .connecting
+        case "answered":
+            pickUp()
         case "listening":
             phase = .listening
         case "speaking":
-            if connectedAt == nil {
-                ringback.stop()
-                connectedAt = Date()
-                webView?.evaluateJavaScript("window.weekfit && window.weekfit.answered()")
-            }
+            pickUp()
             phase = .speaking
         case "acting":
             phase = .acting
         case "ending":
             phase = .ending
+            if endingAt == nil { endingAt = Date() }
+            armEndingWatchdog()
         case "ended":
             guard !ended else { return }
             end()
@@ -434,6 +443,24 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             end()
         default:
             break
+        }
+    }
+
+    private func pickUp() {
+        guard connectedAt == nil else { return }
+        ringback.stop()
+        connectedAt = Date()
+        webView?.evaluateJavaScript("window.weekfit && window.weekfit.answered()")
+    }
+
+    /// The page hangs up after the goodbye plays; if its timers stall (backgrounded web
+    /// content, a lost audio event) the call must still end and stop billing.
+    private func armEndingWatchdog() {
+        guard endingWatchdog == nil else { return }
+        endingWatchdog = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 15_000_000_000)
+            guard !Task.isCancelled, let self, self.phase == .ending else { return }
+            self.end()
         }
     }
 
@@ -941,7 +968,8 @@ struct PlanRealtimeVoiceSheet: View {
             }
             if let connectedAt = controller.connectedAt {
                 TimelineView(.periodic(from: connectedAt, by: 1)) { context in
-                    let seconds = max(0, Int(context.date.timeIntervalSince(connectedAt)))
+                    let shown = min(context.date, controller.endingAt ?? context.date)
+                    let seconds = max(0, Int(shown.timeIntervalSince(connectedAt)))
                     Text(String(format: "%02d:%02d", seconds / 60, seconds % 60))
                         .font(.body.monospacedDigit())
                         .foregroundStyle(palette.textSecondary)
