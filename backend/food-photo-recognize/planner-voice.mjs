@@ -502,6 +502,7 @@ export function consoleDocument() {
   let hangupConfirmed = false;
   let goodbyeLocked = false;
   let greetingPending = false;
+  let voiced = false;
   let micOpen = false;
   let audioPlaying = false;
   let responseAudio = false;
@@ -727,6 +728,7 @@ export function consoleDocument() {
         hangupConfirmed = false;
         goodbyeLocked = false;
         greetingPending = false;
+        voiced = false;
         micOpen = false;
         audioPlaying = false;
         responseAudio = false;
@@ -837,6 +839,11 @@ export function consoleDocument() {
       audioPlaying = true;
       responseAudio = true;
       clearPresence();
+      // The app keeps its connecting tone until this, so the line is never silent before Maya speaks.
+      if (!voiced) {
+        voiced = true;
+        post({ type: 'state', value: 'voice' });
+      }
       return;
     }
     if (type === 'output_audio_buffer.stopped' || type === 'output_audio_buffer.cleared') {

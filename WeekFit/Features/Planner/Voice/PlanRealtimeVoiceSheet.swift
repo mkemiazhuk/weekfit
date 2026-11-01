@@ -43,6 +43,10 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     private var refBook = PlanRealtimeRefBook()
     private var removedIDs = Set<String>()
     private var secret: PlanRealtimeSessionSecret?
+    private var pageReady = false
+    private var pageStarted = false
+    private var toneFallback: Task<Void, Never>?
+    private var awaitsGreeting = true
     private var started = false
     private var ended = false
     private var lineTicket: String?
@@ -81,6 +85,8 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         connectTask?.cancel()
         heartbeat?.cancel()
         endingWatchdog?.cancel()
+        toneFallback?.cancel()
+        toneFallback = nil
         if secret?.sessionId != nil {
             Task { await WeekFitVoiceStopQueue.shared.flush() }
         }
@@ -167,6 +173,8 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             PlanRealtimeMayaMemory.markIntroduced()
             ringback.start()
             phase = .connecting
+            // The call page loads while the session is opened, not after it.
+            loadConsole(client)
             let secret = try await client.openSession(
                 timeZone: calendar.timeZone.identifier,
                 now: Date(),
@@ -195,35 +203,54 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             }
             remainingSeconds = secret.budgetSeconds
             startHeartbeat(ticket)
-            let configuration = WKWebViewConfiguration()
-            configuration.allowsInlineMediaPlayback = true
-            configuration.mediaTypesRequiringUserActionForPlayback = []
-            bridge.owner = self
-            configuration.userContentController.add(bridge, name: "plannerVoice")
-            let view = WKWebView(frame: CGRect(x: 0, y: 0, width: 320, height: 48), configuration: configuration)
-            view.navigationDelegate = self
-            view.uiDelegate = self
-            webView = view
-            var request = URLRequest(url: client.baseURL.appending(path: "v1/planner-voice/console"))
-            request.setValue("Bearer \(client.token)", forHTTPHeaderField: "Authorization")
-            view.load(request)
+            startConsoleIfReady()
         } catch let error as WeekFitAIUsageError {
-            guard !ended else { return }
-            ringback.stop()
-            phase = .failed(WeekFitAIErrorMessage(error))
+            failConnecting(WeekFitAIErrorMessage(error))
         } catch PlanRealtimeClientError.lineFull {
-            guard !ended else { return }
-            ringback.stop()
-            phase = .failed(WeekFitLocalizedString("planner.voice.lineFull"))
+            failConnecting(WeekFitLocalizedString("planner.voice.lineFull"))
         } catch PlanRealtimeClientError.transport {
-            guard !ended else { return }
-            ringback.stop()
-            phase = .failed(WeekFitLocalizedString("planner.voice.offline"))
+            failConnecting(WeekFitLocalizedString("planner.voice.offline"))
         } catch {
-            guard !ended else { return }
-            ringback.stop()
-            phase = .failed(WeekFitLocalizedString("planner.voice.connectionLost"))
+            failConnecting(WeekFitLocalizedString("planner.voice.connectionLost"))
         }
+    }
+
+    private func loadConsole(_ client: PlanRealtimeClient) {
+        secret = nil
+        pageReady = false
+        pageStarted = false
+        let configuration = WKWebViewConfiguration()
+        configuration.allowsInlineMediaPlayback = true
+        configuration.mediaTypesRequiringUserActionForPlayback = []
+        bridge.owner = self
+        configuration.userContentController.add(bridge, name: "plannerVoice")
+        let view = WKWebView(frame: CGRect(x: 0, y: 0, width: 320, height: 48), configuration: configuration)
+        view.navigationDelegate = self
+        view.uiDelegate = self
+        webView = view
+        var request = URLRequest(url: client.baseURL.appending(path: "v1/planner-voice/console"))
+        request.setValue("Bearer \(client.token)", forHTTPHeaderField: "Authorization")
+        view.load(request)
+    }
+
+    /// Starts the call once both the page and the session are ready, whichever finishes last.
+    private func startConsoleIfReady() {
+        guard !ended, pageReady, !pageStarted, let secret else { return }
+        awaitsGreeting = !reconnecting
+        guard let options = json(secret) else { return }
+        pageStarted = true
+        webView?.evaluateJavaScript("window.weekfit.start(\(options))")
+    }
+
+    private func failConnecting(_ message: String) {
+        guard !ended else { return }
+        ringback.stop()
+        // Retry builds a new page; begin() refuses while the old one is still attached.
+        webView?.configuration.userContentController.removeScriptMessageHandler(forName: "plannerVoice")
+        webView?.navigationDelegate = nil
+        webView?.uiDelegate = nil
+        webView = nil
+        phase = .failed(message)
     }
 
     func showFixture(_ name: String) {
@@ -383,8 +410,8 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        guard !ended, let secret, let options = json(secret) else { return }
-        webView.evaluateJavaScript("window.weekfit.start(\(options))")
+        pageReady = true
+        startConsoleIfReady()
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -422,12 +449,16 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         case "connected":
             phase = .connecting
         case "answered":
-            pickUp()
-        case "listening":
-            phase = .listening
-        case "speaking":
+            // The tone keeps playing until Maya's greeting is audible; a reconnect has no greeting.
+            if awaitsGreeting { armToneFallback() } else { pickUp() }
+        case "voice":
             pickUp()
             phase = .speaking
+        case "listening":
+            pickUp()
+            phase = .listening
+        case "speaking":
+            if connectedAt != nil { phase = .speaking }
         case "acting":
             phase = .acting
         case "ending":
@@ -448,9 +479,23 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
 
     private func pickUp() {
         guard connectedAt == nil else { return }
+        toneFallback?.cancel()
+        toneFallback = nil
         ringback.stop()
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
         connectedAt = Date()
         webView?.evaluateJavaScript("window.weekfit && window.weekfit.answered()")
+    }
+
+    /// A greeting that never becomes audible must not leave the tone playing over the call.
+    private func armToneFallback() {
+        guard toneFallback == nil, connectedAt == nil else { return }
+        toneFallback = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard !Task.isCancelled, let self, !self.ended else { return }
+            self.pickUp()
+            if self.phase == .connecting { self.phase = .speaking }
+        }
     }
 
     /// The page hangs up after the goodbye plays; if its timers stall (backgrounded web
@@ -819,10 +864,11 @@ private final class PlanVoiceRingback {
         player = nil
     }
 
-    // A phone ring: two short bursts, then silence, until the assistant answers.
+    // A soft rising two-note chime, repeated until Maya's voice is heard. Each loop fades to
+    // silence before it repeats, so the seam is inaudible.
     private static let tone: Data = {
-        let rate = 16_000
-        let count = rate * 3
+        let rate = 24_000
+        let count = Int(Double(rate) * 2.4)
         var wave = Data(capacity: 44 + count * 2)
         func word(_ value: UInt32) {
             var little = value.littleEndian
@@ -844,12 +890,15 @@ private final class PlanVoiceRingback {
         halfWord(16)
         wave.append(contentsOf: "data".utf8)
         word(UInt32(count * 2))
+        func chime(_ frequency: Double, from start: Double, at seconds: Double) -> Double {
+            let elapsed = seconds - start
+            guard elapsed >= 0 else { return 0 }
+            let envelope = min(1, elapsed / 0.012) * exp(-elapsed / 0.3)
+            return envelope * (sin(2 * .pi * frequency * elapsed) + 0.12 * sin(4 * .pi * frequency * elapsed))
+        }
         for index in 0..<count {
             let seconds = Double(index) / Double(rate)
-            let ringing = (seconds < 0.4) || (seconds >= 0.6 && seconds < 1.0)
-            let sample = ringing
-                ? (sin(2 * .pi * 440 * seconds) + sin(2 * .pi * 480 * seconds)) * 0.28
-                : 0
+            let sample = (chime(587.33, from: 0, at: seconds) + chime(880, from: 0.16, at: seconds)) * 0.16
             var value = Int16((sample * Double(Int16.max)).rounded()).littleEndian
             withUnsafeBytes(of: &value) { wave.append(contentsOf: $0) }
         }

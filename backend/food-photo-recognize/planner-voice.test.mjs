@@ -560,13 +560,16 @@ test('ringing continues until the assistant starts the greeting', async () => {
   assert.equal(track.enabled, false);
   window.weekfit.answered();
   assert.equal(track.enabled, false);
+  assert.equal(events.some(event => event.value === 'voice'), false);
   channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.started' }) });
+  assert.equal(events.at(-1).value, 'voice');
   assert.equal(track.enabled, false);
   channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.stopped' }) });
   assert.equal(track.enabled, true);
 
   channel.onmessage({ data: JSON.stringify({ type: 'response.created' }) });
   channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.started' }) });
+  assert.equal(events.filter(event => event.value === 'voice').length, 1);
   channel.onmessage({ data: JSON.stringify({ type: 'response.function_call_arguments.done', name: 'end_call', call_id: 'call_bye' }) });
   assert.equal(track.stopped, false);
   channel.onmessage({ data: JSON.stringify({ type: 'response.done', response: {} }) });
