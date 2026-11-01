@@ -116,7 +116,7 @@ test('voice tickets and reservations are isolated for the same Firebase user and
     assert.equal((await f.send(environment)).body.voice.included, 0);
   }
   await f.send('Sandbox', '/v2/ai/voice/stop', { sessionId: 'voice_same' });
-  assert.equal((await f.send('Sandbox')).body.voice.included, 900);
+  assert.equal((await f.send('Sandbox')).body.voice.included, 600);
   assert.equal((await f.send('Production')).body.voice.included, 0);
 });
 test('namespace guards reject foreign signed data even if it reuses an existing appAccountToken', t => {

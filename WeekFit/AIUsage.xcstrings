@@ -1797,61 +1797,61 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Includes 30 photo recognitions and 15 minutes with Maya each month, on monthly and annual plans. Additional usage is purchased separately."
+            "value": "Includes 30 photo recognitions and 10 minutes with Maya each month, on monthly and annual plans. Additional usage is purchased separately."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Включены 30 распознаваний фото и 15 минут с Maya каждый месяц при месячной и годовой подписке. Дополнительный объём приобретается отдельно."
+            "value": "Включены 30 распознаваний фото и 10 минут с Maya каждый месяц при месячной и годовой подписке. Дополнительный объём приобретается отдельно."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Subskrypcja miesięczna i roczna obejmują co miesiąc 30 rozpoznań zdjęć i 15 minut rozmowy z Mayą. Dodatkowe wykorzystanie jest płatne osobno."
+            "value": "Subskrypcja miesięczna i roczna obejmują co miesiąc 30 rozpoznań zdjęć i 10 minut rozmowy z Mayą. Dodatkowe wykorzystanie jest płatne osobno."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "月度和年度订阅均每月包含30次照片识别及15分钟Maya通话。额外用量需单独购买。"
+            "value": "月度和年度订阅均每月包含30次照片识别及10分钟Maya通话。额外用量需单独购买。"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les formules mensuelle et annuelle incluent chaque mois 30 reconnaissances de photos et 15 minutes avec Maya. L’utilisation supplémentaire est facturée séparément."
+            "value": "Les formules mensuelle et annuelle incluent chaque mois 30 reconnaissances de photos et 10 minutes avec Maya. L’utilisation supplémentaire est facturée séparément."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Los planes mensual y anual incluyen cada mes 30 reconocimientos de fotos y 15 minutos con Maya. El uso adicional se compra por separado."
+            "value": "Los planes mensual y anual incluyen cada mes 30 reconocimientos de fotos y 10 minutos con Maya. El uso adicional se compra por separado."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Monats- und Jahresabo enthalten jeden Monat 30 Fotoerkennungen und 15 Minuten mit Maya. Zusätzliche Nutzung wird separat gekauft."
+            "value": "Monats- und Jahresabo enthalten jeden Monat 30 Fotoerkennungen und 10 Minuten mit Maya. Zusätzliche Nutzung wird separat gekauft."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "月額・年額プランともに毎月30回の写真認識とMayaとの15分間の通話が含まれます。追加の利用分は別途購入できます。"
+            "value": "月額・年額プランともに毎月30回の写真認識とMayaとの10分間の通話が含まれます。追加の利用分は別途購入できます。"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "I piani mensile e annuale includono ogni mese 30 riconoscimenti di foto e 15 minuti con Maya. L’utilizzo aggiuntivo si acquista separatamente."
+            "value": "I piani mensile e annuale includono ogni mese 30 riconoscimenti di foto e 10 minuti con Maya. L’utilizzo aggiuntivo si acquista separatamente."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "월간 및 연간 구독 모두 매월 사진 인식 30회와 Maya 통화 15분이 포함됩니다. 추가 사용량은 별도로 구매할 수 있습니다."
+            "value": "월간 및 연간 구독 모두 매월 사진 인식 30회와 Maya 통화 10분이 포함됩니다. 추가 사용량은 별도로 구매할 수 있습니다."
           }
         }
       }
