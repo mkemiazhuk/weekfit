@@ -120,7 +120,7 @@ export function createBillingService(config, { authenticate, apple, store, fetch
       store.settle(wallet, key, seconds);
       releaseLive(identifier);
       log({ event: 'billing_voice_settled', operation: key, seconds, end: op.ended == null ? 'unknown' : 'stored',
-        reason, language: live?.language ?? null, interruptions: live?.interruptions ?? null });
+        reason, language: live?.language ?? null, model: live?.session?.model ?? null, interruptions: live?.interruptions ?? null });
       log({ event: 'billing_voice_reserve_released', operation: key, released: op.included + op.purchased - seconds });
     })();
     stopping.set(identifier, task);
@@ -258,7 +258,7 @@ export function createBillingService(config, { authenticate, apple, store, fetch
           uid: ctx.uid, ticket: admission?.ticket, language: plannerVoiceLanguage(body.language),
           interruptions: 0, responding: false });
         if (admission?.ticket) line.activate(ctx.uid, admission.ticket);
-        send(res, 200, { value: '', model: config.plannerVoiceModel, idleSeconds: config.plannerVoiceIdleSeconds,
+        send(res, 200, { value: '', model: sessions.get(`${wallet.id}:${key}`).session.model, idleSeconds: config.plannerVoiceIdleSeconds,
           managed: true, sessionId: key, budgetSeconds: op.included + op.purchased });
         return true;
       }
@@ -289,7 +289,7 @@ export function createBillingService(config, { authenticate, apple, store, fetch
             if (event.type === 'response.done') live.responding = false;
             if (event.type === 'input_audio_buffer.speech_started' && live.responding) live.interruptions += 1;
             if (event.type === 'response.done' && event.response?.id && event.response?.usage) {
-              store.recordUsage(wallet.id, event.response.id, { feature: 'voice', model: config.plannerVoiceModel,
+              store.recordUsage(wallet.id, event.response.id, { feature: 'voice', model: live.session.model,
                 usage: event.response.usage, source: 'server_sideband' });
             }
           }, () => { store.markEnded(wallet.id, key, now()); void stop(wallet.id, key, 'observer').catch(() => {}); });

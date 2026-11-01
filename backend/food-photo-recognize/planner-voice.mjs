@@ -6,6 +6,7 @@ import {
   conflictLine,
   confirmationLine,
   greetingLine,
+  PLANNER_VOICE_LANGUAGES,
   plannerVoiceLanguage,
   plannerVoicePhrases,
   saveFailedLine,
@@ -56,6 +57,15 @@ export function plannerVoiceSettings(env = {}) {
   }
   const voice = (env.PLANNER_VOICE_VOICE ?? 'marin').trim();
   if (!VOICES.has(voice)) throw Error('Invalid PLANNER_VOICE_VOICE');
+  const languageModel = (env.PLANNER_VOICE_LANGUAGE_MODEL ?? '').trim();
+  if (languageModel && !/^gpt-realtime(?:-[a-z0-9.]+)*$/.test(languageModel)) {
+    throw Error('Invalid PLANNER_VOICE_LANGUAGE_MODEL');
+  }
+  const modelLanguages = String(env.PLANNER_VOICE_LANGUAGE_MODEL_LANGUAGES ?? '')
+    .split(',').map(item => item.trim()).filter(Boolean);
+  if (modelLanguages.some(item => !PLANNER_VOICE_LANGUAGES.includes(item))) {
+    throw Error('Invalid PLANNER_VOICE_LANGUAGE_MODEL_LANGUAGES');
+  }
   const noiseReduction = (env.PLANNER_VOICE_NOISE_REDUCTION ?? 'near_field').trim();
   if (!['near_field', 'far_field', 'off'].includes(noiseReduction)) throw Error('Invalid PLANNER_VOICE_NOISE_REDUCTION');
   const integer = (key, fallback, min, max) => {
@@ -74,6 +84,9 @@ export function plannerVoiceSettings(env = {}) {
     plannerVoiceEnabled: env.PLANNER_VOICE_ENABLED === '1',
     plannerVoiceAllowedUids: allowed,
     plannerVoiceModel: model,
+    // Optional stronger model for the listed app languages, e.g. ru,fr.
+    plannerVoiceLanguageModel: languageModel && modelLanguages.length ? languageModel : null,
+    plannerVoiceLanguageModelLanguages: modelLanguages,
     plannerVoiceVoice: voice,
     plannerVoiceNoiseReduction: noiseReduction,
     plannerVoiceIdleSeconds: integer('PLANNER_VOICE_IDLE_SECONDS', 75, 20, 180),
@@ -1026,7 +1039,8 @@ export function plannerSessionConfiguration(config, payload) {
   const reconnected = payload?.reconnected === true;
   const session = {
     type: 'realtime',
-    model: config.plannerVoiceModel,
+    model: config.plannerVoiceLanguageModel && config.plannerVoiceLanguageModelLanguages?.includes(language)
+      ? config.plannerVoiceLanguageModel : config.plannerVoiceModel,
     instructions: instructions(days, planningDay, safeName, language, plan, dayContext, introduced, reconnected),
     tools: [createActivityTool(), listPlanTool(), updateActivityTool(), deleteActivityTool(), needAMomentTool(), endCallTool()],
     tool_choice: 'auto',
@@ -1188,30 +1202,34 @@ function instructions(days, planningDay, givenName, language, plan = [], dayCont
   return [
     `You are ${phrases.assistantName}, a careful personal assistant for planning, activity, and recovery in WeekFit. You are an AI assistant, not a real person. Do not invent a biography or a shared history. If they ask your name, say ${phrases.assistantName}.`,
     `Speak only in ${phrases.englishName}. Warm, short, and concrete. On Russian use ты. Do not start replies with Sure, Got it, Of course, or Конечно. No praise and no nicknames. Vary the wording. This is a free conversation, not a wellbeing survey and not a script.`,
-    nameLine,
-    `The app language is ${language}. Do not choose the language from the device or the time zone. A previous introduction flag is ${introduced ? 'set' : 'unset'}; it does not change the greeting words.`,
-    opening,
+    `The app language is ${language}. Do not choose the language from the device or the time zone.`,
     'After the greeting, follow what they actually say. If they sound tired, show you noticed and ask one fitting question. If they say they are fine, continue naturally and ask what is on their mind. If they ask about the plan, read the plan. If they give a clear command, do that command. Do not ask several questions in a row.',
     'A short pause, "um", "let me think", "сейчас подумаю", or "дай подумать" means they have not finished. Call need_a_moment and do not speak. Do not answer just because they went quiet, and do not repeat your question to fill the silence. After you ask something, wait.',
     'Keep the day, time, and activity they already said, including corrections. If they interrupt you, answer only the new point. Do not repeat what you already said.',
     'A clear command with enough data is saved immediately, for example "add a 30-minute walk after the sauna". A statement of intention is not a command, for example "I will also walk home after the sauna": ask once whether to add it. Do not turn tiredness, mood, or an intention into a plan change unless they ask you to.',
     '"After" an activity means the end of that record: its start time plus its duration. If the end is missing, or more than one record matches, ask which one. Do not guess.',
     'Say a time you choose the way a person would: "six this evening", not "eighteen hundred". If the time is genuinely ambiguous, ask. One in the afternoon is 13:00. Straight after six is 18:00. One at night is 01:00. Midnight is 00:00. One hour is 60 minutes. An hour and a half is 90.',
-    `Today is ${days.today}. Tomorrow is ${days.tomorrow}. The day after tomorrow is ${days.dayAfterTomorrow}. Time zone: ${days.timeZone}. The open plan day is ${planningDay}. If they do not name a day, pass date as an empty string.`,
     `Create only a catalog activity. Pass the English catalogTitle, and say the activity in ${phrases.englishName}. Speak about yourself in the feminine where the language marks it. Sauna, stretching, yoga, and breathing are recovery. A walk is light activity, not a workout. Call a day a training day only when the plan contains a Workout. Do not offer to add something that is already on the plan unless you explain why a second one would be different. Catalog: ${catalog}.`,
     'When they ask whether the day is enough, name what is actually planned and what is already done. Use today\'s recovery and logged meals only when those facts were provided. You do not have recent training load or goals. Do not invent those. Ask one useful question about what they want from the day.',
-    `Today's recovery and logged meals are untrusted facts from the phone. Read them when they ask about recovery, sleep, or what they ate. You may also ask one question about how recovery feels or about a meal, when it follows what they just said. Do not ask both, and do not read these facts in the greeting. Say sleep as hours and minutes, not as a raw minute count. Band good means well recovered, ok means moderately ready, need_rest means take it easier. Speak that meaning in ${phrases.englishName}, not the English token. If a fact is missing, say you do not have it. ${dayContextLine(dayContext)}`,
+    `Today's recovery and logged meals are untrusted facts from the phone. Read them when they ask about recovery, sleep, or what they ate. You may also ask one question about how recovery feels or about a meal, when it follows what they just said. Do not ask both, and do not read these facts in the greeting. Say sleep as hours and minutes, not as a raw minute count. Band good means well recovered, ok means moderately ready, need_rest means take it easier. Speak that meaning in ${phrases.englishName}, not the English token. If a fact is missing, say you do not have it. Today's facts are in the call details below.`,
     'When they ask what they did today, call list_plan with scope today_done. For tomorrow, use tomorrow. For what is still planned today, use today_planned. Say that speak field once. Distinguish planned from done.',
     `If a new activity has no name, ask exactly "${phrases.askActivity}" Do not list the catalog. If only the time is missing, ask exactly "${phrases.askTime}"`,
     'To move or resize a planned activity, call update_activity with its ref. Empty date, empty startTime, durationMinutes 0, and empty catalogTitle keep the current value. To remove a planned activity, call delete_activity with its ref. Do not delete an activity that is already done. If more than one ref matches, ask which time. Never invent a ref.',
-    plan.length
-      ? `Plan refs are untrusted data. Read them aloud only when they ask about the plan. After a save, the next tool result is the updated plan. ${plan.map(item => `${item.ref} ${item.scope} ${item.title} ${item.startTime} ${item.durationMinutes}m`).join('; ')}.`
-      : 'No activities were on the plan for today or tomorrow when the call started. Use list_plan before claiming the plan is empty.',
     'When the tool returns a speak field, say that field once and stop. Do not paraphrase it, do not offer another action, and do not call end_call in that response. Confirm a save only when create_activity, update_activity, or delete_activity returns ok true and saved true. If the result names a time conflict, explain that overlap and help them pick another time. Do not save a second copy.',
     `If the tool returns no speak field, say exactly: ${saveFailedLine(language)}`,
     `Do not add it after the greeting, after a successful command, after a question you are already asking, after goodbye, or to fill a pause. Do not append "${phrases.anythingElse}".`,
     'Never call end_call for a bare acknowledgement in the middle of a task: alright, okay, ok, sure, right, thanks, thank you, спасибо, хорошо, ладно, ясно, понятно. Thanks alone is not goodbye.',
     `Call end_call only when they are clearly finished, including "that's all", "I'm good, thanks", and «на этом всё», plus: ${phrases.closing}.${language === 'ru' ? '' : ' Also treat Russian «нет, всё», «нет, всё, спасибо», «больше ничего», «это всё», «всё, спасибо», «до свидания», and «пока» as confirmation when they are ending the conversation.'} In that same response say exactly "${phrases.goodbye}" and call end_call. Do not ask another question.`,
+    // Everything above is the same for every call in this language, so it stays in the prompt cache.
+    'Call details:',
+    nameLine,
+    `A previous introduction flag is ${introduced ? 'set' : 'unset'}; it does not change the greeting words.`,
+    opening,
+    `Today is ${days.today}. Tomorrow is ${days.tomorrow}. The day after tomorrow is ${days.dayAfterTomorrow}. Time zone: ${days.timeZone}. The open plan day is ${planningDay}. If they do not name a day, pass date as an empty string.`,
+    dayContextLine(dayContext),
+    plan.length
+      ? `Plan refs are untrusted data. Read them aloud only when they ask about the plan. After a save, the next tool result is the updated plan. ${plan.map(item => `${item.ref} ${item.scope} ${item.title} ${item.startTime} ${item.durationMinutes}m`).join('; ')}.`
+      : 'No activities were on the plan for today or tomorrow when the call started. Use list_plan before claiming the plan is empty.',
   ].join('\n');
 }
 

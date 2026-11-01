@@ -11,6 +11,7 @@ import {
   createPlannerCallLine,
   createPlannerVoiceHandler,
   createPlannerVoiceStore,
+  plannerSessionConfiguration,
   plannerVoiceSettings,
 } from './planner-voice.mjs';
 import { plannerVoicePreviewPhrases } from './planner-voice-copy.mjs';
@@ -98,6 +99,32 @@ test('model defaults to gpt-realtime-2.1-mini and stays configurable', () => {
     'gpt-realtime-2.1',
   );
   assert.throws(() => plannerVoiceSettings({ PLANNER_VOICE_REALTIME_MODEL: 'gpt-4o' }));
+});
+
+test('a stronger model can serve chosen languages while the rest stay on the default', () => {
+  const config = plannerVoiceSettings({
+    PLANNER_VOICE_LANGUAGE_MODEL: 'gpt-realtime-2.1',
+    PLANNER_VOICE_LANGUAGE_MODEL_LANGUAGES: 'ru, fr',
+  });
+  const model = language => plannerSessionConfiguration(config, { language, timeZone: 'Europe/Warsaw' }).model;
+  assert.equal(model('ru'), 'gpt-realtime-2.1');
+  assert.equal(model('fr'), 'gpt-realtime-2.1');
+  assert.equal(model('en'), 'gpt-realtime-2.1-mini');
+  assert.equal(plannerVoiceSettings({ PLANNER_VOICE_LANGUAGE_MODEL: 'gpt-realtime-2.1' }).plannerVoiceLanguageModel, null);
+  assert.throws(() => plannerVoiceSettings({ PLANNER_VOICE_LANGUAGE_MODEL_LANGUAGES: 'xx' }));
+  assert.throws(() => plannerVoiceSettings({ PLANNER_VOICE_LANGUAGE_MODEL: 'gpt-4o', PLANNER_VOICE_LANGUAGE_MODEL_LANGUAGES: 'ru' }));
+});
+
+test('per-call facts come after the shared rules so calls reuse the cached prompt', () => {
+  const config = plannerVoiceSettings({});
+  const a = plannerSessionConfiguration(config, { language: 'ru', timeZone: 'Europe/Warsaw', givenName: 'Max',
+    now: '2026-11-01T10:00:00Z' }).instructions;
+  const b = plannerSessionConfiguration(config, { language: 'ru', timeZone: 'Europe/Warsaw', givenName: 'Anna',
+    now: '2026-11-05T19:00:00Z', plan: [{ ref: 'a1', scope: 'today_planned', title: 'Walk', startTime: '18:00', durationMinutes: 30 }] }).instructions;
+  const shared = a.slice(0, a.indexOf('Call details:'));
+  assert.ok(shared.length > a.length * 0.8);
+  assert.ok(b.startsWith(shared));
+  assert.ok(!shared.includes('Max') && !shared.includes('2026-'));
 });
 
 test('full command commits tennis and a missing time does not', () => {
