@@ -209,10 +209,12 @@ struct QuickFoodLogSheet: View {
             .id(selectedTab)
         }
         .accessibilityIdentifier("sheet.quickFoodLog")
-        .task(id: showPhotoFlow) {
+        .task(id: showPhotoFlow || showAIUsage) {
             if WeekFitAIBilling.enabled { aiUsage = try? await WeekFitAIClient().usage() }
         }
-        .sheet(isPresented: $showAIUsage) { NavigationStack { WeekFitAIUsageView() } }
+        .sheet(isPresented: $showAIUsage) {
+            WeekFitAIBalanceSheet(pack: aiUsage.map { $0.active && !$0.grandfatheredPhotos } == true ? .photos : nil)
+        }
         .onAppear {
             PhotoFoodAnalytics.noteLogFoodOpened()
             revealContent = false
@@ -440,32 +442,12 @@ struct QuickFoodLogSheet: View {
                     .padding(.horizontal, -16)
                     .accessibilityHidden(true)
 
-                Button { showAIUsage = true } label: {
-                    HStack(spacing: 8) {
-                        Text(WeekFitLocalizedString("ai.usage.availablePhotos"))
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                            .foregroundStyle(WeekFitTheme.primaryText)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.85)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 8)
-                        if let aiUsage {
-                            Text(aiUsage.grandfatheredPhotos
-                                ? WeekFitLocalizedString("ai.usage.existingAccess")
-                                : aiUsage.photos.total.formatted())
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundStyle(WeekFitTheme.primaryText)
-                                .monospacedDigit()
-                        }
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(WeekFitTheme.secondaryText.opacity(0.55))
-                    }
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("quickFood.ai.photosLeft")
+                WeekFitAIPhotosLeftRow(
+                    count: aiUsage.map(\.photos.total),
+                    preserved: aiUsage?.grandfatheredPhotos == true,
+                    accent: foodAccent,
+                    action: { showAIUsage = true }
+                )
             }
 
             if let captionKey = aiAccessCaptionKey {

@@ -131,6 +131,35 @@ final class WeekFitAIBalanceTests: XCTestCase {
         XCTAssertFalse(finishing.voice.showsBreakdown)
     }
 
+    func testLargerPackShowsRealSavingsOnly() {
+        XCTAssertEqual(WeekFitAIBalancePack.savingsPercent(price: 11.99, quantity: 30, basePrice: 6.99, baseQuantity: 15), 14)
+        XCTAssertNil(WeekFitAIBalancePack.savingsPercent(price: 13.49, quantity: 30, basePrice: 6.99, baseQuantity: 15))
+        XCTAssertNil(WeekFitAIBalancePack.savingsPercent(price: 6.99, quantity: 15, basePrice: 6.99, baseQuantity: 15))
+        XCTAssertNil(WeekFitAIBalancePack.savingsPercent(price: 16.99, quantity: 30, basePrice: 6.99, baseQuantity: 15))
+        XCTAssertEqual(WeekFitAIBalancePack.quantity("com.weekfit.topup.photos50"), 50)
+        XCTAssertNil(WeekFitAIBalancePack.quantity("com.weekfit.topup.unknown"))
+        XCTAssertEqual(String(format: WeekFitLocalizedString("ai.balance.save", locale: Locale(identifier: "ru")), 14), "Выгоднее на 14%")
+    }
+
+    func testPackEstimatesReadNaturally() {
+        let ru = Locale(identifier: "ru")
+        XCTAssertEqual(WeekFitAIBalancePack.time.estimate(quantity: 15), 5)
+        XCTAssertEqual(WeekFitAIBalancePack.photos.estimate(quantity: 50), 16)
+        XCTAssertNil(WeekFitAIBalancePack.time.estimate(quantity: 2))
+        XCTAssertEqual(WeekFitLocalizedQuantityFormat("ai.balance.estimate.calls", count: 5, locale: ru), "≈ 5 звонков по 3 мин")
+        XCTAssertEqual(WeekFitLocalizedQuantityFormat("ai.balance.estimate.calls", count: 2, locale: ru), "≈ 2 звонка по 3 мин")
+        XCTAssertEqual(WeekFitLocalizedQuantityFormat("ai.balance.estimate.days", count: 6, locale: ru), "≈ 6 дней по 3 приёма пищи")
+        XCTAssertEqual(WeekFitLocalizedQuantityFormat("ai.balance.estimate.days", count: 1, locale: english), "≈ 1 day at 3 meals a day")
+    }
+
+    func testPackTitleSplitsIntoAmountAndUnit() {
+        XCTAssertEqual(WeekFitAIBalancePackOption.split(title: "15 минут", quantity: 15).amount, "15")
+        XCTAssertEqual(WeekFitAIBalancePackOption.split(title: "15 минут", quantity: 15).unit, "минут")
+        XCTAssertEqual(WeekFitAIBalancePackOption.split(title: "15分", quantity: 15).unit, "分")
+        XCTAssertNil(WeekFitAIBalancePackOption.split(title: "Mystery pack", quantity: 15).unit)
+        XCTAssertEqual(WeekFitAIBalancePackOption.split(title: "Mystery pack", quantity: nil).amount, "Mystery pack")
+    }
+
     func testUsageWithoutLimitsStillDecodes() throws {
         let usage = try decode(limits: false)
         XCTAssertNil(usage.limits)
@@ -180,37 +209,78 @@ final class WeekFitAIBalanceTests: XCTestCase {
             XCTAssertGreaterThan(data.count, 10_000)
             try data.write(to: directory.appendingPathComponent("\(appearance).png"))
 
-            let sheet = WeekFitAIBalancePurchaseLayout(
-                title: WeekFitLocalizedString("ai.balance.addTime", locale: english),
-                intro: WeekFitLocalizedString("ai.balance.timeIntro", locale: english),
-                options: [
-                    WeekFitAIBalancePackOption(id: "voice15", title: "15 minutes", price: "6,99 zł"),
-                    WeekFitAIBalancePackOption(id: "voice30", title: "30 minutes", price: "11,99 zł")
-                ],
-                selectedID: "voice15",
-                terms: [
-                    WeekFitLocalizedString("ai.balance.purchasedTimeNeverExpires", locale: english),
-                    WeekFitLocalizedString("ai.usage.subscriptionRequired", locale: english)
-                ],
-                buyTitle: String(format: WeekFitLocalizedString("ai.balance.buy", locale: english), locale: english, "15 minutes", "6,99 zł"),
-                isBusy: false,
-                status: nil,
-                emptyMessage: nil,
-                scrolls: false,
-                onSelect: { _ in },
-                onBuy: {},
-                onClose: {}
-            )
-            .frame(width: 402, height: 680, alignment: .top)
-            .background(WeekFitTheme.backgroundColor)
-            .environment(\.weekFitPalette, palette)
-            .environment(\.colorScheme, appearance == .light ? .light : .dark)
-            let sheetRenderer = ImageRenderer(content: sheet)
-            sheetRenderer.scale = 2
-            sheetRenderer.proposedSize = ProposedViewSize(width: 402, height: 680)
-            let sheetImage = try XCTUnwrap(sheetRenderer.uiImage?.pngData())
-            XCTAssertGreaterThan(sheetImage.count, 10_000)
-            try sheetImage.write(to: directory.appendingPathComponent("sheet-\(appearance).png"))
+            for (name, locale) in [("en", english), ("ru", Locale(identifier: "ru"))] {
+                func t(_ key: String) -> String { WeekFitLocalizedString(key, locale: locale) }
+                let small = t("ai.balance.pack.voice15")
+                let large = t("ai.balance.pack.voice30")
+                let first = WeekFitAIBalancePackOption.split(title: small, quantity: 15)
+                let second = WeekFitAIBalancePackOption.split(title: large, quantity: 30)
+                let sheet = WeekFitAIBalancePurchaseLayout(
+                    title: t("ai.balance.addTime"),
+                    symbol: "waveform",
+                    intro: t("ai.balance.timeIntro"),
+                    options: [
+                        WeekFitAIBalancePackOption(id: "voice15", title: small, price: "6,99 zł",
+                            amount: first.amount, unit: first.unit,
+                            unitPrice: String(format: t("ai.balance.perMinute"), "0,47 zł"),
+                            estimate: WeekFitLocalizedQuantityFormat("ai.balance.estimate.calls", count: 5, locale: locale)),
+                        WeekFitAIBalancePackOption(id: "voice30", title: large, price: "11,99 zł",
+                            badge: String(format: t("ai.balance.save"), locale: locale, 14),
+                            amount: second.amount, unit: second.unit,
+                            unitPrice: String(format: t("ai.balance.perMinute"), "0,40 zł"),
+                            estimate: WeekFitLocalizedQuantityFormat("ai.balance.estimate.calls", count: 10, locale: locale))
+                    ],
+                    selectedID: "voice30",
+                    summary: WeekFitAIBalanceOrderSummary(
+                        title: t("ai.balance.orderSummary"),
+                        item: large,
+                        price: "11,99 zł",
+                        totalTitle: t("ai.balance.total"),
+                        note: t("ai.balance.taxNote")
+                    ),
+                    terms: [t("ai.balance.purchasedTimeNeverExpires"), t("ai.usage.subscriptionRequired")],
+                    buyTitle: String(format: t("ai.balance.buy"), locale: locale, large, "11,99 zł"),
+                    isBusy: false,
+                    status: nil,
+                    emptyMessage: nil,
+                    scrolls: false,
+                    onSelect: { _ in },
+                    onBuy: {},
+                    onClose: {}
+                )
+                .frame(width: 402, height: 760, alignment: .top)
+                .background(WeekFitTheme.backgroundColor)
+                .environment(\.weekFitPalette, palette)
+                .environment(\.colorScheme, appearance == .light ? .light : .dark)
+                let sheetRenderer = ImageRenderer(content: sheet)
+                sheetRenderer.scale = 2
+                sheetRenderer.proposedSize = ProposedViewSize(width: 402, height: 760)
+                let sheetImage = try XCTUnwrap(sheetRenderer.uiImage?.pngData())
+                XCTAssertGreaterThan(sheetImage.count, 10_000)
+                try sheetImage.write(to: directory.appendingPathComponent("sheet-\(name)-\(appearance).png"))
+
+                let accent = Color(red: 0.84, green: 0.62, blue: 0.27)
+                let rows = VStack(spacing: 14) {
+                    ForEach([79, 4, 0], id: \.self) { count in
+                        WeekFitAIPhotosLeftRow(count: count, accent: accent, locale: locale, action: {})
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(RoundedRectangle(cornerRadius: 20).fill(WeekFitTheme.cardBackground))
+                    }
+                    WeekFitAIPhotosLeftRow(count: nil, accent: accent, locale: locale, action: {})
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(RoundedRectangle(cornerRadius: 20).fill(WeekFitTheme.cardBackground))
+                }
+                .padding(20)
+                .frame(width: 402)
+                .background(WeekFitTheme.backgroundColor)
+                .environment(\.weekFitPalette, palette)
+                let rowsRenderer = ImageRenderer(content: rows)
+                rowsRenderer.scale = 2
+                try XCTUnwrap(rowsRenderer.uiImage?.pngData())
+                    .write(to: directory.appendingPathComponent("photos-left-\(name)-\(appearance).png"))
+            }
         }
     }
 

@@ -41,6 +41,39 @@ enum WeekFitAIBalancePack: String, Identifiable, Equatable {
         }
     }
 
+    static func quantity(_ productID: String) -> Int? {
+        switch productID {
+        case "com.weekfit.topup.voice15": 15
+        case "com.weekfit.topup.voice30": 30
+        case "com.weekfit.topup.photos20": 20
+        case "com.weekfit.topup.photos50": 50
+        default: nil
+        }
+    }
+
+    /// A rough feel for the pack: 3-minute calls, or 3 meal photos a day.
+    func estimate(quantity: Int) -> Int? {
+        let count = quantity / 3
+        return count > 0 ? count : nil
+    }
+
+    var estimateKey: String {
+        switch self {
+        case .time: "ai.balance.estimate.calls"
+        case .photos: "ai.balance.estimate.days"
+        }
+    }
+
+    /// Savings per minute or photo against the smallest pack, from real store prices.
+    /// Small differences are rounding in the price tiers, not a deal.
+    static func savingsPercent(price: Decimal, quantity: Int, basePrice: Decimal, baseQuantity: Int) -> Int? {
+        guard quantity > baseQuantity, baseQuantity > 0, basePrice > 0, price > 0 else { return nil }
+        let unit = NSDecimalNumber(decimal: price).doubleValue / Double(quantity)
+        let baseUnit = NSDecimalNumber(decimal: basePrice).doubleValue / Double(baseQuantity)
+        let percent = Int(((1 - unit / baseUnit) * 100).rounded(.down))
+        return percent >= 5 ? percent : nil
+    }
+
     /// Smaller packs sort first. Unknown products stay after the known catalog.
     static func quantityRank(_ productID: String) -> Int {
         switch productID {

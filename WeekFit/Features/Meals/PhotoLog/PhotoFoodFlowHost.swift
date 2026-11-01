@@ -44,8 +44,8 @@ struct PhotoFoodFlowHost: View {
             }
         }
         .background(QuickActionSheetDesign.Color.sheetBackground(for: .food).ignoresSafeArea())
-        .sheet(isPresented: $showAIUsage) {
-            NavigationStack { WeekFitAIUsageView() }
+        .sheet(isPresented: $showAIUsage, onDismiss: retryAfterTopUp) {
+            WeekFitAIBalanceSheet(pack: .photos)
         }
         .onChange(of: coordinator.phase) { _, newPhase in
             let id = coordinator.lastAnalysisId ?? "none"
@@ -54,6 +54,14 @@ struct PhotoFoodFlowHost: View {
                 clock: PhotoFoodDiagnostics.AnalysisClock(analysisId: id),
                 detail: String(describing: newPhase)
             )
+        }
+    }
+
+    private func retryAfterTopUp() {
+        guard coordinator.phase == .error(.quotaExhausted) else { return }
+        Task {
+            guard let usage = try? await WeekFitAIClient().usage(), usage.photos.total > 0 else { return }
+            coordinator.retryAnalysis()
         }
     }
 

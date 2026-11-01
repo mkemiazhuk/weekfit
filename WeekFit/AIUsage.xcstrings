@@ -1456,6 +1456,261 @@
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "选择要添加的照片数量。" } }
       }
     },
+    "ai.balance.save": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "%d%% günstiger" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Save %d%%" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Ahorra un %d%%" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "%d %% moins cher" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Risparmi il %d%%" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "%d%%お得" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "%d%% 절약" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Taniej o %d%%" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Выгоднее на %d%%" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "省 %d%%" } }
+      }
+    },
+    "ai.balance.orderSummary": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Bestellübersicht" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Order summary" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Resumen del pedido" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Récapitulatif" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Riepilogo" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "ご注文内容" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "주문 요약" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Podsumowanie" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Ваш заказ" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "订单摘要" } }
+      }
+    },
+    "ai.balance.total": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Gesamt" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Total" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Total" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Total" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Totale" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "合計" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "합계" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Razem" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Итого" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "合计" } }
+      }
+    },
+    "ai.balance.taxNote": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Den Endbetrag inklusive Steuern bestätigt der App Store." } },
+        "en": { "stringUnit": { "state": "translated", "value": "The App Store confirms the final amount, including any taxes." } },
+        "es": { "stringUnit": { "state": "translated", "value": "El App Store confirmará el importe final con impuestos." } },
+        "fr": { "stringUnit": { "state": "translated", "value": "L’App Store confirmera le montant final, taxes comprises." } },
+        "it": { "stringUnit": { "state": "translated", "value": "L’App Store confermerà l’importo finale, tasse incluse." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "税金を含む最終金額はApp Storeで確認されます。" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "세금을 포함한 최종 금액은 App Store에서 확인됩니다." } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Ostateczną kwotę z podatkami potwierdzi App Store." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Итоговую сумму с налогами подтвердит App Store." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "含税的最终金额将由 App Store 确认。" } }
+      }
+    },
+    "ai.balance.perMinute": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "%@ / Min." } },
+        "en": { "stringUnit": { "state": "translated", "value": "%@ / min" } },
+        "es": { "stringUnit": { "state": "translated", "value": "%@ / min" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "%@ / min" } },
+        "it": { "stringUnit": { "state": "translated", "value": "%@ / min" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "1分あたり%@" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "분당 %@" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "%@ / min" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "%@ / мин" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "每分钟 %@" } }
+      }
+    },
+    "ai.balance.perPhoto": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "%@ / Foto" } },
+        "en": { "stringUnit": { "state": "translated", "value": "%@ / photo" } },
+        "es": { "stringUnit": { "state": "translated", "value": "%@ / foto" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "%@ / photo" } },
+        "it": { "stringUnit": { "state": "translated", "value": "%@ / foto" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "1枚あたり%@" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "사진당 %@" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "%@ / zdjęcie" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "%@ / фото" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "每张 %@" } }
+      }
+    },
+    "ai.balance.estimate.calls.one": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "≈ %d Anruf à 3 Min." } },
+        "en": { "stringUnit": { "state": "translated", "value": "≈ %d call of 3 min" } },
+        "es": { "stringUnit": { "state": "translated", "value": "≈ %d llamada de 3 min" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "≈ %d appel de 3 min" } },
+        "it": { "stringUnit": { "state": "translated", "value": "≈ %d chiamata da 3 min" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "3分の通話 約%d回" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "3분 통화 약 %d회" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "≈ %d rozmowa po 3 min" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "≈ %d звонок по 3 мин" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "约 %d 次 3 分钟通话" } }
+      }
+    },
+    "ai.balance.estimate.calls.few": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "≈ %d Anrufe à 3 Min." } },
+        "en": { "stringUnit": { "state": "translated", "value": "≈ %d calls of 3 min" } },
+        "es": { "stringUnit": { "state": "translated", "value": "≈ %d llamadas de 3 min" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "≈ %d appels de 3 min" } },
+        "it": { "stringUnit": { "state": "translated", "value": "≈ %d chiamate da 3 min" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "3分の通話 約%d回" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "3분 통화 약 %d회" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "≈ %d rozmowy po 3 min" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "≈ %d звонка по 3 мин" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "约 %d 次 3 分钟通话" } }
+      }
+    },
+    "ai.balance.estimate.calls.many": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "≈ %d Anrufe à 3 Min." } },
+        "en": { "stringUnit": { "state": "translated", "value": "≈ %d calls of 3 min" } },
+        "es": { "stringUnit": { "state": "translated", "value": "≈ %d llamadas de 3 min" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "≈ %d appels de 3 min" } },
+        "it": { "stringUnit": { "state": "translated", "value": "≈ %d chiamate da 3 min" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "3分の通話 約%d回" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "3분 통화 약 %d회" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "≈ %d rozmów po 3 min" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "≈ %d звонков по 3 мин" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "约 %d 次 3 分钟通话" } }
+      }
+    },
+    "ai.balance.estimate.days.one": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "≈ %d Tag mit 3 Mahlzeiten" } },
+        "en": { "stringUnit": { "state": "translated", "value": "≈ %d day at 3 meals a day" } },
+        "es": { "stringUnit": { "state": "translated", "value": "≈ %d día con 3 comidas" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "≈ %d jour à 3 repas" } },
+        "it": { "stringUnit": { "state": "translated", "value": "≈ %d giorno con 3 pasti" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "1日3食で約%d日分" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "하루 3끼 기준 약 %d일" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "≈ %d dzień po 3 posiłki" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "≈ %d день по 3 приёма пищи" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "按每天 3 餐约 %d 天" } }
+      }
+    },
+    "ai.balance.estimate.days.few": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "≈ %d Tage mit 3 Mahlzeiten" } },
+        "en": { "stringUnit": { "state": "translated", "value": "≈ %d days at 3 meals a day" } },
+        "es": { "stringUnit": { "state": "translated", "value": "≈ %d días con 3 comidas" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "≈ %d jours à 3 repas" } },
+        "it": { "stringUnit": { "state": "translated", "value": "≈ %d giorni con 3 pasti" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "1日3食で約%d日分" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "하루 3끼 기준 약 %d일" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "≈ %d dni po 3 posiłki" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "≈ %d дня по 3 приёма пищи" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "按每天 3 餐约 %d 天" } }
+      }
+    },
+    "ai.balance.estimate.days.many": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "≈ %d Tage mit 3 Mahlzeiten" } },
+        "en": { "stringUnit": { "state": "translated", "value": "≈ %d days at 3 meals a day" } },
+        "es": { "stringUnit": { "state": "translated", "value": "≈ %d días con 3 comidas" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "≈ %d jours à 3 repas" } },
+        "it": { "stringUnit": { "state": "translated", "value": "≈ %d giorni con 3 pasti" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "1日3食で約%d日分" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "하루 3끼 기준 약 %d일" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "≈ %d dni po 3 posiłki" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "≈ %d дней по 3 приёма пищи" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "按每天 3 餐约 %d 天" } }
+      }
+    },
+    "ai.usage.photosLeft.one": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Noch %d Foto" } },
+        "en": { "stringUnit": { "state": "translated", "value": "%d photo left" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Queda %d foto" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "%d photo restante" } },
+        "it": { "stringUnit": { "state": "translated", "value": "%d foto rimasta" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "残り%d枚" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "%d장 남음" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Zostało %d zdjęcie" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Осталось %d фото" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "剩余 %d 张" } }
+      }
+    },
+    "ai.usage.photosLeft.few": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Noch %d Fotos" } },
+        "en": { "stringUnit": { "state": "translated", "value": "%d photos left" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Quedan %d fotos" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "%d photos restantes" } },
+        "it": { "stringUnit": { "state": "translated", "value": "%d foto rimaste" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "残り%d枚" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "%d장 남음" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Zostały %d zdjęcia" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Осталось %d фото" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "剩余 %d 张" } }
+      }
+    },
+    "ai.usage.photosLeft.many": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Noch %d Fotos" } },
+        "en": { "stringUnit": { "state": "translated", "value": "%d photos left" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Quedan %d fotos" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "%d photos restantes" } },
+        "it": { "stringUnit": { "state": "translated", "value": "%d foto rimaste" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "残り%d枚" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "%d장 남음" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Zostało %d zdjęć" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Осталось %d фото" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "剩余 %d 张" } }
+      }
+    },
+    "ai.usage.noPhotosLeft": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Keine Fotos mehr" } },
+        "en": { "stringUnit": { "state": "translated", "value": "No photos left" } },
+        "es": { "stringUnit": { "state": "translated", "value": "No quedan fotos" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Plus de photos" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Foto esaurite" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "写真の残りがありません" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "남은 사진이 없어요" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Brak zdjęć" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Фото закончились" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "照片已用完" } }
+      }
+    },
+    "ai.balance.addShort": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Hinzufügen" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Add" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Añadir" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Ajouter" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Aggiungi" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "追加" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "추가" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Dodaj" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Добавить" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "添加" } }
+      }
+    },
     "ai.balance.buy": {
       "extractionState": "manual",
       "localizations": {

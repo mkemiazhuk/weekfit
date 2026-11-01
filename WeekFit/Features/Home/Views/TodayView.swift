@@ -42,6 +42,7 @@ struct TodayView: View {
     @State private var plannerVoiceEnabled = false
     @State private var showPlannerVoice = false
     @State private var showAIUsage = false
+    @State private var aiTopUpPack: WeekFitAIBalancePack?
     @State private var openingMaya = false
     @AppStorage(NotificationPreferenceKey.activityReminders)
     private var activityRemindersEnabled = false
@@ -482,7 +483,8 @@ struct TodayView: View {
         let presented = root
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.today")
-        .sheet(isPresented: $showAIUsage) { NavigationStack { WeekFitAIUsageView() } }
+        .sheet(isPresented: $showAIUsage) { WeekFitAIBalanceSheet() }
+        .sheet(item: $aiTopUpPack) { pack in WeekFitAIBalanceSheet(pack: pack) }
         .fullScreenCover(isPresented: $showPlannerVoice) {
             PlanRealtimeVoiceSheet(
                 planningDay: selectedDate,
@@ -2721,6 +2723,7 @@ struct TodayView: View {
                 do {
                     let usage = try await WeekFitAIClient().usage()
                     if usage.active && usage.voice.total > 0 { showPlannerVoice = true }
+                    else if usage.active { aiTopUpPack = .time }
                     else { showAIUsage = true }
                 } catch { showAIUsage = true }
             }

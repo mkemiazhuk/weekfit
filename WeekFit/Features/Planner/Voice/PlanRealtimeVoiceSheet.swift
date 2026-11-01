@@ -917,7 +917,7 @@ struct PlanRealtimeVoiceSheet: View {
                 controller.begin()
             }
         }
-        .sheet(isPresented: $showAIUsage) { NavigationStack { WeekFitAIUsageView() } }
+        .sheet(isPresented: $showAIUsage) { WeekFitAIBalanceSheet() }
         .onDisappear { controller.end() }
         .onChange(of: controller.phase) { _, phase in
             if phase == .ended { dismiss() }
