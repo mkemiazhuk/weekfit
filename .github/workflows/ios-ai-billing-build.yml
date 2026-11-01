@@ -6,6 +6,7 @@ on:
       - 'WeekFit.xcodeproj/**'
       - 'Scripts/archive_ai_sandbox.sh'
       - 'Scripts/archive_for_app_store.sh'
+      - 'Scripts/verify-ai-usage-localizations.py'
       - '.github/workflows/ios-ai-billing-build.yml'
   workflow_dispatch:
 permissions:
