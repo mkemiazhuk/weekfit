@@ -1,6 +1,6 @@
 # WeekFit 1.4.1 — Premium AI allowances release
 
-Ships the AI balance (30 photos and 5 voice minutes a month with Premium), the four consumable top-ups, the stress-index morning hint and the Maya call fixes. Billing details: `docs/billing/AI_USAGE_ROLLOUT.md`, Sandbox setup: `docs/billing/STAGING_SETUP.md`.
+Ships the AI balance (30 photos and 15 voice minutes a month with Premium), the four consumable top-ups, the stress-index morning hint and the Maya call fixes. Billing details: `docs/billing/AI_USAGE_ROLLOUT.md`, Sandbox setup: `docs/billing/STAGING_SETUP.md`.
 
 ## State on 1 November 2026
 

@@ -10,7 +10,7 @@ export const TOPUPS = Object.freeze({
   'com.weekfit.topup.voice15': { resource: 'voice', quantity: 900 },
   'com.weekfit.topup.voice30': { resource: 'voice', quantity: 1800 },
 });
-export const ALLOWANCES = Object.freeze({ photos: 30, voice: 300 });
+export const ALLOWANCES = Object.freeze({ photos: 30, voice: 900 });
 export const hash = value => createHash('sha256').update(value).digest('hex');
 const fail = (code, status = 409) => { throw new ServiceError(code, status); };
 

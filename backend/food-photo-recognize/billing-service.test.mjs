@@ -65,9 +65,9 @@ test('provider failure releases allowance and a failed key never runs the provid
 test('managed voice never returns provider credentials, keeps one call per wallet and hangs up on server deadline',async t=>{
  const f=await fixture(t);
  const body={idempotencyKey:'voice_session1',timeZone:'Europe/Warsaw',language:'en',plan:[]};
- const session=await f.send('/v2/ai/voice/session',{body});assert.equal(session.status,200);assert.equal(session.body.value,'');assert.equal(session.body.budgetSeconds,300);
+ const session=await f.send('/v2/ai/voice/session',{body});assert.equal(session.status,200);assert.equal(session.body.value,'');assert.equal(session.body.budgetSeconds,900);
  const second=await f.send('/v2/ai/voice/session',{body:{...body,idempotencyKey:'voice_session2'}});
- assert.equal(second.status,200);assert.equal(second.body.budgetSeconds,300);
+ assert.equal(second.status,200);assert.equal(second.body.budgetSeconds,900);
  assert.equal((await f.send('/v2/ai/voice/status',{body:{sessionId:'voice_session1'}})).body.active,false);
  const connect=await f.send('/v2/ai/voice/connect',{body:{sessionId:'voice_session2',sdp:'offer-sdp'}});assert.equal(connect.body.sdp,'answer-sdp');
  f.event({type:'response.created'});
@@ -88,10 +88,10 @@ test('calling again right after a call whose stop never arrived settles the old 
  f.event({type:'input_audio_buffer.speech_started'});
  f.advance(60_000);
  const held=(await f.send('/v2/ai/usage')).body;
- assert.equal(held.voice.included,0);assert.equal(held.voice.reserved,300);
+ assert.equal(held.voice.included,0);assert.equal(held.voice.reserved,900);
  const next=await f.send('/v2/ai/voice/session',{body:{idempotencyKey:'voice_second',timeZone:'Europe/Warsaw',language:'ru'}});
  assert.equal(next.status,200);
- assert.equal(next.body.budgetSeconds,240);
+ assert.equal(next.body.budgetSeconds,840);
  assert.equal(f.hangups(),1);
  const settled=logs.find(entry=>entry.event==='billing_voice_settled'&&entry.operation==='voice_first');
  assert.equal(settled.seconds,60);assert.equal(settled.reason,'superseded');
@@ -125,18 +125,18 @@ test('a timed out provider hangup stays reserved and is not reported as billing 
  assert.equal(stopped.body.error,'voice_stop_pending');
  const held=(await f.send('/v2/ai/usage')).body;
  assert.equal(held.voiceFinalizing,true);
- assert.equal(held.voice.reserved,300);
+ assert.equal(held.voice.reserved,900);
  assert.ok(logs.some(entry=>entry.event==='billing_voice_provider_stop'&&entry.result==='failed'&&entry.cause==='timeout'));
  f.failHangupThrow(null);
  assert.equal((await f.send('/v2/ai/voice/stop',{body:{sessionId:'voice_timeout'}})).status,200);
  assert.equal((await f.send('/v2/ai/usage')).body.voiceFinalizing,false);
 });
-test('a forty second call leaves 260 seconds when stop is retried long after the hangup',async t=>{
+test('a forty second call leaves 860 seconds when stop is retried long after the hangup',async t=>{
  const logs=[];
  const f=await fixture(t,{},{freezeClock:true,logs});
  const body={idempotencyKey:'voice_forty',timeZone:'Europe/Warsaw',language:'en'};
  const session=await f.send('/v2/ai/voice/session',{body});
- assert.equal(session.body.budgetSeconds,300);
+ assert.equal(session.body.budgetSeconds,900);
  await f.send('/v2/ai/voice/connect',{body:{sessionId:'voice_forty',sdp:'offer'}});
  f.event({type:'response.created'});
  f.advance(40_000);
@@ -144,7 +144,7 @@ test('a forty second call leaves 260 seconds when stop is retried long after the
  assert.equal((await f.send('/v2/ai/voice/stop',{body:{sessionId:'voice_forty'}})).status,503);
  const held=(await f.send('/v2/ai/usage')).body;
  assert.equal(held.voice.included,0);
- assert.equal(held.voice.reserved,300);
+ assert.equal(held.voice.reserved,900);
  assert.equal(held.voice.used,0);
  assert.equal(held.voiceFinalizing,true);
  f.advance(120_000);
@@ -152,7 +152,7 @@ test('a forty second call leaves 260 seconds when stop is retried long after the
  assert.equal((await f.send('/v2/ai/voice/stop',{body:{sessionId:'voice_forty'}})).status,200);
  assert.equal((await f.send('/v2/ai/voice/stop',{body:{sessionId:'voice_forty'}})).status,200);
  const usage=(await f.send('/v2/ai/usage')).body;
- assert.equal(usage.voice.included,260);
+ assert.equal(usage.voice.included,860);
  assert.equal(usage.voice.used,40);
  assert.equal(usage.voice.reserved,0);
  assert.equal(usage.voiceFinalizing,false);
@@ -167,7 +167,7 @@ test('expired subscription can still finish the call it already started',async t
  f.sub.active=false;f.sub.accessUntil=0;
  const stopped=await f.send('/v2/ai/voice/stop',{body:{sessionId:'voice_expired'}});
  assert.equal(stopped.status,200);
- assert.equal(stopped.body.voice.included,260);
+ assert.equal(stopped.body.voice.included,860);
  assert.equal(stopped.body.voice.used,40);
 });
 test('a failed connection returns the reserve and a silent client is not billed for the whole budget',async t=>{
@@ -176,7 +176,7 @@ test('a failed connection returns the reserve and a silent client is not billed 
  await failed.send('/v2/ai/voice/session',{body:{idempotencyKey:'voice_noconnect',timeZone:'Europe/Warsaw',language:'en'}});
  assert.equal((await failed.send('/v2/ai/voice/connect',{body:{sessionId:'voice_noconnect',sdp:'offer'}})).status,502);
  const restored=(await failed.send('/v2/ai/usage')).body;
- assert.equal(restored.voice.included,300);
+ assert.equal(restored.voice.included,900);
  assert.equal(restored.voice.reserved,0);
  assert.equal(restored.voice.used,0);
  const quiet=await fixture(t,{},{freezeClock:true});
@@ -190,7 +190,7 @@ test('a failed connection returns the reserve and a silent client is not billed 
  assert.equal(quiet.hangups(),1);
  const usage=(await quiet.send('/v2/ai/usage')).body;
  assert.equal(usage.voice.used,15);
- assert.equal(usage.voice.included,285);
+ assert.equal(usage.voice.included,885);
  assert.equal(usage.voice.reserved,0);
 });
 test('restart settles a provider call that is already gone without billing the reserved budget',async t=>{
@@ -218,7 +218,7 @@ test('restart settles a provider call that is already gone without billing the r
  t.after(async()=>{await service.close();server.closeAllConnections();await new Promise(r=>server.close(r));rmSync(dir,{recursive:true,force:true});});
  const response=await fetch(`http://127.0.0.1:${server.address().port}/v2/ai/usage`,{headers:{Authorization:'Bearer user','X-WeekFit-Subscription-JWS':'proof'}});
  const usage=await response.json();
- assert.equal(usage.voice.included,300);
+ assert.equal(usage.voice.included,900);
  assert.equal(usage.voice.used,0);
  assert.equal(usage.voice.reserved,0);
  assert.equal(logs.some(entry=>entry.event==='billing_voice_settled'&&entry.seconds===0&&entry.end==='unknown'),true);
