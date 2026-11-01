@@ -11,7 +11,8 @@ catalog = json.loads((root / 'WeekFit/AIUsage.xcstrings').read_text())['strings'
 used = set()
 for path in (root / 'WeekFit').rglob('*.swift'):
     used.update(re.findall(r'"(ai\.usage\.[A-Za-z]+)"', path.read_text()))
-assert used <= catalog.keys(), f'Missing keys: {used - catalog.keys()}'
+plural = {key for key in used if {f'{key}.one', f'{key}.many'} <= catalog.keys()}
+assert used - plural <= catalog.keys(), f'Missing keys: {used - plural - catalog.keys()}'
 for key, entry in catalog.items():
     assert languages <= entry['localizations'].keys(), f'{key}: missing language'
     for language in languages:
