@@ -44,7 +44,7 @@ test('finite voice reservation excludes concurrent calls and settles exact secon
  const {store,sub,wallet}=setup(t);assert.equal(store.reserve(wallet,sub,'voice','voice_0001','call',300).included,300);
  assert.throws(()=>store.reserve(wallet,sub,'voice','voice_0002','call',300),{code:'voice_already_active'});
  store.startCall(wallet.id,'voice_0001');store.settle(wallet.id,'voice_0001',13);store.settle(wallet.id,'voice_0001',100);
- assert.equal(store.snapshot(wallet,sub).voice.included,587);
+ assert.equal(store.snapshot(wallet,sub).voice.included,287);
 });
 test('refund-before-delivery tombstone and spent-credit debt prevent regranting',t=>{
  const {store,sub,wallet,purchase}=setup(t);store.refund(purchase());store.grant(wallet,purchase());assert.equal(store.snapshot(wallet,sub).photos.purchased,0);

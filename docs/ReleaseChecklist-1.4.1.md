@@ -1,13 +1,13 @@
 # WeekFit 1.4.1 — Premium AI allowances release
 
-Ships the AI balance (30 photos and 10 voice minutes a month with Premium), the four consumable top-ups, the stress-index morning hint and the Maya call fixes. Billing details: `docs/billing/AI_USAGE_ROLLOUT.md`, Sandbox setup: `docs/billing/STAGING_SETUP.md`.
+Ships the AI balance (30 photos and 5 voice minutes a month with Premium), the four consumable top-ups, the stress-index morning hint and the Maya call fixes. Billing details: `docs/billing/AI_USAGE_ROLLOUT.md`, Sandbox setup: `docs/billing/STAGING_SETUP.md`.
 
 ## State on 1 November 2026
 
 | Item | State |
 | --- | --- |
 | Code | `main` at `46fc56b3f` or later |
-| Backend tests | 187 / 187 pass |
+| Backend tests | 190 / 190 pass |
 | iOS unit tests | AI balance suite passes. Full `WeekFitTests`: 2055 passed, 31 failed in Coach copy, analytics and onboarding tests; the same 31 fail on `0e79aedd1` before the billing branch, so not a regression. One parallel simulator clone hung near the end of the run |
 | AI usage translations | pass, 10 languages |
 | General localization parity / language mix | fail on 15 and 27 old keys, identical before the billing branch — not a regression |
@@ -27,8 +27,8 @@ Ships the AI balance (30 photos and 10 voice minutes a month with Premium), the 
   - [ ] subscription expiry keeps the purchased balance; resubscribe and reinstall recover it;
   - [ ] refund in Sandbox reverses the credit once;
   - [ ] Apple test notification reaches the Sandbox URL.
-- [ ] Decision on the voice launch gate: if the API process dies mid-call, the server cannot hang up and the provider call can outlive the budget (up to the provider's own session limit). Accept this risk in writing or add an independent watchdog before launch.
-- [ ] Confirm `BILLING_EXISTING_PHOTO_CUTOFF` (UTC instant): paying subscribers who started before it keep their earlier photo access.
+- [x] Voice launch gate — risk accepted on 1 November 2026, no separate watchdog. If the API process dies mid-call, the app ends the call within one 15-second status check, and on restart the server hangs up every unfinished call by its stored call ID and charges at most the budget. What remains is a call whose phone and server both drop at once, bounded by the provider's session limit and with no speech to bill.
+- [x] `BILLING_EXISTING_PHOTO_CUTOFF` — decided on 1 November 2026: the instant Production billing is turned on (launch day, step 3). Every paid subscription lineage that started before then keeps unlimited photos; voice has no exception.
 
 ## 2. Archive
 
@@ -53,7 +53,7 @@ Production billing makes the old photo and session endpoints return 426, so buil
 
 1. [ ] Wait until there are no queued photo jobs (`/healthz`: `asyncQueueDepth` 0).
 2. [ ] Back up `/var/data/billing.sqlite` with SQLite's backup API or a stopped-volume snapshot.
-3. [ ] Render env: `AI_BILLING_ENABLED=1`, `BILLING_EXISTING_PHOTO_CUTOFF=<confirmed instant>`. Keep the rest from STAGING_SETUP.md. Save and redeploy.
+3. [ ] Render env: `AI_BILLING_ENABLED=1`, `BILLING_EXISTING_PHOTO_CUTOFF=<current UTC time, e.g. from date -u +%Y-%m-%dT%H:%M:%SZ>`. Keep the rest from STAGING_SETUP.md. Save and redeploy.
 4. [ ] Check: `GET /v2/ai/usage` without a token now answers 401, not 404.
 5. [ ] Release 1.4.1 in App Store Connect.
 6. [ ] On a real iPhone with the App Store build: balance loads, one real photo top-up is credited.
