@@ -2721,8 +2721,10 @@ struct TodayView: View {
             Task {
                 defer { openingMaya = false }
                 do {
+                    await WeekFitVoiceStopQueue.shared.flush()
                     let usage = try await WeekFitAIClient().usage()
-                    if usage.active && usage.voice.total > 0 { showPlannerVoice = true }
+                    // Seconds still held by the last call come back when the server opens the next one.
+                    if usage.active && usage.voice.total + usage.voice.reserved > 0 { showPlannerVoice = true }
                     else if usage.active { aiTopUpPack = .time }
                     else { showAIUsage = true }
                 } catch { showAIUsage = true }

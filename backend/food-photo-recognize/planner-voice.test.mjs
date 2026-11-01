@@ -275,6 +275,7 @@ test('cedar uses the same russian greeting without a larger model', async () => 
     assert.match(sent.session.instructions, /Привет, Макс! Как ты сегодня\?/);
     assert.equal(sent.session.audio.input.turn_detection.type, 'semantic_vad');
     assert.equal(sent.session.audio.input.turn_detection.eagerness, 'low');
+    assert.deepEqual(sent.session.audio.input.noise_reduction, { type: 'near_field' });
     assert.equal(sent.session.max_output_tokens, 2048);
     assert.match(sent.session.instructions, /natural Russian pronunciation/);
     assert.equal(sent.session.instructions.includes('только по-русски'), false);

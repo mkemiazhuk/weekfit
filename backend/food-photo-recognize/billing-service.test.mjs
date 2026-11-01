@@ -62,18 +62,40 @@ test('provider failure releases allowance and a failed key never runs the provid
  assert.equal((await f.send('/v2/ai/usage')).body.photos.included,30);
  assert.equal((await f.send('/v2/ai/photo',options)).status,409);assert.equal(f.calls(),1);
 });
-test('managed voice never returns provider credentials, rejects parallel calls and hangs up on server deadline',async t=>{
+test('managed voice never returns provider credentials, keeps one call per wallet and hangs up on server deadline',async t=>{
  const f=await fixture(t);
  const body={idempotencyKey:'voice_session1',timeZone:'Europe/Warsaw',language:'en',plan:[]};
  const session=await f.send('/v2/ai/voice/session',{body});assert.equal(session.status,200);assert.equal(session.body.value,'');assert.equal(session.body.budgetSeconds,300);
- assert.equal((await f.send('/v2/ai/voice/session',{body:{...body,idempotencyKey:'voice_session2'}})).status,409);
- const connect=await f.send('/v2/ai/voice/connect',{body:{sessionId:'voice_session1',sdp:'offer-sdp'}});assert.equal(connect.body.sdp,'answer-sdp');
+ const second=await f.send('/v2/ai/voice/session',{body:{...body,idempotencyKey:'voice_session2'}});
+ assert.equal(second.status,200);assert.equal(second.body.budgetSeconds,300);
+ assert.equal((await f.send('/v2/ai/voice/status',{body:{sessionId:'voice_session1'}})).body.active,false);
+ const connect=await f.send('/v2/ai/voice/connect',{body:{sessionId:'voice_session2',sdp:'offer-sdp'}});assert.equal(connect.body.sdp,'answer-sdp');
  f.event({type:'response.created'});
  const wallet=f.service.store.wallet(f.sub);
- f.service.store.run('UPDATE operations SET deadline=? WHERE wallet=? AND key=?',Date.now()-1,wallet.id,'voice_session1');
+ f.service.store.run('UPDATE operations SET deadline=? WHERE wallet=? AND key=?',Date.now()-1,wallet.id,'voice_session2');
  await new Promise(r=>setTimeout(r,650));
  assert.equal(f.hangups(),1);
- assert.equal((await f.send('/v2/ai/voice/status',{body:{sessionId:'voice_session1'}})).body.active,false);
+ assert.equal((await f.send('/v2/ai/voice/status',{body:{sessionId:'voice_session2'}})).body.active,false);
+});
+test('calling again right after a call whose stop never arrived settles the old call first',async t=>{
+ const logs=[];
+ const f=await fixture(t,{},{freezeClock:true,logs});
+ await f.send('/v2/ai/voice/session',{body:{idempotencyKey:'voice_first',timeZone:'Europe/Warsaw',language:'ru'}});
+ await f.send('/v2/ai/voice/connect',{body:{sessionId:'voice_first',sdp:'offer'}});
+ f.event({type:'response.created'});
+ f.event({type:'input_audio_buffer.speech_started'});
+ f.event({type:'response.done',response:{id:'r1'}});
+ f.event({type:'input_audio_buffer.speech_started'});
+ f.advance(60_000);
+ const held=(await f.send('/v2/ai/usage')).body;
+ assert.equal(held.voice.included,0);assert.equal(held.voice.reserved,300);
+ const next=await f.send('/v2/ai/voice/session',{body:{idempotencyKey:'voice_second',timeZone:'Europe/Warsaw',language:'ru'}});
+ assert.equal(next.status,200);
+ assert.equal(next.body.budgetSeconds,240);
+ assert.equal(f.hangups(),1);
+ const settled=logs.find(entry=>entry.event==='billing_voice_settled'&&entry.operation==='voice_first');
+ assert.equal(settled.seconds,60);assert.equal(settled.reason,'superseded');
+ assert.equal(settled.language,'ru');assert.equal(settled.interruptions,1);
 });
 
 test('failed provider hangup keeps credit reserved and blocks a second call until closure is confirmed',async t=>{
@@ -85,7 +107,8 @@ test('failed provider hangup keeps credit reserved and blocks a second call unti
  assert.equal(denied.status,503);
  assert.equal(denied.body.error,'voice_stop_pending');
  assert.equal((await f.send('/v2/ai/usage')).body.voice.included,0);
- assert.equal((await f.send('/v2/ai/voice/session',{body:{idempotencyKey:'voice_blocked',timeZone:'Europe/Warsaw',language:'en'}})).status,409);
+ const blocked=await f.send('/v2/ai/voice/session',{body:{idempotencyKey:'voice_blocked',timeZone:'Europe/Warsaw',language:'en'}});
+ assert.equal(blocked.status,503);assert.equal(blocked.body.error,'voice_stop_pending');
  f.failHangup(false);
  assert.equal((await f.send('/v2/ai/voice/stop',{body:{sessionId:'voice_failure'}})).status,200);
  assert.equal((await f.send('/v2/ai/voice/status',{body:{sessionId:'voice_failure'}})).body.active,false);

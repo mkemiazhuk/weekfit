@@ -56,6 +56,8 @@ export function plannerVoiceSettings(env = {}) {
   }
   const voice = (env.PLANNER_VOICE_VOICE ?? 'marin').trim();
   if (!VOICES.has(voice)) throw Error('Invalid PLANNER_VOICE_VOICE');
+  const noiseReduction = (env.PLANNER_VOICE_NOISE_REDUCTION ?? 'near_field').trim();
+  if (!['near_field', 'far_field', 'off'].includes(noiseReduction)) throw Error('Invalid PLANNER_VOICE_NOISE_REDUCTION');
   const integer = (key, fallback, min, max) => {
     if (env[key] == null || env[key] === '') return fallback;
     const n = Number(env[key]);
@@ -73,6 +75,7 @@ export function plannerVoiceSettings(env = {}) {
     plannerVoiceAllowedUids: allowed,
     plannerVoiceModel: model,
     plannerVoiceVoice: voice,
+    plannerVoiceNoiseReduction: noiseReduction,
     plannerVoiceIdleSeconds: integer('PLANNER_VOICE_IDLE_SECONDS', 75, 20, 180),
     plannerVoiceSecretSeconds: integer('PLANNER_VOICE_SECRET_SECONDS', 60, 10, 600),
     plannerVoiceMaxCalls: integer('PLANNER_VOICE_MAX_CALLS', 5, 1, 100),
@@ -1038,6 +1041,9 @@ export function plannerSessionConfiguration(config, payload) {
           create_response: true,
           interrupt_response: true,
         },
+        // Phone held in front of the face; cleaner input keeps street noise from cutting Maya off.
+        ...((config.plannerVoiceNoiseReduction ?? 'near_field') === 'off'
+          ? {} : { noise_reduction: { type: config.plannerVoiceNoiseReduction ?? 'near_field' } }),
       },
       output: { voice: config.plannerVoiceVoice || 'marin' },
     },

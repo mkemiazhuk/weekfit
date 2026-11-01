@@ -5,6 +5,7 @@ import { BillingStore, TOPUPS, hash } from './billing-store.mjs';
 import { createAppleBilling } from './billing-apple.mjs';
 import { recognize, validateInput, ServiceError } from './recognition.mjs';
 import { plannerSessionConfiguration } from './planner-voice.mjs';
+import { plannerVoiceLanguage } from './planner-voice-copy.mjs';
 import { createConcurrencyGate } from './concurrency.mjs';
 
 const error = (code, status) => { throw new ServiceError(code, status); };
@@ -80,7 +81,7 @@ export function createBillingService(config, { authenticate, apple, store, fetch
     const identifier = `${wallet}:${key}`;
     if (stopping.has(identifier)) return stopping.get(identifier);
     // The call end is already stored. Automatic retries wait, so a timed-out hangup is not fired again immediately.
-    if (reason !== 'client' && (providerNotBefore.get(identifier) ?? 0) > now()) return Promise.resolve();
+    if (reason !== 'client' && reason !== 'superseded' && (providerNotBefore.get(identifier) ?? 0) > now()) return Promise.resolve();
     const task = (async () => {
       let op = store.operation(wallet, key);
       if (!op || op.state !== 'reserved') return;
@@ -115,9 +116,11 @@ export function createBillingService(config, { authenticate, apple, store, fetch
         }
         seconds = op.started ? chargeSeconds(op) : 0;
       }
+      const live = sessions.get(identifier);
       store.settle(wallet, key, seconds);
       releaseLive(identifier);
-      log({ event: 'billing_voice_settled', operation: key, seconds, end: op.ended == null ? 'unknown' : 'stored' });
+      log({ event: 'billing_voice_settled', operation: key, seconds, end: op.ended == null ? 'unknown' : 'stored',
+        reason, language: live?.language ?? null, interruptions: live?.interruptions ?? null });
       log({ event: 'billing_voice_reserve_released', operation: key, released: op.included + op.purchased - seconds });
     })();
     stopping.set(identifier, task);
@@ -238,6 +241,12 @@ export function createBillingService(config, { authenticate, apple, store, fetch
       if (route === '/v2/ai/voice/session' && req.method === 'POST') {
         if (!config.plannerVoiceEnabled) error('planner_voice_forbidden', 403);
         const key = body.idempotencyKey;
+        // A new call means any earlier call on this wallet is over, even when its stop never arrived.
+        for (const prior of store.pending()) {
+          if (prior.wallet === wallet.id && prior.resource === 'voice' && prior.key !== key) {
+            await stop(wallet.id, prior.key, 'superseded');
+          }
+        }
         const admission = line?.claim(ctx.uid, body.ticket);
         if (admission && !admission.ok) error(admission.body.error, admission.status);
         let op;
@@ -246,7 +255,8 @@ export function createBillingService(config, { authenticate, apple, store, fetch
         store.noteSeen(wallet.id, key, now());
         if (op.state !== 'reserved' || sessions.has(`${wallet.id}:${key}`) || op.callId) error('voice_already_active', 409);
         sessions.set(`${wallet.id}:${key}`, { session: plannerSessionConfiguration(config, body),
-          uid: ctx.uid, ticket: admission?.ticket });
+          uid: ctx.uid, ticket: admission?.ticket, language: plannerVoiceLanguage(body.language),
+          interruptions: 0, responding: false });
         if (admission?.ticket) line.activate(ctx.uid, admission.ticket);
         send(res, 200, { value: '', model: config.plannerVoiceModel, idleSeconds: config.plannerVoiceIdleSeconds,
           managed: true, sessionId: key, budgetSeconds: op.included + op.purchased });
@@ -274,6 +284,10 @@ export function createBillingService(config, { authenticate, apple, store, fetch
             if (event.type === 'response.created' || event.type === 'input_audio_buffer.speech_started') {
               store.startCall(wallet.id, key);
             }
+            // Speech while Maya talks cuts her off; on a noisy street this is what sounds like stutter.
+            if (event.type === 'response.created') live.responding = true;
+            if (event.type === 'response.done') live.responding = false;
+            if (event.type === 'input_audio_buffer.speech_started' && live.responding) live.interruptions += 1;
             if (event.type === 'response.done' && event.response?.id && event.response?.usage) {
               store.recordUsage(wallet.id, event.response.id, { feature: 'voice', model: config.plannerVoiceModel,
                 usage: event.response.usage, source: 'server_sideband' });
