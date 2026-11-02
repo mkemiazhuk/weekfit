@@ -49,7 +49,7 @@ Ships the AI balance (30 photos and 5 voice minutes a month with Premium), the f
 
 ## 4. Launch day, in this order
 
-Production billing makes the old photo and session endpoints return 426, so builds before 1.4.1 lose AI photo and voice the moment it is on. Turn it on only when 1.4.1 is approved and about to go live.
+Production billing keeps the old photo endpoints on their existing paid rules. `POST /v1/planner-voice/session` returns 426. Turn billing on only when 1.4.1 is approved and about to go live.
 
 1. [ ] Wait until there are no queued photo jobs (`/healthz`: `asyncQueueDepth` 0).
 2. [ ] Back up `/var/data/billing.sqlite` with SQLite's backup API or a stopped-volume snapshot.

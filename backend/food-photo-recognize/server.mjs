@@ -349,9 +349,9 @@ export function createServer(config, dependencies = {}) {
 
   const server = http.createServer(async (req, res) => {
     if (await billing.handle(req, res)) return;
-    if (config.billingEnabled && req.method === 'POST' && [
-      '/v1/food/photo-recognize', '/v1/food/photo-analyze', '/v1/planner-voice/session',
-    ].includes(req.url)) {
+    // Installed builds keep the paid photo routes. 1.5 uses /v2/ai/photo.
+    // The unmetered planner voice session stays closed beside managed voice.
+    if (config.billingEnabled && req.method === 'POST' && req.url === '/v1/planner-voice/session') {
       return send(res, 426, { error: 'app_update_required' });
     }
     const coachPath = (req.url ?? '').split('?')[0];

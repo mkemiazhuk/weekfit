@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { configuration, createServer } from './server.mjs';
 import { validateInput, validateResult, recognize, ServiceError, FOOD_PROMPT_VERSION } from './recognition.mjs';
 import { authenticate } from './auth.mjs';
@@ -227,6 +230,49 @@ test('photo recognize allows one free trial then requires paid subscription',asy
   assert.equal((await free()).status,200);
   assert.equal((await free()).status,402);
   assert.equal(calls,1);
+});
+
+test('production billing keeps legacy photo routes and closes the unmetered voice session', async t => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'weekfit-legacy-photo-'));
+  const server = createServer({
+    ...configuration({
+      ALLOW_DEV_AUTH: '1',
+      WEEKFIT_DEV_TOKEN: 'weekfit-dev-local-token',
+      OPENAI_API_KEY: 'test',
+    }),
+    billingEnabled: true,
+    sandboxBillingEnabled: false,
+    dataDirExplicit: true,
+    dataDir: dir,
+    stateBackend: 'file',
+    allowSingleNode: true,
+    asyncEnabled: false,
+  }, {
+    recognize: async () => ({ result: validateResult(valid()), usage: null }),
+    requirePaidSubscriptionJWS: (header, opts) => requirePaidSubscriptionJWS(header, { ...opts, skipSignature: true }),
+    asyncStack: null,
+    billing: { apples: { Production: { environment: 'Production' } }, log() {} },
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(async () => {
+    await new Promise(resolve => server.close(resolve));
+    rmSync(dir, { recursive: true, force: true });
+  });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const post = (route, headers = {}) => fetch(base + route, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(input()),
+  });
+  const paid = {
+    Authorization: 'Bearer weekfit-dev-local-token',
+    'X-WeekFit-Subscription-JWS': unsignedPaidJWS(),
+  };
+  assert.equal((await post('/v1/food/photo-recognize', paid)).status, 200);
+  assert.equal((await post('/v1/food/photo-analyze', paid)).status, 200);
+  const voice = await post('/v1/planner-voice/session', paid);
+  assert.equal(voice.status, 426);
+  assert.equal((await voice.json()).error, 'app_update_required');
 });
 
 test('async enabled but stack missing returns async_not_configured without burning free trial',async t=>{
