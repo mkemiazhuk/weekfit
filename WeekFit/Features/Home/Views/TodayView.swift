@@ -2706,12 +2706,37 @@ struct TodayView: View {
             )
         }
         let percent = healthManager.recoveryPercent
+        let training = CoachCanonicalDayState.coachRelevantActivities(from: todayActivities).prefix(4).map { activity in
+            PlanVoiceDayContext.Training(
+                title: activityDisplayTitle(activity),
+                minutes: max(activity.effectiveDurationMinutes, 1),
+                done: activity.isCompleted
+            )
+        }
         return PlanVoiceDayContext(
             recoveryPercent: percent > 0 ? percent : nil,
             recoveryBand: percent > 0 ? voiceRecoveryBand(percent) : nil,
             sleepMinutes: healthManager.sleepMinutes > 0 ? healthManager.sleepMinutes : nil,
-            meals: Array(meals)
+            meals: Array(meals),
+            nutrition: voiceNutrition(),
+            training: Array(training)
         )
+    }
+
+    private func voiceNutrition() -> PlanVoiceDayContext.Nutrition {
+        var nutrition = PlanVoiceDayContext.Nutrition()
+        if let metrics = nutritionViewModel.currentMetrics {
+            nutrition.caloriesEaten = Int(metrics.calories.rounded())
+            nutrition.proteinGrams = Int(metrics.protein.rounded())
+            nutrition.waterMilliliters = Int((metrics.waterLiters * 1000).rounded())
+        }
+        if let goals = nutritionViewModel.nutritionResult?.goals {
+            let budget = todayNutritionBudget.totalCalories
+            if budget > 0 { nutrition.caloriesBudget = Int(budget.rounded()) }
+            if goals.protein > 0 { nutrition.proteinGoalGrams = Int(goals.protein.rounded()) }
+            if goals.waterLiters > 0 { nutrition.waterGoalMilliliters = Int((goals.waterLiters * 1000).rounded()) }
+        }
+        return nutrition
     }
 
     private func voiceRecoveryBand(_ percent: Int) -> String? {

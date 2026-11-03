@@ -191,14 +191,31 @@ struct PlanVoiceDayContext: Equatable {
     var recoveryBand: String?
     var sleepMinutes: Int?
     var meals: [Meal] = []
+    var nutrition = Nutrition()
+    var training: [Training] = []
 
     struct Meal: Equatable {
         var title: String
         var time: String
     }
 
+    struct Nutrition: Equatable {
+        var caloriesEaten: Int?
+        var caloriesBudget: Int?
+        var proteinGrams: Int?
+        var proteinGoalGrams: Int?
+        var waterMilliliters: Int?
+        var waterGoalMilliliters: Int?
+    }
+
+    struct Training: Equatable {
+        var title: String
+        var minutes: Int
+        var done: Bool
+    }
+
     var isEmpty: Bool {
-        recoveryPercent == nil && sleepMinutes == nil && meals.isEmpty
+        recoveryPercent == nil && sleepMinutes == nil && meals.isEmpty && nutrition.isEmpty && training.isEmpty
     }
 
     func jsonObject() -> [String: Any] {
@@ -220,6 +237,31 @@ struct PlanVoiceDayContext: Equatable {
         if !rows.isEmpty {
             body["meals"] = rows
         }
+        let nutrition = nutrition.jsonObject()
+        if !nutrition.isEmpty {
+            body["nutrition"] = nutrition
+        }
+        body["training"] = training.prefix(4).map {
+            ["title": $0.title, "minutes": $0.minutes, "done": $0.done]
+        }
+        return body
+    }
+}
+
+private extension PlanVoiceDayContext.Nutrition {
+    var isEmpty: Bool {
+        caloriesEaten == nil && caloriesBudget == nil && proteinGrams == nil
+            && proteinGoalGrams == nil && waterMilliliters == nil && waterGoalMilliliters == nil
+    }
+
+    func jsonObject() -> [String: Any] {
+        var body: [String: Any] = [:]
+        if let caloriesEaten { body["caloriesEaten"] = caloriesEaten }
+        if let caloriesBudget { body["caloriesBudget"] = caloriesBudget }
+        if let proteinGrams { body["proteinGrams"] = proteinGrams }
+        if let proteinGoalGrams { body["proteinGoalGrams"] = proteinGoalGrams }
+        if let waterMilliliters { body["waterMilliliters"] = waterMilliliters }
+        if let waterGoalMilliliters { body["waterGoalMilliliters"] = waterGoalMilliliters }
         return body
     }
 }
@@ -516,6 +558,26 @@ nonisolated func planRealtimeListSpeak(
     return lead + shown + extra
 }
 
+private func russianSpokenTime(hour: Int, minute: Int) -> String {
+    if hour == 0 && minute == 0 { return "полночь" }
+    if hour == 12 && minute == 0 { return "полдень" }
+    let names = ["двенадцать", "час", "два часа", "три часа", "четыре часа", "пять", "шесть", "семь", "восемь", "девять", "десять", "одиннадцать"]
+    let period = hour < 12 ? "утра" : (hour < 17 ? "дня" : "вечера")
+    let name = names[hour % 12]
+    let minuteWords = russianMinuteWords(minute)
+    return minuteWords.isEmpty ? "\(name) \(period)" : "\(name) \(minuteWords) \(period)"
+}
+
+private func russianMinuteWords(_ minute: Int) -> String {
+    if minute == 0 { return "" }
+    let under = ["", "один", "два", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять", "десять", "одиннадцать", "двенадцать", "тринадцать", "четырнадцать", "пятнадцать", "шестнадцать", "семнадцать", "восемнадцать", "девятнадцать"]
+    if minute < 20 { return minute < 10 ? "ноль \(under[minute])" : under[minute] }
+    let tens = ["", "", "двадцать", "тридцать", "сорок", "пятьдесят"]
+    let one = minute % 10
+    let ten = minute / 10
+    return one == 0 ? tens[ten] : "\(tens[ten]) \(under[one])"
+}
+
 nonisolated func planRealtimeSpokenClock(_ time: String, language: String) -> String {
     let parts = time.split(separator: ":")
     guard parts.count == 2,
@@ -550,12 +612,7 @@ nonisolated func planRealtimeSpokenClock(_ time: String, language: String) -> St
     case "zh-Hans":
         return "\(hour < 12 ? "早上" : "晚上")\(clockHour)点\(minute == 0 ? "" : "\(minute)分")"
     default:
-        let period: String
-        if hour == 0 { period = "ночи" }
-        else if hour < 12 { period = "утра" }
-        else if hour < 17 { period = "дня" }
-        else { period = "вечера" }
-        return "\(clockHour)\(minutes) \(period)"
+        return russianSpokenTime(hour: hour, minute: minute)
     }
 }
 
@@ -696,14 +753,14 @@ private struct PlanRealtimeSpeechCopy {
 private let planRealtimeSpeech: [String: PlanRealtimeSpeechCopy] = [
     "ru": .init(
         today: "сегодня", tomorrow: "завтра",
-        todayDoneEmpty: "Сегодня ничего не отмечено как сделанное.",
+        todayDoneEmpty: "Сегодня ещё ничего не отмечено.",
         todayPlannedEmpty: "На сегодня ничего не запланировано.",
-        tomorrowEmpty: "На завтра ничего не запланировано.",
-        todayDoneLead: "Сегодня сделано: ", todayPlannedLead: "На сегодня ещё: ", tomorrowLead: "На завтра: ",
-        alreadyDone: "Это уже сделано, я его не убираю.",
-        missing: "Не нашла эту активность.",
+        tomorrowEmpty: "На завтра ничего нет.",
+        todayDoneLead: "Сегодня уже было: ", todayPlannedLead: "На сегодня ещё: ", tomorrowLead: "На завтра: ",
+        alreadyDone: "Это уже сделано, не трогаю.",
+        missing: "Не нашла это в плане.",
         unchanged: "Оставила как есть.",
-        conflict: "На это время уже что-то стоит. Выберем другое?",
+        conflict: "Это время уже занято. Во сколько поставим?",
         moved: { spoken, day, time in "Перенесла \(spoken) на \(day), на \(time)." },
         removed: { spoken, day in "Убрала \(spoken) на \(day)." },
         more: { count in "и ещё \(count)." }

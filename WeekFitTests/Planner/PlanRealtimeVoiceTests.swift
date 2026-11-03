@@ -13,7 +13,7 @@ final class PlanRealtimeVoiceTests: XCTestCase {
     func testMayaConfirmsAChangeInTheFeminineAndDoesNotConfirmAConflict() {
         XCTAssertEqual(
             planRealtimeMovedSpeak(spoken: "растяжку", day: "сегодня", time: "18:00", language: "ru"),
-            "Перенесла растяжку на сегодня, на 6 вечера."
+            "Перенесла растяжку на сегодня, на шесть вечера."
         )
         XCTAssertEqual(
             planRealtimeRemovedSpeak(spoken: "прогулку", day: "сегодня", language: "ru"),
@@ -21,7 +21,7 @@ final class PlanRealtimeVoiceTests: XCTestCase {
         )
         XCTAssertEqual(
             planRealtimePlanNotice("conflict", language: "ru"),
-            "На это время уже что-то стоит. Выберем другое?"
+            "Это время уже занято. Во сколько поставим?"
         )
         let conflict = planRealtimeToolReply(
             action: .reject("time_conflict"),
@@ -129,11 +129,11 @@ final class PlanRealtimeVoiceTests: XCTestCase {
                 items: [(spoken: "теннис", startTime: "13:00")],
                 language: "ru"
             ),
-            "Сегодня сделано: теннис 1 дня"
+            "Сегодня уже было: теннис час дня"
         )
         XCTAssertEqual(
             planRealtimeMovedSpeak(spoken: "теннис", day: "завтра", time: "15:00", language: "ru"),
-            "Перенесла теннис на завтра, на 3 дня."
+            "Перенесла теннис на завтра, на три часа дня."
         )
         XCTAssertEqual(
             planRealtimeEditDraft(#"{"ref":"a1","date":"2026-10-29","startTime":"15:00","durationMinutes":0,"catalogTitle":""}"#)?.ref,
@@ -141,6 +141,25 @@ final class PlanRealtimeVoiceTests: XCTestCase {
         )
         XCTAssertEqual(planRealtimeListScope(#"{"scope":"today_done"}"#), "today_done")
         XCTAssertNil(planRealtimeDeleteRef(#"{"ref":"tennis"}"#))
+    }
+
+    func testDayContextCarriesEatenCaloriesProteinWaterAndTraining() {
+        var context = PlanVoiceDayContext()
+        context.nutrition.caloriesEaten = 1450
+        context.nutrition.caloriesBudget = 2400
+        context.nutrition.proteinGrams = 62
+        context.nutrition.proteinGoalGrams = 140
+        context.nutrition.waterMilliliters = 1200
+        context.nutrition.waterGoalMilliliters = 3000
+        context.training = [PlanVoiceDayContext.Training(title: "Strength", minutes: 45, done: true)]
+        let object = context.jsonObject()
+        let nutrition = object["nutrition"] as? [String: Any]
+        XCTAssertEqual(nutrition?["caloriesEaten"] as? Int, 1450)
+        XCTAssertEqual(nutrition?["proteinGrams"] as? Int, 62)
+        XCTAssertEqual(nutrition?["waterMilliliters"] as? Int, 1200)
+        let training = object["training"] as? [[String: Any]]
+        XCTAssertEqual(training?.first?["title"] as? String, "Strength")
+        XCTAssertEqual(training?.first?["done"] as? Bool, true)
     }
 
     func testDayStringUsesTheCalendarZone() {

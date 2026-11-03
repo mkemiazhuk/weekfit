@@ -1157,24 +1157,33 @@ struct PlanRealtimeVoiceSheet: View {
         }()
         return TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: !active)) { context in
             let time = context.date.timeIntervalSinceReferenceDate
-            HStack(alignment: .center, spacing: 5) {
-                ForEach(0..<21, id: \.self) { index in
-                        Capsule(style: .continuous)
-                        .fill(accent.opacity(0.92))
-                        .frame(width: 5, height: waveHeight(index: index, time: time))
+            HStack(alignment: .center, spacing: 2.5) {
+                ForEach(0..<37, id: \.self) { index in
+                    Capsule(style: .continuous)
+                        .fill(accent.opacity(0.9))
+                        .frame(width: 1.5, height: waveHeight(index: index, time: time))
                 }
             }
-            .frame(height: 72)
+            .frame(height: 56)
         }
         .accessibilityHidden(true)
     }
 
     private func waveHeight(index: Int, time: TimeInterval) -> CGFloat {
-        let center = abs(CGFloat(index) - 10) / 10
-        let shape = 0.42 + 0.58 * (1 - center)
-        let level = max(0.18, markLevel)
-        let ripple = motionReduced ? 0 : (0.5 + 0.5 * sin(time * 6 + Double(index) * 0.45))
-        return 14 + 52 * shape * (0.4 + 0.6 * level) * (0.55 + 0.45 * ripple)
+        let mid = 18.0
+        let window = 0.45 + 0.55 * (1 - abs(Double(index) - mid) / mid)
+        let sample: Double
+        if motionReduced {
+            sample = abs(sin(Double(index) * 1.7)) * 0.55 + abs(sin(Double(index) * 0.63)) * 0.3
+        } else {
+            let position = Double(index)
+            let voice = sin(time * 11.0 + position * 0.92)
+            let harmonic = sin(time * 17.4 + position * 1.63)
+            let breath = sin(time * 5.2 + position * 0.31)
+            sample = abs(0.62 * voice + 0.26 * harmonic + 0.12 * breath)
+        }
+        let loud = max(0.08, markLevel)
+        return 2 + 48 * loud * window * (0.18 + 0.82 * sample)
     }
 
     private func scrollCall(_ proxy: ScrollViewProxy) {

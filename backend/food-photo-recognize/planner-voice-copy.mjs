@@ -6,17 +6,17 @@ const SPOKEN = {
   Cycling: { ru: 'велосипед', en: 'cycling', pl: 'rower', fr: 'vélo', es: 'ciclismo', de: 'Radfahren', 'zh-Hans': '骑行', ja: 'サイクリング', it: 'ciclismo', ko: '사이클링' },
   Running: { ru: 'бег', en: 'running', pl: 'bieg', fr: 'course', es: 'carrera', de: 'Laufen', 'zh-Hans': '跑步', ja: 'ランニング', it: 'corsa', ko: '러닝' },
   Swimming: { ru: 'плавание', en: 'swimming', pl: 'pływanie', fr: 'natation', es: 'natación', de: 'Schwimmen', 'zh-Hans': '游泳', ja: '水泳', it: 'nuoto', ko: '수영' },
-  Hiking: { ru: 'хайкинг', en: 'hiking', pl: 'wędrówkę', fr: 'randonnée', es: 'senderismo', de: 'Wandern', 'zh-Hans': '徒步', ja: 'ハイキング', it: 'escursione', ko: '하이킹' },
+  Hiking: { ru: 'поход', en: 'hiking', pl: 'wędrówkę', fr: 'randonnée', es: 'senderismo', de: 'Wandern', 'zh-Hans': '徒步', ja: 'ハイキング', it: 'escursione', ko: '하이킹' },
   Snowboarding: { ru: 'сноуборд', en: 'snowboarding', pl: 'snowboard', fr: 'snowboard', es: 'snowboard', de: 'Snowboarden', 'zh-Hans': '单板滑雪', ja: 'スノーボード', it: 'snowboard', ko: '스노보드' },
   'Alpine Skiing': { ru: 'лыжи', en: 'skiing', pl: 'narty', fr: 'ski', es: 'esquí', de: 'Skifahren', 'zh-Hans': '滑雪', ja: 'スキー', it: 'sci', ko: '스키' },
-  'Upper Body': { ru: 'верх тела', en: 'upper body', pl: 'górną część ciała', fr: 'haut du corps', es: 'tren superior', de: 'Oberkörper', 'zh-Hans': '上肢', ja: '上半身', it: 'parte superiore', ko: '상체' },
-  Core: { ru: 'кор', en: 'core', pl: 'core', fr: 'gainage', es: 'core', de: 'Core', 'zh-Hans': '核心', ja: '体幹', it: 'core', ko: '코어' },
-  'Lower Body': { ru: 'низ тела', en: 'lower body', pl: 'dolną część ciała', fr: 'bas du corps', es: 'tren inferior', de: 'Unterkörper', 'zh-Hans': '下肢', ja: '下半身', it: 'parte inferiore', ko: '하체' },
-  'Full Body': { ru: 'все тело', en: 'full body', pl: 'całe ciało', fr: 'corps entier', es: 'cuerpo completo', de: 'Ganzkörper', 'zh-Hans': '全身', ja: '全身', it: 'corpo intero', ko: '전신' },
+  'Upper Body': { ru: 'верх', en: 'upper body', pl: 'górną część ciała', fr: 'haut du corps', es: 'tren superior', de: 'Oberkörper', 'zh-Hans': '上肢', ja: '上半身', it: 'parte superiore', ko: '상체' },
+  Core: { ru: 'пресс', en: 'core', pl: 'core', fr: 'gainage', es: 'core', de: 'Core', 'zh-Hans': '核心', ja: '体幹', it: 'core', ko: '코어' },
+  'Lower Body': { ru: 'низ', en: 'lower body', pl: 'dolną część ciała', fr: 'bas du corps', es: 'tren inferior', de: 'Unterkörper', 'zh-Hans': '下肢', ja: '下半身', it: 'parte inferiore', ko: '하체' },
+  'Full Body': { ru: 'всё тело', en: 'full body', pl: 'całe ciało', fr: 'corps entier', es: 'cuerpo completo', de: 'Ganzkörper', 'zh-Hans': '全身', ja: '全身', it: 'corpo intero', ko: '전신' },
   Tennis: { ru: 'теннис', en: 'tennis', pl: 'tenis', fr: 'tennis', es: 'tenis', de: 'Tennis', 'zh-Hans': '网球', ja: 'テニス', it: 'tennis', ko: '테니스' },
   Padel: { ru: 'падел', en: 'padel', pl: 'padel', fr: 'padel', es: 'pádel', de: 'Padel', 'zh-Hans': '板式网球', ja: 'パデル', it: 'padel', ko: '파델' },
   Squash: { ru: 'сквош', en: 'squash', pl: 'squash', fr: 'squash', es: 'squash', de: 'Squash', 'zh-Hans': '壁球', ja: 'スカッシュ', it: 'squash', ko: '스쿼시' },
-  'High Intensity Interval Training': { ru: 'интервальную', en: 'intervals', pl: 'interwały', fr: 'intervalles', es: 'intervalos', de: 'Intervalle', 'zh-Hans': '间歇训练', ja: 'インターバル', it: 'intervalli', ko: '인터벌' },
+  'High Intensity Interval Training': { ru: 'интервалы', en: 'intervals', pl: 'interwały', fr: 'intervalles', es: 'intervalos', de: 'Intervalle', 'zh-Hans': '间歇训练', ja: 'インターバル', it: 'intervalli', ko: '인터벌' },
   Stretching: { ru: 'растяжку', en: 'stretching', pl: 'rozciąganie', fr: 'étirements', es: 'estiramientos', de: 'Dehnen', 'zh-Hans': '拉伸', ja: 'ストレッチ', it: 'stretching', ko: '스트레칭' },
   Walk: { ru: 'прогулку', en: 'a walk', pl: 'spacer', fr: 'marche', es: 'un paseo', de: 'einen Spaziergang', 'zh-Hans': '散步', ja: '散歩', it: 'una camminata', ko: '산책' },
   Sauna: { ru: 'сауну', en: 'the sauna', pl: 'saunę', fr: 'sauna', es: 'la sauna', de: 'die Sauna', 'zh-Hans': '桑拿', ja: 'サウナ', it: 'la sauna', ko: '사우나' },
@@ -25,25 +25,25 @@ const SPOKEN = {
   'Drink Water': { ru: 'воду', en: 'water', pl: 'wodę', fr: 'eau', es: 'agua', de: 'Wasser', 'zh-Hans': '喝水', ja: '水分', it: 'acqua', ko: '물' },
   'Sleep Routine': { ru: 'сон', en: 'sleep', pl: 'sen', fr: 'sommeil', es: 'sueño', de: 'Schlaf', 'zh-Hans': '睡眠', ja: '睡眠', it: 'sonno', ko: '수면' },
   'No Screens': { ru: 'без экрана', en: 'no screens', pl: 'bez ekranu', fr: 'sans écran', es: 'sin pantallas', de: 'keine Bildschirme', 'zh-Hans': '远离屏幕', ja: '画面オフ', it: 'niente schermi', ko: '화면 끄기' },
-  'Morning Routine': { ru: 'утреннюю рутину', en: 'the morning routine', pl: 'poranną rutynę', fr: 'routine du matin', es: 'la rutina de la mañana', de: 'die Morgenroutine', 'zh-Hans': '早晨例程', ja: '朝のルーティン', it: 'la routine del mattino', ko: '아침 루틴' },
+  'Morning Routine': { ru: 'утренние дела', en: 'the morning routine', pl: 'poranną rutynę', fr: 'routine du matin', es: 'la rutina de la mañana', de: 'die Morgenroutine', 'zh-Hans': '早晨例程', ja: '朝のルーティン', it: 'la routine del mattino', ko: '아침 루틴' },
 };
 
 const PHRASES = {
   ru: {
     englishName: 'Russian',
     assistantName: 'Майя',
-    greeting: (name) => (name ? `Привет, ${name}! Как ты сегодня?` : 'Привет! Как ты сегодня?'),
-    goodbye: 'Пока!',
+    greeting: (name) => (name ? `Привет, ${name}! Как ты?` : 'Привет! Как ты?'),
+    goodbye: 'До свидания.',
     anythingElse: 'Что-нибудь ещё?',
     closing: '«нет, всё», «нет, всё, спасибо», «больше ничего», «ничего», «это всё», «всё, спасибо», «до свидания», «пока»',
     askTime: 'Во сколько?',
-    askActivity: 'Что хочешь добавить?',
-    conflict: 'На это время уже что-то стоит. Выберем другое?',
-    saveFailed: 'Не получилось сохранить. Повтори, пожалуйста.',
+    askActivity: 'Что добавить?',
+    conflict: 'Это время уже занято. Во сколько поставим?',
+    saveFailed: 'Не сохранилось. Скажи ещё раз, пожалуйста.',
     today: 'сегодня',
     tomorrow: 'завтра',
     dayAfter: 'послезавтра',
-    added: (spoken, day, start, end) => `Добавила ${spoken} на ${day}, с ${start} до ${end}.`,
+    added: (spoken, day, start, end) => `Записала ${spoken} на ${day}, с ${start} до ${end}.`,
   },
   en: {
     englishName: 'English',
@@ -252,12 +252,37 @@ export function confirmationLine(catalogTitle, activity, days, language) {
   return phrases.added(
     spokenActivityName(catalogTitle, code),
     day,
-    clockWords(activity.localStart, code),
-    clockWords(activity.localEnd, code),
+    clockWords(activity.localStart, code, code === 'ru' ? 'gen' : 'nom'),
+    clockWords(activity.localEnd, code, code === 'ru' ? 'gen' : 'nom'),
   );
 }
 
-export function spokenClock(time, language) {
+const RUSSIAN_HOUR = {
+  nom: ['двенадцать', 'час', 'два часа', 'три часа', 'четыре часа', 'пять', 'шесть', 'семь', 'восемь', 'девять', 'десять', 'одиннадцать'],
+  gen: ['двенадцати', 'часа', 'двух часов', 'трёх часов', 'четырёх часов', 'пяти', 'шести', 'семи', 'восьми', 'девяти', 'десяти', 'одиннадцати'],
+};
+
+function russianMinuteWords(minute) {
+  if (minute === 0) return '';
+  const under = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять', 'десять', 'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать'];
+  if (minute < 20) return minute < 10 ? `ноль ${under[minute]}` : under[minute];
+  const tens = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят'];
+  const one = minute % 10;
+  const ten = Math.floor(minute / 10);
+  return one === 0 ? tens[ten] : `${tens[ten]} ${under[one]}`;
+}
+
+function russianClock(hour, minute, grammaticalCase) {
+  if (hour === 0 && minute === 0) return grammaticalCase === 'gen' ? 'полуночи' : 'полночь';
+  if (hour === 12 && minute === 0) return grammaticalCase === 'gen' ? 'полудня' : 'полдень';
+  const clock = hour % 12;
+  const period = hour < 12 ? 'утра' : hour < 17 ? 'дня' : 'вечера';
+  const name = RUSSIAN_HOUR[grammaticalCase === 'gen' ? 'gen' : 'nom'][clock];
+  const minutes = russianMinuteWords(minute);
+  return minutes ? `${name} ${minutes} ${period}` : `${name} ${period}`;
+}
+
+export function spokenClock(time, language, grammaticalCase = 'nom') {
   const match = /^(\d{1,2}):(\d{2})$/.exec(String(time || ''));
   if (!match) return String(time || '');
   const hour = Number(match[1]);
@@ -267,15 +292,12 @@ export function spokenClock(time, language) {
   const minutes = minute === 0 ? '' : `:${String(minute).padStart(2, '0')}`;
   const code = plannerVoiceLanguage(language);
   if (code === 'en') return `${clockHour}${minutes}${hour < 12 ? 'am' : 'pm'}`;
-  if (code === 'ru') {
-    const period = hour === 0 ? 'ночи' : hour < 12 ? 'утра' : hour < 17 ? 'дня' : 'вечера';
-    return `${clockHour}${minutes} ${period}`;
-  }
+  if (code === 'ru') return russianClock(hour, minute, grammaticalCase);
   return minute === 0 ? String(hour) : `${hour}:${String(minute).padStart(2, '0')}`;
 }
 
-function clockWords(stamp, language) {
-  return spokenClock(stamp.slice(11, 16), language);
+function clockWords(stamp, language, grammaticalCase = 'nom') {
+  return spokenClock(stamp.slice(11, 16), language, grammaticalCase);
 }
 
 function spokenDate(iso, language) {

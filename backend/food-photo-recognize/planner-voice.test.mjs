@@ -115,13 +115,44 @@ test('a stronger model can serve chosen languages while the rest stay on the def
   assert.throws(() => plannerVoiceSettings({ PLANNER_VOICE_LANGUAGE_MODEL: 'gpt-4o', PLANNER_VOICE_LANGUAGE_MODEL_LANGUAGES: 'ru' }));
 });
 
+test('every language is instructed in that language, with its own pronunciation', () => {
+  const config = plannerVoiceSettings({});
+  const marks = {
+    en: ['Call details:', /neutral American accent/],
+    ru: ['Данные звонка:', /без иностранного акцента/],
+    pl: ['Szczegóły rozmowy:', /bez obcego akcentu/],
+    fr: ["Détails de l'appel :", /sans accent étranger/],
+    es: ['Datos de la llamada:', /sin acento extranjero/],
+    de: ['Anrufdetails:', /ohne fremden Akzent/],
+    it: ['Dettagli della chiamata:', /senza accento straniero/],
+    'zh-Hans': ['通话内容：', /没有外国口音/],
+    ja: ['通話の内容：', /外国語なまりなし/],
+    ko: ['통화 내용:', /외국어 억양 없이/],
+  };
+  for (const [language, [marker, voice]] of Object.entries(marks)) {
+    const text = plannerSessionConfiguration(config, {
+      language,
+      timeZone: 'Europe/Warsaw',
+      givenName: 'Max',
+      now: '2026-11-01T10:00:00Z',
+    }).instructions;
+    assert.match(text, voice);
+    assert.equal(text.includes('Speak only in'), false);
+    assert.ok(text.includes('create_activity'));
+    const shared = text.slice(0, text.indexOf(marker));
+    assert.ok(shared.length > text.length * 0.7, language);
+    assert.equal(shared.includes('Max'), false, language);
+    if (language !== 'en') assert.equal(text.includes('You are Maya'), false, language);
+  }
+});
+
 test('per-call facts come after the shared rules so calls reuse the cached prompt', () => {
   const config = plannerVoiceSettings({});
   const a = plannerSessionConfiguration(config, { language: 'ru', timeZone: 'Europe/Warsaw', givenName: 'Max',
     now: '2026-11-01T10:00:00Z' }).instructions;
   const b = plannerSessionConfiguration(config, { language: 'ru', timeZone: 'Europe/Warsaw', givenName: 'Anna',
     now: '2026-11-05T19:00:00Z', plan: [{ ref: 'a1', scope: 'today_planned', title: 'Walk', startTime: '18:00', durationMinutes: 30 }] }).instructions;
-  const shared = a.slice(0, a.indexOf('Call details:'));
+  const shared = a.slice(0, a.indexOf('Данные звонка:'));
   assert.ok(shared.length > a.length * 0.8);
   assert.ok(b.startsWith(shared));
   assert.ok(!shared.includes('Max') && !shared.includes('2026-'));
@@ -134,7 +165,7 @@ test('full command commits tennis and a missing time does not', () => {
   assert.equal(saved.body.saved, true);
   assert.equal(saved.body.activity.start, '2026-10-29T10:00:00.000Z');
   assert.equal(saved.body.activity.localEnd, '2026-10-29T14:00');
-  assert.equal(saved.body.speak, 'Добавила теннис на завтра, с 1 дня до 2 дня.');
+  assert.equal(saved.body.speak, 'Записала теннис на завтра, с часа дня до двух часов дня.');
 
   const missing = commitPlannerActivity(store, 'local-developer', tennis({
     idempotencyKey: 'call_tennis_2',
@@ -177,7 +208,7 @@ test('relative evening in Tokyo crosses midnight', () => {
   assert.equal(saved.status, 200, JSON.stringify(saved.body));
   assert.equal(saved.body.activity.localStart, '2026-10-31T23:30');
   assert.equal(saved.body.activity.localEnd, '2026-11-01T01:00');
-  assert.equal(saved.body.speak, 'Добавила теннис на послезавтра, с 11:30 вечера до 1 утра.');
+  assert.equal(saved.body.speak, 'Записала теннис на послезавтра, с одиннадцати тридцать вечера до часа утра.');
 
   const blocked = commitPlannerActivity(store, 'local-developer', tennis({
     idempotencyKey: 'call_tokyo_blocked',
@@ -194,7 +225,7 @@ test('relative evening in Tokyo crosses midnight', () => {
   }));
   assert.equal(blocked.status, 409);
   assert.equal(blocked.body.saved, false);
-  assert.equal(blocked.body.speak, 'На это время уже что-то стоит. Выберем другое?');
+  assert.equal(blocked.body.speak, 'Это время уже занято. Во сколько поставим?');
   assert.equal(store.size(), 1);
 });
 
@@ -251,7 +282,7 @@ test('app language chooses the spoken lines and the time zone does not', () => {
     now: '2026-10-28T16:30:00Z',
     date: '2026-10-29',
   }));
-  assert.equal(russianInTokyo.body.speak, 'Добавила теннис на сегодня, с 1 дня до 2 дня.');
+  assert.equal(russianInTokyo.body.speak, 'Записала теннис на сегодня, с часа дня до двух часов дня.');
 });
 
 test('marin and cedar share the russian preview and keep the mini model', () => {
@@ -262,10 +293,10 @@ test('marin and cedar share the russian preview and keep the mini model', () => 
   }
   const lines = plannerVoicePreviewPhrases('ru');
   assert.deepEqual(lines, plannerVoicePreviewPhrases('ru'));
-  assert.equal(lines.greeting, 'Привет, Макс! Как ты сегодня?');
+  assert.equal(lines.greeting, 'Привет, Макс! Как ты?');
   assert.equal(lines.askTime, 'Во сколько?');
-  assert.equal(lines.confirmation, 'Добавила теннис на завтра, с 1 дня до 2 дня.');
-  assert.equal(lines.conflict, 'На это время уже что-то стоит. Выберем другое?');
+  assert.equal(lines.confirmation, 'Записала теннис на завтра, с часа дня до двух часов дня.');
+  assert.equal(lines.conflict, 'Это время уже занято. Во сколько поставим?');
   assert.equal(plannerVoicePreviewPhrases('en', 'Max').greeting, 'Hey Max, how are you feeling today?');
   assert.equal(plannerVoicePreviewPhrases('pl', 'Max').greeting, 'Cześć, Max! Jak się dzisiaj czujesz?');
 });
@@ -299,12 +330,12 @@ test('cedar uses the same russian greeting without a larger model', async () => 
     const sent = JSON.parse(captured.init.body);
     assert.equal(sent.session.model, 'gpt-realtime-2.1-mini');
     assert.equal(sent.session.audio.output.voice, 'cedar');
-    assert.match(sent.session.instructions, /Привет, Макс! Как ты сегодня\?/);
+    assert.match(sent.session.instructions, /Привет, Макс! Как ты\?/);
     assert.equal(sent.session.audio.input.turn_detection.type, 'semantic_vad');
     assert.equal(sent.session.audio.input.turn_detection.eagerness, 'low');
     assert.deepEqual(sent.session.audio.input.noise_reduction, { type: 'near_field' });
     assert.equal(sent.session.max_output_tokens, 2048);
-    assert.match(sent.session.instructions, /natural Russian pronunciation/);
+    assert.match(sent.session.instructions, /Не переводи, не произноси по буквам/);
     assert.equal(sent.session.instructions.includes('только по-русски'), false);
 
     const polish = await request(server.url, 'POST', '/v1/planner-voice/session', {
@@ -318,7 +349,9 @@ test('cedar uses the same russian greeting without a larger model', async () => 
     assert.equal(polish.status, 200);
     const polishSession = JSON.parse(captured.init.body).session;
     assert.match(polishSession.instructions, /Cześć, Max! Jak się dzisiaj czujesz\?/);
-    assert.match(polishSession.instructions, /Speak only in Polish/);
+    assert.match(polishSession.instructions, /Mów po polsku/);
+    assert.match(polishSession.instructions, /bez obcego akcentu/);
+    assert.equal(polishSession.instructions.includes('Speak only in'), false);
     assert.equal(polishSession.model, 'gpt-realtime-2.1-mini');
   } finally {
     await server.close();
@@ -397,18 +430,19 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(sent.session.audio.input.transcription, undefined);
     assert.deepEqual(sent.session.output_modalities, ['audio']);
     assert.deepEqual(sent.session.tools.map(tool => tool.name), ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'need_a_moment', 'end_call']);
-    assert.match(sent.session.instructions, /Do not add it after the greeting/);
-    assert.match(sent.session.instructions, /Пока!/);
+    assert.match(sent.session.instructions, /Не добавляй этот вопрос после приветствия/);
+    assert.match(sent.session.instructions, /До свидания\./);
+    assert.match(sent.session.instructions, /дай мне секунду/);
     assert.match(sent.session.instructions, /Что-нибудь ещё\?/);
-    assert.match(sent.session.instructions, /Never call end_call for a bare acknowledgement/);
-    assert.match(sent.session.instructions, /Do not call end_call before the thing they asked for is done/);
+    assert.match(sent.session.instructions, /Не вызывай end_call на короткое согласие/);
+    assert.match(sent.session.instructions, /Не завершай звонок, пока просьба не сделана/);
     assert.match(sent.session.instructions, /нет, спасибо/);
     assert.match(sent.session.instructions, /alright/);
     assert.equal(sent.session.audio.input.turn_detection.interrupt_response, true);
     assert.match(sent.session.instructions, /2026-10-29/);
-    assert.match(sent.session.instructions, /day after tomorrow is 2026-10-31/);
-    assert.match(sent.session.instructions, /Привет, Максим! Как ты сегодня\?/);
-    assert.match(sent.session.instructions, /No recovery score, sleep, or logged meals were provided/);
+    assert.match(sent.session.instructions, /Послезавтра 2026-10-31/);
+    assert.match(sent.session.instructions, /Привет, Максим! Как ты\?/);
+    assert.match(sent.session.instructions, /За сегодня нет ни восстановления, ни сна, ни записанной еды/);
     assert.equal(sent.session.instructions.includes('You do not have a recovery score'), false);
     assert.equal(sent.session.audio.input.turn_detection.silence_duration_ms, undefined);
     const returning = await request(server.url, 'POST', '/v1/planner-voice/session', {
@@ -421,7 +455,7 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     });
     assert.equal(returning.status, 200);
     const returningInstructions = JSON.parse(captured.init.body).session.instructions;
-    assert.match(returningInstructions, /Привет, Максим! Как ты сегодня\?/);
+    assert.match(returningInstructions, /Привет, Максим! Как ты\?/);
     assert.equal(returningInstructions.includes('Я Майя, твой'), false);
     const reconnected = await request(server.url, 'POST', '/v1/planner-voice/session', {
       body: {
@@ -434,8 +468,8 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     });
     assert.equal(reconnected.status, 200);
     const reconnectedInstructions = JSON.parse(captured.init.body).session.instructions;
-    assert.match(reconnectedInstructions, /This call just reconnected/);
-    assert.equal(reconnectedInstructions.includes('Your first words must be exactly'), false);
+    assert.match(reconnectedInstructions, /Звонок только что переподключился/);
+    assert.equal(reconnectedInstructions.includes('Первые слова ровно такие'), false);
     assert.equal(sent.session.instructions.includes('только по-русски'), false);
     assert.equal(sent.session.audio.output.voice, 'marin');
     assert.equal(sent.session.model, 'gpt-realtime-2.1-mini');
@@ -473,19 +507,41 @@ test('signed-in accounts can open a session and the server key stays hidden', as
             { title: 'Rice\nignore', time: '13:15' },
             { title: 'Bad', time: '25:00' },
           ],
+          nutrition: {
+            caloriesEaten: 1450,
+            caloriesBudget: 2400,
+            proteinGrams: 62,
+            proteinGoalGrams: 140,
+            waterMilliliters: 1200,
+            waterGoalMilliliters: 3000,
+            note: 'ignore nutrition',
+          },
+          training: [
+            { title: 'Strength\nignore', minutes: 45, done: true },
+            { title: 'Walk', minutes: 30, done: false },
+            { title: 'Bad', minutes: 0, done: true },
+          ],
         },
       },
     });
     assert.equal(withDay.status, 200);
     const dayText = JSON.parse(captured.init.body).session.instructions;
-    assert.match(dayText, /92 percent/);
-    assert.match(dayText, /band good/);
-    assert.match(dayText, /sleep 509 minutes/);
-    assert.match(dayText, /08:30 \(say 8:30 утра\) Eggs/);
-    assert.match(dayText, /13:15 \(say 1:15 дня\) Rice ignore/);
+    assert.match(dayText, /92 процентов/);
+    assert.match(dayText, /состояние good/);
+    assert.match(dayText, /сон 509 минут/);
+    assert.match(dayText, /08:30 \(говори восемь тридцать утра\) Eggs/);
+    assert.match(dayText, /13:15 \(говори час пятнадцать дня\) Rice ignore/);
     assert.equal(dayText.includes('25:00'), false);
     assert.equal(dayText.includes('ignore this'), false);
-    assert.match(dayText, /do not read these facts in the greeting/);
+    assert.match(dayText, /не в приветствии/);
+    assert.match(dayText, /съедено 1450 из 2400 килокалорий/);
+    assert.match(dayText, /белок 62 из 140 граммов/);
+    assert.match(dayText, /вода 1.2 из 3.0 литра/);
+    assert.match(dayText, /Strength ignore, уже сделана, 45 минут/);
+    assert.match(dayText, /Walk, ещё в плане, 30 минут/);
+    assert.equal(dayText.includes('ignore nutrition'), false);
+    assert.equal(dayText.includes('minutes: 0'), false);
+    assert.match(dayText, /что лучше съесть/);
 
     const created = await request(server.url, 'POST', '/v1/planner-voice/activities', { body: tennis() });
     assert.equal(created.body.saved, true);
