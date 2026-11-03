@@ -67,13 +67,18 @@ struct TodayMiddleCard: View {
         .padding(TodayChrome.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
-            RoundedRectangle(cornerRadius: TodayChrome.cardRadius, style: .continuous)
-                .fill(fill)
+            if palette.isLight {
+                RoundedRectangle(cornerRadius: TodayChrome.cardRadius, style: .continuous)
+                    .fill(fill)
+            }
         }
         .overlay {
-            RoundedRectangle(cornerRadius: TodayChrome.cardRadius, style: .continuous)
-                .strokeBorder(border, lineWidth: colorSchemeContrast == .increased ? 1.5 : 1)
+            if palette.isLight {
+                RoundedRectangle(cornerRadius: TodayChrome.cardRadius, style: .continuous)
+                    .strokeBorder(border, lineWidth: colorSchemeContrast == .increased ? 1.5 : 1)
+            }
         }
+        .modifier(TodayMiddleGlass(tint: accent, isLight: palette.isLight))
     }
 
     private var icon: some View {
@@ -124,5 +129,19 @@ struct TodayMiddleCard: View {
 
     private var messageColor: Color {
         palette.isLight ? WeekFitLightTokens.textSecondary : TodayChrome.secondaryText(isLight: false)
+    }
+}
+
+/// Dark-only glass. Light keeps the colored fill already painted on the card.
+private struct TodayMiddleGlass: ViewModifier {
+    var tint: Color
+    var isLight: Bool
+
+    func body(content: Content) -> some View {
+        if isLight {
+            content
+        } else {
+            content.todaySurface(tint: tint)
+        }
     }
 }

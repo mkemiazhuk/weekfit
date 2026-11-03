@@ -2612,7 +2612,7 @@ struct TodayView: View {
                 showsChevron: true
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(TodayCardPressStyle())
         .accessibilityIdentifier("today.upNext.card")
         .accessibilityLabel(
             String(
@@ -3100,7 +3100,7 @@ struct TodayView: View {
                 showsChevron: true
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(TodayCardPressStyle())
         .accessibilityIdentifier("today.focus.card")
         .accessibilityLabel(
             [focusHeading, insightTitle, insightMessage]
@@ -3284,7 +3284,7 @@ struct TodayView: View {
                 showsChevron: canReview
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(TodayCardPressStyle())
         .accessibilityIdentifier("morning.proposal.card")
         .accessibilityLabel(title)
         .accessibilityHint(review)
@@ -3318,7 +3318,7 @@ struct TodayView: View {
                 showsChevron: true
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(TodayCardPressStyle())
         .accessibilityIdentifier("morning.proposal.card")
         .accessibilityLabel("\(title). \(message)")
         .accessibilityHint(WeekFitLocalizedString("today.coachInsight.opensCoach"))

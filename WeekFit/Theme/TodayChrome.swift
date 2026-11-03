@@ -38,37 +38,90 @@ enum TodayChrome {
     }
 }
 
-/// Quiet matte card for Today surfaces (no loud borders / gold wash).
+/// Quiet card for Today. Light stays matte. Dark is frosted glass over the sky,
+/// with a navy veil so type stays readable. Reduce Transparency falls back to the matte fill.
 struct TodaySurfaceModifier: ViewModifier {
     var elevated: Bool = false
     var cornerRadius: CGFloat = TodayChrome.cardRadius
     var coachEmphasis: Bool = false
+    var tint: Color? = nil
 
     @Environment(\.weekFitPalette) private var palette
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    private var usesGlass: Bool { !palette.isLight && !reduceTransparency }
 
     func body(content: Content) -> some View {
         content
-            .background {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(fillStyle)
-                    // Short contact shadow only — wide ambient casts a rectangular slab on ivory.
-                    .shadow(
-                        color: Color.black.opacity(
-                            palette.isLight
-                                ? WeekFitLightTokens.cardContactShadowOpacity
-                                : 0.28
-                        ),
-                        radius: palette.isLight ? 5 : 10,
-                        y: palette.isLight ? 2 : 4
-                    )
+            .background { plate }
+            .overlay { rim }
+    }
+
+    private var plate: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        return ZStack {
+            if usesGlass {
+                shape.fill(.ultraThinMaterial)
+                shape.fill(TodayChrome.cardDark.opacity(elevated ? 0.52 : 0.64))
+                if let tint {
+                    shape.fill(tint.opacity(0.16))
+                }
+                if coachEmphasis {
+                    shape.fill(coachGlassWash)
+                }
+            } else {
+                shape.fill(fillStyle)
             }
-            .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(
-                        TodayChrome.border(isLight: palette.isLight),
-                        lineWidth: palette.isLight ? 0.75 : 1
-                    )
-            }
+        }
+        .compositingGroup()
+        .shadow(
+            color: Color.black.opacity(
+                palette.isLight
+                    ? WeekFitLightTokens.cardContactShadowOpacity
+                    : (usesGlass ? 0.36 : 0.28)
+            ),
+            radius: palette.isLight ? 5 : (usesGlass ? 18 : 10),
+            y: palette.isLight ? 2 : (usesGlass ? 10 : 4)
+        )
+    }
+
+    private var rim: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        return shape.strokeBorder(rimStyle, lineWidth: rimWidth)
+    }
+
+    private var rimWidth: CGFloat {
+        if palette.isLight { return 0.75 }
+        if colorSchemeContrast == .increased { return usesGlass ? 1.25 : 1 }
+        return usesGlass ? 0.75 : 1
+    }
+
+    private var rimStyle: AnyShapeStyle {
+        if usesGlass {
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(colorSchemeContrast == .increased ? 0.55 : 0.30),
+                        Color.white.opacity(colorSchemeContrast == .increased ? 0.16 : 0.05)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+        }
+        return AnyShapeStyle(TodayChrome.border(isLight: palette.isLight))
+    }
+
+    private var coachGlassWash: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(red: 0.16, green: 0.18, blue: 0.28).opacity(0.55),
+                Color(red: 0.10, green: 0.12, blue: 0.20).opacity(0.28)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 
     private var fillStyle: AnyShapeStyle {
@@ -89,17 +142,28 @@ struct TodaySurfaceModifier: ViewModifier {
     }
 }
 
+/// Press for glass cards: a small spring scale, so the plate stays opaque while it settles.
+struct TodayCardPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .animation(.spring(duration: 0.32, bounce: 0.18), value: configuration.isPressed)
+    }
+}
+
 extension View {
     func todaySurface(
         elevated: Bool = false,
         coachEmphasis: Bool = false,
-        cornerRadius: CGFloat = TodayChrome.cardRadius
+        cornerRadius: CGFloat = TodayChrome.cardRadius,
+        tint: Color? = nil
     ) -> some View {
         modifier(
             TodaySurfaceModifier(
                 elevated: elevated,
                 cornerRadius: cornerRadius,
-                coachEmphasis: coachEmphasis
+                coachEmphasis: coachEmphasis,
+                tint: tint
             )
         )
     }

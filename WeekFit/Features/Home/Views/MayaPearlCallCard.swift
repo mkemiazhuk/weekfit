@@ -78,15 +78,20 @@ struct MayaPearlCallCard: View {
             .padding(TodayChrome.cardPadding)
             .frame(maxWidth: .infinity, alignment: .center)
             .background {
-                RoundedRectangle(cornerRadius: TodayChrome.cardRadius, style: .continuous)
-                    .fill(cardFill)
+                if palette.isLight {
+                    RoundedRectangle(cornerRadius: TodayChrome.cardRadius, style: .continuous)
+                        .fill(cardFill)
+                }
             }
             .overlay {
-                RoundedRectangle(cornerRadius: TodayChrome.cardRadius, style: .continuous)
-                    .strokeBorder(cardBorder, lineWidth: colorSchemeContrast == .increased ? 1.5 : 1)
+                if palette.isLight {
+                    RoundedRectangle(cornerRadius: TodayChrome.cardRadius, style: .continuous)
+                        .strokeBorder(cardBorder, lineWidth: colorSchemeContrast == .increased ? 1.5 : 1)
+                }
             }
+            .modifier(MayaPearlGlass(isLight: palette.isLight))
         }
-        .buttonStyle(MayaPearlPressStyle())
+        .buttonStyle(TodayCardPressStyle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(WeekFitLocalizedString("today.maya.accessibility"))
         .accessibilityValue(balance?.note() ?? "")
@@ -170,6 +175,19 @@ struct MayaPearlCallCard: View {
     }
 }
 
+/// Dark-only glass. Light keeps the pearl fill already painted on the card.
+private struct MayaPearlGlass: ViewModifier {
+    var isLight: Bool
+
+    func body(content: Content) -> some View {
+        if isLight {
+            content
+        } else {
+            content.todaySurface()
+        }
+    }
+}
+
 private struct MayaPearlWave: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
@@ -189,10 +207,3 @@ private struct MayaPearlWave: Shape {
     }
 }
 
-private struct MayaPearlPressStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .opacity(configuration.isPressed ? 0.72 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-    }
-}
