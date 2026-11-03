@@ -38,8 +38,8 @@ enum TodayChrome {
     }
 }
 
-/// Quiet card for Today. Light stays matte. Dark is frosted glass over the sky,
-/// with a navy veil so type stays readable. Reduce Transparency falls back to the matte fill.
+/// Frosted card for Today in both appearances. A veil keeps type readable.
+/// Reduce Transparency falls back to the solid fill.
 struct TodaySurfaceModifier: ViewModifier {
     var elevated: Bool = false
     var cornerRadius: CGFloat = TodayChrome.cardRadius
@@ -50,7 +50,7 @@ struct TodaySurfaceModifier: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
-    private var usesGlass: Bool { !palette.isLight && !reduceTransparency }
+    private var usesGlass: Bool { !reduceTransparency }
 
     func body(content: Content) -> some View {
         content
@@ -63,9 +63,12 @@ struct TodaySurfaceModifier: ViewModifier {
         return ZStack {
             if usesGlass {
                 shape.fill(.ultraThinMaterial)
-                shape.fill(TodayChrome.cardDark.opacity(elevated ? 0.52 : 0.64))
+                shape.fill(glassVeil)
+                if palette.isLight {
+                    shape.fill(lightSheen)
+                }
                 if let tint {
-                    shape.fill(tint.opacity(0.16))
+                    shape.fill(tint.opacity(palette.isLight ? 0.22 : 0.16))
                 }
                 if coachEmphasis {
                     shape.fill(coachGlassWash)
@@ -75,15 +78,43 @@ struct TodaySurfaceModifier: ViewModifier {
             }
         }
         .compositingGroup()
-        .shadow(
-            color: Color.black.opacity(
-                palette.isLight
-                    ? WeekFitLightTokens.cardContactShadowOpacity
-                    : (usesGlass ? 0.36 : 0.28)
-            ),
-            radius: palette.isLight ? 5 : (usesGlass ? 18 : 10),
-            y: palette.isLight ? 2 : (usesGlass ? 10 : 4)
+        .shadow(color: shadowColor, radius: shadowRadius, y: shadowY)
+    }
+
+    private var glassVeil: Color {
+        if palette.isLight {
+            return Color.white.opacity(elevated ? 0.42 : 0.55)
+        }
+        return TodayChrome.cardDark.opacity(elevated ? 0.52 : 0.64)
+    }
+
+    private var lightSheen: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color.white.opacity(0.72),
+                WeekFitLightTokens.backgroundTopGlow.opacity(0.28),
+                Color.clear
+            ],
+            startPoint: .top,
+            endPoint: .bottom
         )
+    }
+
+    private var shadowColor: Color {
+        if palette.isLight {
+            return Color.black.opacity(usesGlass ? 0.08 : WeekFitLightTokens.cardContactShadowOpacity)
+        }
+        return Color.black.opacity(usesGlass ? 0.36 : 0.28)
+    }
+
+    private var shadowRadius: CGFloat {
+        if palette.isLight { return usesGlass ? 16 : 5 }
+        return usesGlass ? 18 : 10
+    }
+
+    private var shadowY: CGFloat {
+        if palette.isLight { return usesGlass ? 8 : 2 }
+        return usesGlass ? 10 : 4
     }
 
     private var rim: some View {
@@ -92,12 +123,23 @@ struct TodaySurfaceModifier: ViewModifier {
     }
 
     private var rimWidth: CGFloat {
-        if palette.isLight { return 0.75 }
-        if colorSchemeContrast == .increased { return usesGlass ? 1.25 : 1 }
-        return usesGlass ? 0.75 : 1
+        if colorSchemeContrast == .increased { return usesGlass ? 1.25 : (palette.isLight ? 0.75 : 1) }
+        return usesGlass ? 0.75 : (palette.isLight ? 0.75 : 1)
     }
 
     private var rimStyle: AnyShapeStyle {
+        if usesGlass, palette.isLight {
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [
+                        Color.white,
+                        WeekFitLightTokens.cardBorder.opacity(colorSchemeContrast == .increased ? 0.28 : 0.14)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+        }
         if usesGlass {
             return AnyShapeStyle(
                 LinearGradient(

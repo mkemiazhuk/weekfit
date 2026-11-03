@@ -77,19 +77,7 @@ struct MayaPearlCallCard: View {
             }
             .padding(TodayChrome.cardPadding)
             .frame(maxWidth: .infinity, alignment: .center)
-            .background {
-                if palette.isLight {
-                    RoundedRectangle(cornerRadius: TodayChrome.cardRadius, style: .continuous)
-                        .fill(cardFill)
-                }
-            }
-            .overlay {
-                if palette.isLight {
-                    RoundedRectangle(cornerRadius: TodayChrome.cardRadius, style: .continuous)
-                        .strokeBorder(cardBorder, lineWidth: colorSchemeContrast == .increased ? 1.5 : 1)
-                }
-            }
-            .modifier(MayaPearlGlass(isLight: palette.isLight))
+            .todaySurface()
         }
         .buttonStyle(TodayCardPressStyle())
         .accessibilityElement(children: .ignore)
@@ -136,17 +124,6 @@ struct MayaPearlCallCard: View {
         .accessibilityHidden(true)
     }
 
-    private var cardFill: Color {
-        palette.isLight ? WeekFitLightTokens.pearlCardFill : TodayChrome.cardFill(isLight: false)
-    }
-
-    private var cardBorder: Color {
-        if palette.isLight {
-            return WeekFitLightTokens.pearlCardBorder
-        }
-        return Color.white.opacity(colorSchemeContrast == .increased ? 0.55 : 0.28)
-    }
-
     private var nameColor: Color {
         palette.isLight ? WeekFitLightTokens.textPrimary : Color.white
     }
@@ -172,19 +149,6 @@ struct MayaPearlCallCard: View {
             return WeekFitLightTokens.pearlCardBorder
         }
         return Color.white.opacity(colorSchemeContrast == .increased ? 0.7 : 0.45)
-    }
-}
-
-/// Dark-only glass. Light keeps the pearl fill already painted on the card.
-private struct MayaPearlGlass: ViewModifier {
-    var isLight: Bool
-
-    func body(content: Content) -> some View {
-        if isLight {
-            content
-        } else {
-            content.todaySurface()
-        }
     }
 }
 
