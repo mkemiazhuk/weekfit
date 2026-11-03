@@ -1417,7 +1417,7 @@ function endCallTool() {
   return {
     type: 'function',
     name: 'end_call',
-    description: 'Hang up after the request is done and they decline more help. «всё, спасибо», «все спасибо», «спасибо, всё», and "that\'s all, thanks" are a decline even though they contain thanks: say only the exact goodbye and call this in that same response. A bare спасибо, alright, okay, or thanks in the middle of a task is not a decline. Do not announce that you are ending the call. Do not use this before the save is confirmed.',
+    description: 'Hang up after the request is done and they decline more help. «всё, спасибо», «все спасибо» and «спасибо, всё» are a Russian decline: say exactly "Пожалуйста. Всегда рада помочь." and call this in that same response. Another decline uses only the exact goodbye. A bare спасибо, alright, okay, or thanks in the middle of a task is not a decline. Do not announce that you are ending the call. Do not use this before the save is confirmed.',
     parameters: {
       type: 'object',
       additionalProperties: false,

@@ -432,6 +432,9 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.deepEqual(sent.session.tools.map(tool => tool.name), ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'end_call']);
     assert.match(sent.session.instructions, /Не добавляй этот вопрос после приветствия/);
     assert.match(sent.session.instructions, /До свидания\./);
+    assert.match(sent.session.instructions, /Пожалуйста\. Всегда рада помочь\./);
+    assert.match(sent.session.instructions, /Чем могу помочь\?/);
+    assert.match(sent.session.instructions, /не перечисляй занятия/);
     assert.match(sent.session.instructions, /дай мне секунду/);
     assert.match(sent.session.instructions, /Что-нибудь ещё\?/);
     assert.match(sent.session.instructions, /Не вызывай end_call на короткое согласие/);

@@ -950,9 +950,9 @@ struct PlanRealtimeVoiceSheet: View {
                 callIdentity
                 portrait
                 waveform
-                    .padding(.top, 28)
+                    .padding(.top, 14)
                 callStatus
-                    .padding(.top, 18)
+                    .padding(.top, 10)
                 if WeekFitAIBilling.enabled, case .failed = controller.phase {
                     Button(WeekFitLocalizedString("ai.usage.title")) { showAIUsage = true }
                         .padding(.top, 12)
@@ -1042,7 +1042,7 @@ struct PlanRealtimeVoiceSheet: View {
                 .font(.system(size: 16))
                 .foregroundStyle(callMuted)
         }
-        .padding(.top, 8)
+        .padding(.top, 2)
     }
 
     private func callCircleButton(systemName: String, identifier: String, action: @escaping () -> Void) -> some View {
@@ -1080,7 +1080,7 @@ struct PlanRealtimeVoiceSheet: View {
             Text(WeekFitLocalizedString("planner.voice.call.pace"))
                 .font(.system(size: 15))
                 .foregroundStyle(callMuted)
-                .padding(.top, 14)
+                .padding(.top, 8)
             if let queueDetail {
                 Text(queueDetail)
                     .font(.footnote)
@@ -1134,7 +1134,7 @@ struct PlanRealtimeVoiceSheet: View {
         Image("maya-portrait")
             .resizable()
             .scaledToFill()
-            .frame(width: 196, height: 196)
+            .frame(width: 168, height: 168)
             .clipShape(Circle())
             .overlay {
                 Circle().strokeBorder(
@@ -1143,7 +1143,7 @@ struct PlanRealtimeVoiceSheet: View {
                 )
             }
             .shadow(color: Color(red: 0.72, green: 0.55, blue: 0.32).opacity(palette.isLight ? 0.16 : 0.55), radius: palette.isLight ? 18 : 28)
-            .padding(.top, 26)
+            .padding(.top, 10)
             .accessibilityHidden(true)
     }
 
@@ -1209,15 +1209,21 @@ struct PlanRealtimeVoiceSheet: View {
         return max(2, 42 * loud * sample)
     }
 
-    /// One result stays above the buttons. Older bubbles no longer stack over it.
-    @ViewBuilder
+    /// The slot is always there, so the portrait does not move when the result appears.
     private var callMessages: some View {
-        Spacer(minLength: 12)
-        if let receipt = controller.receipt {
-            receiptCard(receipt)
-                .padding(.horizontal, 22)
-                .padding(.bottom, 10)
+        VStack(spacing: 0) {
+            Spacer(minLength: 8)
+            ZStack(alignment: .bottom) {
+                Color.clear
+                if let receipt = controller.receipt {
+                    receiptCard(receipt)
+                }
+            }
+            .frame(height: 116)
+            .padding(.horizontal, 22)
+            .padding(.bottom, 18)
         }
+        .animation(nil, value: controller.receipt?.id)
     }
 
     private func receiptCard(_ receipt: PlanVoiceReceipt) -> some View {
@@ -1234,11 +1240,13 @@ struct PlanRealtimeVoiceSheet: View {
                 Text(receipt.title)
                     .font(.body.weight(.semibold))
                     .foregroundStyle(palette.textPrimary)
+                    .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 if !receipt.detail.isEmpty {
                     Text(receipt.detail)
                         .font(.subheadline)
                         .foregroundStyle(palette.textSecondary)
+                        .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
