@@ -514,6 +514,8 @@ export function consoleDocument() {
   let presenceAsked = false;
   let returnedAfterCheck = false;
   let thinkHold = false;
+  let answerNow = false;
+  let replyWatch = null;
   let toolBusy = false;
   let toolFollowUp = false;
   let sessionLanguage = 'ru';
@@ -531,6 +533,18 @@ export function consoleDocument() {
     ja: { there: (n) => (n ? n + '、まだいる？' : 'まだいる？'), bye: '通話を終えるね。またね！' },
     ko: { there: (n) => (n ? n + ', 아직 있어?' : '아직 있어?'), bye: '통화를 마칠게. 안녕!' },
     'zh-Hans': { there: (n) => (n ? n + '，你还在吗？' : '你还在吗？'), bye: '我先挂了。再见！' },
+  };
+  const NUDGE = {
+    ru: 'Человек уже договорил и слышит тишину. Сразу ответь на его последнюю фразу, одной короткой фразой. Не говори, что думаешь, и не отвечай только «я здесь».',
+    en: 'They just finished speaking and heard silence. Answer their last sentence now, in one short sentence. Do not say you are thinking, and do not only say that you are here.',
+    pl: 'Osoba już skończyła i słyszy ciszę. Od razu odpowiedz na ostatnie zdanie, jednym krótkim zdaniem. Nie mów, że myślisz, i nie odpowiadaj tylko „jestem”.',
+    fr: "La personne a fini de parler et entend le silence. Réponds tout de suite à sa dernière phrase, en une phrase courte. Ne dis pas que tu réfléchis, et ne réponds pas seulement « je suis là ».",
+    es: 'La persona ya terminó y oye silencio. Responde ahora a su última frase, en una frase corta. No digas que estás pensando, y no contestes solo «aquí estoy».',
+    de: 'Die Person ist fertig und hört Stille. Antworte sofort auf den letzten Satz, in einem kurzen Satz. Sag nicht, dass du nachdenkst, und antworte nicht nur mit „ich bin da“.',
+    it: "La persona ha finito e sente silenzio. Rispondi subito all'ultima frase, in una frase corta. Non dire che stai pensando, e non rispondere solo «ci sono».",
+    ja: '相手は話し終わって、無音が続いている。最後の一文にすぐ短く答える。考えているとは言わない。「いるよ」だけでも答えない。',
+    ko: '상대는 말을 끝냈고 침묵이 이어진다. 마지막 문장에 바로 짧게 답한다. 생각 중이라고 말하지 말고, 「여기 있어」만 답하지 않는다.',
+    'zh-Hans': '对方已经说完，现在是沉默。马上用一句短话回答刚才那句。不要说你在想，也不要只说「我在」。',
   };
 
   const post = (payload) => {
@@ -582,6 +596,7 @@ export function consoleDocument() {
   };
 
   function stop(reason) {
+    clearReplyWatch();
     clearPresence();
     if (goodbyeFallback) clearTimeout(goodbyeFallback);
     if (goodbyeTail) clearTimeout(goodbyeTail);
@@ -603,6 +618,29 @@ export function consoleDocument() {
     const pack = CHECK[sessionLanguage] || CHECK.en;
     const line = pack[kind];
     return typeof line === 'function' ? line(sessionName) : line;
+  }
+
+  function clearReplyWatch() {
+    if (replyWatch) clearTimeout(replyWatch);
+    replyWatch = null;
+  }
+
+  function nudgeReply() {
+    if (!channel || channel.readyState !== 'open' || hangup || goodbyeLocked || toolBusy || audioPlaying) return;
+    const text = NUDGE[sessionLanguage] || NUDGE.en;
+    channel.send(JSON.stringify({
+      type: 'response.create',
+      response: { instructions: text },
+    }));
+  }
+
+  function armReplyWatch() {
+    clearReplyWatch();
+    replyWatch = setTimeout(() => {
+      replyWatch = null;
+      if (greetingPending) return;
+      nudgeReply();
+    }, 3000);
   }
 
   function speakExact(text, ending) {
@@ -823,11 +861,16 @@ export function consoleDocument() {
     const type = event.type || '';
     if (type === 'input_audio_buffer.speech_started') {
       if (goodbyeLocked) return;
+      clearReplyWatch();
       clearPresence();
       cancelGoodbye();
       if (presenceAsked) returnedAfterCheck = true;
       thinkHold = false;
       post({ type: 'state', value: 'listening' });
+      return;
+    }
+    if (type === 'input_audio_buffer.speech_stopped') {
+      if (!goodbyeLocked && !hangup) armReplyWatch();
       return;
     }
     if (type === 'response.created') {
@@ -838,6 +881,7 @@ export function consoleDocument() {
     if (type === 'output_audio_buffer.started') {
       audioPlaying = true;
       responseAudio = true;
+      clearReplyWatch();
       clearPresence();
       // The app keeps its connecting tone until this, so the line is never silent before Maya speaks.
       if (!voiced) {
@@ -871,6 +915,10 @@ export function consoleDocument() {
           outputTokens: usage.output_tokens || usage.output_token_count || 0,
         });
       }
+      if (answerNow && !hangup) {
+        answerNow = false;
+        nudgeReply();
+      }
       if (hangup) {
         post({ type: 'state', value: 'ending' });
         // They said goodbye themselves: an echoed «пока» must not reopen the call.
@@ -899,20 +947,21 @@ export function consoleDocument() {
       return;
     }
     if (type === 'response.function_call_arguments.done' && event.name === 'need_a_moment') {
-      thinkHold = true;
+      thinkHold = false;
       toolBusy = false;
+      answerNow = true;
       clearPresence();
       if (channel && channel.readyState === 'open') {
         channel.send(JSON.stringify({
           type: 'conversation.item.create',
-          item: { type: 'function_call_output', call_id: event.call_id, output: JSON.stringify({ ok: true, wait: true }) },
+          item: { type: 'function_call_output', call_id: event.call_id, output: JSON.stringify({ ok: true, wait: false }) },
         }));
       }
-      armPresence();
       return;
     }
     if (type === 'response.function_call_arguments.done' && ['create_activity', 'list_plan', 'update_activity', 'delete_activity'].includes(event.name)) {
       toolBusy = true;
+      clearReplyWatch();
       clearPresence();
       post({ type: 'state', value: 'acting' });
       post({ type: 'tool', callId: event.call_id, name: event.name, arguments: event.arguments });
@@ -1050,7 +1099,7 @@ export function plannerSessionConfiguration(config, payload) {
     model: config.plannerVoiceLanguageModel && config.plannerVoiceLanguageModelLanguages?.includes(language)
       ? config.plannerVoiceLanguageModel : config.plannerVoiceModel,
     instructions: instructions(days, planningDay, safeName, language, plan, dayContext, introduced, reconnected),
-    tools: [createActivityTool(), listPlanTool(), updateActivityTool(), deleteActivityTool(), needAMomentTool(), endCallTool()],
+    tools: [createActivityTool(), listPlanTool(), updateActivityTool(), deleteActivityTool(), endCallTool()],
     tool_choice: 'auto',
     // Budget covers audio and tool calls, not just the short spoken transcript.
     max_output_tokens: 2048,
@@ -1059,7 +1108,7 @@ export function plannerSessionConfiguration(config, payload) {
       input: {
         turn_detection: {
           type: 'semantic_vad',
-          eagerness: 'low',
+          eagerness: 'medium',
           create_response: true,
           interrupt_response: true,
         },
@@ -1360,20 +1409,6 @@ function deleteActivityTool() {
         ref: { type: 'string', description: 'Plan ref such as a1.' },
       },
       required: ['ref'],
-    },
-  };
-}
-
-function needAMomentTool() {
-  return {
-    type: 'function',
-    name: 'need_a_moment',
-    description: 'The person is still thinking or paused inside a phrase. Call this and say nothing. Do not use it as a goodbye.',
-    parameters: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {},
-      required: [],
     },
   };
 }

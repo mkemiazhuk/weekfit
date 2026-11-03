@@ -332,7 +332,7 @@ test('cedar uses the same russian greeting without a larger model', async () => 
     assert.equal(sent.session.audio.output.voice, 'cedar');
     assert.match(sent.session.instructions, /Привет, Макс! Как ты\?/);
     assert.equal(sent.session.audio.input.turn_detection.type, 'semantic_vad');
-    assert.equal(sent.session.audio.input.turn_detection.eagerness, 'low');
+    assert.equal(sent.session.audio.input.turn_detection.eagerness, 'medium');
     assert.deepEqual(sent.session.audio.input.noise_reduction, { type: 'near_field' });
     assert.equal(sent.session.max_output_tokens, 2048);
     assert.match(sent.session.instructions, /Не переводи, не произноси по буквам/);
@@ -429,7 +429,7 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(sent.session.model, 'gpt-realtime-2.1-mini');
     assert.equal(sent.session.audio.input.transcription, undefined);
     assert.deepEqual(sent.session.output_modalities, ['audio']);
-    assert.deepEqual(sent.session.tools.map(tool => tool.name), ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'need_a_moment', 'end_call']);
+    assert.deepEqual(sent.session.tools.map(tool => tool.name), ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'end_call']);
     assert.match(sent.session.instructions, /Не добавляй этот вопрос после приветствия/);
     assert.match(sent.session.instructions, /До свидания\./);
     assert.match(sent.session.instructions, /дай мне секунду/);
@@ -725,7 +725,9 @@ test('silence and a provider error do not hang up', async () => {
   channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.started' }) });
   channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.stopped' }) });
   channel.onmessage({ data: JSON.stringify({ type: 'response.function_call_arguments.done', name: 'need_a_moment', call_id: 'think_1' }) });
+  channel.onmessage({ data: JSON.stringify({ type: 'response.done', response: {} }) });
   channel.onmessage({ data: JSON.stringify({ type: 'error', error: { code: 'conversation_already_has_active_response' } }) });
+  assert.ok(sent.some(item => item.type === 'response.create' && /Сразу ответь/.test((item.response && item.response.instructions) || '')));
   assert.equal(delays().some(delay => delay === 20000 || delay === 35000 || delay === 75000), false);
   assert.equal(sent.some(item => item.response && /ещё здесь|завершаю звонок/.test(item.response.instructions || '')), false);
   assert.equal(events.some(event => event.value === 'failed' || event.value === 'ended'), false);

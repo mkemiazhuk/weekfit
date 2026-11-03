@@ -1164,7 +1164,7 @@ struct PlanRealtimeVoiceSheet: View {
                         .frame(width: 1.5, height: waveHeight(index: index, time: time))
                 }
             }
-            .frame(height: 56)
+            .frame(height: 76)
         }
         .accessibilityHidden(true)
     }
@@ -1182,8 +1182,9 @@ struct PlanRealtimeVoiceSheet: View {
             let breath = sin(time * 5.2 + position * 0.31)
             sample = abs(0.62 * voice + 0.26 * harmonic + 0.12 * breath)
         }
-        let loud = max(0.08, markLevel)
-        return 2 + 48 * loud * window * (0.18 + 0.82 * sample)
+        let loud = min(1, max(0.28, markLevel * 2.4))
+        let shape = 0.72 + 0.28 * window
+        return 6 + 68 * loud * shape * (0.55 + 0.45 * sample)
     }
 
     private func scrollCall(_ proxy: ScrollViewProxy) {
