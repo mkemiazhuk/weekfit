@@ -726,7 +726,7 @@ export function consoleDocument() {
     if (!hangup || goodbyeTail) return;
     if (goodbyeFallback) clearTimeout(goodbyeFallback);
     goodbyeFallback = null;
-    goodbyeTail = setTimeout(() => stop('goodbye'), 1000);
+    goodbyeTail = setTimeout(() => stop('goodbye'), 20);
   }
 
   function sendToolOutput(callId, output) {
@@ -1417,7 +1417,7 @@ function endCallTool() {
   return {
     type: 'function',
     name: 'end_call',
-    description: 'Hang up only after their request is done, you asked if they need anything else, and they declined. Say only the exact goodbye in that same response. Do not announce that you are ending the call. Do not use this before the save is confirmed, or for alright, okay, thanks, or спасибо.',
+    description: 'Hang up after the request is done and they decline more help. «всё, спасибо», «все спасибо», «спасибо, всё», and "that\'s all, thanks" are a decline even though they contain thanks: say only the exact goodbye and call this in that same response. A bare спасибо, alright, okay, or thanks in the middle of a task is not a decline. Do not announce that you are ending the call. Do not use this before the save is confirmed.',
     parameters: {
       type: 'object',
       additionalProperties: false,

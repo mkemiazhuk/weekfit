@@ -437,6 +437,7 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.match(sent.session.instructions, /Не вызывай end_call на короткое согласие/);
     assert.match(sent.session.instructions, /Не завершай звонок, пока просьба не сделана/);
     assert.match(sent.session.instructions, /нет, спасибо/);
+    assert.match(sent.session.instructions, /все спасибо/);
     assert.match(sent.session.instructions, /alright/);
     assert.equal(sent.session.audio.input.turn_detection.interrupt_response, true);
     assert.match(sent.session.instructions, /2026-10-29/);
@@ -635,12 +636,12 @@ test('ringing continues until the assistant starts the greeting', async () => {
   assert.equal(track.enabled, false);
   assert.equal(track.stopped, false);
   assert.equal(timers.some(timer => timer.delay === 12000), true);
-  assert.equal(timers.some(timer => timer.delay === 1000), false);
+  assert.equal(timers.some(timer => timer.delay === 20), false);
   channel.onmessage({ data: JSON.stringify({ type: 'input_audio_buffer.speech_started' }) });
   assert.equal(events.at(-1).value, 'ending');
   channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.stopped' }) });
   assert.equal(track.stopped, false);
-  timers.find(timer => timer.delay === 1000).callback();
+  timers.find(timer => timer.delay === 20).callback();
   assert.equal(track.stopped, true);
   assert.equal(events.some(event => event.value === 'ended' && event.reason === 'goodbye'), true);
   window.weekfit.stop();
@@ -682,7 +683,7 @@ test('a goodbye that finished playing before end_call still hangs up right away'
   channel.onmessage({ data: JSON.stringify({ type: 'response.done', response: {} }) });
   assert.equal(events.at(-1).value, 'ending');
   assert.equal(timers.some(timer => timer.delay === 12000), false);
-  timers.find(timer => timer.delay === 1000).callback();
+  timers.find(timer => timer.delay === 20).callback();
   assert.equal(track.stopped, true);
   assert.equal(events.at(-1).value, 'ended');
 });

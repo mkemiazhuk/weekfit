@@ -273,14 +273,14 @@ struct ActivityIntelligenceView: View {
         let _ = languageManager.selectedLanguage
 
         ZStack {
-            (palette.isLight ? HealthDetailsSoftChrome.canvas : ActivityStyle.screenBackground)
+            palette.appScreenBackground
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 NutritionDetailsHeader(
                     title: WeekFitLocalizedString("activity.activityDetails"),
                     subtitle: activityDetailsDateTitle,
-                    background: palette.isLight ? HealthDetailsSoftChrome.canvas : ActivityStyle.screenBackground,
+                    background: palette.appScreenBackground,
                     onClose: { dismiss() }
                 )
 
@@ -450,10 +450,7 @@ private struct ActivityHeroCard: View {
         }
         .padding(.horizontal, palette.isLight ? 14 : 17)
         .padding(.vertical, palette.isLight ? 12 : 14)
-        .healthDetailsSoftCard(
-            isLight: palette.isLight,
-            darkGlow: ActivityStyle.activityColor
-        )
+        .activityCard()
     }
 
     private var activityRing: some View {
@@ -576,7 +573,7 @@ private struct ActivityDailyMetricsCard: View {
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 15)
-        .activityCard(glow: ActivityStyle.activityColor)
+        .activityCard()
     }
 
     private var exerciseText: String {
@@ -737,7 +734,7 @@ private struct ActivityTimelineCard: View {
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 15)
-        .activityCard(glow: ActivityStyle.activityColor)
+        .activityCard()
     }
 
     private func activityMetric(
@@ -777,19 +774,23 @@ private struct ActivityTimelineCard: View {
     private func barGradient(for point: ActivityTimelinePoint) -> LinearGradient {
         let value = displayCalories(for: point)
         let ratio = value / chartYAxisMax
+        let light = WeekFitPaletteStore.current.isLight
 
         let colors: [Color]
 
         if value <= 0 {
-            colors = [
-                WeekFitTheme.whiteOpacity(0.04),
-                WeekFitTheme.whiteOpacity(0.015)
-            ]
+            colors = light
+                ? [WeekFitLightTokens.inactiveTrack.opacity(0.7), WeekFitLightTokens.inactiveTrack.opacity(0.35)]
+                : [WeekFitTheme.whiteOpacity(0.04), WeekFitTheme.whiteOpacity(0.015)]
         } else if isSleepNoise(point) {
-            colors = [
-                WeekFitTheme.whiteOpacity(0.06),
-                WeekFitTheme.whiteOpacity(0.02)
-            ]
+            colors = light
+                ? [WeekFitLightTokens.inactiveTrack, WeekFitLightTokens.inactiveTrack.opacity(0.55)]
+                : [WeekFitTheme.whiteOpacity(0.06), WeekFitTheme.whiteOpacity(0.02)]
+        } else if light {
+            let ink = WeekFitSemanticMetricTokens.activity
+            colors = ratio >= 0.35
+                ? [ink, ink.opacity(0.72)]
+                : [ink.opacity(0.55), WeekFitLightTokens.inactiveTrack]
         } else if ratio >= 0.75 {
             colors = [
                 ActivityStyle.activityColor,
@@ -972,7 +973,7 @@ private struct WeeklyContextCard: View {
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 15)
-        .activityCard(glow: ActivityStyle.activityColor)
+        .activityCard()
     }
 
     private func comparisonRow(
@@ -1018,7 +1019,7 @@ private struct WeeklyContextCard: View {
 
                         ZStack(alignment: .bottom) {
                             Capsule()
-                                .fill(WeekFitTheme.whiteOpacity(item.isSelected ? 0.075 : 0.040))
+                                .fill(weekTrackColor(selected: item.isSelected))
                                 .frame(width: item.isSelected ? 13 : 10, height: chartHeight)
 
                             Capsule()
@@ -1040,6 +1041,15 @@ private struct WeeklyContextCard: View {
         }
         .frame(height: 112)
         .padding(.horizontal, 2)
+    }
+
+    private func weekTrackColor(selected: Bool) -> Color {
+        if WeekFitPaletteStore.current.isLight {
+            return selected
+                ? WeekFitSemanticMetricTokens.activitySoft
+                : WeekFitLightTokens.inactiveTrack
+        }
+        return WeekFitTheme.whiteOpacity(selected ? 0.075 : 0.040)
     }
 
     private func barHeight(for calories: Int, maxHeight: CGFloat) -> CGFloat {
@@ -3688,11 +3698,35 @@ private struct ActivityCardChrome: ViewModifier {
     var glow: Color
 
     func body(content: Content) -> some View {
-        content.healthDetailsSoftCard(
-            isLight: palette.isLight,
-            cornerRadius: palette.isLight ? NutritionDetailsDesign.largeCorner : cornerRadius,
-            darkGlow: glow
-        )
+        if palette.isLight {
+            content.background {
+                lightSectionPlate
+            }
+        } else {
+            content.healthDetailsSoftCard(
+                isLight: false,
+                cornerRadius: cornerRadius,
+                darkGlow: glow
+            )
+        }
+    }
+
+    private var lightSectionPlate: some View {
+        let radius = NutritionDetailsDesign.largeCorner
+        return RoundedRectangle(cornerRadius: radius, style: .continuous)
+            .fill(NutritionDetailsDesign.cardSurface)
+            .overlay {
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .strokeBorder(
+                        WeekFitLightTokens.cardBorder.opacity(WeekFitLightTokens.cardBorderStrokeOpacity),
+                        lineWidth: 0.7
+                    )
+            }
+            .shadow(
+                color: Color.black.opacity(WeekFitLightTokens.cardContactShadowOpacity),
+                radius: 8,
+                y: 3
+            )
     }
 }
 
