@@ -389,7 +389,8 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 15_000_000_000)
                 if Task.isCancelled { return }
-                guard let client = try? await makeClient() else { return }
+                // A missed check is not a hangup. The call stays up until they end it.
+                guard let client = try? await makeClient() else { continue }
                 await client.beatLine(ticket: ticket)
                 if let id = secret?.sessionId {
                     do {
@@ -398,7 +399,9 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                             body: JSONEncoder().encode(["sessionId": id]))
                         remainingSeconds = status.remainingSeconds
                         if !status.active { end(); return }
-                    } catch { end(); return }
+                    } catch {
+                        continue
+                    }
                 }
             }
         }

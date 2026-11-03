@@ -401,6 +401,8 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.match(sent.session.instructions, /Пока!/);
     assert.match(sent.session.instructions, /Что-нибудь ещё\?/);
     assert.match(sent.session.instructions, /Never call end_call for a bare acknowledgement/);
+    assert.match(sent.session.instructions, /Do not call end_call before the thing they asked for is done/);
+    assert.match(sent.session.instructions, /нет, спасибо/);
     assert.match(sent.session.instructions, /alright/);
     assert.equal(sent.session.audio.input.turn_detection.interrupt_response, true);
     assert.match(sent.session.instructions, /2026-10-29/);
@@ -629,16 +631,17 @@ test('a goodbye that finished playing before end_call still hangs up right away'
   assert.equal(events.at(-1).value, 'ended');
 });
 
-test('silence starts after playback and speech cancels a pending goodbye', async () => {
+test('silence and a provider error do not hang up', async () => {
   const script = consoleDocument().match(/<script>([\s\S]*?)<\/script>/)?.[1];
   assert.ok(script);
   const sent = [];
+  const events = [];
   const timers = new Map();
   let nextId = 1;
   const track = { enabled: true, stopped: false, stop() { this.stopped = true; } };
   const stream = { getTracks: () => [track], getAudioTracks: () => [track] };
   const channel = { readyState: 'open', send: value => sent.push(JSON.parse(value)), close() {} };
-  const window = { webkit: { messageHandlers: { plannerVoice: { postMessage() {} } } } };
+  const window = { webkit: { messageHandlers: { plannerVoice: { postMessage: event => events.push(event) } } } };
   class Peer {
     createDataChannel() { return channel; }
     addTrack() {}
@@ -648,12 +651,6 @@ test('silence starts after playback and speech cancels a pending goodbye', async
     close() {}
   }
   const delays = () => [...timers.values()].map(timer => timer.delay);
-  const fire = (delay) => {
-    const entry = [...timers.entries()].findLast(([, timer]) => timer.delay === delay);
-    assert.ok(entry);
-    timers.delete(entry[0]);
-    entry[1].callback();
-  };
   runInNewContext(script, {
     window,
     RTCPeerConnection: Peer,
@@ -671,26 +668,11 @@ test('silence starts after playback and speech cancels a pending goodbye', async
   channel.onopen();
   channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.started' }) });
   channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.stopped' }) });
-  assert.equal(delays().includes(20000), true);
-  channel.onmessage({ data: JSON.stringify({ type: 'input_audio_buffer.speech_started' }) });
-  assert.equal(delays().includes(20000), false);
-
   channel.onmessage({ data: JSON.stringify({ type: 'response.function_call_arguments.done', name: 'need_a_moment', call_id: 'think_1' }) });
-  assert.equal(delays().includes(35000), true);
-  assert.equal(sent.some(item => item.type === 'response.create' && item.response), false);
-  fire(35000);
-  assert.equal(sent.some(item => item.response && item.response.instructions.includes('Макс, ты ещё здесь?')), true);
-
-  channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.started' }) });
-  channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.stopped' }) });
-  assert.equal(delays().includes(20000), true);
-  fire(20000);
-  assert.equal(sent.some(item => item.response && item.response.instructions.includes('Я завершаю звонок')), true);
-  channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.started' }) });
-  channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.stopped' }) });
-  assert.equal(delays().includes(1000), true);
-  channel.onmessage({ data: JSON.stringify({ type: 'input_audio_buffer.speech_started' }) });
-  assert.equal(delays().includes(1000), false);
+  channel.onmessage({ data: JSON.stringify({ type: 'error', error: { code: 'conversation_already_has_active_response' } }) });
+  assert.equal(delays().some(delay => delay === 20000 || delay === 35000 || delay === 75000), false);
+  assert.equal(sent.some(item => item.response && /ещё здесь|завершаю звонок/.test(item.response.instructions || '')), false);
+  assert.equal(events.some(event => event.value === 'failed' || event.value === 'ended'), false);
   assert.equal(track.stopped, false);
 });
 

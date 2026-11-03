@@ -551,9 +551,11 @@ export function consoleDocument() {
     applyMic();
   };
 
+  // Silence is not a hangup. The call stays up until they press end, or they
+  // decline further help after the request is done.
   const armIdle = () => {
     if (idle) clearTimeout(idle);
-    idle = setTimeout(() => stop('idle'), idleMs);
+    idle = null;
   };
 
   const release = () => {
@@ -631,10 +633,7 @@ export function consoleDocument() {
   }
 
   function armPresence() {
-    if (hangup || toolBusy || audioPlaying || returnedAfterCheck) return;
     clearPresence();
-    if (!presenceAsked) presence = setTimeout(askIfThere, thinkHold ? 35000 : 20000);
-    else closing = setTimeout(warnAndEnd, 20000);
     thinkHold = false;
   }
 
@@ -919,7 +918,8 @@ export function consoleDocument() {
       return;
     }
     if (type === 'error') {
-      post({ type: 'state', value: 'failed', message: 'realtime_error' });
+      // A provider error must not hang up. The line stays open until they end it.
+      return;
     }
   }
 })();
@@ -1222,11 +1222,11 @@ function instructions(days, planningDay, givenName, language, plan = [], dayCont
     'When they ask what they did today, call list_plan with scope today_done. For tomorrow, use tomorrow. For what is still planned today, use today_planned. Say that speak field once. Distinguish planned from done.',
     `If a new activity has no name, ask exactly "${phrases.askActivity}" Do not list the catalog. If only the time is missing, ask exactly "${phrases.askTime}"`,
     'To move or resize a planned activity, call update_activity with its ref. Empty date, empty startTime, durationMinutes 0, and empty catalogTitle keep the current value. To remove a planned activity, call delete_activity with its ref. Do not delete an activity that is already done. If more than one ref matches, ask which time. Never invent a ref.',
-    'When the tool returns a speak field, say that field once and stop. Do not paraphrase it, do not offer another action, and do not call end_call in that response. Confirm a save only when create_activity, update_activity, or delete_activity returns ok true and saved true. If the result names a time conflict, explain that overlap and help them pick another time. Do not save a second copy.',
+    'When the tool returns a speak field, say that field once. Do not paraphrase it and do not call end_call in that response. Confirm a save only when create_activity, update_activity, or delete_activity returns ok true and saved true. If the result names a time conflict, explain that overlap and help them pick another time. Do not save a second copy.',
     `If the tool returns no speak field, say exactly: ${saveFailedLine(language)}`,
-    `Do not add it after the greeting, after a successful command, after a question you are already asking, after goodbye, or to fill a pause. Do not append "${phrases.anythingElse}".`,
-    'Never call end_call for a bare acknowledgement in the middle of a task: alright, okay, ok, sure, right, thanks, thank you, спасибо, хорошо, ладно, ясно, понятно. Thanks alone is not goodbye.',
-    `Call end_call only when they are clearly finished, including "that's all", "I'm good, thanks", and «на этом всё», plus: ${phrases.closing}.${language === 'ru' ? '' : ' Also treat Russian «нет, всё», «нет, всё, спасибо», «больше ничего», «это всё», «всё, спасибо», «до свидания», and «пока» as confirmation when they are ending the conversation.'} In that same response say exactly "${phrases.goodbye}" and call end_call. Do not ask another question.`,
+    `After that confirmed result, and only then, ask once whether you can help with anything else. Say exactly "${phrases.anythingElse}" and wait. Do not add it after the greeting, while a detail is still missing, after goodbye, or to fill a pause. Do not call end_call in the same response as this question.`,
+    'Never call end_call for a bare acknowledgement in the middle of a task: alright, okay, ok, sure, right, thanks, thank you, спасибо, хорошо, ладно, ясно, понятно. Thanks alone is not goodbye. Do not call end_call before the thing they asked for is done.',
+    `Call end_call only after the request is done and they decline more help. A decline is "no thanks", "no, I'm good", "that's all", "nothing else", «нет, спасибо», plus: ${phrases.closing}.${language === 'ru' ? '' : ' Also treat Russian «нет, всё», «нет, всё, спасибо», «больше ничего», «это всё», «всё, спасибо», «до свидания», and «пока» as a decline when the request is already done.'} In that same response say exactly "${phrases.goodbye}" and call end_call. Do not ask another question. If they ask for something else, do that first and ask again only after it is done.`,
     // Everything above is the same for every call in this language, so it stays in the prompt cache.
     'Call details:',
     nameLine,
@@ -1329,7 +1329,7 @@ function endCallTool() {
   return {
     type: 'function',
     name: 'end_call',
-    description: 'Hang up only after the person confirmed there is nothing else, in the same response as the goodbye. Do not use this for alright, okay, thanks, or спасибо.',
+    description: 'Hang up only after their request is done, you asked if they need anything else, and they declined. Say the goodbye in that same response. Do not use this before the save is confirmed, or for alright, okay, thanks, or спасибо.',
     parameters: {
       type: 'object',
       additionalProperties: false,

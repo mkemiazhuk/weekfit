@@ -130,7 +130,7 @@ export function createBillingService(config, { authenticate, apple, store, fetch
   const attachObserver = connectObserver ?? ((callId, onEvent, onFailure) => {
     const socket = new WebSocket(`wss://api.openai.com/v1/realtime?call_id=${encodeURIComponent(callId)}`,
       { headers: { Authorization: `Bearer ${config.apiKey}` }, handshakeTimeout: 5000 });
-    socket.on('message', data => { try { onEvent(JSON.parse(String(data))); } catch { onFailure(); } });
+    socket.on('message', data => { try { onEvent(JSON.parse(String(data))); } catch { /* a bad frame is not a hangup */ } });
     socket.on('error', onFailure);
     socket.on('close', onFailure);
     return socket;
@@ -151,7 +151,9 @@ export function createBillingService(config, { authenticate, apple, store, fetch
           store.markEnded(op.wallet, op.key, op.deadline);
           reason = 'deadline';
         } else if (!op.started && at - op.created >= 30000) reason = 'not_started';
-        else if (op.started) {
+        else if (op.started && live?.socket?.readyState !== WebSocket.OPEN) {
+          // An open sideband means the conversation is still up. A missed status
+          // poll must not hang up on them.
           const seen = op.seen ?? 0;
           const quietFor = at - Math.max(seen, op.started);
           if (quietFor >= 45000) {
@@ -288,11 +290,14 @@ export function createBillingService(config, { authenticate, apple, store, fetch
             if (event.type === 'response.created') live.responding = true;
             if (event.type === 'response.done') live.responding = false;
             if (event.type === 'input_audio_buffer.speech_started' && live.responding) live.interruptions += 1;
+            if (event.type === 'response.created' || event.type === 'input_audio_buffer.speech_started' || event.type === 'response.done') {
+              store.noteSeen(wallet.id, key, now());
+            }
             if (event.type === 'response.done' && event.response?.id && event.response?.usage) {
               store.recordUsage(wallet.id, event.response.id, { feature: 'voice', model: live.session.model,
                 usage: event.response.usage, source: 'server_sideband' });
             }
-          }, () => { store.markEnded(wallet.id, key, now()); void stop(wallet.id, key, 'observer').catch(() => {}); });
+          }, () => { log({ event: 'billing_voice_observer_closed', operation: key }); });
           // Do not let a client start generating audio before metering is attached.
           if (live.socket.readyState === WebSocket.CONNECTING) {
             await new Promise((resolve, reject) => {
