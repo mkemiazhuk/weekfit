@@ -20,6 +20,8 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>WeekFitAIUsageEnabled</key>
+	<true/>
 	<key>WeekFitCloudAPIBaseURL</key>
 	<string></string>
 </dict>

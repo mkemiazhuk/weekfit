@@ -13,11 +13,11 @@ enum OnboardingLayout {
 
     static let pageTopPadding: CGFloat = 6
     static let pageBottomPadding: CGFloat = 8
-    static let titleToSubtitle: CGFloat = 8
-    static let subtitleToContent: CGFloat = 22
-    static let contentToHelper: CGFloat = 12
+    static let titleToSubtitle: CGFloat = 6
+    static let subtitleToContent: CGFloat = 16
+    static let contentToHelper: CGFloat = 10
     static let helperLineSpacing: CGFloat = 4
-    static let minBreathingRoom: CGFloat = 12
+    static let minBreathingRoom: CGFloat = 8
 
     static let cardCornerRadius: CGFloat = 20
     static let cardRowHorizontal: CGFloat = 16
@@ -79,8 +79,9 @@ struct OnboardingTitle: View {
             .font(.system(size: size, weight: .bold, design: .rounded))
             .foregroundStyle(palette.textPrimary)
             .tracking(OnboardingLayout.Title.tracking)
+            .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity)
             .accessibilityAddTraits(.isHeader)
     }
 }
@@ -94,9 +95,10 @@ struct OnboardingSubtitle: View {
         Text(text)
             .font(.system(size: size, weight: .medium))
             .foregroundStyle(palette.textSecondary)
+            .multilineTextAlignment(.center)
             .lineSpacing(OnboardingLayout.Subtitle.lineSpacing)
             .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity)
     }
 }
 
@@ -108,9 +110,10 @@ struct OnboardingHelper: View {
         Text(text)
             .font(.system(size: size, weight: .medium))
             .foregroundStyle(WeekFitTheme.tertiaryText)
+            .multilineTextAlignment(.center)
             .lineSpacing(OnboardingLayout.helperLineSpacing)
             .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity)
     }
 }
 
@@ -136,7 +139,7 @@ struct OnboardingPage<Content: View>: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .center, spacing: 0) {
                 if let title {
                     OnboardingTitle(text: title)
                 }
@@ -149,7 +152,7 @@ struct OnboardingPage<Content: View>: View {
                         .top,
                         (title != nil || subtitle != nil) ? OnboardingLayout.subtitleToContent : 0
                     )
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity)
 
                 if let helper {
                     OnboardingHelper(text: helper)
@@ -161,7 +164,7 @@ struct OnboardingPage<Content: View>: View {
             .padding(.horizontal, OnboardingLayout.horizontalPadding)
             .padding(.top, OnboardingLayout.pageTopPadding)
             .padding(.bottom, OnboardingLayout.pageBottomPadding)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity)
         }
         .scrollBounceBehavior(.basedOnSize)
     }
@@ -302,6 +305,7 @@ struct OnboardingPrimaryButton: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
             .frame(minHeight: OnboardingLayout.ctaMinHeight)
+            .accessibilityIdentifier("onboarding.cta")
             .background {
                 Capsule()
                     .fill(
@@ -350,6 +354,8 @@ struct OnboardingChoiceRow: View {
     let title: String
     let subtitle: String
     var badge: String? = nil
+    var leadingSystemImage: String? = nil
+    var leadingTint: Color? = nil
     var accessibilityText: String? = nil
     let isSelected: Bool
     let action: () -> Void
@@ -364,6 +370,17 @@ struct OnboardingChoiceRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: OnboardingLayout.cardRowSpacing) {
+                if let leadingSystemImage {
+                    Image(systemName: leadingSystemImage)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(leadingTint ?? accent)
+                        .frame(width: 32, height: 32)
+                        .background {
+                            Circle().fill((leadingTint ?? accent).opacity(0.14))
+                        }
+                        .accessibilityHidden(true)
+                }
+
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(alignment: .center, spacing: 8) {
                         Text(title)

@@ -15,8 +15,10 @@ import FirebaseAnalytics
 ///   entitlement refresh, not grandfathered access).
 /// - Deduplicate by StoreKit `transaction.id` so purchase + `Transaction.updates`
 ///   cannot double-log the same transaction.
-/// - Skip Xcode StoreKit Testing environment.
-/// - Respect Analytics collection policy (`FirebaseEnvironment`); DEBUG is off.
+/// - Skip Xcode StoreKit Testing **and** Apple Sandbox — only production
+///   App Store transactions are uploaded as revenue.
+/// - Respect Analytics collection policy (`FirebaseEnvironment`); DEBUG and
+///   TestFlight keep Analytics off.
 enum StoreKitTransactionAnalytics {
     enum Keys {
         static let loggedTransactionIDs = "weekfit.analytics.sk2.logged_transaction_ids"
@@ -43,6 +45,21 @@ enum StoreKitTransactionAnalytics {
         return "unknown"
     }
 
+    /// Firebase revenue is production App Store only.
+    static func shouldLogRevenue(for environment: AppStore.Environment) -> Bool {
+        environment == .production
+    }
+
+    /// Product funnel conversion events follow the same production-only rule.
+    /// A missing token still shares so a production purchase without an environment
+    /// stamp is not dropped. Sandbox, Xcode, and any other token never share.
+    static func shouldSharePurchaseFunnel(environmentToken: String?) -> Bool {
+        switch environmentToken {
+        case nil, "production": return true
+        default: return false
+        }
+    }
+
     /// Logs a verified StoreKit 2 transaction for Firebase `in_app_purchase` revenue.
     /// Safe to call multiple times for the same id — only the first succeeds.
     static func logVerifiedPurchaseTransactionIfNeeded(_ transaction: Transaction) {
@@ -51,10 +68,9 @@ enum StoreKitTransactionAnalytics {
         lock.lock()
         latestPurchaseEnvironment = environment
         lock.unlock()
-        // Xcode StoreKit Testing is local-only. Sandbox still logs.
-        // `logTransaction` does not accept custom parameters, so `store_environment`
-        // is recorded on `subscription_purchase_success`, not on `in_app_purchase`.
-        if transaction.environment == .xcode { return }
+        // `logTransaction` cannot attach `store_environment`. Sandbox and Xcode
+        // purchases must never appear as Firebase `in_app_purchase` revenue.
+        guard shouldLogRevenue(for: transaction.environment) else { return }
 
         let idKey = String(transaction.id)
         lock.lock()

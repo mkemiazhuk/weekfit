@@ -1,10 +1,10 @@
 import SwiftUI
 
 #if DEBUG
-#Preview("Brand Splash") {
-    OnboardingPromiseMark()
+#Preview("Welcome") {
+    OnboardingWelcomeView()
         .padding()
-        .background(Color.black)
+        .background(WeekFitTheme.ambientCanvasBackground)
 }
 
 #Preview("Causality") {
@@ -19,8 +19,20 @@ import SwiftUI
         .background(WeekFitTheme.ambientCanvasBackground)
 }
 
+#Preview("Maya call") {
+    OnboardingMayaCallStage()
+        .padding()
+        .background(WeekFitTheme.ambientCanvasBackground)
+}
+
 #Preview("Adaptation") {
     OnboardingAdaptationStage()
+        .padding()
+        .background(WeekFitTheme.ambientCanvasBackground)
+}
+
+#Preview("Nutrition showcase") {
+    OnboardingNutritionShowcaseView()
         .padding()
         .background(WeekFitTheme.ambientCanvasBackground)
 }

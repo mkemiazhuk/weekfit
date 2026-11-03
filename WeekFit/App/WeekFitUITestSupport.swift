@@ -17,10 +17,6 @@ enum WeekFitUITestSupport {
     /// Does **not** require `-ui-testing`, does **not** skip active subscriptions,
     /// and is compiled out of Release.
     static let forceNonLegacyLaunchArgument = "-weekfit-force-non-legacy"
-    /// DEBUG-only: allow Firebase Analytics (and Crashlytics) while running a
-    /// Debug build — for Sandbox QA + DebugView. Production Release policy is
-    /// unchanged: DEBUG without this flag still keeps analytics OFF.
-    static let enableDebugAnalyticsLaunchArgument = "-weekfit-enable-debug-analytics"
     /// Debug-only: entitlement state override for UI tests.
     ///
     /// Allowed values:
@@ -42,6 +38,8 @@ enum WeekFitUITestSupport {
     static let reduceMotionArgument = "-weekfit-reduce-motion"
     /// Debug-only: reset + present first-run onboarding (overrides the normal UI-test onboarding suppress).
     static let forceOnboardingArgument = "-weekfit-force-onboarding"
+    /// Debug-only: open a specific first-run step (`promise` / `goal` / `nutrition_showcase` / `health` / `understanding` / `maya_call` / `ready`).
+    static let onboardingStepOverrideArgument = "-weekfit-onboarding-step="
     /// Debug-only: open the real paywall via the temporary force-paywall diagnostics path.
     static let forcePaywallArgument = "-weekfit-force-paywall"
     /// Debug-only: mark Health access as already requested so the in-app HealthAccess gate is skipped.
@@ -86,6 +84,31 @@ enum WeekFitUITestSupport {
         #endif
     }
 
+    /// Raw `FirstRunOnboardingView.Step` value when `-weekfit-onboarding-step=` is set.
+    static var forcedOnboardingStepRawValue: Int? {
+        #if DEBUG
+        guard isActive else { return nil }
+        guard let raw = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix(onboardingStepOverrideArgument) }) else {
+            return nil
+        }
+        let value = String(raw.dropFirst(onboardingStepOverrideArgument.count))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        switch value {
+        case "promise": return 0
+        case "goal": return 1
+        case "nutrition_showcase", "nutritionshowcase", "food_tracking", "foodtracking": return 2
+        case "health": return 3
+        case "understanding": return 4
+        case "maya_call", "mayacall": return 5
+        case "ready": return 6
+        default: return nil
+        }
+        #else
+        return nil
+        #endif
+    }
+
     static var shouldForcePaywall: Bool {
         #if DEBUG
         isActive && ProcessInfo.processInfo.arguments.contains(forcePaywallArgument)
@@ -121,7 +144,7 @@ enum WeekFitUITestSupport {
         }
         if shouldForceOnboarding {
             OnboardingStore.hasCompletedOnboarding = false
-            OnboardingStore.persistedStepRawValue = nil
+            OnboardingStore.persistedStepRawValue = forcedOnboardingStepRawValue
         }
         if shouldSkipHealthAccess {
             UserDefaults.standard.set(true, forKey: "weekfit.healthAccessRequested")
@@ -134,15 +157,6 @@ enum WeekFitUITestSupport {
     static var shouldForceNonLegacyAppTransaction: Bool {
         #if DEBUG
         ProcessInfo.processInfo.arguments.contains(forceNonLegacyLaunchArgument)
-        #else
-        false
-        #endif
-    }
-
-    /// DEBUG-only: opt into Firebase Analytics collection for Sandbox QA.
-    static var shouldEnableDebugAnalytics: Bool {
-        #if DEBUG
-        ProcessInfo.processInfo.arguments.contains(enableDebugAnalyticsLaunchArgument)
         #else
         false
         #endif

@@ -364,6 +364,47 @@ final class WeekFitAIBalanceTests: XCTestCase {
         return WeekFitAIBalanceContent.make(usage, now: Date(timeIntervalSince1970: 1_761_000_000), locale: english)
     }
 
+    func testMayaCardCountsHeldSecondsAndWholeMinutes() throws {
+        let russian = Locale(identifier: "ru")
+        XCTAssertEqual(MayaCallBalance(try decode(voiceIncluded: 300)), .seconds(300))
+        XCTAssertEqual(MayaCallBalance(try decode(voiceIncluded: 200, voicePurchased: 900, voiceReserved: 40)), .seconds(1140))
+        XCTAssertEqual(MayaCallBalance(try decode(active: false)), .needsPremium)
+        XCTAssertEqual(MayaCallBalance.seconds(299).note(locale: english), "4 min left")
+        XCTAssertEqual(MayaCallBalance.seconds(299).note(locale: russian), "Осталось 4 мин")
+        XCTAssertEqual(MayaCallBalance.seconds(59).note(locale: russian), "Осталось меньше минуты")
+        XCTAssertEqual(MayaCallBalance.seconds(0).note(locale: russian), "Минуты закончились")
+        XCTAssertEqual(MayaCallBalance.needsPremium.note(locale: russian), "Входит в Premium")
+        XCTAssertFalse(MayaCallBalance.seconds(120).isLow)
+        XCTAssertTrue(MayaCallBalance.seconds(119).isLow)
+        XCTAssertTrue(MayaCallBalance.seconds(0).isLow)
+        XCTAssertFalse(MayaCallBalance.needsPremium.isLow)
+    }
+
+    @MainActor
+    func testRenderMayaCardBalances() throws {
+        let directory = URL(fileURLWithPath: "/Users/maxk/Dev/WeekFit/.tmp/ai-balance-shots", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        for appearance in [WeekFitAppearance.light, WeekFitAppearance.dark] {
+            WeekFitPaletteStore.update(appearance: appearance, blend: 0)
+            let palette = WeekFitSemanticPalette.interpolated(blend: 0, appearance: appearance)
+            let balances: [MayaCallBalance?] = [.seconds(272), .seconds(95), .seconds(0), .needsPremium, nil]
+            let view = VStack(spacing: 12) {
+                ForEach(Array(balances.enumerated()), id: \.offset) { _, balance in
+                    MayaPearlCallCard(isReturning: false, balance: balance) {}
+                }
+            }
+            .padding(16)
+            .frame(width: 402)
+            .background(palette.appScreenBackground)
+            .environment(\.weekFitPalette, palette)
+            .environment(\.colorScheme, appearance == .light ? .light : .dark)
+            let renderer = ImageRenderer(content: view)
+            renderer.scale = 2
+            let data = try XCTUnwrap(renderer.uiImage?.pngData())
+            try data.write(to: directory.appendingPathComponent("maya-card-\(appearance).png"))
+        }
+    }
+
     private func decode(
         active: Bool = true,
         photosIncluded: Int = 30,

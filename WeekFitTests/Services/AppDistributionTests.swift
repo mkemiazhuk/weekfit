@@ -51,6 +51,12 @@ final class AppDistributionTests: XCTestCase {
         XCTAssertFalse(AppDistribution.appStore.allowsTemporaryForcePaywall)
     }
 
+    func testShareUsageDataOfferedOnlyOnAppStore() {
+        XCTAssertTrue(AppDistribution.appStore.offersShareUsageData)
+        XCTAssertFalse(AppDistribution.debug.offersShareUsageData)
+        XCTAssertFalse(AppDistribution.testFlight.offersShareUsageData)
+    }
+
     func testDiagnosticsFormatterUsesPaywallSnapshotsNotFallbackPrices() {
         let annual = WeekFitProductSnapshot(
             id: WeekFitSubscriptionProductID.annual.rawValue,

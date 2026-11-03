@@ -1,15 +1,48 @@
 import SwiftUI
 
+/// What the Maya card knows about call time before the tap.
+enum MayaCallBalance: Equatable {
+    /// Seconds the next call may use, including time still held by a call that is closing.
+    case seconds(Int)
+    case needsPremium
+
+    init(_ usage: WeekFitAIUsage) {
+        self = usage.active ? .seconds(usage.voice.total + usage.voice.reserved) : .needsPremium
+    }
+
+    func note(locale: Locale = WeekFitCurrentLocale()) -> String {
+        switch self {
+        case .seconds(let seconds) where seconds >= 60:
+            let format = WeekFitLocalizedString("ai.usage.mayaMinutesLeft", locale: locale)
+            return String(format: format, locale: locale, seconds / 60)
+        case .seconds(let seconds) where seconds > 0:
+            return WeekFitLocalizedString("ai.usage.mayaUnderMinute", locale: locale)
+        case .seconds:
+            return WeekFitLocalizedString("ai.usage.mayaNoMinutes", locale: locale)
+        case .needsPremium:
+            return WeekFitLocalizedString("ai.usage.mayaWithPremium", locale: locale)
+        }
+    }
+
+    /// The last minute and an empty balance are worth noticing before the call, not during it.
+    var isLow: Bool {
+        if case .seconds(let seconds) = self { return seconds < 120 }
+        return false
+    }
+}
+
 /// Quiet call entry on Today. One button: the phone chip is visual, not a second control.
 struct MayaPearlCallCard: View {
     var isReturning: Bool
     var isOpening = false
+    var balance: MayaCallBalance? = nil
     var action: () -> Void
 
     @Environment(\.weekFitPalette) private var palette
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @ScaledMetric(relativeTo: .body) private var titleSize: CGFloat = 17
     @ScaledMetric(relativeTo: .subheadline) private var messageSize: CGFloat = 15
+    @ScaledMetric(relativeTo: .footnote) private var noteSize: CGFloat = 13
     @ScaledMetric(relativeTo: .body) private var iconSide: CGFloat = 44
 
     var body: some View {
@@ -27,7 +60,17 @@ struct MayaPearlCallCard: View {
                         .foregroundStyle(subtitleColor)
                         .fixedSize(horizontal: false, vertical: true)
                         .multilineTextAlignment(.leading)
+                    if let balance {
+                        Text(balance.note())
+                            .font(.system(size: noteSize, weight: .semibold))
+                            .foregroundStyle(balance.isLow ? WeekFitTheme.brandGold : subtitleColor)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .multilineTextAlignment(.leading)
+                            .padding(.top, 2)
+                            .transition(.opacity)
+                    }
                 }
+                .animation(.easeOut(duration: 0.2), value: balance)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 callChip
@@ -46,6 +89,7 @@ struct MayaPearlCallCard: View {
         .buttonStyle(MayaPearlPressStyle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(WeekFitLocalizedString("today.maya.accessibility"))
+        .accessibilityValue(balance?.note() ?? "")
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("today.maya.call")
     }

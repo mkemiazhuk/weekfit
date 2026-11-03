@@ -29,8 +29,6 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
       shouldAutocreateTestPlan = "YES">
-      <Testables>
-      </Testables>
    </TestAction>
    <LaunchAction
       buildConfiguration = "AISandbox"
@@ -55,18 +53,6 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "-weekfit-enable-debug-analytics"
-            isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "-FIRDebugEnabled"
-            isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "-FIRAnalyticsDebugEnabled"
-            isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
             argument = "-weekfit-force-non-legacy"
             isEnabled = "NO">
          </CommandLineArgument>
@@ -75,14 +61,6 @@
             isEnabled = "NO">
          </CommandLineArgument>
       </CommandLineArguments>
-      <!--
-        AISandbox configuration embeds WeekFitAIUsageEnabled, WeekFitAISandboxEnabled,
-        and WeekFitAISandboxBaseURL into the built app, plus WEEKFIT_AI_SANDBOX.
-        No StoreKit Configuration file: on a physical device with a Sandbox
-        Apple ID, Product.products uses App Store Connect prices.
-        Local WeekFit.storekit is only for Simulator StoreKit Testing when that
-        file is selected. Do not archive this scheme for App Store Review.
-      -->
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "AISandbox"

@@ -1,78 +1,123 @@
 import SwiftUI
 
-/// Health trust beat — constellation, not another card stack.
+/// Health trust beat — three reasons, then the recovery card the user will see.
 struct OnboardingHealthSignalsStage: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.weekFitPalette) private var palette
-    @State private var phase: CGFloat = 0
-
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(WeekFitProgressRingColor.recovery.opacity(0.06))
-                .frame(width: 200, height: 200)
-                .blur(radius: 30)
-
-            // Orbit signals
-            orbitIcon("figure.run", color: WeekFitProgressRingColor.activity, angle: -50, radius: 78)
-            orbitIcon("flame.fill", color: WeekFitProgressRingColor.nutrition, angle: 30, radius: 82)
-            orbitIcon("moon.fill", color: WeekFitProgressRingColor.recovery, angle: 140, radius: 74)
-            orbitIcon("heart.fill", color: Color(red: 1.0, green: 0.30, blue: 0.40), angle: 220, radius: 70)
-
-            // Center Health mark
-            Image(systemName: "heart.fill")
-                .font(.system(size: 28, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 72, height: 72)
-                .background {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 1.0, green: 0.28, blue: 0.38),
-                                    Color(red: 0.88, green: 0.12, blue: 0.42)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .shadow(color: Color.red.opacity(0.35), radius: 16, y: 6)
-                }
-                .scaleEffect(phase > 0.1 ? 1 : 0.86)
-                .opacity(phase > 0.05 ? 1 : 0)
-        }
-        .frame(height: 200)
-        .frame(maxWidth: .infinity)
-        .onAppear {
-            if reduceMotion {
-                phase = 1
-            } else {
-                withAnimation(.easeOut(duration: 0.85)) {
-                    phase = 1
-                }
+        VStack(spacing: 12) {
+            VStack(spacing: 0) {
+                OnboardingTrustPoint(
+                    icon: "moon.zzz.fill",
+                    color: WeekFitProgressRingColor.recovery,
+                    title: WeekFitLocalizedString("onboarding.v16.health.sleep.title"),
+                    subtitle: WeekFitLocalizedString("onboarding.v16.health.sleep.body")
+                )
+                OnboardingChoiceDivider()
+                OnboardingTrustPoint(
+                    icon: "figure.run",
+                    color: WeekFitProgressRingColor.activity,
+                    title: WeekFitLocalizedString("onboarding.v16.health.activity.title"),
+                    subtitle: WeekFitLocalizedString("onboarding.v16.health.activity.body")
+                )
+                OnboardingChoiceDivider()
+                OnboardingTrustPoint(
+                    icon: "lock.shield.fill",
+                    color: WeekFitTheme.brandGold,
+                    title: WeekFitLocalizedString("onboarding.v16.health.privacy.title"),
+                    subtitle: WeekFitLocalizedString("onboarding.v16.health.privacy.body")
+                )
             }
+            .profilePremiumCard(cornerRadius: OnboardingLayout.cardCornerRadius)
+
+            recoveryPreview
         }
-        .accessibilityHidden(true)
+        .accessibilityElement(children: .contain)
     }
 
-    private func orbitIcon(_ name: String, color: Color, angle: Double, radius: CGFloat) -> some View {
-        let rad = angle * .pi / 180
-        return Image(systemName: name)
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(color)
-            .frame(width: 36, height: 36)
-            .background {
-                Circle()
-                    .fill(
-                        palette.isLight
-                            ? color.opacity(0.12)
-                            : WeekFitTheme.whiteOpacity(0.06)
-                    )
-                    .overlay { Circle().stroke(color.opacity(palette.isLight ? 0.28 : 0.35), lineWidth: 1) }
+    private var recoveryPreview: some View {
+        HStack(spacing: 14) {
+            WeekFitProgressRing(
+                progress: OnboardingSampleData.morningRecoveryProgress,
+                color: WeekFitProgressRingColor.recovery,
+                size: 64,
+                strokeWidth: 4
+            ) {
+                Text("\(OnboardingSampleData.morningRecoveryPercent)")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.primaryText)
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.7)
             }
-            .offset(x: cos(rad) * radius, y: sin(rad) * radius)
-            .opacity(phase > 0.2 ? 1 : 0)
-            .scaleEffect(phase > 0.2 ? 1 : 0.7)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(WeekFitLocalizedString("today.status.recovery"))
+                    .font(.system(size: OnboardingLayout.Eyebrow.size, weight: .bold, design: .rounded))
+                    .tracking(OnboardingLayout.Eyebrow.tracking)
+                    .textCase(.uppercase)
+                    .foregroundStyle(WeekFitProgressRingColor.recovery)
+
+                Text(WeekFitLocalizedString("recovery.details.status.wellRecovered"))
+                    .font(.system(size: OnboardingLayout.CardTitle.size, weight: .semibold, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.primaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(WeekFitLocalizedString("onboarding.v16.health.sleep.title"))
+                    .font(.system(size: OnboardingLayout.CardSecondary.size, weight: .medium))
+                    .foregroundStyle(WeekFitTheme.secondaryText)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(OnboardingLayout.cardRowHorizontal)
+        .weekFitPremiumCard(
+            accent: WeekFitProgressRingColor.recovery,
+            cornerRadius: OnboardingLayout.cardCornerRadius,
+            featured: true
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "\(WeekFitLocalizedString("today.status.recovery")). \(OnboardingSampleData.morningRecoveryPercent). \(WeekFitLocalizedString("recovery.details.status.wellRecovered"))"
+        )
+    }
+}
+
+struct OnboardingTrustPoint: View {
+    let icon: String
+    let color: Color
+    let title: String
+    let subtitle: String
+
+    @Environment(\.weekFitPalette) private var palette
+    @ScaledMetric(relativeTo: .body) private var titleSize: CGFloat = OnboardingLayout.CardTitle.size
+    @ScaledMetric(relativeTo: .footnote) private var subtitleSize: CGFloat = OnboardingLayout.CardSecondary.size
+    @ScaledMetric(relativeTo: .body) private var iconSide: CGFloat = 32
+
+    var body: some View {
+        HStack(alignment: .top, spacing: OnboardingLayout.cardRowSpacing) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: iconSide, height: iconSide)
+                .background {
+                    Circle().fill(color.opacity(palette.isLight ? 0.14 : 0.18))
+                }
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: titleSize, weight: .semibold, design: .rounded))
+                    .foregroundStyle(WeekFitTheme.primaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(subtitle)
+                    .font(.system(size: subtitleSize, weight: .medium))
+                    .foregroundStyle(WeekFitTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, OnboardingLayout.cardRowHorizontal)
+        .padding(.vertical, OnboardingLayout.cardRowVertical)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title). \(subtitle)")
     }
 }
 

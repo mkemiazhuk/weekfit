@@ -1,15 +1,12 @@
 import SwiftUI
 import HealthKit
 
-/// Guided product experience — promise → goal → units → health → understanding → photo meals → ready.
-/// Flow: Goal → Context → Adaptive Coach → Photo logging → Today's Plan.
+/// Guided product experience — promise → goal → nutrition → health → understanding → Maya → ready.
 struct FirstRunOnboardingView: View {
 
     @EnvironmentObject private var appSession: AppSessionState
     @EnvironmentObject private var healthManager: HealthManager
     @EnvironmentObject private var languageManager: AppLanguageManager
-    @State private var pendingUnitSystem: WeekFitResolvedUnitSystem = WeekFitUnitPolicy.resolvedSystem(for: .automatic, locale: .autoupdatingCurrent)
-    @State private var didPersistUnitsSelection = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.weekFitPalette) private var palette
 
@@ -30,10 +27,10 @@ struct FirstRunOnboardingView: View {
     enum Step: Int, CaseIterable, Hashable, Identifiable {
         case promise
         case goal
-        case units
+        case nutritionShowcase
         case health
         case understanding
-        case photoMeals
+        case mayaCall
         case ready
 
         var id: Int { rawValue }
@@ -42,10 +39,10 @@ struct FirstRunOnboardingView: View {
             switch self {
             case .promise: return "promise"
             case .goal: return "goal"
-            case .units: return "units"
+            case .nutritionShowcase: return "nutrition_showcase"
             case .health: return "health"
             case .understanding: return "understanding"
-            case .photoMeals: return "photo_meals"
+            case .mayaCall: return "maya_call"
             case .ready: return "ready"
             }
         }
@@ -70,11 +67,6 @@ struct FirstRunOnboardingView: View {
         let profile = ProfileService()
         let restoredGoal = profile.loadManualNutritionGoal() ?? .maintenance
         _selectedGoal = State(initialValue: restoredGoal)
-
-        // Preselect the device-recommended choice, but only persist after the user confirms.
-        _pendingUnitSystem = State(
-            initialValue: WeekFitUnitPolicy.resolvedSystem(for: .automatic, locale: .autoupdatingCurrent)
-        )
 
         if let raw = OnboardingStore.persistedStepRawValue,
            let restored = Step(rawValue: raw) {
@@ -219,10 +211,10 @@ struct FirstRunOnboardingView: View {
         switch step {
         case .promise: promiseStep
         case .goal: goalStep
-        case .units: unitsStep
+        case .nutritionShowcase: nutritionShowcaseStep
         case .health: healthStep
         case .understanding: understandingStep
-        case .photoMeals: photoMealsStep
+        case .mayaCall: mayaCallStep
         case .ready: readyStep
         }
     }
@@ -240,7 +232,37 @@ struct FirstRunOnboardingView: View {
     @ViewBuilder
     private var ambientForStep: some View {
         switch step {
-        case .promise, .ready:
+        case .promise:
+            ZStack {
+                RadialGradient(
+                    colors: [
+                        WeekFitProgressRingColor.activity.opacity(palette.isLight ? 0.16 : 0.22),
+                        Color.clear
+                    ],
+                    center: UnitPoint(x: 0.18, y: 0.48),
+                    startRadius: 8,
+                    endRadius: 220
+                )
+                RadialGradient(
+                    colors: [
+                        WeekFitProgressRingColor.nutrition.opacity(palette.isLight ? 0.18 : 0.24),
+                        Color.clear
+                    ],
+                    center: UnitPoint(x: 0.50, y: 0.42),
+                    startRadius: 8,
+                    endRadius: 240
+                )
+                RadialGradient(
+                    colors: [
+                        WeekFitProgressRingColor.recovery.opacity(palette.isLight ? 0.16 : 0.22),
+                        Color.clear
+                    ],
+                    center: UnitPoint(x: 0.82, y: 0.48),
+                    startRadius: 8,
+                    endRadius: 220
+                )
+            }
+        case .ready:
             RadialGradient(
                 colors: [
                     WeekFitTheme.brandGold.opacity(palette.isLight ? 0.09 : 0.14),
@@ -250,7 +272,7 @@ struct FirstRunOnboardingView: View {
                 startRadius: 10,
                 endRadius: 320
             )
-        case .goal, .units, .understanding, .photoMeals:
+        case .goal, .nutritionShowcase, .understanding, .mayaCall:
             RadialGradient(
                 colors: [
                     WeekFitTheme.brandGold.opacity(palette.isLight ? 0.04 : 0.06),
@@ -278,7 +300,7 @@ private extension FirstRunOnboardingView {
 
     var promiseStep: some View {
         OnboardingPage {
-            OnboardingPromiseMark()
+            OnboardingWelcomeView()
         }
     }
 
@@ -306,77 +328,13 @@ private extension FirstRunOnboardingView {
         }
     }
 
-    var unitsStep: some View {
+    var nutritionShowcaseStep: some View {
         OnboardingPage(
-            title: WeekFitLocalizedString("onboarding.v11.units.title"),
-            subtitle: WeekFitLocalizedString("onboarding.v11.units.body")
+            title: WeekFitLocalizedString("onboarding.v17.nutrition.title"),
+            subtitle: WeekFitLocalizedString("onboarding.v17.nutrition.body"),
+            helper: WeekFitLocalizedString("onboarding.v17.nutrition.helper")
         ) {
-            VStack(spacing: 0) {
-                ForEach(WeekFitResolvedUnitSystem.allCases, id: \.self) { system in
-                    OnboardingChoiceRow(
-                        title: optionTitle(for: system),
-                        subtitle: optionSubtitle(for: system),
-                        badge: system == recommendedUnitSystem
-                            ? WeekFitLocalizedString("settings.units.recommended")
-                            : nil,
-                        accessibilityText: optionA11yLabel(for: system),
-                        isSelected: pendingUnitSystem == system
-                    ) {
-                        pendingUnitSystem = system
-                        #if !targetEnvironment(simulator)
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        #endif
-                    }
-
-                    if system != WeekFitResolvedUnitSystem.allCases.last {
-                        OnboardingChoiceDivider()
-                    }
-                }
-            }
-            .profilePremiumCard(cornerRadius: OnboardingLayout.cardCornerRadius)
-        }
-    }
-
-    private var recommendedUnitSystem: WeekFitResolvedUnitSystem {
-        WeekFitUnitPolicy.resolvedSystem(for: .automatic, locale: .autoupdatingCurrent)
-    }
-
-    private func optionTitle(for system: WeekFitResolvedUnitSystem) -> String {
-        switch system {
-        case .metric: return WeekFitLocalizedString("settings.units.option.metric")
-        case .uk: return WeekFitLocalizedString("settings.units.option.uk")
-        case .us: return WeekFitLocalizedString("settings.units.option.us")
-        }
-    }
-
-    private func optionSubtitle(for system: WeekFitResolvedUnitSystem) -> String {
-        switch system {
-        case .metric: return "10 km · 75 kg · 23°C"
-        case .uk: return "6 mi · 11 st 11 lb · 23°C"
-        case .us: return "6 mi · 165 lb · 73°F"
-        }
-    }
-
-    private func optionA11yLabel(for system: WeekFitResolvedUnitSystem) -> String {
-        switch system {
-        case .metric:
-            return WeekFitTrilingual(
-                "Metric. Example: 10 kilometers, 75 kilograms, 23 Celsius.",
-                "Метрическая. Пример: 10 км, 75 кг, 23 цельсия.",
-                "公制。示例：10 公里、75 公斤、23 摄氏度。"
-            )
-        case .uk:
-            return WeekFitTrilingual(
-                "United Kingdom. Example: 6 miles, 11 stone 11 pounds, 23 Celsius.",
-                "Великобритания. Пример: 6 миль, 11 стоунов 11 фунтов, 23 цельсия.",
-                "英国单位。示例：6 英里、11 英石 11 磅、23 摄氏度。"
-            )
-        case .us:
-            return WeekFitTrilingual(
-                "United States. Example: 6 miles, 165 pounds, 73 Fahrenheit.",
-                "США. Пример: 6 миль, 165 фунтов, 73 фаренгейта.",
-                "美国单位。示例：6 英里、165 磅、73 华氏度。"
-            )
+            OnboardingNutritionShowcaseView()
         }
     }
 
@@ -389,31 +347,24 @@ private extension FirstRunOnboardingView {
         }
     }
 
-    var photoMealsStep: some View {
+    var mayaCallStep: some View {
         OnboardingPage(
-            title: WeekFitLocalizedString("onboarding.v13.photo.title"),
-            subtitle: WeekFitLocalizedString("onboarding.v13.photo.body")
+            title: WeekFitLocalizedString("onboarding.v16.maya.title"),
+            subtitle: WeekFitLocalizedString("onboarding.v16.maya.body"),
+            helper: WeekFitLocalizedString("onboarding.v17.maya.helper")
         ) {
-            OnboardingPhotoMealStage()
+            OnboardingMayaCallStage()
         }
     }
 
     var healthStep: some View {
         OnboardingPage(
-            title: WeekFitLocalizedString("onboarding.v10.health.title"),
-            subtitle: WeekFitLocalizedString("onboarding.v12.health.body"),
-            helper: healthHelperCopy
+            title: WeekFitLocalizedString("onboarding.v16.health.title"),
+            subtitle: WeekFitLocalizedString("onboarding.v16.health.body")
         ) {
             OnboardingHealthSignalsStage()
                 .frame(maxWidth: .infinity)
         }
-    }
-
-    private var healthHelperCopy: String {
-        [
-            WeekFitLocalizedString("onboarding.v10.health.watchLine"),
-            WeekFitLocalizedString("onboarding.v10.health.privacy")
-        ].joined(separator: "\n")
     }
 
     var readyStep: some View {
@@ -472,6 +423,10 @@ private extension FirstRunOnboardingView {
                 handlePrimary()
             }
 
+            if step == .promise {
+                welcomeTrust
+            }
+
             if step == .health, !healthManager.isHealthAccessGranted {
                 OnboardingTextButton(title: WeekFitLocalizedString("onboarding.health.notNow")) {
                     guard !advanceLocked else { return }
@@ -484,6 +439,26 @@ private extension FirstRunOnboardingView {
                 }
             }
         }
+    }
+
+    private var welcomeTrust: some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: "apple.logo")
+                    .font(.system(size: 12, weight: .semibold))
+                Text(WeekFitLocalizedString("onboarding.v18.welcome.trust"))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+            }
+            .foregroundStyle(WeekFitTheme.secondaryText)
+            Text(WeekFitLocalizedString("onboarding.v18.welcome.privacy"))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(WeekFitTheme.tertiaryText)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 4)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -568,14 +543,12 @@ private extension FirstRunOnboardingView {
             return WeekFitLocalizedString("onboarding.v10.promise.cta")
         case .goal:
             return WeekFitLocalizedString("onboarding.v12.cta.createPlan")
-        case .units, .understanding:
+        case .nutritionShowcase, .understanding, .mayaCall:
             return WeekFitLocalizedString("onboarding.action.continue")
         case .health:
             return healthManager.isHealthAccessGranted
                 ? WeekFitLocalizedString("onboarding.action.continue")
                 : WeekFitLocalizedString("onboarding.v10.health.connect")
-        case .photoMeals:
-            return WeekFitLocalizedString("onboarding.v12.cta.meetCoach")
         case .ready:
             return WeekFitLocalizedString("onboarding.v12.cta.openToday")
         }
@@ -587,9 +560,8 @@ private extension FirstRunOnboardingView {
             advance(to: .goal)
         case .goal:
             persistGoalIfNeeded()
-            advance(to: .units)
-        case .units:
-            persistUnitsSelectionIfNeeded()
+            advance(to: .nutritionShowcase)
+        case .nutritionShowcase:
             advance(to: .health)
         case .health:
             if healthManager.isHealthAccessGranted {
@@ -598,8 +570,8 @@ private extension FirstRunOnboardingView {
                 connectHealth()
             }
         case .understanding:
-            advance(to: .photoMeals)
-        case .photoMeals:
+            advance(to: .mayaCall)
+        case .mayaCall:
             advance(to: .ready)
         case .ready:
             finish()
@@ -641,20 +613,6 @@ private extension FirstRunOnboardingView {
         appSession.triggerCoachRefresh(source: "onboarding.goal")
         appSession.triggerHealthRefresh(source: "onboarding.goal")
         didPersistGoal = true
-    }
-
-    func persistUnitsSelectionIfNeeded() {
-        guard !didPersistUnitsSelection else { return }
-        didPersistUnitsSelection = true
-
-        switch pendingUnitSystem {
-        case .metric:
-            WeekFitUnitsStore.shared.setSelectedPreference(.metric)
-        case .uk:
-            WeekFitUnitsStore.shared.setSelectedPreference(.uk)
-        case .us:
-            WeekFitUnitsStore.shared.setSelectedPreference(.us)
-        }
     }
 
     func connectHealth() {
@@ -722,11 +680,6 @@ private extension FirstRunOnboardingView {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         #endif
 
-        // If the user never confirmed units, a skip is treated as "Automatic".
-        if !didPersistUnitsSelection {
-            WeekFitUnitsStore.shared.setSelectedPreference(.automatic)
-        }
-
         persistGoalIfNeeded()
         OnboardingStore.markCompleted()
         OnboardingAnalytics.completed()
@@ -752,147 +705,3 @@ private extension FirstRunOnboardingView {
 //        .environmentObject(AppLanguageManager())
 //}
 
-/// First-run demo: plate photo → ingredients in grams → calories & macros.
-struct OnboardingPhotoMealStage: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var phase = 0
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            photoCard
-                .opacity(phase >= 0 ? 1 : 0)
-
-            if phase >= 1 {
-                Image(systemName: "arrow.down")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(WeekFitTheme.tertiaryText)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 2)
-                    .transition(.opacity)
-
-                breakdownCard
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-        }
-        .onAppear { run() }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilitySummary)
-    }
-
-    private var accessibilitySummary: String {
-        [
-            WeekFitLocalizedString("onboarding.v13.photo.demo.meal"),
-            WeekFitLocalizedString("onboarding.v13.photo.demo.calories"),
-            WeekFitLocalizedString("onboarding.v13.photo.demo.protein"),
-            WeekFitLocalizedString("onboarding.v13.photo.demo.ing.chicken"),
-            WeekFitLocalizedString("onboarding.v13.photo.demo.ing.rice"),
-            WeekFitLocalizedString("onboarding.v13.photo.demo.ing.broccoli")
-        ].joined(separator: ". ")
-    }
-
-    private var photoCard: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(WeekFitProgressRingColor.nutrition.opacity(0.14))
-                    .frame(width: 64, height: 64)
-
-                Image(systemName: "camera.fill")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(WeekFitProgressRingColor.nutrition)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(WeekFitLocalizedString("onboarding.v13.photo.demo.capture"))
-                    .font(.system(size: OnboardingLayout.Eyebrow.size, weight: .bold, design: .rounded))
-                    .tracking(OnboardingLayout.Eyebrow.tracking)
-                    .textCase(.uppercase)
-                    .foregroundStyle(WeekFitProgressRingColor.nutrition)
-
-                Text(WeekFitLocalizedString("onboarding.v13.photo.demo.meal"))
-                    .font(.system(size: 18, weight: .semibold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.primaryText)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(OnboardingLayout.cardRowHorizontal)
-        .weekFitPremiumCard(
-            accent: WeekFitProgressRingColor.nutrition,
-            cornerRadius: OnboardingLayout.cardCornerRadius,
-            featured: false
-        )
-    }
-
-    private var breakdownCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(WeekFitLocalizedString("onboarding.v13.photo.demo.calories"))
-                    .font(.system(size: OnboardingLayout.CardTitle.size, weight: .bold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.primaryText)
-                    .monospacedDigit()
-
-                Text(WeekFitLocalizedString("onboarding.v13.photo.demo.protein"))
-                    .font(.system(size: OnboardingLayout.CardSecondary.size, weight: .semibold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.secondaryText)
-                    .monospacedDigit()
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                ingredientRow(
-                    title: WeekFitLocalizedString("onboarding.v13.photo.demo.ing.chicken"),
-                    grams: 140
-                )
-                ingredientRow(
-                    title: WeekFitLocalizedString("onboarding.v13.photo.demo.ing.rice"),
-                    grams: 180
-                )
-                ingredientRow(
-                    title: WeekFitLocalizedString("onboarding.v13.photo.demo.ing.broccoli"),
-                    grams: 90
-                )
-            }
-
-            Text(WeekFitLocalizedString("onboarding.v13.photo.demo.footnote"))
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(WeekFitTheme.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(OnboardingLayout.cardRowHorizontal)
-        .weekFitPremiumCard(
-            accent: WeekFitTheme.meal,
-            cornerRadius: OnboardingLayout.cardCornerRadius,
-            featured: true
-        )
-    }
-
-    private func ingredientRow(title: String, grams: Int) -> some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(WeekFitProgressRingColor.nutrition.opacity(0.18))
-                .frame(width: 8, height: 8)
-
-            Text(title)
-                .font(.system(size: OnboardingLayout.CardSecondary.size, weight: .medium))
-                .foregroundStyle(WeekFitTheme.primaryText)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            Text(String(format: WeekFitLocalizedString("common.unit.gramFormat"), grams))
-                .font(.system(size: OnboardingLayout.CardSecondary.size, weight: .semibold, design: .rounded))
-                .foregroundStyle(WeekFitTheme.secondaryText)
-                .monospacedDigit()
-        }
-    }
-
-    private func run() {
-        if reduceMotion {
-            phase = 1
-            return
-        }
-        phase = 0
-        withAnimation(.easeOut(duration: 0.35).delay(0.45)) {
-            phase = 1
-        }
-    }
-}

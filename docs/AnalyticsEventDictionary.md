@@ -7,8 +7,9 @@ Product analytics go through `AppAnalytics` / `ProductAnalytics` / `OnboardingFu
 It must not receive HealthKit values, derived health/recovery/sleep/readiness state,
 nutrition quantities, workout metrics, or free-form health content.
 
-**Consent:** `ProductAnalyticsConsent` — Analytics collection defaults **ON**. Users can
-disable Share Usage Data in Settings. Crashlytics is independent (see
+**Consent:** `ProductAnalyticsConsent` — Analytics collection defaults **ON** on the
+App Store. Users can disable Share Usage Data in Settings. The toggle is not offered
+on DEBUG / Xcode or TestFlight. Crashlytics is independent (see
 `FirebaseEnvironment`). DEBUG builds keep Analytics and Crashlytics OFF.
 
 **Ownership:** Every new event must answer a concrete product question, use a typed
@@ -495,15 +496,17 @@ Do **not** cohort on health state, scores, or medical inferences.
 
 ## Distribution / environment policy
 
-| Environment | Analytics | Crashlytics | `distribution` param |
-|-------------|-----------|-------------|----------------------|
-| DEBUG / Xcode | OFF | OFF | — |
-| TestFlight (Release) | ON | ON | `testflight` |
-| App Store | ON | ON | `appstore` |
-| XCTest | No production Firebase bootstrap | — | — |
+| Environment | Analytics | Crashlytics | Share Usage Data | `distribution` param |
+|-------------|-----------|-------------|------------------|----------------------|
+| DEBUG / Xcode | OFF | OFF | hidden | — |
+| TestFlight (Release) | OFF | ON | hidden | `testflight` |
+| App Store | ON (consent) | ON | Settings toggle | `appstore` |
+| XCTest | No production Firebase bootstrap | — | — | — |
 
-**Product analysis must filter `distribution = appstore`** unless TestFlight is intentionally included.
-`AppDistribution` + `FirebaseEnvironment.configureTelemetry()` attach `distribution` as a user property and default event parameter for TestFlight / App Store.
+**Product analysis must filter `distribution = appstore`.** DEBUG / Xcode and
+TestFlight do not collect product Analytics. `AppDistribution` +
+`FirebaseEnvironment.configureTelemetry()` attach `distribution` as a user
+property and default event parameter on App Store only.
 
 ---
 

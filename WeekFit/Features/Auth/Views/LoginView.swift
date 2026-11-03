@@ -63,6 +63,9 @@ struct LoginView: View {
 
                             insightCards
                                 .padding(.top, isShortScreen ? LoginMetrics.subtitleToCards - 8 : LoginMetrics.subtitleToCards)
+
+                            mayaPlanCaption
+                                .padding(.top, 12)
                                 .padding(.bottom, isShortScreen ? LoginMetrics.cardsToAuth - 6 : LoginMetrics.cardsToAuth)
                         }
                         .padding(.horizontal, LoginMetrics.horizontal)
@@ -215,6 +218,26 @@ struct LoginView: View {
     }
 
     // MARK: - Insight Cards
+
+    private var mayaPlanCaption: some View {
+        Text(WeekFitLocalizedString("login.maya.caption"))
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(.white.opacity(prefersIncreasedContrast ? 1.0 : 0.94))
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background {
+                let shape = Capsule(style: .continuous)
+                shape
+                    .fill(.ultraThinMaterial.opacity(reduceTransparency ? 0 : 0.55))
+                    .overlay { shape.fill(.black.opacity(prefersIncreasedContrast || reduceTransparency ? 0.62 : 0.46)) }
+                    .overlay { shape.stroke(.white.opacity(0.12), lineWidth: 0.6) }
+            }
+            .opacity(showCards ? 1 : 0)
+            .offset(y: showCards ? 0 : (reduceMotion ? 0 : 6))
+            .accessibilityAddTraits(.isStaticText)
+    }
 
     private var insightCards: some View {
         LoginInsightCardsView(

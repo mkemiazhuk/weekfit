@@ -106,6 +106,28 @@ WeekFit не ставит медицинских диагнозов. По воп
 
 ---
 
+## What's New (1.5)
+
+**EN:**
+```
+WeekFit 1.5
+
+• Premium includes monthly AI food photos and Maya voice minutes, with optional top-ups that never expire
+• New welcome: your entire day in one place — activity, meals, and recovery, plus what to do next
+• Maya is easier to reach from Today, with a calmer call start
+```
+
+**RU:**
+```
+WeekFit 1.5
+
+• В Premium входят ежемесячные AI-фото еды и минуты голоса Maya; докупки не сгорают
+• Новый онбординг: весь день в одном месте — активность, еда и восстановление, и что делать дальше
+• Maya проще открыть с экрана Сегодня, звонок начинается спокойнее
+```
+
+---
+
 ## What's New (1.3.7)
 
 **EN:**

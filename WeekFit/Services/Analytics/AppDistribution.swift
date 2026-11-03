@@ -2,8 +2,8 @@ import Foundation
 
 /// Single source of truth for Firebase telemetry environment.
 ///
-/// - DEBUG / Xcode: `.debug`
-/// - TestFlight: `.testFlight` (sandbox App Store receipt)
+/// - DEBUG / Xcode: `.debug` — no product Analytics, no Share Usage Data
+/// - TestFlight: `.testFlight` (sandbox App Store receipt) — no product Analytics, no Share Usage Data
 /// - App Store: `.appStore`
 enum AppDistribution: String, Sendable {
     case debug
@@ -35,6 +35,19 @@ enum AppDistribution: String, Sendable {
         case .debug:
             return true
         case .testFlight, .appStore:
+            return false
+        }
+    }
+
+    /// Settings → Share Usage Data. App Store only.
+    ///
+    /// Xcode / DEBUG and TestFlight must not offer the toggle: collection is
+    /// forced off so local and sandbox traffic cannot mix with production.
+    var offersShareUsageData: Bool {
+        switch self {
+        case .appStore:
+            return true
+        case .debug, .testFlight:
             return false
         }
     }

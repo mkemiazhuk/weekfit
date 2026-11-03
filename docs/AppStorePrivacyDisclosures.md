@@ -27,9 +27,10 @@ Do **not** declare tracking unless product behavior changes to meet Apple’s tr
 
 | Channel | Firebase Analytics | Firebase Crashlytics |
 |---------|--------------------|----------------------|
-| DEBUG | OFF | OFF |
-| TestFlight / App Store | ON by default (**Share Usage Data**; user can turn off) | ON (crash diagnostics; no health payloads) |
-| Missing stored choice (fresh + existing upgrades) | Treated as OFF | — |
+| DEBUG / Xcode | OFF (no Share Usage Data toggle) | OFF |
+| TestFlight | OFF (no Share Usage Data toggle) | ON (crash diagnostics; no health payloads) |
+| App Store | ON by default (**Share Usage Data**; user can turn off) | ON (crash diagnostics; no health payloads) |
+| Missing stored choice (fresh + existing upgrades) | Treated as ON on App Store | — |
 
 ---
 

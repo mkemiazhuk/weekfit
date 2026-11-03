@@ -7,19 +7,23 @@ import OSLog
 /// Call once immediately after `FirebaseApp.configure()` — nowhere else for initial setup.
 ///
 /// Distribution + consent policy:
-/// - DEBUG / Xcode → Analytics OFF, Crashlytics OFF
-///   (opt-in: launch arg `-weekfit-enable-debug-analytics` → Analytics ON with
-///   `distribution=debug` for Sandbox QA / DebugView; still never `appstore`)
-/// - TestFlight / App Store → Analytics ON when `ProductAnalyticsConsent` allows it
+/// - DEBUG / Xcode → Analytics OFF, Crashlytics OFF. No Share Usage Data toggle.
+///   Launch args cannot re-enable collection (local deploys must not mix with
+///   production Firebase).
+/// - TestFlight / sandbox receipt → Analytics OFF (tester + Sandbox traffic
+///   must not mix with production); Crashlytics ON; no Share Usage Data toggle
+/// - App Store → Analytics ON when `ProductAnalyticsConsent` allows it
 ///   (default ON; user can disable in Settings); Crashlytics ON (crash diagnostics;
 ///   no health payloads — see `StartupDiagnostics`)
-/// - Missing / never-set consent → Analytics ON
+/// - Missing / never-set consent → Analytics ON on App Store only
 ///
 /// `distribution` is a user property and a default event parameter (`debug`, `testflight`,
 /// `appstore`). Default parameters are attached when an event is logged, including automatic
-/// events logged after this call. `first_open` can be created inside `FirebaseApp.configure()`
-/// before this call, so an event-parameter filter can drop it. Audience cuts should use the
-/// user property. `store_environment` is not a revenue-event parameter.
+/// events logged after this call. DEBUG disables collection *before* `FirebaseApp.configure()`
+/// so Xcode runs cannot emit `first_open`. On App Store, `first_open` can still be created
+/// inside configure before this call; an event-parameter filter can drop a stray one.
+/// Audience cuts should use the user property. `store_environment` is not a revenue-event
+/// parameter.
 enum FirebaseEnvironment {
     private static let logger = Logger(subsystem: "com.weekfit.app", category: "Analytics")
     private static let lock = NSLock()
@@ -35,25 +39,24 @@ enum FirebaseEnvironment {
         let distribution = AppDistribution.current
         switch distribution {
         case .debug:
-            #if DEBUG
-            if WeekFitUITestSupport.shouldEnableDebugAnalytics {
-                applyCollection(
-                    analyticsOn: ProductAnalyticsConsent.isSharingEnabled(),
-                    crashlyticsOn: true,
-                    distribution: distribution
-                )
-                logger.debug("Firebase telemetry: debug — analytics ON (Sandbox QA launch arg), crashlytics ON")
-            } else {
-                Analytics.setAnalyticsCollectionEnabled(false)
-                Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(false)
-                logger.debug("Firebase telemetry: debug — analytics OFF, crashlytics OFF")
-            }
-            #else
             Analytics.setAnalyticsCollectionEnabled(false)
             Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(false)
+            #if DEBUG
+            logger.debug("Firebase telemetry: debug — analytics OFF, crashlytics OFF")
             #endif
 
-        case .testFlight, .appStore:
+        case .testFlight:
+            Analytics.setAnalyticsCollectionEnabled(false)
+            Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(true)
+            Crashlytics.crashlytics().setCustomValue(
+                distribution.analyticsValue,
+                forKey: AnalyticsParameterKey.distribution
+            )
+            #if DEBUG
+            logger.debug("Firebase telemetry: testflight — analytics OFF, crashlytics ON")
+            #endif
+
+        case .appStore:
             applyCollection(
                 analyticsOn: ProductAnalyticsConsent.isSharingEnabled(),
                 crashlyticsOn: true,
@@ -61,7 +64,7 @@ enum FirebaseEnvironment {
             )
             #if DEBUG
             logger.debug(
-                "Firebase telemetry: \(distribution.analyticsValue, privacy: .public) — analytics collection applied (consent), crashlytics ON"
+                "Firebase telemetry: appstore — analytics collection applied (consent), crashlytics ON"
             )
             #endif
         }
@@ -81,16 +84,10 @@ enum FirebaseEnvironment {
         let distribution = AppDistribution.current
         switch distribution {
         case .debug:
-            #if DEBUG
-            if WeekFitUITestSupport.shouldEnableDebugAnalytics {
-                Analytics.setAnalyticsCollectionEnabled(ProductAnalyticsConsent.isSharingEnabled())
-            } else {
-                Analytics.setAnalyticsCollectionEnabled(false)
-            }
-            #else
             Analytics.setAnalyticsCollectionEnabled(false)
-            #endif
-        case .testFlight, .appStore:
+        case .testFlight:
+            Analytics.setAnalyticsCollectionEnabled(false)
+        case .appStore:
             let analyticsOn = ProductAnalyticsConsent.isSharingEnabled()
             Analytics.setAnalyticsCollectionEnabled(analyticsOn)
             #if DEBUG

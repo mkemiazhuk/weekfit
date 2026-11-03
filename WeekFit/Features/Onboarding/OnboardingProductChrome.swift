@@ -21,449 +21,6 @@ enum OnboardingSampleData {
     static let mealSampleKcal = 330
 }
 
-// MARK: - Brand splash (marketing first page)
-
-struct OnboardingPromiseMark: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.weekFitPalette) private var palette
-    @ScaledMetric(relativeTo: .largeTitle) private var headlineSize: CGFloat = 40
-    @ScaledMetric(relativeTo: .title3) private var subheadSize: CGFloat = 20
-    @ScaledMetric(relativeTo: .callout) private var taglineSize: CGFloat = 15
-    @ScaledMetric(relativeTo: .callout) private var phoneCoachSize: CGFloat = 13
-
-    @State private var logoVisible = false
-    @State private var copyVisible = false
-    @State private var phoneVisible = false
-    @State private var badgeVisible = false
-    @State private var glowPulse = false
-    @State private var shimmerPhase: CGFloat = -1.2
-    @State private var ringProgress: CGFloat = 0
-
-    private let gold = WeekFitTheme.brandGold
-
-    private var headlineInk: Color {
-        palette.isLight ? WeekFitTheme.primaryText : Color.white
-    }
-
-    private var subheadEmphasisInk: Color {
-        palette.isLight ? WeekFitLightTokens.brandGoldDark : gold
-    }
-
-    private var subheadSuffixInk: Color {
-        palette.isLight ? WeekFitLightTokens.textSecondary : WeekFitTheme.whiteOpacity(0.82)
-    }
-
-    private var taglineInk: Color {
-        palette.isLight ? WeekFitLightTokens.textTertiary : WeekFitTheme.whiteOpacity(0.64)
-    }
-
-    /// Preview chrome: Light = ceramic Today card; Dark = black product mock.
-    private var mockPrimaryInk: Color {
-        palette.isLight ? WeekFitLightTokens.textPrimary : Color.white
-    }
-
-    private var mockSecondaryInk: Color {
-        palette.isLight ? WeekFitLightTokens.textSecondary : Color.white.opacity(0.88)
-    }
-
-    private var mockFill: Color {
-        palette.isLight ? WeekFitLightTokens.surfacePrimary : Color.black
-    }
-
-    private var mockCoachWell: Color {
-        palette.isLight ? WeekFitLightTokens.coachPurpleSoft : Color.white.opacity(0.05)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            brandMark
-                .opacity(logoVisible ? 1 : 0)
-                .scaleEffect(logoVisible ? 1 : 0.92)
-                .padding(.bottom, 28)
-
-            copyBlock
-                .opacity(copyVisible ? 1 : 0)
-                .offset(y: copyVisible ? 0 : 12)
-
-            phoneHero
-                .padding(.top, 14)
-                .opacity(phoneVisible ? 1 : 0)
-                .offset(y: phoneVisible ? 0 : 18)
-                .scaleEffect(phoneVisible ? 1 : 0.96)
-
-            healthBadge
-                .padding(.top, 20)
-                .opacity(badgeVisible ? 1 : 0)
-                .offset(y: badgeVisible ? 0 : 8)
-
-            Spacer(minLength: 8)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .onAppear { runEntrance() }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilitySummary)
-    }
-
-    private var accessibilitySummary: String {
-        WeekFitLocalizedString("onboarding.v11.splash.headline")
-            + " "
-            + WeekFitLocalizedString("onboarding.v11.splash.subhead.emphasis")
-            + Self.spacedSplashSuffix()
-            + " "
-            + WeekFitLocalizedString("onboarding.v11.splash.tagline")
-    }
-
-    /// Ensure emphasis+suffix concatenation never glues Latin words (`zähltwenn`).
-    private static func spacedSplashSuffix() -> String {
-        let suffix = WeekFitLocalizedString("onboarding.v11.splash.subhead.suffix")
-        guard let first = suffix.unicodeScalars.first else { return suffix }
-        if CharacterSet.whitespacesAndNewlines.contains(first)
-            || CharacterSet.punctuationCharacters.contains(first) {
-            return suffix
-        }
-        return " " + suffix
-    }
-
-    private var brandMark: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ZStack {
-                Ellipse()
-                    .fill(gold.opacity(logoVisible ? (palette.isLight ? 0.14 : 0.28) : 0))
-                    .frame(width: 96, height: 36)
-                    .blur(radius: 16)
-                    .offset(y: 8)
-
-                Image("weekfit-logo")
-                    .resizable()
-                    .renderingMode(.original)
-                    .scaledToFit()
-                    .frame(height: 36)
-                    .shadow(
-                        color: gold.opacity(palette.isLight ? 0.22 : 0.5),
-                        radius: logoVisible ? (palette.isLight ? 8 : 14) : 0,
-                        y: 3
-                    )
-                    .overlay {
-                        GeometryReader { geo in
-                            LinearGradient(
-                                colors: [
-                                    .clear,
-                                    Color.white.opacity(palette.isLight ? 0.35 : 0.55),
-                                    .clear
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                            .frame(width: geo.size.width * 0.34)
-                            .rotationEffect(.degrees(18))
-                            .offset(x: shimmerPhase * geo.size.width)
-                            .blendMode(.softLight)
-                        }
-                        .mask {
-                            Image("weekfit-logo")
-                                .resizable()
-                                .scaledToFit()
-                        }
-                    }
-            }
-            .frame(height: 40, alignment: .leading)
-
-            Text("WEEKFIT")
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .tracking(3.2)
-                .foregroundStyle(
-                    palette.isLight
-                        ? WeekFitLightTokens.brandGoldDark
-                        : gold.opacity(0.88)
-                )
-        }
-        .accessibilityHidden(true)
-    }
-
-    private var copyBlock: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(WeekFitLocalizedString("onboarding.v11.splash.headline"))
-                .font(.system(size: headlineSize, weight: .bold, design: .rounded))
-                .foregroundStyle(headlineInk)
-                .tracking(-0.8)
-                .lineLimit(2)
-                .minimumScaleFactor(0.78)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader)
-
-            (
-                Text(WeekFitLocalizedString("onboarding.v11.splash.subhead.emphasis"))
-                    .foregroundStyle(subheadEmphasisInk)
-                + Text(Self.spacedSplashSuffix())
-                    .foregroundStyle(subheadSuffixInk)
-            )
-            .font(.system(size: subheadSize, weight: .medium, design: .rounded))
-            .fixedSize(horizontal: false, vertical: true)
-
-            Text(WeekFitLocalizedString("onboarding.v11.splash.tagline"))
-                .font(.system(size: taglineSize, weight: .medium))
-                .foregroundStyle(taglineInk)
-                .padding(.top, 2)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    private var phoneHero: some View {
-        ZStack {
-            if palette.isLight {
-                // Quiet contact shadow — no gold disc under the ceramic preview.
-                Ellipse()
-                    .fill(Color.black.opacity(glowPulse ? 0.06 : 0.035))
-                    .frame(width: 240, height: 56)
-                    .blur(radius: 22)
-                    .offset(y: 88)
-            } else {
-                Ellipse()
-                    .fill(gold.opacity(glowPulse ? 0.17 : 0.08))
-                    .frame(width: 260, height: 180)
-                    .blur(radius: 34)
-                    .offset(y: 10)
-            }
-
-            phoneBezel
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 222)
-    }
-
-    private var phoneBezel: some View {
-        VStack(spacing: 0) {
-            Capsule()
-                .fill(palette.isLight ? WeekFitLightTokens.textQuaternary.opacity(0.55) : Color.black)
-                .frame(width: 58, height: 7)
-                .padding(.top, 10)
-                .padding(.bottom, 10)
-
-            HStack {
-                Text(WeekFitLocalizedString("onboarding.v11.splash.phone.today"))
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundStyle(mockPrimaryInk)
-                Spacer()
-                Image(systemName: "person.fill")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(
-                        palette.isLight
-                            ? WeekFitLightTokens.brandGoldDark
-                            : gold.opacity(0.9)
-                    )
-                    .frame(width: 24, height: 24)
-                    .background {
-                        Circle()
-                            .stroke(
-                                (palette.isLight ? WeekFitLightTokens.brandGold : gold).opacity(0.7),
-                                lineWidth: 1
-                            )
-                            .background {
-                                Circle().fill(
-                                    palette.isLight
-                                        ? WeekFitLightTokens.surfaceSecondary
-                                        : Color.white.opacity(0.06)
-                                )
-                            }
-                    }
-                    .accessibilityHidden(true)
-            }
-            .padding(.horizontal, 16)
-
-            HStack(spacing: 12) {
-                splashRing(
-                    progress: OnboardingSampleData.activityProgress,
-                    color: WeekFitProgressRingColor.activity,
-                    label: "\(OnboardingSampleData.activityPercent)%"
-                )
-                splashRing(
-                    progress: OnboardingSampleData.nutritionProgress,
-                    color: WeekFitProgressRingColor.nutrition,
-                    label: "\(OnboardingSampleData.nutritionPercent)%"
-                )
-                splashRing(
-                    progress: OnboardingSampleData.morningRecoveryProgress,
-                    color: WeekFitProgressRingColor.recovery,
-                    label: "\(OnboardingSampleData.morningRecoveryPercent)%"
-                )
-            }
-            .padding(.top, 14)
-            .padding(.horizontal, 16)
-
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "brain.head.profile")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(WeekFitTheme.coachAccent)
-                    .frame(width: 28, height: 28)
-                    .background {
-                        Circle().fill(
-                            palette.isLight
-                                ? WeekFitLightTokens.coachPurpleSoft
-                                : WeekFitTheme.coachAccent.opacity(0.16)
-                        )
-                    }
-
-                Text(WeekFitLocalizedString("onboarding.v11.splash.phone.coach"))
-                    .font(.system(size: phoneCoachSize, weight: .semibold, design: .rounded))
-                    .foregroundStyle(mockSecondaryInk)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(12)
-            .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(mockCoachWell)
-            }
-            .padding(.horizontal, 14)
-            .padding(.top, 14)
-            .padding(.bottom, 16)
-        }
-        .frame(maxWidth: 294)
-        .background {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(mockFill)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(
-                            LinearGradient(
-                                colors: palette.isLight
-                                    ? [
-                                        Color.white.opacity(0.95),
-                                        WeekFitLightTokens.cardBorder.opacity(0.08),
-                                        WeekFitLightTokens.brandGold.opacity(0.28)
-                                    ]
-                                    : [
-                                        gold.opacity(0.85),
-                                        WeekFitTheme.brandGoldDeep.opacity(0.35),
-                                        gold.opacity(0.55)
-                                    ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: palette.isLight ? 1.0 : 1.4
-                        )
-                }
-                .shadow(
-                    color: palette.isLight
-                        ? Color.black.opacity(0.06)
-                        : gold.opacity(0.28),
-                    radius: palette.isLight ? 8 : 24,
-                    y: palette.isLight ? 4 : 10
-                )
-                .shadow(
-                    color: palette.isLight
-                        ? Color.black.opacity(0.04)
-                        : Color.clear,
-                    radius: palette.isLight ? 22 : 0,
-                    y: palette.isLight ? 12 : 0
-                )
-        }
-    }
-
-    private func splashRing(progress: CGFloat, color: Color, label: String) -> some View {
-        WeekFitProgressRing(
-            progress: ringProgress * min(progress, 1.0),
-            color: color,
-            size: 61,
-            strokeWidth: 3.6
-        ) {
-            Text(label)
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(mockPrimaryInk)
-                .monospacedDigit()
-                .minimumScaleFactor(0.7)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        }
-        .shadow(
-            color: color.opacity(ringProgress > 0 ? (palette.isLight ? 0.18 : 0.35) : 0),
-            radius: palette.isLight ? 4 : 8,
-            y: 1
-        )
-    }
-
-    private var healthBadge: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "apple.logo")
-                .font(.system(size: 13, weight: .semibold))
-            Text(WeekFitLocalizedString("onboarding.v11.splash.healthBadge"))
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-        }
-        .foregroundStyle(
-            palette.isLight
-                ? WeekFitLightTokens.textSecondary
-                : WeekFitTheme.whiteOpacity(0.82)
-        )
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
-        .background {
-            Capsule()
-                .stroke(
-                    LinearGradient(
-                        colors: palette.isLight
-                            ? [
-                                WeekFitLightTokens.brandGold.opacity(0.55),
-                                WeekFitLightTokens.brandGoldDark.opacity(0.4)
-                            ]
-                            : [gold.opacity(0.8), WeekFitTheme.brandGoldDeep.opacity(0.45)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    ),
-                    lineWidth: 1
-                )
-                .background {
-                    Capsule().fill(
-                        palette.isLight
-                            ? WeekFitLightTokens.surfacePrimary
-                            : Color.white.opacity(0.03)
-                    )
-                }
-        }
-    }
-
-    private func runEntrance() {
-        if reduceMotion {
-            logoVisible = true
-            copyVisible = true
-            phoneVisible = true
-            badgeVisible = true
-            glowPulse = true
-            shimmerPhase = 1.4
-            ringProgress = 1
-            return
-        }
-
-        withAnimation(.spring(response: 0.62, dampingFraction: 0.78)) {
-            logoVisible = true
-        }
-        withAnimation(.easeInOut(duration: 1.0).delay(0.22)) {
-            shimmerPhase = 1.35
-        }
-        withAnimation(.spring(response: 0.58, dampingFraction: 0.86).delay(0.28)) {
-            copyVisible = true
-        }
-        withAnimation(.spring(response: 0.64, dampingFraction: 0.82).delay(0.48)) {
-            phoneVisible = true
-        }
-        withAnimation(.easeOut(duration: 0.95).delay(0.55)) {
-            ringProgress = 1
-        }
-        withAnimation(.easeInOut(duration: 1.4).delay(0.7)) {
-            glowPulse = true
-        }
-        withAnimation(.spring(response: 0.55, dampingFraction: 0.88).delay(0.85)) {
-            badgeVisible = true
-        }
-
-        #if !targetEnvironment(simulator)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.52) {
-            let generator = UIImpactFeedbackGenerator(style: .soft)
-            generator.prepare()
-            generator.impactOccurred()
-        }
-        #endif
-    }
-}
-
 // MARK: - Causality chain (body → Health → WeekFit → Coach)
 
 struct OnboardingCausalityStage: View {
@@ -1353,8 +910,12 @@ struct OnboardingReadyClimax: View {
                 .opacity(visible ? 1 : 0)
                 .offset(y: visible ? 0 : 10)
 
-            OnboardingHelper(text: footerLine)
+            OnboardingHelper(text: WeekFitLocalizedString("onboarding.v16.ready.healthFootnote"))
                 .padding(.top, OnboardingLayout.contentToHelper)
+                .opacity(visible ? 1 : 0)
+
+            OnboardingHelper(text: footerLine)
+                .padding(.top, 6)
                 .opacity(visible ? 1 : 0)
 
             Spacer(minLength: OnboardingLayout.minBreathingRoom)
@@ -1383,21 +944,39 @@ struct OnboardingReadyClimax: View {
                 coachRow(icon: "moon.fill", color: WeekFitProgressRingColor.recovery, text: recoveryLine)
             }
 
-            HStack(spacing: 14) {
-                readyRing(
+            HStack(alignment: .top, spacing: 8) {
+                OnboardingLabeledRing(
                     progress: CGFloat(activity) / 100,
-                    color: WeekFitProgressRingColor.activity,
-                    label: "\(activity)%"
+                    color: OnboardingMetricKind.activity.color,
+                    percentText: "\(activity)%",
+                    icon: OnboardingMetricKind.activity.icon,
+                    title: OnboardingMetricKind.activity.title,
+                    size: 56,
+                    strokeWidth: 3.6,
+                    ink: WeekFitTheme.primaryText,
+                    labelInk: WeekFitTheme.secondaryText
                 )
-                readyRing(
+                OnboardingLabeledRing(
                     progress: CGFloat(nutrition) / 100,
-                    color: WeekFitProgressRingColor.nutrition,
-                    label: "\(nutrition)%"
+                    color: OnboardingMetricKind.nutrition.color,
+                    percentText: "\(nutrition)%",
+                    icon: OnboardingMetricKind.nutrition.icon,
+                    title: OnboardingMetricKind.nutrition.title,
+                    size: 56,
+                    strokeWidth: 3.6,
+                    ink: WeekFitTheme.primaryText,
+                    labelInk: WeekFitTheme.secondaryText
                 )
-                readyRing(
+                OnboardingLabeledRing(
                     progress: CGFloat(recovery) / 100,
-                    color: WeekFitProgressRingColor.recovery,
-                    label: "\(recovery)%"
+                    color: OnboardingMetricKind.recovery.color,
+                    percentText: "\(recovery)%",
+                    icon: OnboardingMetricKind.recovery.icon,
+                    title: OnboardingMetricKind.recovery.title,
+                    size: 56,
+                    strokeWidth: 3.6,
+                    ink: WeekFitTheme.primaryText,
+                    labelInk: WeekFitTheme.secondaryText
                 )
             }
             .frame(maxWidth: .infinity)
@@ -1438,25 +1017,6 @@ struct OnboardingReadyClimax: View {
         }
     }
 
-    private func readyRing(progress: CGFloat, color: Color, label: String) -> some View {
-        WeekFitProgressRing(
-            progress: min(max(progress, 0), 1),
-            color: color,
-            size: 58,
-            strokeWidth: 3.6
-        ) {
-            Text(label)
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(WeekFitTheme.primaryText)
-                .monospacedDigit()
-                .minimumScaleFactor(0.7)
-        }
-        .shadow(
-            color: color.opacity(palette.isLight ? 0.16 : 0.3),
-            radius: palette.isLight ? 4 : 8,
-            y: 1
-        )
-    }
 }
 
 // MARK: - Begin: sacred calm climax

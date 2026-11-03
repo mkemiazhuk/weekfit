@@ -190,4 +190,24 @@ final class SubscriptionAnalyticsTests: XCTestCase {
         let event = try! XCTUnwrap(recording.events(named: .subscriptionPurchaseFailed).first)
         XCTAssertEqual(event.parameters[AnalyticsParameterKey.failureReason], "verification_failed")
     }
+
+    func testPurchaseSuccessSkipsSandboxAndXcode() {
+        SubscriptionAnalytics.purchaseSuccess(
+            productID: WeekFitSubscriptionProductID.annual.rawValue,
+            storeEnvironment: "sandbox"
+        )
+        SubscriptionAnalytics.purchaseSuccess(
+            productID: WeekFitSubscriptionProductID.annual.rawValue,
+            storeEnvironment: "xcode"
+        )
+        XCTAssertTrue(recording.events(named: .subscriptionPurchaseSuccess).isEmpty)
+
+        SubscriptionAnalytics.purchaseSuccess(
+            productID: WeekFitSubscriptionProductID.annual.rawValue,
+            storeEnvironment: "production"
+        )
+        XCTAssertEqual(recording.events(named: .subscriptionPurchaseSuccess).count, 1)
+        let event = try! XCTUnwrap(recording.events(named: .subscriptionPurchaseSuccess).first)
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.storeEnvironment], "production")
+    }
 }

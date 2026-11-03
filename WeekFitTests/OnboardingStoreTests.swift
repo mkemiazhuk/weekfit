@@ -54,8 +54,8 @@ final class OnboardingStoreTests: XCTestCase {
         XCTAssertEqual(defaults.integer(forKey: OnboardingStore.Keys.flowVersion), OnboardingStore.currentFlowVersion)
     }
 
-    func testCurrentFlowVersionIsFourteen() {
-        XCTAssertEqual(OnboardingStore.currentFlowVersion, 14)
+    func testCurrentFlowVersionIsSeventeen() {
+        XCTAssertEqual(OnboardingStore.currentFlowVersion, 17)
     }
 
     private func clearOnboardingKeys() {

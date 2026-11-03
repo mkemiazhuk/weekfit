@@ -3,7 +3,9 @@ import Foundation
 /// User preference for Firebase **product Analytics** collection.
 ///
 /// - Default / missing choice → **ON** (Share Usage Data).
-/// - Users can still turn it off in Settings.
+/// - App Store: users can turn it off in Settings.
+/// - DEBUG / Xcode and TestFlight do not offer the toggle
+///   (`AppDistribution.offersShareUsageData`); collection stays off.
 /// - Crashlytics is independent (see `FirebaseEnvironment`).
 /// - Preference is local-only; never sent as an analytics parameter.
 enum ProductAnalyticsConsent {

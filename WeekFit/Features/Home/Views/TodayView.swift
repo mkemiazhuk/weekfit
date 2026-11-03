@@ -48,6 +48,7 @@ struct TodayView: View {
     @State private var mayaPaywallID = UUID().uuidString
     @State private var mayaPaywallHadAccess = false
     @State private var openingMaya = false
+    @State private var mayaBalance: MayaCallBalance?
     @AppStorage(NotificationPreferenceKey.activityReminders)
     private var activityRemindersEnabled = false
     @AppStorage(NotificationPreferenceKey.completionCheckIns)
@@ -536,6 +537,20 @@ struct TodayView: View {
         }
         .task {
             await refreshMayaAccess()
+            await refreshMayaBalance()
+        }
+        // The server settles a call's seconds after it ends; purchases and subscriptions change the balance too.
+        .onChange(of: showPlannerVoice) { _, isOpen in
+            if !isOpen { Task { await refreshMayaBalance() } }
+        }
+        .onChange(of: aiTopUpPack) { _, pack in
+            if pack == nil { Task { await refreshMayaBalance() } }
+        }
+        .onChange(of: showAIUsage) { _, isOpen in
+            if !isOpen { Task { await refreshMayaBalance() } }
+        }
+        .onChange(of: subscriptionManager.canUseCloudPhotoNutritionAnalysis) { _, _ in
+            Task { await refreshMayaBalance() }
         }
         .fullScreenCover(isPresented: $showActivityIntelligence) {
             ActivityIntelligenceView(
@@ -682,6 +697,7 @@ struct TodayView: View {
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             refreshTodayAfterAppBecameActive()
+            Task { await refreshMayaBalance() }
         }
         .task(id: todayMiddleClockID) {
             await refreshTodayMiddleClock()
@@ -1565,7 +1581,7 @@ struct TodayView: View {
                 let _ = TodayStartupDiagnostics.child("dailyStatusSection complete")
 
                 if plannerVoiceEnabled {
-                    MayaPearlCallCard(isReturning: showPlannerVoice, isOpening: openingMaya) {
+                    MayaPearlCallCard(isReturning: showPlannerVoice, isOpening: openingMaya, balance: mayaBalance) {
                         openMayaCall()
                     }
                 }
@@ -2738,12 +2754,18 @@ struct TodayView: View {
                 presentMayaPaywall()
                 return
             }
+            // A balance already on the card answers the tap; the session still checks it on the server.
+            if case .seconds(let seconds) = mayaBalance {
+                if seconds > 0 { showPlannerVoice = true } else { aiTopUpPack = .time }
+                return
+            }
             openingMaya = true
             Task {
                 defer { openingMaya = false }
                 do {
                     await WeekFitVoiceStopQueue.shared.flush()
                     let usage = try await WeekFitAIClient().usage()
+                    mayaBalance = MayaCallBalance(usage)
                     // Seconds still held by the last call come back when the server opens the next one.
                     if usage.active && usage.voice.total + usage.voice.reserved > 0 { showPlannerVoice = true }
                     else if usage.active { aiTopUpPack = .time }
@@ -2756,6 +2778,24 @@ struct TodayView: View {
         }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         showPlannerVoice = true
+    }
+
+    /// Keeps the last known balance on a network error, so the card does not flicker.
+    private func refreshMayaBalance() async {
+        guard WeekFitAIBilling.enabled, plannerVoiceEnabled else {
+            mayaBalance = nil
+            return
+        }
+        guard subscriptionManager.canUseCloudPhotoNutritionAnalysis else {
+            mayaBalance = .needsPremium
+            return
+        }
+        await WeekFitVoiceStopQueue.shared.flush()
+        do {
+            mayaBalance = MayaCallBalance(try await WeekFitAIClient().usage())
+        } catch WeekFitAIUsageError.subscriptionRequired {
+            mayaBalance = .needsPremium
+        } catch {}
     }
 
     private func presentMayaPaywall() {

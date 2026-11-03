@@ -60,10 +60,10 @@ enum AnalyticsParameterKey {
 enum OnboardingAnalyticsStep: String, Sendable, CaseIterable {
     case promise
     case goal
-    case units
+    case nutritionShowcase = "nutrition_showcase"
     case health
     case understanding
-    case photoMeals = "photo_meals"
+    case mayaCall = "maya_call"
     case ready
 }
 

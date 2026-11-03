@@ -444,12 +444,17 @@ private extension ProfileView {
             && !authViewModel.isAppleSignedIn
             && !AppReviewDemoCredentials.hasActiveSession
         let legalItems = viewModel.privacyLegalSettings
+        let offersShareUsageData = AppDistribution.current.offersShareUsageData
 
         return SettingsGroupedSection(title: AppText.Settings.Profile.privacyDataSection) {
-            shareProductAnalyticsRow
+            if offersShareUsageData {
+                shareProductAnalyticsRow
+            }
 
             if showsRecoveryChallengeSummaryEntry {
-                SettingsGroupDivider()
+                if offersShareUsageData {
+                    SettingsGroupDivider()
+                }
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     showRecoveryChallengeSummary = true
@@ -466,7 +471,8 @@ private extension ProfileView {
                 .accessibilityIdentifier("settings.recoveryChallengeSummary")
             }
 
-            if showSignInWithApple || showReset || !legalItems.isEmpty {
+            if (offersShareUsageData || showsRecoveryChallengeSummaryEntry)
+                && (showSignInWithApple || showReset || !legalItems.isEmpty) {
                 SettingsGroupDivider()
             }
 

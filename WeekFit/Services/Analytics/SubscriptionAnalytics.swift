@@ -86,6 +86,9 @@ enum SubscriptionAnalytics {
             requestedTab: requestedTab,
             paywallInstanceID: paywallInstanceID
         )
+        guard StoreKitTransactionAnalytics.shouldSharePurchaseFunnel(
+            environmentToken: storeEnvironment
+        ) else { return }
         if let storeEnvironment, !storeEnvironment.isEmpty {
             parameters[AnalyticsParameterKey.storeEnvironment] = storeEnvironment
         }

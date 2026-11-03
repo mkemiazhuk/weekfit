@@ -14,17 +14,17 @@ struct LoginInsightCardData: Identifiable, Equatable {
 
     enum Accent: Equatable {
         case recovery
-        case sleep
-        case workout
+        case meal
+        case activity
 
         var iconColor: Color {
             switch self {
             case .recovery:
                 Color(red: 0.54, green: 0.88, blue: 0.65)
-            case .sleep:
-                Color(red: 0.50, green: 0.36, blue: 0.88)
-            case .workout:
-                Color(red: 0.96, green: 0.56, blue: 0.26)
+            case .meal:
+                WeekFitSemanticMetricTokens.nutrition
+            case .activity:
+                WeekFitSemanticMetricTokens.activity
             }
         }
 
@@ -32,10 +32,10 @@ struct LoginInsightCardData: Identifiable, Equatable {
             switch self {
             case .recovery:
                 "heart.fill"
-            case .sleep:
-                "moon.fill"
-            case .workout:
-                "figure.mind.and.body"
+            case .meal:
+                "fork.knife"
+            case .activity:
+                "figure.run"
             }
         }
     }
@@ -65,20 +65,20 @@ enum LoginOnboardingInsights {
                 prominence: .primary
             ),
             LoginInsightCardData(
-                id: "sleep",
-                accent: .sleep,
-                title: WeekFitLocalizedString("login.card.sleep.title"),
-                value: WeekFitLocalizedString("login.card.sleep.value"),
-                subtitle: WeekFitLocalizedString("login.card.sleep.subtitle"),
+                id: "meal",
+                accent: .meal,
+                title: WeekFitLocalizedString("login.card.meal.title"),
+                value: WeekFitLocalizedString("login.card.meal.value"),
+                subtitle: WeekFitLocalizedString("login.card.meal.subtitle"),
                 accessory: .bars,
                 prominence: .supporting(1)
             ),
             LoginInsightCardData(
-                id: "workout",
-                accent: .workout,
-                title: WeekFitLocalizedString("login.card.workout.title"),
-                value: WeekFitLocalizedString("login.card.workout.value"),
-                subtitle: WeekFitLocalizedString("login.card.workout.subtitle"),
+                id: "activity",
+                accent: .activity,
+                title: WeekFitLocalizedString("login.card.activity.title"),
+                value: WeekFitLocalizedString("login.card.activity.value"),
+                subtitle: WeekFitLocalizedString("login.card.activity.subtitle"),
                 accessory: .spark,
                 prominence: .supporting(2)
             )

@@ -1,3 +1,4 @@
+import FirebaseAnalytics
 import FirebaseCore
 import Foundation
 import OSLog
@@ -43,6 +44,10 @@ enum FirebaseBootstrap {
         #endif
 
         // Do not probe FirebaseApp.app() here — that emits the pre-configure warning.
+        #if DEBUG
+        // Before configure so Xcode runs cannot emit first_open into production.
+        Analytics.setAnalyticsCollectionEnabled(false)
+        #endif
         FirebaseApp.configure()
         didConfigureFirebase = true
 
