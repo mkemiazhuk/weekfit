@@ -102,7 +102,7 @@ struct WeekFitBottomBar: View {
     }
 
     private var tabSelectionAnimation: Animation? {
-        reduceMotion ? nil : .easeInOut(duration: 0.28)
+        reduceMotion ? nil : .spring(duration: 0.38, bounce: 0.16)
     }
 
     var body: some View {
@@ -133,69 +133,27 @@ struct WeekFitBottomBar: View {
 
     @ViewBuilder
     private var barChrome: some View {
-        if palette.isLight {
-            // Premium frosted island — bright milk glass, hairline rim, layered lift.
-            Capsule(style: .continuous)
-                .fill(.ultraThinMaterial)
-                .background {
-                    Capsule(style: .continuous)
-                        .fill(Color.white.opacity(0.82))
-                }
-                .overlay {
-                    Capsule(style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.92),
-                                    Color.white.opacity(0.35),
-                                    Color.white.opacity(0.12)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .blendMode(.softLight)
-                }
-                .overlay {
-                    Capsule(style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.95),
-                                    WeekFitLightTokens.cardBorder.opacity(0.14)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
-                            lineWidth: 0.85
-                        )
-                }
-                .shadow(color: Color.black.opacity(0.04), radius: 1, y: 0.5)
-                .shadow(color: Color.black.opacity(0.06), radius: 8, y: 4)
-                .shadow(color: Color.black.opacity(0.04), radius: 18, y: 10)
-        } else {
-            // Quiet OLED island — sits in the night canvas, not a bright chrome slab.
-            Capsule(style: .continuous)
-                .fill(Color(red: 0.09, green: 0.09, blue: 0.11).opacity(0.92))
-                .overlay {
-                    Capsule(style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.05),
-                                    Color.clear
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                }
-                .overlay {
-                    Capsule(style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.06), lineWidth: 0.6)
-                }
-                .shadow(color: Color.black.opacity(0.28), radius: 10, y: 5)
-        }
+        Capsule(style: .continuous)
+            .fill(.ultraThinMaterial)
+            .overlay {
+                Capsule(style: .continuous)
+                    .fill(palette.isLight ? Color.white.opacity(0.72) : Color.black.opacity(0.38))
+            }
+            .overlay {
+                Capsule(style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(palette.isLight ? 0.9 : 0.26),
+                                Color.black.opacity(palette.isLight ? 0.04 : 0.20)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
+            .shadow(color: Color.black.opacity(palette.isLight ? 0.04 : 0.32), radius: 18, y: 8)
     }
 
     private func tabItem(_ tab: WeekFitTab) -> some View {

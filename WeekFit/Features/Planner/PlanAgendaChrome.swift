@@ -255,39 +255,66 @@ enum PlanAgendaCompletionControl: Equatable {
 
 struct PlanAgendaSectionSurface: ViewModifier {
     @Environment(\.weekFitPalette) private var palette
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     var compact: Bool = false
     /// Day-type chrome for the summary card (flat light fills; soft dark wash).
     var dayKind: PlanDayKind? = nil
+
+    private var usesGlass: Bool { !palette.isLight && !reduceTransparency }
 
     func body(content: Content) -> some View {
         content
             .padding(compact ? PlanAgendaLayout.calendarSectionPadding : PlanAgendaLayout.sectionPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                RoundedRectangle(cornerRadius: PlanAgendaLayout.sectionCornerRadius, style: .continuous)
-                    .fill(sectionFill)
-                    .overlay {
-                        if let dayKind, !palette.isLight {
-                            RoundedRectangle(
-                                cornerRadius: PlanAgendaLayout.sectionCornerRadius,
-                                style: .continuous
-                            )
-                            .fill(WeekFitPlanChromeTokens.daySummaryAccentOverlay(
-                                kind: dayKind,
-                                isLight: false
-                            ))
-                        }
-                    }
-            }
+            .background { sectionPlate }
             .overlay {
-                RoundedRectangle(cornerRadius: PlanAgendaLayout.sectionCornerRadius, style: .continuous)
-                    .strokeBorder(sectionStroke, lineWidth: 0.6)
+                if !usesGlass {
+                    RoundedRectangle(cornerRadius: PlanAgendaLayout.sectionCornerRadius, style: .continuous)
+                        .strokeBorder(sectionStroke, lineWidth: 0.6)
+                }
             }
             .shadow(
-                color: palette.isLight ? Color.black.opacity(0.03) : Color.black.opacity(0.16),
+                color: usesGlass ? .clear : (palette.isLight ? Color.black.opacity(0.03) : Color.black.opacity(0.16)),
                 radius: palette.isLight ? 2 : 3,
                 y: 1
             )
+    }
+
+    @ViewBuilder
+    private var sectionPlate: some View {
+        if usesGlass {
+            WeekFitDarkGlassPlate(
+                cornerRadius: PlanAgendaLayout.sectionCornerRadius,
+                tint: glassTint
+            )
+        } else {
+            RoundedRectangle(cornerRadius: PlanAgendaLayout.sectionCornerRadius, style: .continuous)
+                .fill(sectionFill)
+                .overlay {
+                    if let dayKind, !palette.isLight {
+                        RoundedRectangle(
+                            cornerRadius: PlanAgendaLayout.sectionCornerRadius,
+                            style: .continuous
+                        )
+                        .fill(WeekFitPlanChromeTokens.daySummaryAccentOverlay(
+                            kind: dayKind,
+                            isLight: false
+                        ))
+                    }
+                }
+        }
+    }
+
+    private var glassTint: Color? {
+        guard let dayKind else { return nil }
+        switch dayKind {
+        case .recovery:
+            return WeekFitSemanticMetricTokens.recovery
+        case .endurance, .load, .mixed:
+            return WeekFitSemanticMetricTokens.activity
+        case .open:
+            return nil
+        }
     }
 
     private var sectionFill: Color {

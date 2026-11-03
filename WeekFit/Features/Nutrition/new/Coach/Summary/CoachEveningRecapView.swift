@@ -20,6 +20,7 @@ struct CoachEveningRecapView: View {
 
     @Environment(\.weekFitPalette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @EnvironmentObject private var languageManager: AppLanguageManager
 
@@ -250,15 +251,19 @@ struct CoachEveningRecapView: View {
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(CoachEveningRecapChrome.noteCardFill(isLight: palette.isLight))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(
-                            CoachEveningRecapChrome.noteCardStroke(isLight: palette.isLight),
-                            lineWidth: 1
-                        )
-                }
+            if !palette.isLight && !reduceTransparency {
+                WeekFitDarkGlassPlate(cornerRadius: 20, tint: copper)
+            } else {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(CoachEveningRecapChrome.noteCardFill(isLight: palette.isLight))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .strokeBorder(
+                                CoachEveningRecapChrome.noteCardStroke(isLight: palette.isLight),
+                                lineWidth: 1
+                            )
+                    }
+            }
         }
         .accessibilityElement(children: .contain)
     }

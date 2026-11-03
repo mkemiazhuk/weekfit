@@ -42,35 +42,55 @@ struct WeekFitPremiumCardModifier: ViewModifier {
         accent != nil
     }
 
+    /// Same frost as Today. Light and Reduce Transparency keep the matte plate.
+    private var usesGlass: Bool { !palette.isLight && !reduceTransparency }
+
     func body(content: Content) -> some View {
         content
-            .background {
-                RoundedRectangle(cornerRadius: resolvedRadius, style: .continuous)
-                    .fill(matteBase)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: resolvedRadius, style: .continuous)
-                            .fill(surfaceLightGradient)
-                    }
-                    .overlay {
-                        if shouldShowAccentWash {
-                            RoundedRectangle(cornerRadius: resolvedRadius, style: .continuous)
-                                .fill(accentWashGradient)
-                        }
-                    }
-                    // Shadow on the rounded shape — never compositingGroup→shadow (rectangular slab).
-                    .shadow(color: contactShadowColor, radius: contactShadowRadius, y: contactShadowY)
-                    .shadow(color: ambientShadowColor, radius: ambientShadowRadius, y: ambientShadowY)
-                    .shadow(color: primaryShadowColor, radius: primaryShadowRadius, y: primaryShadowY)
-            }
-            .overlay {
-                if showsBorder {
-                RoundedRectangle(cornerRadius: resolvedRadius, style: .continuous)
-                    .strokeBorder(
-                        borderGradient(boost: increasedContrast ? 1.35 : 1.0),
-                        lineWidth: increasedContrast ? 1.25 : (palette.isLight ? 1.15 : 1)
-                    )
+            .background { plate }
+            .overlay { rim }
+    }
+
+    @ViewBuilder
+    private var plate: some View {
+        if usesGlass {
+            WeekFitDarkGlassPlate(
+                cornerRadius: resolvedRadius,
+                elevated: emphasis == .elevated,
+                tint: hasSemanticAccent ? accent : nil,
+                shadowOpacity: emphasis == .compact ? 0.28 : 0.36,
+                shadowRadius: emphasis == .compact ? 10 : 18,
+                shadowY: emphasis == .compact ? 5 : 10
+            )
+        } else {
+            RoundedRectangle(cornerRadius: resolvedRadius, style: .continuous)
+                .fill(matteBase)
+                .overlay {
+                    RoundedRectangle(cornerRadius: resolvedRadius, style: .continuous)
+                        .fill(surfaceLightGradient)
                 }
-            }
+                .overlay {
+                    if shouldShowAccentWash {
+                        RoundedRectangle(cornerRadius: resolvedRadius, style: .continuous)
+                            .fill(accentWashGradient)
+                    }
+                }
+                // Shadow on the rounded shape — never compositingGroup→shadow (rectangular slab).
+                .shadow(color: contactShadowColor, radius: contactShadowRadius, y: contactShadowY)
+                .shadow(color: ambientShadowColor, radius: ambientShadowRadius, y: ambientShadowY)
+                .shadow(color: primaryShadowColor, radius: primaryShadowRadius, y: primaryShadowY)
+        }
+    }
+
+    @ViewBuilder
+    private var rim: some View {
+        if showsBorder && !usesGlass {
+            RoundedRectangle(cornerRadius: resolvedRadius, style: .continuous)
+                .strokeBorder(
+                    borderGradient(boost: increasedContrast ? 1.35 : 1.0),
+                    lineWidth: increasedContrast ? 1.25 : (palette.isLight ? 1.15 : 1)
+                )
+        }
     }
 
     // MARK: - Fill

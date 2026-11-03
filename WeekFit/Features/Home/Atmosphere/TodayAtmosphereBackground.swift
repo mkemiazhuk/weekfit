@@ -25,56 +25,21 @@ struct TodayAtmosphereBackground: View {
         .animation(palette.isLight ? nil : .easeInOut(duration: 0.45), value: palette.appearance)
     }
 
-    // MARK: - Light: warm ivory + subtle top glow only
+    // MARK: - Light: porcelain, with a quiet pool of light in the center
 
     private var lightCanvas: some View {
         ZStack {
-            palette.appScreenBackground
+            Color(red: 0.988, green: 0.973, blue: 0.945)
 
-            // Top champagne glow — restrained, header-only.
             RadialGradient(
                 colors: [
-                    WeekFitLightTokens.backgroundTopGlow.opacity(0.55 * ambientOpacity),
-                    WeekFitLightTokens.backgroundTopGlow.opacity(0.18 * ambientOpacity),
+                    Color(red: 1.0, green: 0.965, blue: 0.90).opacity(0.55 * ambientOpacity),
                     Color.clear
                 ],
-                center: UnitPoint(x: 0.50, y: 0.0),
-                startRadius: 4,
-                endRadius: 260
+                center: UnitPoint(x: 0.5, y: 0.16),
+                startRadius: 8,
+                endRadius: 340
             )
-
-            // Quiet semantic wash (mode-aware, barely perceptible).
-            RadialGradient(
-                colors: [
-                    lightModeAccent.opacity(0.028 * ambientOpacity),
-                    Color.clear
-                ],
-                center: UnitPoint(x: 0.88, y: 0.16),
-                startRadius: 20,
-                endRadius: 240
-            )
-
-            // Soft edge vignette — neutral, not gold-washed.
-            RadialGradient(
-                colors: [
-                    Color.clear,
-                    WeekFitLightTokens.shadowAmbient.opacity(0.045 * ambientOpacity)
-                ],
-                center: .center,
-                startRadius: 200,
-                endRadius: 540
-            )
-        }
-    }
-
-    private var lightModeAccent: Color {
-        switch snapshot.mode {
-        case .ready:
-            return WeekFitLightTokens.activity
-        case .protect:
-            return WeekFitLightTokens.recovery
-        case .load:
-            return WeekFitLightTokens.nutrition
         }
     }
 

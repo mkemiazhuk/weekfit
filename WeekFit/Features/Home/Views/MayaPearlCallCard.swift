@@ -39,7 +39,6 @@ struct MayaPearlCallCard: View {
     var action: () -> Void
 
     @Environment(\.weekFitPalette) private var palette
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @ScaledMetric(relativeTo: .body) private var titleSize: CGFloat = 17
     @ScaledMetric(relativeTo: .subheadline) private var messageSize: CGFloat = 15
     @ScaledMetric(relativeTo: .footnote) private var noteSize: CGFloat = 13
@@ -77,22 +76,7 @@ struct MayaPearlCallCard: View {
             }
             .padding(TodayChrome.cardPadding)
             .frame(maxWidth: .infinity, alignment: .center)
-            .background {
-                if palette.isLight {
-                    RoundedRectangle(cornerRadius: TodayChrome.cardRadius, style: .continuous)
-                        .fill(WeekFitLightTokens.pearlCardFill)
-                }
-            }
-            .overlay {
-                if palette.isLight {
-                    RoundedRectangle(cornerRadius: TodayChrome.cardRadius, style: .continuous)
-                        .strokeBorder(
-                            WeekFitLightTokens.pearlCardBorder,
-                            lineWidth: colorSchemeContrast == .increased ? 1.5 : 1
-                        )
-                }
-            }
-            .modifier(MayaPearlGlass(isLight: palette.isLight))
+            .todaySurface()
         }
         .buttonStyle(TodayCardPressStyle())
         .accessibilityElement(children: .ignore)
@@ -103,15 +87,15 @@ struct MayaPearlCallCard: View {
     }
 
     private var emblem: some View {
-        ZStack {
-            Circle()
-                .fill(emblemWell)
-            MayaPearlWave()
-                .stroke(emblemInk, style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
-                .frame(width: 18, height: 12)
-        }
-        .frame(width: iconSide, height: iconSide)
-        .accessibilityHidden(true)
+        Image("maya-portrait")
+            .resizable()
+            .scaledToFill()
+            .frame(width: iconSide, height: iconSide)
+            .clipShape(Circle())
+            .overlay {
+                Circle().strokeBorder(Color.white.opacity(palette.isLight ? 0.9 : 0.28), lineWidth: 1)
+            }
+            .accessibilityHidden(true)
     }
 
     private var callChip: some View {
@@ -130,11 +114,15 @@ struct MayaPearlCallCard: View {
                 .fixedSize(horizontal: true, vertical: false)
         }
         .foregroundStyle(chipInk)
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 14)
         .frame(minWidth: 44, minHeight: 36)
         .background {
             Capsule(style: .continuous)
-                .strokeBorder(chipBorder, lineWidth: colorSchemeContrast == .increased ? 1.5 : 1)
+                .fill(palette.isLight ? Color.white.opacity(0.94) : Color.white.opacity(0.10))
+        }
+        .overlay {
+            Capsule(style: .continuous)
+                .strokeBorder(Color.black.opacity(palette.isLight ? 0.06 : 0.18), lineWidth: 1)
         }
         .accessibilityHidden(true)
     }
@@ -147,55 +135,9 @@ struct MayaPearlCallCard: View {
         palette.isLight ? WeekFitLightTokens.textSecondary : TodayChrome.secondaryText(isLight: false)
     }
 
-    private var emblemWell: Color {
-        palette.isLight ? WeekFitLightTokens.pearlEmblemWell : Color.white.opacity(0.10)
-    }
-
-    private var emblemInk: Color {
-        palette.isLight ? WeekFitLightTokens.pearlEmblemTaupe : Color.white.opacity(0.92)
-    }
-
     private var chipInk: Color {
         palette.isLight ? WeekFitLightTokens.pearlInk : Color.white
     }
 
-    private var chipBorder: Color {
-        if palette.isLight {
-            return WeekFitLightTokens.pearlCardBorder
-        }
-        return Color.white.opacity(colorSchemeContrast == .increased ? 0.7 : 0.45)
-    }
-}
-
-/// Dark glass only. Light keeps the pearl fill already painted on the card.
-private struct MayaPearlGlass: ViewModifier {
-    var isLight: Bool
-
-    func body(content: Content) -> some View {
-        if isLight {
-            content
-        } else {
-            content.todaySurface()
-        }
-    }
-}
-
-private struct MayaPearlWave: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let midY = rect.midY
-        path.move(to: CGPoint(x: rect.minX, y: midY + rect.height * 0.22))
-        path.addCurve(
-            to: CGPoint(x: rect.midX, y: midY - rect.height * 0.28),
-            control1: CGPoint(x: rect.width * 0.22, y: midY + rect.height * 0.55),
-            control2: CGPoint(x: rect.width * 0.30, y: midY - rect.height * 0.62)
-        )
-        path.addCurve(
-            to: CGPoint(x: rect.maxX, y: midY + rect.height * 0.05),
-            control1: CGPoint(x: rect.width * 0.68, y: midY + rect.height * 0.02),
-            control2: CGPoint(x: rect.width * 0.78, y: midY + rect.height * 0.38)
-        )
-        return path
-    }
 }
 

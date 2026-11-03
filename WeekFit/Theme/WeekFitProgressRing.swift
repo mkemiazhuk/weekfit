@@ -84,7 +84,7 @@ struct WeekFitProgressRing<Label: View>: View {
 
             if progress > 0 {
                 if !palette.isLight {
-                    leadingEdgeGlow
+                    arcGlow
                 }
 
                 Circle()
@@ -120,20 +120,23 @@ struct WeekFitProgressRing<Label: View>: View {
         }
     }
 
-    /// Short arc bloom at the progress tip — dark OLED only.
-    private var leadingEdgeGlow: some View {
+    /// Short arc bloom at the progress tip — dark only.
+    private var arcGlow: some View {
         let span = min(0.10, max(0.035, progress * 0.12))
         let tipStart = max(0, progress - span)
+        let glowOpacity = Double(palette.ringGlowOpacity)
+        let glowWidth = strokeWidth + 1.5
+        let blur: CGFloat = 1.5
 
         return Circle()
             .trim(from: tipStart, to: progress)
             .stroke(
-                palette.accent(tipGlowColor).opacity(Double(palette.ringGlowOpacity)),
-                style: StrokeStyle(lineWidth: strokeWidth + 1.5, lineCap: .round)
+                palette.accent(tipGlowColor).opacity(glowOpacity),
+                style: StrokeStyle(lineWidth: glowWidth, lineCap: .round)
             )
             .frame(width: size, height: size)
             .rotationEffect(.degrees(-90))
-            .blur(radius: 1.5)
+            .blur(radius: blur)
     }
 
     private static func defaultGradient(for color: Color) -> [Color] {

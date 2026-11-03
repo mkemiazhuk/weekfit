@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Shared Light soft-chrome for Activity / Recovery / Nutrition-style details screens.
-/// Dark Appearance must keep legacy premium cards unchanged.
+/// Dark uses the shared frosted premium card.
 enum HealthDetailsSoftChrome {
 
     static var canvas: Color { NutritionDetailsDesign.canvas }

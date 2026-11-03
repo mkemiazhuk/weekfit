@@ -16,7 +16,6 @@ struct TodayMiddleCard: View {
     var showsChevron: Bool = false
 
     @Environment(\.weekFitPalette) private var palette
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @ScaledMetric(relativeTo: .footnote) private var headerSize: CGFloat = 14
     @ScaledMetric(relativeTo: .body) private var titleSize: CGFloat = 17
     @ScaledMetric(relativeTo: .subheadline) private var messageSize: CGFloat = 15
@@ -66,19 +65,7 @@ struct TodayMiddleCard: View {
         }
         .padding(TodayChrome.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            if palette.isLight {
-                RoundedRectangle(cornerRadius: TodayChrome.cardRadius, style: .continuous)
-                    .fill(lightFill)
-            }
-        }
-        .overlay {
-            if palette.isLight {
-                RoundedRectangle(cornerRadius: TodayChrome.cardRadius, style: .continuous)
-                    .strokeBorder(accent.opacity(0.28), lineWidth: colorSchemeContrast == .increased ? 1.5 : 1)
-            }
-        }
-        .modifier(TodayMiddleGlass(tint: accent, isLight: palette.isLight))
+        .todaySurface(tint: glassTint)
     }
 
     private var icon: some View {
@@ -93,12 +80,13 @@ struct TodayMiddleCard: View {
         .accessibilityHidden(true)
     }
 
-    private var lightFill: Color {
+    /// Focus gets a whisper of lavender. Up next stays clear porcelain in Light.
+    private var glassTint: Color? {
         switch tone {
-        case .sage:
-            return WeekFitSemanticMetricTokens.activitySoft
         case .lavender:
-            return WeekFitSemanticMetricTokens.recoverySoft
+            return WeekFitSemanticMetricTokens.recovery
+        case .sage:
+            return palette.isLight ? nil : WeekFitSemanticMetricTokens.activity
         }
     }
 
@@ -121,19 +109,5 @@ struct TodayMiddleCard: View {
 
     private var messageColor: Color {
         palette.isLight ? WeekFitLightTokens.textSecondary : TodayChrome.secondaryText(isLight: false)
-    }
-}
-
-/// Dark glass only. The light pastel fill is already painted on the card.
-private struct TodayMiddleGlass: ViewModifier {
-    var tint: Color
-    var isLight: Bool
-
-    func body(content: Content) -> some View {
-        if isLight {
-            content
-        } else {
-            content.todaySurface(tint: tint)
-        }
     }
 }

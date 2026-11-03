@@ -7,7 +7,7 @@ enum WeekFitTabBarTokens {
     // MARK: - Light
 
     /// Active capsule fill — neutral gray, just enough to mark the selected tab.
-    static let activeFillLight = Color(red: 0.894, green: 0.894, blue: 0.886) // #E4E4E2
+    static let activeFillLight = Color(red: 0.925, green: 0.925, blue: 0.918) // #ECECEA
     /// No outline on the light active pill (fill alone carries selection).
     static let activeStrokeLight = Color.clear
     static let activeStrokeOpacityLight: Double = 0

@@ -168,17 +168,42 @@ enum QuickSheetChrome {
 
     /// Recommended / Frequently Used tiles.
     /// Light: soft full-card tint + slightly stronger top wash so Water/Tea/Workout cards read apart.
-    /// Dark: adaptive surface + quiet accent wash (no lifted white fills).
+    /// Dark: the same frost as Today, with the tile accent as a wash.
     @ViewBuilder
     static func elevatedTileBackground(
         cornerRadius: CGFloat,
         accent: Color,
         isLight: Bool
     ) -> some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        QuickSheetElevatedTile(cornerRadius: cornerRadius, accent: accent, isLight: isLight)
+    }
+}
 
-        shape
-            .fill(frequentCardFill(isLight: isLight))
+private struct QuickSheetElevatedTile: View {
+    var cornerRadius: CGFloat
+    var accent: Color
+    var isLight: Bool
+
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    var body: some View {
+        if !isLight && !reduceTransparency {
+            WeekFitDarkGlassPlate(
+                cornerRadius: cornerRadius,
+                tint: accent,
+                shadowOpacity: 0.24,
+                shadowRadius: 10,
+                shadowY: 5
+            )
+        } else {
+            solid
+        }
+    }
+
+    private var solid: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        return shape
+            .fill(QuickSheetChrome.frequentCardFill(isLight: isLight))
             .overlay {
                 // Full-card tint — keeps light cards from reading as identical pure white.
                 shape.fill(
@@ -206,14 +231,14 @@ enum QuickSheetChrome {
             }
             .overlay {
                 shape.strokeBorder(
-                    frequentCardStroke(isLight: isLight),
+                    QuickSheetChrome.frequentCardStroke(isLight: isLight),
                     lineWidth: 0.75
                 )
             }
             .shadow(
-                color: cardShadowColor(isLight: isLight),
-                radius: cardShadowRadius,
-                y: cardShadowY
+                color: QuickSheetChrome.cardShadowColor(isLight: isLight),
+                radius: QuickSheetChrome.cardShadowRadius,
+                y: QuickSheetChrome.cardShadowY
             )
     }
 }
@@ -221,26 +246,60 @@ enum QuickSheetChrome {
 extension View {
     /// Rounded floating card. Shadow is applied to the shape *after* content clip so corners stay soft
     /// (never `clipShape → compositingGroup → shadow`, which draws a rectangular slab).
+    /// Dark uses the shared frost; light keeps the solid fill.
     func quickSheetFloatingCard<S: ShapeStyle>(
         cornerRadius: CGFloat,
         fill: S,
         stroke: Color,
         isLight: Bool
     ) -> some View {
-        self
+        modifier(
+            QuickSheetFloatingCardModifier(
+                cornerRadius: cornerRadius,
+                fill: fill,
+                stroke: stroke,
+                isLight: isLight
+            )
+        )
+    }
+}
+
+private struct QuickSheetFloatingCardModifier<S: ShapeStyle>: ViewModifier {
+    var cornerRadius: CGFloat
+    var fill: S
+    var stroke: Color
+    var isLight: Bool
+
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    private var usesGlass: Bool { !isLight && !reduceTransparency }
+
+    func body(content: Content) -> some View {
+        content
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .background {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(fill)
-                    .shadow(
-                        color: QuickSheetChrome.cardShadowColor(isLight: isLight),
-                        radius: QuickSheetChrome.cardShadowRadius,
-                        y: QuickSheetChrome.cardShadowY
+                if usesGlass {
+                    WeekFitDarkGlassPlate(
+                        cornerRadius: cornerRadius,
+                        shadowOpacity: 0.28,
+                        shadowRadius: 10,
+                        shadowY: 5
                     )
+                } else {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(fill)
+                        .shadow(
+                            color: QuickSheetChrome.cardShadowColor(isLight: isLight),
+                            radius: QuickSheetChrome.cardShadowRadius,
+                            y: QuickSheetChrome.cardShadowY
+                        )
+                }
             }
             .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(stroke, lineWidth: 0.75)
+                if !usesGlass {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(stroke, lineWidth: 0.75)
+                }
             }
     }
 }

@@ -17,6 +17,7 @@ struct WeekFitPaywallView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @Environment(\.weekFitPalette) private var palette
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         // Content must layout inside the safe area first. Putting
@@ -288,15 +289,31 @@ struct WeekFitPaywallView: View {
             .padding(.vertical, Layout.planCardVertical)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                RoundedRectangle(cornerRadius: OnboardingLayout.cardCornerRadius, style: .continuous)
-                    .fill(palette.cardBackground)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: OnboardingLayout.cardCornerRadius, style: .continuous)
-                            .stroke(
-                                selected ? WeekFitTheme.brandGold : palette.borderSoft,
-                                lineWidth: selected ? 1.5 : 1
-                            )
-                    }
+                if !palette.isLight && !reduceTransparency {
+                    WeekFitDarkGlassPlate(
+                        cornerRadius: OnboardingLayout.cardCornerRadius,
+                        tint: selected ? WeekFitTheme.brandGold : nil
+                    )
+                } else {
+                    RoundedRectangle(cornerRadius: OnboardingLayout.cardCornerRadius, style: .continuous)
+                        .fill(palette.cardBackground)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: OnboardingLayout.cardCornerRadius, style: .continuous)
+                                .stroke(
+                                    selected ? WeekFitTheme.brandGold : palette.borderSoft,
+                                    lineWidth: selected ? 1.5 : 1
+                                )
+                        }
+                }
+            }
+            .overlay {
+                if !palette.isLight && !reduceTransparency {
+                    RoundedRectangle(cornerRadius: OnboardingLayout.cardCornerRadius, style: .continuous)
+                        .stroke(
+                            selected ? WeekFitTheme.brandGold : Color.clear,
+                            lineWidth: selected ? 1.5 : 0
+                        )
+                }
             }
         }
         .buttonStyle(.plain)

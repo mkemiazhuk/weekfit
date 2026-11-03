@@ -11,7 +11,7 @@ enum TodayChrome {
     /// Secondary text target ≈ #A9B0BF.
     static let secondaryDark = Color(red: 0.663, green: 0.690, blue: 0.749)
 
-    static let cardRadius: CGFloat = 24
+    static let cardRadius: CGFloat = 28
     static let cardPadding: CGFloat = 16
     static let gapBetweenCards: CGFloat = 12
     static let borderOpacity: Double = 0.06
@@ -38,88 +38,74 @@ enum TodayChrome {
     }
 }
 
-/// Dark cards are frosted over the sky. Light stays the solid warm white:
-/// system material on the milk canvas turns the plates gray.
-/// Reduce Transparency falls back to the solid fill.
-struct TodaySurfaceModifier: ViewModifier {
-    var elevated: Bool = false
-    var cornerRadius: CGFloat = TodayChrome.cardRadius
-    var coachEmphasis: Bool = false
+/// Warm white plate on the milk canvas. A tint marks a section (focus, up next).
+/// Shadow stays on the rounded shape, so it cannot paint a gray rectangle.
+struct WeekFitLightGlassPlate: View {
+    var cornerRadius: CGFloat
     var tint: Color? = nil
 
-    @Environment(\.weekFitPalette) private var palette
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    private var warmWhite: Color { Color(red: 1.0, green: 0.988, blue: 0.973) }
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        shape
+            .fill(warmWhite)
+            .overlay {
+                if let tint {
+                    shape.fill(tint.opacity(0.14))
+                }
+            }
+            .overlay {
+                shape.strokeBorder(
+                    Color(red: 0.45, green: 0.38, blue: 0.30).opacity(tint == nil ? 0.14 : 0.10),
+                    lineWidth: 1
+                )
+            }
+            .shadow(color: Color(red: 0.55, green: 0.42, blue: 0.28).opacity(0.05), radius: 8, y: 3)
+    }
+}
+
+/// Frosted dark plate shared by Today and every other screen.
+/// Reduce Transparency falls back to the solid fill at each call site.
+struct WeekFitDarkGlassPlate: View {
+    var cornerRadius: CGFloat
+    var elevated: Bool = false
+    var tint: Color? = nil
+    var coachEmphasis: Bool = false
+    var shadowOpacity: Double = 0.36
+    var shadowRadius: CGFloat = 18
+    var shadowY: CGFloat = 10
+
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
-    private var usesGlass: Bool { !palette.isLight && !reduceTransparency }
-
-    func body(content: Content) -> some View {
-        content
-            .background { plate }
-            .overlay { rim }
-    }
-
-    private var plate: some View {
+    var body: some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        return ZStack {
-            if usesGlass {
-                shape.fill(.ultraThinMaterial)
-                shape.fill(TodayChrome.cardDark.opacity(elevated ? 0.52 : 0.64))
-                if let tint {
-                    shape.fill(tint.opacity(0.16))
-                }
-                if coachEmphasis {
-                    shape.fill(coachGlassWash)
-                }
-            } else {
-                shape.fill(fillStyle)
+        ZStack {
+            shape.fill(.ultraThinMaterial)
+            shape.fill(TodayChrome.cardDark.opacity(elevated ? 0.52 : 0.64))
+            if let tint {
+                shape.fill(tint.opacity(0.16))
+            }
+            if coachEmphasis {
+                shape.fill(coachGlassWash)
             }
         }
         .compositingGroup()
-        .shadow(color: shadowColor, radius: shadowRadius, y: shadowY)
-    }
-
-    private var shadowColor: Color {
-        if palette.isLight {
-            return Color.black.opacity(WeekFitLightTokens.cardContactShadowOpacity)
+        .shadow(color: Color.black.opacity(shadowOpacity), radius: shadowRadius, y: shadowY)
+        .overlay {
+            shape.strokeBorder(rim, lineWidth: colorSchemeContrast == .increased ? 1.25 : 0.75)
         }
-        return Color.black.opacity(usesGlass ? 0.36 : 0.28)
     }
 
-    private var shadowRadius: CGFloat {
-        if palette.isLight { return 5 }
-        return usesGlass ? 18 : 10
-    }
-
-    private var shadowY: CGFloat {
-        if palette.isLight { return 2 }
-        return usesGlass ? 10 : 4
-    }
-
-    private var rim: some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        return shape.strokeBorder(rimStyle, lineWidth: rimWidth)
-    }
-
-    private var rimWidth: CGFloat {
-        if colorSchemeContrast == .increased { return usesGlass ? 1.25 : (palette.isLight ? 0.75 : 1) }
-        return usesGlass ? 0.75 : (palette.isLight ? 0.75 : 1)
-    }
-
-    private var rimStyle: AnyShapeStyle {
-        if usesGlass {
-            return AnyShapeStyle(
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(colorSchemeContrast == .increased ? 0.55 : 0.30),
-                        Color.white.opacity(colorSchemeContrast == .increased ? 0.16 : 0.05)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-        }
-        return AnyShapeStyle(TodayChrome.border(isLight: palette.isLight))
+    private var rim: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color.white.opacity(colorSchemeContrast == .increased ? 0.55 : 0.30),
+                Color.white.opacity(colorSchemeContrast == .increased ? 0.16 : 0.05)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
 
     private var coachGlassWash: LinearGradient {
@@ -131,6 +117,77 @@ struct TodaySurfaceModifier: ViewModifier {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
+    }
+}
+
+/// Light Today cards are porcelain glass. Dark cards frost over the sky.
+/// Reduce Transparency falls back to the solid fill.
+struct TodaySurfaceModifier: ViewModifier {
+    var elevated: Bool = false
+    var cornerRadius: CGFloat = TodayChrome.cardRadius
+    var coachEmphasis: Bool = false
+    var tint: Color? = nil
+
+    @Environment(\.weekFitPalette) private var palette
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    private var usesDarkGlass: Bool { !palette.isLight && !reduceTransparency }
+    private var usesLightGlass: Bool { palette.isLight && !reduceTransparency }
+
+    func body(content: Content) -> some View {
+        content
+            .background { plate }
+            .overlay { rim }
+    }
+
+    @ViewBuilder
+    private var plate: some View {
+        if usesDarkGlass {
+            WeekFitDarkGlassPlate(
+                cornerRadius: cornerRadius,
+                elevated: elevated,
+                tint: tint,
+                coachEmphasis: coachEmphasis
+            )
+        } else if usesLightGlass {
+            WeekFitLightGlassPlate(cornerRadius: cornerRadius, tint: tint)
+        } else {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(fillStyle)
+                .compositingGroup()
+                .shadow(color: shadowColor, radius: shadowRadius, y: shadowY)
+        }
+    }
+
+    private var shadowColor: Color {
+        if palette.isLight {
+            return Color.black.opacity(WeekFitLightTokens.cardContactShadowOpacity)
+        }
+        return Color.black.opacity(0.28)
+    }
+
+    private var shadowRadius: CGFloat {
+        if palette.isLight { return 5 }
+        return 10
+    }
+
+    private var shadowY: CGFloat {
+        if palette.isLight { return 2 }
+        return 4
+    }
+
+    @ViewBuilder
+    private var rim: some View {
+        if !usesDarkGlass && !usesLightGlass {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .strokeBorder(TodayChrome.border(isLight: palette.isLight), lineWidth: rimWidth)
+        }
+    }
+
+    private var rimWidth: CGFloat {
+        if colorSchemeContrast == .increased { return palette.isLight ? 0.75 : 1 }
+        return palette.isLight ? 0.75 : 1
     }
 
     private var fillStyle: AnyShapeStyle {

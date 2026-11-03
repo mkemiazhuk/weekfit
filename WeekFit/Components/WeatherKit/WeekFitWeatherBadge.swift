@@ -16,7 +16,6 @@ struct WeekFitWeatherBadge: View {
     @EnvironmentObject private var unitsStore: WeekFitUnitsStore
 
     private let pillHeight: CGFloat = 34
-    private let pillCornerRadius: CGFloat = 16
 
     var body: some View {
         switch state {
@@ -109,38 +108,26 @@ struct WeekFitWeatherBadge: View {
 
     @ViewBuilder
     private var weatherBadgeChrome: some View {
-        if palette.isLight {
-            RoundedRectangle(cornerRadius: pillCornerRadius, style: .continuous)
-                .fill(Color.white.opacity(0.92))
-                .overlay {
-                    RoundedRectangle(cornerRadius: pillCornerRadius, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.95),
-                                    Color.white.opacity(0.55)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .blendMode(.softLight)
-                        .opacity(0.55)
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: pillCornerRadius, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.55), lineWidth: 0.75)
-                }
-                .shadow(color: WeekFitLightTokens.shadowAmbient.opacity(0.06), radius: 1.5, y: 0.5)
-                .shadow(color: WeekFitLightTokens.shadowAmbient.opacity(0.10), radius: 12, y: 4)
-        } else {
-            RoundedRectangle(cornerRadius: pillCornerRadius, style: .continuous)
-                .fill(WeekFitTheme.cardTertiary.opacity(0.35))
-                .overlay {
-                    RoundedRectangle(cornerRadius: pillCornerRadius, style: .continuous)
-                        .stroke(WeekFitTheme.borderSoft.opacity(0.9), lineWidth: 1)
-                }
-                .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
-        }
+        Capsule(style: .continuous)
+            .fill(.ultraThinMaterial)
+            .overlay {
+                Capsule(style: .continuous)
+                    .fill(palette.isLight ? Color.white.opacity(0.85) : Color.black.opacity(0.28))
+            }
+            .overlay {
+                Capsule(style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(palette.isLight ? 0.9 : 0.28),
+                                Color.black.opacity(palette.isLight ? 0.04 : 0.18)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
+            .shadow(color: Color.black.opacity(palette.isLight ? 0.04 : 0.28), radius: 12, y: 6)
     }
 }

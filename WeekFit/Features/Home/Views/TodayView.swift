@@ -91,7 +91,7 @@ struct TodayView: View {
     }
 
     private let todayRingSize: CGFloat = 72
-    private let todayRingStroke: CGFloat = 3.5
+    private let todayRingStroke: CGFloat = 5.5
     private let todayPremiumBronze = Color(red: 0.72, green: 0.63, blue: 0.45)
     private let todayPremiumBronzeSoft = Color(red: 0.60, green: 0.52, blue: 0.39)
 
@@ -2498,7 +2498,7 @@ struct TodayView: View {
             VStack(spacing: 3) {
                 Text(title)
                     .font(TodayCardTypography.ringCategory)
-                    .foregroundStyle(textPrimary.opacity(palette.isLight ? 0.88 : 0.94))
+                    .foregroundStyle(textSecondary)
                     .lineLimit(ringCaptionLineLimit)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -3705,6 +3705,7 @@ struct TodayView: View {
         }
     }
 
+
     private enum QuickActionKind {
         case food
         case activity
@@ -3863,8 +3864,6 @@ struct TodayView: View {
         accessibilityIdentifier: String? = nil,
         action: @escaping () -> Void
     ) -> some View {
-        let iconFillOpacity = isEmphasized ? (palette.isLight ? 0.18 : 0.17) : (palette.isLight ? 0.14 : 0.11)
-        let iconStrokeOpacity = isEmphasized ? (palette.isLight ? 0.32 : 0.22) : (palette.isLight ? 0.24 : 0.15)
         let iconForeground = palette.isLight
             ? color
             : color.opacity(isEmphasized ? 0.94 : 0.88)
@@ -3875,12 +3874,7 @@ struct TodayView: View {
         } label: {
             VStack(spacing: 8) {
                 ZStack(alignment: .top) {
-                    Circle()
-                        .fill(color.opacity(iconFillOpacity))
-                        .overlay(
-                            Circle()
-                                .stroke(color.opacity(iconStrokeOpacity), lineWidth: isEmphasized ? 1.1 : 1)
-                        )
+                    quickActionLens(color: color, isEmphasized: isEmphasized)
                         .frame(width: 52, height: 52)
 
                     Image(systemName: icon)
@@ -3930,6 +3924,17 @@ struct TodayView: View {
         .buttonStyle(QuickActionPressStyle())
         .accessibilityLabel(label)
         .accessibilityIdentifier(accessibilityIdentifier ?? label)
+    }
+
+    private func quickActionLens(color: Color, isEmphasized: Bool) -> some View {
+        let fillOpacity = isEmphasized ? (palette.isLight ? 0.24 : 0.17) : (palette.isLight ? 0.18 : 0.11)
+        let strokeOpacity = isEmphasized ? (palette.isLight ? 0.40 : 0.22) : (palette.isLight ? 0.30 : 0.15)
+        return Circle()
+            .fill(color.opacity(fillOpacity))
+            .overlay(
+                Circle()
+                    .stroke(color.opacity(strokeOpacity), lineWidth: isEmphasized ? 1.1 : 1)
+            )
     }
 
     private func coachIconOpticalYOffset(_ systemName: String) -> CGFloat {

@@ -475,6 +475,7 @@ struct WeekFitAIBalancePurchaseSheet: View {
     var pack: WeekFitAIBalancePack
     var locale: Locale? = nil
     var onClose: (() -> Void)? = nil
+    @Environment(\.weekFitPalette) private var palette
     @State private var selectedID: String?
 
     var body: some View {
@@ -632,6 +633,7 @@ struct WeekFitAIBalancePurchaseLayout: View {
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.weekFitPalette) private var palette
 
     var body: some View {
@@ -773,15 +775,30 @@ struct WeekFitAIBalancePurchaseLayout: View {
             .padding(.bottom, 18)
             .frame(maxWidth: .infinity)
             .background {
-                shape
-                    .fill(selected ? accent.opacity(palette.isLight ? 0.09 : 0.16) : WeekFitTheme.cardSurface)
-                    .overlay {
-                        shape.strokeBorder(
-                            selected ? accent : WeekFitTheme.borderSoft,
-                            lineWidth: selected ? 2 : 1
-                        )
-                    }
-                    .shadow(color: .black.opacity(palette.isLight && selected ? 0.08 : 0), radius: 14, y: 6)
+                if !palette.isLight && !reduceTransparency {
+                    WeekFitDarkGlassPlate(
+                        cornerRadius: 22,
+                        tint: selected ? accent : nil,
+                        shadowOpacity: 0.28,
+                        shadowRadius: 12,
+                        shadowY: 6
+                    )
+                } else {
+                    shape
+                        .fill(selected ? accent.opacity(palette.isLight ? 0.09 : 0.16) : WeekFitTheme.cardSurface)
+                        .overlay {
+                            shape.strokeBorder(
+                                selected ? accent : WeekFitTheme.borderSoft,
+                                lineWidth: selected ? 2 : 1
+                            )
+                        }
+                        .shadow(color: .black.opacity(palette.isLight && selected ? 0.08 : 0), radius: 14, y: 6)
+                }
+            }
+            .overlay {
+                if !palette.isLight && !reduceTransparency && selected {
+                    shape.strokeBorder(accent, lineWidth: 2)
+                }
             }
             .overlay(alignment: .topTrailing) {
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
@@ -829,12 +846,21 @@ struct WeekFitAIBalancePurchaseLayout: View {
             }
             .padding(16)
             .background {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(WeekFitTheme.cardSurface)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .strokeBorder(WeekFitTheme.borderSoft, lineWidth: 1)
-                    }
+                if !palette.isLight && !reduceTransparency {
+                    WeekFitDarkGlassPlate(
+                        cornerRadius: 18,
+                        shadowOpacity: 0.28,
+                        shadowRadius: 10,
+                        shadowY: 5
+                    )
+                } else {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(WeekFitTheme.cardSurface)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .strokeBorder(WeekFitTheme.borderSoft, lineWidth: 1)
+                        }
+                }
             }
             Text(summary.note)
                 .font(.caption)

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Light-only visual system for Nutrition Details (reference-matched density).
-/// Dark Appearance continues to use legacy chrome and must not change.
+/// Light visual system for Nutrition Details (reference-matched density).
+/// Dark cards use the shared frosted plate; Reduce Transparency keeps the solid fill.
 enum NutritionDetailsDesign {
 
     // MARK: - Canvas
@@ -90,6 +90,7 @@ enum NutritionDetailsDesign {
 
 struct NutritionDetailsCard<Content: View>: View {
     @Environment(\.weekFitPalette) private var palette
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var cornerRadius: CGFloat = NutritionDetailsDesign.Reading.corner
     var fill: Color? = nil
@@ -97,6 +98,8 @@ struct NutritionDetailsCard<Content: View>: View {
     var padding: CGFloat = NutritionDetailsDesign.Reading.cardPadding
     var edgeInsets: EdgeInsets? = nil
     @ViewBuilder var content: () -> Content
+
+    private var usesGlass: Bool { !palette.isLight && !reduceTransparency }
 
     var body: some View {
         let resolvedFill = fill ?? (palette.isLight ? NutritionDetailsDesign.cardSurface : palette.cardSurface)
@@ -114,19 +117,23 @@ struct NutritionDetailsCard<Content: View>: View {
             .padding(insets)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(resolvedFill)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .strokeBorder(border, lineWidth: 0.7)
-                    }
-                    .shadow(
-                        color: palette.isLight
-                            ? Color.black.opacity(WeekFitLightTokens.cardContactShadowOpacity)
-                            : .clear,
-                        radius: palette.isLight ? 8 : 0,
-                        y: palette.isLight ? 3 : 0
-                    )
+                if usesGlass {
+                    WeekFitDarkGlassPlate(cornerRadius: cornerRadius, tint: fill)
+                } else {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(resolvedFill)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                .strokeBorder(border, lineWidth: 0.7)
+                        }
+                        .shadow(
+                            color: palette.isLight
+                                ? Color.black.opacity(WeekFitLightTokens.cardContactShadowOpacity)
+                                : .clear,
+                            radius: palette.isLight ? 8 : 0,
+                            y: palette.isLight ? 3 : 0
+                        )
+                }
             }
     }
 }

@@ -8,9 +8,9 @@ enum TodayCardTypography {
 
     // MARK: - Base points (pre-scale) = prior default × factor
 
-    /// Ring center % — was 17 / 15 → ×1.12.
-    private static let ringPercentBase: CGFloat = 19.0
-    private static let ringPercentCompactBase: CGFloat = 16.8
+    /// Ring center % — large bold figure inside the arc.
+    private static let ringPercentBase: CGFloat = 24.0
+    private static let ringPercentCompactBase: CGFloat = 18.0
 
     /// Activity / Nutrition / Recovery under rings — caption (~12) ×1.10.
     private static let ringCategoryBase: CGFloat = 13.2

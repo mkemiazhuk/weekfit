@@ -93,6 +93,7 @@ struct PlanTimelineRow: View {
     @State private var livePulse = false
     @Environment(\.weekFitPalette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var accent: Color {
@@ -193,16 +194,15 @@ struct PlanTimelineRow: View {
         .padding(.horizontal, PlanTimelineLayout.cardHorizontalPadding)
         .padding(.vertical, cardVerticalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
-                .fill(agendaCardFill)
-        }
+        .background { agendaPlate }
         .overlay {
-            RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
-                .strokeBorder(agendaBorderColor, lineWidth: isLive || isPending ? 0.9 : 0.55)
+            if !usesGlass || isLive || isPending {
+                RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
+                    .strokeBorder(agendaBorderColor, lineWidth: isLive || isPending ? 0.9 : 0.55)
+            }
         }
         .shadow(
-            color: palette.isLight ? Color.black.opacity(0.03) : Color.black.opacity(0.14),
+            color: usesGlass ? .clear : (palette.isLight ? Color.black.opacity(0.03) : Color.black.opacity(0.14)),
             radius: palette.isLight ? 2 : 3,
             y: 1
         )
@@ -299,6 +299,24 @@ struct PlanTimelineRow: View {
         if isPending { return pendingAttentionColor.opacity(0.92) }
         if status == .skipped { return palette.textDisabled }
         return palette.textSecondary.opacity(0.90)
+    }
+
+    private var usesGlass: Bool { !palette.isLight && !reduceTransparency }
+
+    @ViewBuilder
+    private var agendaPlate: some View {
+        if usesGlass {
+            WeekFitDarkGlassPlate(
+                cornerRadius: PlanTimelineLayout.cardCornerRadius,
+                tint: (isLive || isPending) ? accent : nil,
+                shadowOpacity: 0.28,
+                shadowRadius: 10,
+                shadowY: 5
+            )
+        } else {
+            RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
+                .fill(agendaCardFill)
+        }
     }
 
     private var agendaCardFill: Color {
