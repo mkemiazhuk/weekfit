@@ -196,6 +196,17 @@ enum WeekFitAIUsageCache {
     }
 }
 
+/// Last StoreKit top-up list. The purchase sheet can show prices without waiting for the balance read.
+@MainActor
+enum WeekFitAIProductCache {
+    private(set) static var latest: [Product] = []
+
+    static func store(_ products: [Product]) {
+        guard !products.isEmpty else { return }
+        latest = products
+    }
+}
+
 /// Durable session ids for a voice stop that has not been acknowledged yet.
 /// A retry posts stop only. It never opens another call.
 enum WeekFitVoiceStopLedger {
@@ -336,6 +347,18 @@ final class WeekFitAIUsageStore: ObservableObject {
         didCreditPurchase = false
     }
 
+    private func publishProducts() async {
+        do {
+            let loaded = try await loadProducts()
+            products = loaded
+            WeekFitAIProductCache.store(loaded)
+        } catch {
+            if Task.isCancelled { return }
+            // Keep a loaded balance and any previously loaded product list.
+            report(error, stage: "products")
+        }
+    }
+
     func refresh() async {
         if isRefused() {
             usage = nil
@@ -352,29 +375,28 @@ final class WeekFitAIUsageStore: ObservableObject {
         if usage == nil, WeekFitVoiceStopLedger.pending().isEmpty {
             usage = WeekFitAIUsageCache.latest
         }
+        if products.isEmpty {
+            products = WeekFitAIProductCache.latest
+        }
 
-        // Publish the balance first: stop recovery, unfinished deliveries and StoreKit
-        // product availability must not prevent opening the balance screen.
+        // Prices come from StoreKit and must not wait on the balance read.
+        async let productsReady: Void = publishProducts()
         do {
             let fresh = try await readUsage()
             usage = fresh
             WeekFitAIUsageCache.store(fresh)
             requiresSubscription = false
         } catch {
-            if error is CancellationError || (error as? URLError)?.code == .cancelled { return }
+            if error is CancellationError || (error as? URLError)?.code == .cancelled {
+                await productsReady
+                return
+            }
             requiresSubscription = (error as? WeekFitAIUsageError) == .subscriptionRequired
             if requiresSubscription { usage = nil }
             message = WeekFitAIErrorMessage(error)
             report(error, stage: "balance")
         }
-        guard !Task.isCancelled else { return }
-        do {
-            products = try await loadProducts()
-        } catch {
-            if Task.isCancelled { return }
-            // Keep a loaded balance and any previously loaded product list.
-            report(error, stage: "products")
-        }
+        await productsReady
         guard !Task.isCancelled else { return }
         do {
             if let delivered = try await recoverPurchases() {

@@ -6,6 +6,7 @@ import SwiftUI
 struct WeekFitAIBalanceSheet: View {
     var pack: WeekFitAIBalancePack? = nil
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.weekFitPalette) private var palette
 
     var body: some View {
         NavigationStack {
@@ -15,6 +16,10 @@ struct WeekFitAIBalanceSheet: View {
                 WeekFitAIUsageView(onClose: { dismiss() })
             }
         }
+        .background(palette.appScreenBackground.ignoresSafeArea())
+        .toolbarBackground(palette.appScreenBackground, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .weekFitSheetChrome()
     }
 }
 
@@ -135,6 +140,7 @@ struct WeekFitAIBalanceScreen: View {
     var isBusy: Bool
     var locale: Locale? = nil
     var scrolls: Bool = true
+    @Environment(\.weekFitPalette) private var palette
     var onAdd: (WeekFitAIBalancePack) -> Void
     var onRetry: () -> Void
     var onSubscribe: () -> Void
@@ -148,7 +154,7 @@ struct WeekFitAIBalanceScreen: View {
                 stack
             }
         }
-        .background(WeekFitTheme.backgroundColor)
+        .background(palette.appScreenBackground.ignoresSafeArea())
         .navigationTitle(text("ai.usage.title"))
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -483,7 +489,7 @@ struct WeekFitAIBalancePurchaseSheet: View {
             buyTitle: buyTitle,
             isBusy: store.isBusy,
             status: statusText,
-            emptyMessage: options.isEmpty ? text("ai.usage.unavailable") : nil,
+            emptyMessage: options.isEmpty && !store.isRefreshing ? text("ai.usage.unavailable") : nil,
             showsClose: false,
             onSelect: { id in
                 guard !store.isBusy else { return }
@@ -499,7 +505,8 @@ struct WeekFitAIBalancePurchaseSheet: View {
         .navigationBarBackButtonHidden(onClose != nil)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(WeekFitTheme.backgroundColor, for: .navigationBar)
+        .toolbarBackground(palette.appScreenBackground, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .onAppear(perform: selectSmallestIfNeeded)
         .onChange(of: optionIDs) { _, _ in selectSmallestIfNeeded() }
     }
@@ -642,7 +649,7 @@ struct WeekFitAIBalancePurchaseLayout: View {
             }
             footer
         }
-        .background(WeekFitTheme.backgroundColor)
+        .background(palette.appScreenBackground.ignoresSafeArea())
         .animation(reduceMotion ? nil : .snappy(duration: 0.28), value: selectedID)
         .sensoryFeedback(.selection, trigger: selectedID)
     }
