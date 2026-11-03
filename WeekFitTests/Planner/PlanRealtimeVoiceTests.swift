@@ -13,7 +13,7 @@ final class PlanRealtimeVoiceTests: XCTestCase {
     func testMayaConfirmsAChangeInTheFeminineAndDoesNotConfirmAConflict() {
         XCTAssertEqual(
             planRealtimeMovedSpeak(spoken: "растяжку", day: "сегодня", time: "18:00", language: "ru"),
-            "Перенесла растяжку на сегодня, на 18:00."
+            "Перенесла растяжку на сегодня, на 6 вечера."
         )
         XCTAssertEqual(
             planRealtimeRemovedSpeak(spoken: "прогулку", day: "сегодня", language: "ru"),
@@ -129,11 +129,11 @@ final class PlanRealtimeVoiceTests: XCTestCase {
                 items: [(spoken: "теннис", startTime: "13:00")],
                 language: "ru"
             ),
-            "Сегодня сделано: теннис 13:00"
+            "Сегодня сделано: теннис 1 дня"
         )
         XCTAssertEqual(
             planRealtimeMovedSpeak(spoken: "теннис", day: "завтра", time: "15:00", language: "ru"),
-            "Перенесла теннис на завтра, на 15:00."
+            "Перенесла теннис на завтра, на 3 дня."
         )
         XCTAssertEqual(
             planRealtimeEditDraft(#"{"ref":"a1","date":"2026-10-29","startTime":"15:00","durationMinutes":0,"catalogTitle":""}"#)?.ref,

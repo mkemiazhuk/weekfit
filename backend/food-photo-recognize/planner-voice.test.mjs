@@ -134,7 +134,7 @@ test('full command commits tennis and a missing time does not', () => {
   assert.equal(saved.body.saved, true);
   assert.equal(saved.body.activity.start, '2026-10-29T10:00:00.000Z');
   assert.equal(saved.body.activity.localEnd, '2026-10-29T14:00');
-  assert.equal(saved.body.speak, 'Добавила теннис на завтра, с 13 до 14.');
+  assert.equal(saved.body.speak, 'Добавила теннис на завтра, с 1 дня до 2 дня.');
 
   const missing = commitPlannerActivity(store, 'local-developer', tennis({
     idempotencyKey: 'call_tennis_2',
@@ -177,7 +177,7 @@ test('relative evening in Tokyo crosses midnight', () => {
   assert.equal(saved.status, 200, JSON.stringify(saved.body));
   assert.equal(saved.body.activity.localStart, '2026-10-31T23:30');
   assert.equal(saved.body.activity.localEnd, '2026-11-01T01:00');
-  assert.equal(saved.body.speak, 'Добавила теннис на послезавтра, с 23:30 до 1.');
+  assert.equal(saved.body.speak, 'Добавила теннис на послезавтра, с 11:30 вечера до 1 утра.');
 
   const blocked = commitPlannerActivity(store, 'local-developer', tennis({
     idempotencyKey: 'call_tokyo_blocked',
@@ -218,7 +218,7 @@ test('app language chooses the spoken lines and the time zone does not', () => {
     date: '2026-10-29',
   }));
   assert.equal(english.body.activity.start, '2026-10-29T04:00:00.000Z');
-  assert.equal(english.body.speak, 'Added tennis for today, from 1 PM to 2 PM.');
+  assert.equal(english.body.speak, 'Added tennis for today, from 1pm to 2pm.');
 
   const polish = commitPlannerActivity(store, 'local-developer', tennis({
     idempotencyKey: 'call_tennis_pl',
@@ -251,7 +251,7 @@ test('app language chooses the spoken lines and the time zone does not', () => {
     now: '2026-10-28T16:30:00Z',
     date: '2026-10-29',
   }));
-  assert.equal(russianInTokyo.body.speak, 'Добавила теннис на сегодня, с 13 до 14.');
+  assert.equal(russianInTokyo.body.speak, 'Добавила теннис на сегодня, с 1 дня до 2 дня.');
 });
 
 test('marin and cedar share the russian preview and keep the mini model', () => {
@@ -264,7 +264,7 @@ test('marin and cedar share the russian preview and keep the mini model', () => 
   assert.deepEqual(lines, plannerVoicePreviewPhrases('ru'));
   assert.equal(lines.greeting, 'Привет, Макс! Как ты сегодня?');
   assert.equal(lines.askTime, 'Во сколько?');
-  assert.equal(lines.confirmation, 'Добавила теннис на завтра, с 13 до 14.');
+  assert.equal(lines.confirmation, 'Добавила теннис на завтра, с 1 дня до 2 дня.');
   assert.equal(lines.conflict, 'На это время уже что-то стоит. Выберем другое?');
   assert.equal(plannerVoicePreviewPhrases('en', 'Max').greeting, 'Hey Max, how are you feeling today?');
   assert.equal(plannerVoicePreviewPhrases('pl', 'Max').greeting, 'Cześć, Max! Jak się dzisiaj czujesz?');
@@ -481,8 +481,8 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.match(dayText, /92 percent/);
     assert.match(dayText, /band good/);
     assert.match(dayText, /sleep 509 minutes/);
-    assert.match(dayText, /08:30 Eggs/);
-    assert.match(dayText, /13:15 Rice ignore/);
+    assert.match(dayText, /08:30 \(say 8:30 утра\) Eggs/);
+    assert.match(dayText, /13:15 \(say 1:15 дня\) Rice ignore/);
     assert.equal(dayText.includes('25:00'), false);
     assert.equal(dayText.includes('ignore this'), false);
     assert.match(dayText, /do not read these facts in the greeting/);

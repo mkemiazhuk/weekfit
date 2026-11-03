@@ -257,16 +257,25 @@ export function confirmationLine(catalogTitle, activity, days, language) {
   );
 }
 
-function clockWords(stamp, language) {
-  const time = stamp.slice(11, 16);
-  const [hour, minute] = time.split(':').map(Number);
-  if (language === 'en') {
-    const period = hour < 12 ? 'AM' : 'PM';
-    const clockHour = hour % 12 || 12;
-    const minutes = String(minute).padStart(2, '0');
-    return minute === 0 ? `${clockHour} ${period}` : `${clockHour}:${minutes} ${period}`;
+export function spokenClock(time, language) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(String(time || ''));
+  if (!match) return String(time || '');
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return String(time);
+  const clockHour = hour % 12 || 12;
+  const minutes = minute === 0 ? '' : `:${String(minute).padStart(2, '0')}`;
+  const code = plannerVoiceLanguage(language);
+  if (code === 'en') return `${clockHour}${minutes}${hour < 12 ? 'am' : 'pm'}`;
+  if (code === 'ru') {
+    const period = hour === 0 ? 'ночи' : hour < 12 ? 'утра' : hour < 17 ? 'дня' : 'вечера';
+    return `${clockHour}${minutes} ${period}`;
   }
   return minute === 0 ? String(hour) : `${hour}:${String(minute).padStart(2, '0')}`;
+}
+
+function clockWords(stamp, language) {
+  return spokenClock(stamp.slice(11, 16), language);
 }
 
 function spokenDate(iso, language) {

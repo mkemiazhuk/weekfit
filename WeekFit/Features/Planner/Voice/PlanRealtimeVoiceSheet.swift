@@ -25,6 +25,8 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     @Published private(set) var muted = false
     @Published private(set) var webView: WKWebView?
     @Published private(set) var receipt: PlanVoiceReceipt?
+    @Published private(set) var turns: [PlanVoiceTurn] = []
+    @Published private(set) var notices: [PlanVoiceReceipt] = []
     @Published private(set) var microphoneDenied = false
     @Published private(set) var inputLevel: Double = 0
     @Published private(set) var outputLevel: Double = 0
@@ -55,8 +57,6 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     private var heartbeat: Task<Void, Never>?
     private var callLanguage = "ru"
     private var reconnecting = false
-    private var keepsReceipt = false
-    private var receiptHide: Task<Void, Never>?
     private var endingWatchdog: Task<Void, Never>?
     private let calendar = Calendar.current
     private let ringback = PlanVoiceRingback()
@@ -255,7 +255,6 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
 
     func showFixture(_ name: String) {
         started = true
-        keepsReceipt = true
         let startedAt = Date().addingTimeInterval(-75)
         switch name {
         case "listening":
@@ -275,12 +274,32 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         case "receipt":
             phase = .listening
             connectedAt = startedAt
-            receipt = PlanVoiceReceipt(
-                id: "fixture-receipt",
-                title: String(format: WeekFitLocalizedString("planner.voice.receipt.added"), PlannerOptionLocalization.localizedTitle(for: "Walk")),
-                detail: "Today · 18:00–18:30",
-                success: true
+            let spoken = PlannerOptionLocalization.localizedTitle(for: "Walk")
+            let now = Date()
+            let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) ?? now
+            let day = planRealtimeDayLabel(
+                day: planRealtimeDayString(tomorrow, calendar: calendar),
+                today: planRealtimeDayString(now, calendar: calendar),
+                tomorrow: planRealtimeDayString(tomorrow, calendar: calendar),
+                language: languageCode,
+                calendar: calendar
             )
+            let title = String(format: WeekFitLocalizedString("planner.voice.receipt.moved"), spoken)
+            let detail = "\(day) · 09:00"
+            turns = [
+                PlanVoiceTurn(
+                    id: "fixture-you",
+                    role: .user,
+                    text: planRealtimeAsked(kind: "moved", spoken: spoken, day: day, time: "09:00", language: languageCode)
+                ),
+                PlanVoiceTurn(
+                    id: "fixture-maya",
+                    role: .maya,
+                    text: planRealtimeMovedSpeak(spoken: spoken, day: day, time: "09:00", language: languageCode)
+                )
+            ]
+            receipt = PlanVoiceReceipt(id: "fixture-receipt", title: title, detail: detail, success: true)
+            notices = [receipt].compactMap { $0 }
         case "error":
             phase = .failed(WeekFitLocalizedString("planner.voice.connectionLost"))
             receipt = PlanVoiceReceipt(
@@ -289,6 +308,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                 detail: WeekFitLocalizedString("planner.voice.error.continue"),
                 success: false
             )
+            notices = [receipt].compactMap { $0 }
         default:
             phase = .connecting
         }
@@ -300,6 +320,8 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         started = false
         reconnecting = true
         receipt = nil
+        turns = []
+        notices = []
         microphoneDenied = false
         phase = .connecting
         begin()
@@ -330,18 +352,23 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
 
     private func noteReceipt(id: String, title: String, detail: String, success: Bool) {
         guard receiptIDs.insert(id).inserted else { return }
-        receipt = PlanVoiceReceipt(id: id, title: title, detail: detail, success: success)
-        receiptHide?.cancel()
-        guard success, !keepsReceipt else { return }
-        receiptHide = Task { [weak self] in
-            let pause: UInt64 = UIAccessibility.isVoiceOverRunning ? 8_000_000_000 : 4_500_000_000
-            try? await Task.sleep(nanoseconds: pause)
-            guard !Task.isCancelled else { return }
-            if self?.receipt?.id == id { self?.receipt = nil }
+        let item = PlanVoiceReceipt(id: id, title: title, detail: detail, success: success)
+        notices.append(item)
+        receipt = item
+    }
+
+    private func noteExchange(id: String, request: String, reply: String) {
+        let trimmedRequest = request.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedReply = reply.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedRequest.isEmpty {
+            turns.append(PlanVoiceTurn(id: id + "-you", role: .user, text: trimmedRequest))
+        }
+        if !trimmedReply.isEmpty {
+            turns.append(PlanVoiceTurn(id: id + "-maya", role: .maya, text: trimmedReply))
         }
     }
 
-    private func noteSaved(id: String, spoken: String, start: Date, minutes: Int, kind: String) {
+    private func noteSaved(id: String, spoken: String, start: Date, minutes: Int, kind: String, reply: String) {
         let key = kind == "moved" ? "planner.voice.receipt.moved" : "planner.voice.receipt.added"
         let end = calendar.date(byAdding: .minute, value: minutes, to: start) ?? start
         let startText = String(format: "%02d:%02d", calendar.component(.hour, from: start), calendar.component(.minute, from: start))
@@ -356,11 +383,19 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             language: callLanguage,
             calendar: calendar
         )
+        let title = String(format: WeekFitLocalizedString(key), spoken)
+        let startClock = planRealtimeSpokenClock(startText, language: callLanguage)
+        let endClock = planRealtimeSpokenClock(endText, language: callLanguage)
         noteReceipt(
             id: id,
-            title: String(format: WeekFitLocalizedString(key), spoken),
-            detail: "\(day) · \(startText)–\(endText)",
+            title: title,
+            detail: "\(day) · \(startClock)–\(endClock)",
             success: true
+        )
+        noteExchange(
+            id: id,
+            request: planRealtimeAsked(kind: kind, spoken: spoken, day: day, time: startText, language: callLanguage),
+            reply: reply.isEmpty ? title : reply
         )
     }
 
@@ -616,7 +651,14 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             do {
                 _ = try onSave(request)
                 applied.insert(key)
-                noteSaved(id: key, spoken: PlannerOptionLocalization.localizedTitle(for: item.catalogTitle), start: start, minutes: item.durationMinutes, kind: "added")
+                noteSaved(
+                    id: key,
+                    spoken: PlannerOptionLocalization.localizedTitle(for: item.catalogTitle),
+                    start: start,
+                    minutes: item.durationMinutes,
+                    kind: "added",
+                    reply: commit.speak ?? ""
+                )
                 return planRealtimeToolReply(action: .insert, speak: commit.speak)
             } catch PlanViewModel.VoiceSaveError.timeConflict {
                 let spoken = conflictSpeak(start: start, minutes: item.durationMinutes, excluding: nil)
@@ -664,20 +706,23 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             do {
                 try onDelete(entry.activityID)
                 removedIDs.insert(entry.activityID)
+                let day = dayLabel(entry.day, today: today, tomorrow: tomorrow)
+                let reply = planRealtimeRemovedSpeak(spoken: entry.spoken, day: day, language: callLanguage)
                 noteReceipt(
                     id: entry.activityID,
                     title: String(format: WeekFitLocalizedString("planner.voice.receipt.removed"), entry.spoken),
-                    detail: dayLabel(entry.day, today: today, tomorrow: tomorrow),
+                    detail: day,
                     success: true
+                )
+                noteExchange(
+                    id: entry.activityID,
+                    request: planRealtimeAsked(kind: "removed", spoken: entry.spoken, day: day, time: "", language: callLanguage),
+                    reply: reply
                 )
                 return encode(PlanRealtimeToolReply(
                     ok: true,
                     saved: true,
-                    speak: planRealtimeRemovedSpeak(
-                        spoken: entry.spoken,
-                        day: dayLabel(entry.day, today: today, tomorrow: tomorrow),
-                        language: callLanguage
-                    ),
+                    speak: reply,
                     error: nil
                 ))
             } catch PlanViewModel.VoiceSaveError.alreadyDone {
@@ -722,16 +767,17 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                 let parts = calendar.dateComponents([.hour, .minute], from: start)
                 let time = String(format: "%02d:%02d", parts.hour ?? 0, parts.minute ?? 0)
                 let spoken = draft.catalogTitle.isEmpty ? entry.spoken : PlannerOptionLocalization.localizedTitle(for: draft.catalogTitle)
-                noteSaved(id: activity.id + time, spoken: spoken, start: start, minutes: duration, kind: "moved")
+                let reply = planRealtimeMovedSpeak(
+                    spoken: spoken,
+                    day: dayLabel(day, today: today, tomorrow: tomorrow),
+                    time: time,
+                    language: callLanguage
+                )
+                noteSaved(id: activity.id + time, spoken: spoken, start: start, minutes: duration, kind: "moved", reply: reply)
                 return encode(PlanRealtimeToolReply(
                     ok: true,
                     saved: true,
-                    speak: planRealtimeMovedSpeak(
-                        spoken: spoken,
-                        day: dayLabel(day, today: today, tomorrow: tomorrow),
-                        time: time,
-                        language: callLanguage
-                    ),
+                    speak: reply,
                     error: nil
                 ))
             } catch PlanViewModel.VoiceSaveError.timeConflict {
@@ -848,68 +894,23 @@ private final class PlanRealtimeScriptBridge: NSObject, WKScriptMessageHandler {
 
 @MainActor
 private final class PlanVoiceRingback {
-    private var player: AVAudioPlayer?
-
     func start() {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
         try? session.setActive(true)
-        guard player == nil, let sound = try? AVAudioPlayer(data: Self.tone) else { return }
-        sound.numberOfLoops = -1
-        sound.volume = 1
-        sound.prepareToPlay()
-        sound.play()
-        player = sound
     }
 
-    func stop() {
-        player?.stop()
-        player = nil
-    }
-
-    // A soft rising two-note chime, repeated until Maya's voice is heard. Each loop fades to
-    // silence before it repeats, so the seam is inaudible.
-    private static let tone: Data = {
-        let rate = 24_000
-        let count = Int(Double(rate) * 2.4)
-        var wave = Data(capacity: 44 + count * 2)
-        func word(_ value: UInt32) {
-            var little = value.littleEndian
-            withUnsafeBytes(of: &little) { wave.append(contentsOf: $0) }
-        }
-        func halfWord(_ value: UInt16) {
-            var little = value.littleEndian
-            withUnsafeBytes(of: &little) { wave.append(contentsOf: $0) }
-        }
-        wave.append(contentsOf: "RIFF".utf8)
-        word(UInt32(36 + count * 2))
-        wave.append(contentsOf: "WAVEfmt ".utf8)
-        word(16)
-        halfWord(1)
-        halfWord(1)
-        word(UInt32(rate))
-        word(UInt32(rate * 2))
-        halfWord(2)
-        halfWord(16)
-        wave.append(contentsOf: "data".utf8)
-        word(UInt32(count * 2))
-        func chime(_ frequency: Double, from start: Double, at seconds: Double) -> Double {
-            let elapsed = seconds - start
-            guard elapsed >= 0 else { return 0 }
-            let envelope = min(1, elapsed / 0.012) * exp(-elapsed / 0.3)
-            return envelope * (sin(2 * .pi * frequency * elapsed) + 0.12 * sin(4 * .pi * frequency * elapsed))
-        }
-        for index in 0..<count {
-            let seconds = Double(index) / Double(rate)
-            let sample = (chime(587.33, from: 0, at: seconds) + chime(880, from: 0.16, at: seconds)) * 0.16
-            var value = Int16((sample * Double(Int16.max)).rounded()).littleEndian
-            withUnsafeBytes(of: &value) { wave.append(contentsOf: $0) }
-        }
-        return wave
-    }()
+    func stop() {}
 }
 
-struct PlanVoiceReceipt: Equatable {
+struct PlanVoiceTurn: Equatable, Identifiable {
+    enum Role: Equatable { case user, maya }
+    var id: String
+    var role: Role
+    var text: String
+}
+
+struct PlanVoiceReceipt: Equatable, Identifiable {
     var id: String
     var title: String
     var detail: String
@@ -929,7 +930,6 @@ struct PlanRealtimeVoiceSheet: View {
     @Environment(\.weekFitPalette) private var palette
     @EnvironmentObject private var languageManager: AppLanguageManager
     @StateObject private var controller = PlanRealtimeSessionController()
-    @State private var routeRevision = 0
     @State private var showAIUsage = false
 
     var body: some View {
@@ -944,23 +944,53 @@ struct PlanRealtimeVoiceSheet: View {
             dayContext: dayContext
         )
 
-        VStack(spacing: 18) {
-            header
-            mark
-            Spacer(minLength: 0)
+        ZStack {
+            callCanvas.ignoresSafeArea()
+            VStack(spacing: 0) {
+                callHeader
+                callStatus
+                ScrollViewReader { proxy in
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 22) {
+                            portrait
+                            waveform
+                            if WeekFitAIBilling.enabled, case .failed = controller.phase {
+                                Button(WeekFitLocalizedString("ai.usage.title")) { showAIUsage = true }
+                            }
+                            failureBlock
+                            if !controller.turns.isEmpty || !controller.notices.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    ForEach(controller.turns) { turn in
+                                        callTurn(turn)
+                                    }
+                                    ForEach(controller.notices) { notice in
+                                        receiptCard(notice)
+                                    }
+                                }
+                            }
+                            Color.clear.frame(height: 1).id("call-bottom")
+                        }
+                        .padding(.horizontal, 22)
+                        .padding(.top, 6)
+                        .padding(.bottom, 16)
+                    }
+                    .onChange(of: controller.turns.count) { _, _ in
+                        scrollCall(proxy)
+                    }
+                    .onChange(of: controller.notices.count) { _, _ in
+                        scrollCall(proxy)
+                    }
+                }
+                controls
+            }
             if let webView = controller.webView {
                 PlanRealtimeWebHost(webView: webView)
-                    .frame(height: 1)
+                    .frame(width: 1, height: 1)
                     .opacity(0.01)
                     .accessibilityHidden(true)
             }
-            if WeekFitAIBilling.enabled, case .failed = controller.phase {
-                Button(WeekFitLocalizedString("ai.usage.title")) { showAIUsage = true }
-            }
-            controls
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(WeekFitTheme.backgroundColor.ignoresSafeArea())
         .accessibilityIdentifier("planner.voice.realtime")
         .onAppear {
             if let phase = WeekFitUITestSupport.mayaPreviewPhase {
@@ -979,65 +1009,105 @@ struct PlanRealtimeVoiceSheet: View {
             let announcement = receipt.detail.isEmpty ? receipt.title : "\(receipt.title). \(receipt.detail)"
             UIAccessibility.post(notification: .announcement, argument: announcement)
         }
-        .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)) { _ in
-            routeRevision += 1
-        }
     }
 
     private var accent: Color {
-        palette.isLight ? Color(red: 0.55, green: 0.48, blue: 0.72) : palette.textPrimary
+        Color(red: 0.72, green: 0.58, blue: 0.32)
     }
 
-    private var header: some View {
-        VStack(spacing: 6) {
+    private var callCanvas: Color {
+        palette.isLight ? Color(red: 0.988, green: 0.973, blue: 0.945) : palette.appScreenBackground
+    }
+
+    private var chipFill: Color {
+        palette.isLight ? Color.white.opacity(0.72) : Color.white.opacity(0.08)
+    }
+
+    private var callHeader: some View {
+        ZStack {
             Text(WeekFitLocalizedString("planner.voice.maya"))
-                .font(.title.weight(.semibold))
+                .font(.title3.weight(.semibold))
                 .foregroundStyle(palette.textPrimary)
-                .minimumScaleFactor(0.7)
-            Text(WeekFitLocalizedString("planner.voice.coachLine"))
-                .font(.subheadline)
-                .foregroundStyle(palette.textSecondary)
-            Text(statusText)
-                .font(.body.weight(.medium))
+            HStack {
+                callCircleButton(systemName: "chevron.left", identifier: "planner.voice.realtime.back") {
+                    controller.end()
+                    dismiss()
+                }
+                Spacer(minLength: 0)
+                PlanRealtimeRouteButton(tint: UIColor(palette.textPrimary))
+                    .frame(width: 22, height: 22)
+                    .frame(width: 40, height: 40)
+                    .background(Circle().fill(chipFill))
+                    .accessibilityIdentifier("planner.voice.realtime.route")
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 8)
+    }
+
+    private func callCircleButton(systemName: String, identifier: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(palette.textPrimary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("planner.voice.realtime.status")
+                .frame(width: 40, height: 40)
+                .background(Circle().fill(chipFill))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
+    }
+
+    private var callStatus: some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(controller.connectedAt == nil ? palette.textSecondary.opacity(0.45) : Color(red: 0.25, green: 0.62, blue: 0.36))
+                    .frame(width: 7, height: 7)
+                if let connectedAt = controller.connectedAt {
+                    TimelineView(.periodic(from: connectedAt, by: 1)) { context in
+                        let shown = min(context.date, controller.endingAt ?? context.date)
+                        let seconds = max(0, Int(shown.timeIntervalSince(connectedAt)))
+                        Text("\(statusText) · \(String(format: "%02d:%02d", seconds / 60, seconds % 60))")
+                            .font(.subheadline)
+                            .monospacedDigit()
+                            .foregroundStyle(palette.textSecondary)
+                    }
+                } else {
+                    Text(statusText)
+                        .font(.subheadline)
+                        .foregroundStyle(palette.textSecondary)
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("planner.voice.realtime.status")
             if let queueDetail {
                 Text(queueDetail)
-                    .font(.subheadline)
+                    .font(.footnote)
                     .foregroundStyle(palette.textSecondary)
                     .multilineTextAlignment(.center)
             }
             if let seconds = controller.remainingSeconds, seconds <= 60 {
                 Text(WeekFitLocalizedString("ai.usage.lastMinute"))
-                    .font(.footnote).foregroundStyle(palette.textSecondary)
-            }
-            if controller.muted, controller.connectedAt != nil {
-                Label(WeekFitLocalizedString("planner.voice.micOff"), systemImage: "mic.slash")
-                    .font(.footnote.weight(.semibold))
+                    .font(.footnote)
                     .foregroundStyle(palette.textSecondary)
             }
-            if let connectedAt = controller.connectedAt {
-                TimelineView(.periodic(from: connectedAt, by: 1)) { context in
-                    let shown = min(context.date, controller.endingAt ?? context.date)
-                    let seconds = max(0, Int(shown.timeIntervalSince(connectedAt)))
-                    Text(String(format: "%02d:%02d", seconds / 60, seconds % 60))
-                        .font(.body.monospacedDigit())
-                        .foregroundStyle(palette.textSecondary)
-                }
-            }
-            if case .failed(let message) = controller.phase {
+        }
+        .padding(.top, 10)
+        .padding(.horizontal, 24)
+    }
+
+    @ViewBuilder
+    private var failureBlock: some View {
+        if case .failed(let message) = controller.phase {
+            VStack(spacing: 8) {
                 Text(message)
                     .font(.subheadline)
                     .foregroundStyle(palette.textPrimary)
                     .multilineTextAlignment(.center)
-                    .padding(.top, 8)
                 Button(WeekFitLocalizedString("planner.voice.retry")) {
                     controller.retry()
                 }
                 .font(.body.weight(.semibold))
-                .padding(.top, 4)
                 if controller.microphoneDenied {
                     Button(WeekFitLocalizedString("planner.voice.openSettings")) {
                         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
@@ -1047,8 +1117,20 @@ struct PlanRealtimeVoiceSheet: View {
                 }
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 28)
+    }
+
+    private var portrait: some View {
+        Image("maya-portrait")
+            .resizable()
+            .scaledToFill()
+            .frame(width: 228, height: 228)
+            .clipShape(Circle())
+            .overlay {
+                Circle().strokeBorder(Color.white.opacity(palette.isLight ? 0.9 : 0.2), lineWidth: 2)
+            }
+            .shadow(color: Color(red: 0.45, green: 0.32, blue: 0.16).opacity(palette.isLight ? 0.12 : 0.28), radius: 16, y: 8)
+            .padding(.top, 12)
+            .accessibilityHidden(true)
     }
 
     private var motionReduced: Bool {
@@ -1066,75 +1148,123 @@ struct PlanRealtimeVoiceSheet: View {
         }
     }
 
-    private var mark: some View {
-        let level = markLevel
-        let connecting = !motionReduced && {
+    private var waveform: some View {
+        let active = !motionReduced && {
             switch controller.phase {
-            case .connecting, .queued: return true
+            case .listening, .speaking, .connecting, .queued: return true
             default: return false
             }
         }()
-        return TimelineView(.animation(minimumInterval: 1.0 / 20.0, paused: !connecting)) { context in
-            let breath = connecting
-                ? 0.92 + 0.08 * (0.5 + 0.5 * sin(context.date.timeIntervalSinceReferenceDate * 1.2))
-                : 1.0
-            ZStack {
-                Circle()
-                    .fill(accent.opacity((palette.isLight ? 0.16 : 0.22) * breath))
-                    .frame(width: 108, height: 108)
-                Circle()
-                    .strokeBorder(accent.opacity(0.55), lineWidth: 1.5)
-                    .frame(width: 108, height: 108)
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [accent.opacity(0.95), accent.opacity(palette.isLight ? 0.42 : 0.7)],
-                            center: UnitPoint(x: 0.35, y: 0.32),
-                            startRadius: 2,
-                            endRadius: 46
-                        )
-                    )
-                    .frame(width: 72, height: 72)
-                    .scaleEffect(motionReduced ? 1 : 1 + level * 0.16)
-                Circle()
-                    .fill(Color.white.opacity(palette.isLight ? 0.38 : 0.2))
-                    .frame(width: 16, height: 16)
-                    .offset(x: -12, y: -14)
-                    .allowsHitTesting(false)
+        return TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: !active)) { context in
+            let time = context.date.timeIntervalSinceReferenceDate
+            HStack(alignment: .center, spacing: 5) {
+                ForEach(0..<21, id: \.self) { index in
+                        Capsule(style: .continuous)
+                        .fill(accent.opacity(0.92))
+                        .frame(width: 5, height: waveHeight(index: index, time: time))
+                }
             }
+            .frame(height: 72)
         }
-        .animation(motionReduced ? nil : .easeOut(duration: 0.12), value: level)
         .accessibilityHidden(true)
     }
 
-    @ViewBuilder
-    private var receiptCard: some View {
-        if let receipt = controller.receipt {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: receipt.success ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                    .foregroundStyle(receipt.success ? accent : Color(red: 0.91, green: 0.19, blue: 0.22))
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(receipt.title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(palette.textPrimary)
-                    if !receipt.detail.isEmpty {
-                        Text(receipt.detail)
-                            .font(.footnote)
-                            .foregroundStyle(palette.textSecondary)
-                    }
-                }
-                Spacer(minLength: 0)
+    private func waveHeight(index: Int, time: TimeInterval) -> CGFloat {
+        let center = abs(CGFloat(index) - 10) / 10
+        let shape = 0.42 + 0.58 * (1 - center)
+        let level = max(0.18, markLevel)
+        let ripple = motionReduced ? 0 : (0.5 + 0.5 * sin(time * 6 + Double(index) * 0.45))
+        return 14 + 52 * shape * (0.4 + 0.6 * level) * (0.55 + 0.45 * ripple)
+    }
+
+    private func scrollCall(_ proxy: ScrollViewProxy) {
+        if motionReduced {
+            proxy.scrollTo("call-bottom", anchor: .bottom)
+        } else {
+            withAnimation(.easeOut(duration: 0.35)) {
+                proxy.scrollTo("call-bottom", anchor: .bottom)
             }
-            .padding(14)
-            .background(palette.cardSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("planner.voice.realtime.receipt")
         }
     }
 
+    private func callTurn(_ turn: PlanVoiceTurn) -> some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            if turn.role == .user {
+                Image(systemName: "person.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(palette.textSecondary)
+                    .frame(width: 28, height: 28)
+                    .background(Circle().fill(chipFill))
+                    .accessibilityHidden(true)
+            } else {
+                Image("maya-portrait")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 28, height: 28)
+                    .clipShape(Circle())
+                    .accessibilityHidden(true)
+            }
+            Text(turn.text)
+                .font(.subheadline)
+                .foregroundStyle(palette.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(turnBubble(turn.role))
+                }
+            Spacer(minLength: 28)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func turnBubble(_ role: PlanVoiceTurn.Role) -> Color {
+        if role == .user {
+            return palette.isLight ? Color.white : palette.cardSurface
+        }
+        return palette.isLight ? Color(red: 0.94, green: 0.91, blue: 0.97) : palette.cardSurface
+    }
+
+    private func receiptCard(_ receipt: PlanVoiceReceipt) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: receipt.success ? "calendar" : "exclamationmark")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(receipt.success ? Color(red: 0.62, green: 0.46, blue: 0.22) : Color(red: 0.91, green: 0.19, blue: 0.22))
+                .frame(width: 42, height: 42)
+                .background {
+                    Circle().fill(receipt.success ? Color(red: 0.96, green: 0.90, blue: 0.78) : Color(red: 0.91, green: 0.19, blue: 0.22).opacity(0.12))
+                }
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(receipt.title)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(palette.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !receipt.detail.isEmpty {
+                    Text(receipt.detail)
+                        .font(.subheadline)
+                        .foregroundStyle(palette.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(palette.isLight ? Color(red: 1, green: 0.99, blue: 0.975) : palette.cardSurface)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(Color(red: 0.45, green: 0.38, blue: 0.30).opacity(palette.isLight ? 0.10 : 0.2), lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("planner.voice.realtime.receipt")
+    }
+
     private var controls: some View {
-        HStack(alignment: .top, spacing: 28) {
+        HStack(alignment: .top, spacing: 36) {
             labeledControl(
                 title: WeekFitLocalizedString(controller.muted ? "planner.voice.micEnable" : "planner.voice.micDisable"),
                 identifier: "planner.voice.realtime.mute"
@@ -1142,12 +1272,11 @@ struct PlanRealtimeVoiceSheet: View {
                 Button {
                     controller.toggleMute()
                 } label: {
-                    Image(systemName: controller.muted ? "mic.slash.fill" : "mic.fill")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(palette.textPrimary)
-                        .frame(width: 60, height: 60)
-                        .background(Circle().fill(palette.cardSurface))
-                        .frame(height: 76)
+                    Image(systemName: controller.muted ? "mic.slash.fill" : "mic.slash")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(palette.textPrimary.opacity(controller.connectedAt == nil ? 0.35 : 0.8))
+                        .frame(width: 68, height: 68)
+                        .background(Circle().fill(chipFill))
                 }
                 .disabled(controller.connectedAt == nil)
                 .accessibilityValue(Text(controller.muted ? WeekFitLocalizedString("planner.voice.micOff") : statusText))
@@ -1164,71 +1293,35 @@ struct PlanRealtimeVoiceSheet: View {
                     Image(systemName: "phone.down.fill")
                         .font(.system(size: 26, weight: .semibold))
                         .foregroundStyle(.white)
-                        .frame(width: 76, height: 76)
-                        .background(Circle().fill(Color(red: 0.91, green: 0.19, blue: 0.22)))
+                        .frame(width: 74, height: 74)
+                        .background(Circle().fill(Color(red: 0.86, green: 0.27, blue: 0.27)))
                 }
-            }
-
-            labeledControl(
-                title: WeekFitLocalizedString("planner.voice.audioRoute"),
-                identifier: "planner.voice.realtime.route",
-                value: externalRouteName
-            ) {
-                PlanRealtimeRouteButton(tint: UIColor(palette.textPrimary))
-                    .frame(width: 60, height: 60)
-                    .background(Circle().fill(palette.cardSurface))
-                    .frame(height: 76)
             }
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, 28)
-        .padding(.bottom, 28)
-        .overlay(alignment: .top) {
-            receiptCard
-                .padding(.horizontal, 8)
-                .offset(y: -88)
-                .animation(motionReduced ? nil : .easeOut(duration: 0.35), value: controller.receipt?.id)
-        }
-    }
-
-    /// Built-in speaker already has the «Звук» caption. Show a second line only for headphones, a car, or another route.
-    private var externalRouteName: String? {
-        let _ = routeRevision
-        guard let output = AVAudioSession.sharedInstance().currentRoute.outputs.first else { return nil }
-        switch output.portType {
-        case .builtInSpeaker, .builtInReceiver:
-            return nil
-        default:
-            let name = output.portName.trimmingCharacters(in: .whitespacesAndNewlines)
-            return name.isEmpty ? nil : name
-        }
+        .padding(.horizontal, 48)
+        .padding(.top, 8)
+        .padding(.bottom, 22)
+        .animation(motionReduced ? nil : .easeOut(duration: 0.35), value: controller.receipt?.id)
     }
 
     private func labeledControl<Content: View>(
         title: String,
         identifier: String,
-        value: String? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(spacing: 8) {
             content()
             Text(title)
-                .font(.caption)
+                .font(.subheadline)
                 .foregroundStyle(palette.textSecondary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
-            Text(value?.isEmpty == false ? (value ?? "") : " ")
-                .font(.caption2)
-                .foregroundStyle(palette.textSecondary)
-                .lineLimit(1)
-                .opacity(value?.isEmpty == false ? 1 : 0)
-                .accessibilityHidden(true)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
-        .accessibilityValue(Text(value ?? ""))
         .accessibilityIdentifier(identifier)
     }
 

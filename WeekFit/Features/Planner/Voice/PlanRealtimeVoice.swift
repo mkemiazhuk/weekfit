@@ -508,15 +508,126 @@ nonisolated func planRealtimeListSpeak(
         default: return copy.todayDoneEmpty
         }
     }
-    let shown = items.prefix(6).map { "\($0.spoken) \($0.startTime)" }.joined(separator: ", ")
+    let shown = items.prefix(6).map {
+        "\($0.spoken) \(planRealtimeSpokenClock($0.startTime, language: code))"
+    }.joined(separator: ", ")
     let lead = scope == "tomorrow" ? copy.tomorrowLead : (scope == "today_planned" ? copy.todayPlannedLead : copy.todayDoneLead)
     let extra = items.count > 6 ? " \(copy.more(items.count - 6))" : ""
     return lead + shown + extra
 }
 
+nonisolated func planRealtimeSpokenClock(_ time: String, language: String) -> String {
+    let parts = time.split(separator: ":")
+    guard parts.count == 2,
+          let hour = Int(parts[0]),
+          let minute = Int(parts[1]),
+          (0...23).contains(hour),
+          (0...59).contains(minute) else { return time }
+    let clockHour = hour % 12 == 0 ? 12 : hour % 12
+    let minutes = minute == 0 ? "" : String(format: ":%02d", minute)
+    switch planRealtimeSpeechLanguage(language) {
+    case "en":
+        return "\(clockHour)\(minutes)\(hour < 12 ? "am" : "pm")"
+    case "pl":
+        let period = hour < 12 ? "rano" : "wieczorem"
+        return "\(clockHour)\(minutes) \(period)"
+    case "fr":
+        let period = hour < 12 ? "du matin" : "du soir"
+        return "\(clockHour)h\(minute == 0 ? "" : String(format: "%02d", minute)) \(period)"
+    case "es":
+        let period = hour < 12 ? "de la mañana" : "de la tarde"
+        return "\(clockHour)\(minutes) \(period)"
+    case "de":
+        let period = hour < 12 ? "morgens" : "abends"
+        return "\(clockHour)\(minutes) Uhr \(period)"
+    case "it":
+        let period = hour < 12 ? "di mattina" : "di sera"
+        return "\(clockHour)\(minutes) \(period)"
+    case "ja":
+        return "\(hour < 12 ? "午前" : "午後")\(clockHour)時\(minute == 0 ? "" : "\(minute)分")"
+    case "ko":
+        return "\(hour < 12 ? "오전" : "오후") \(clockHour)시\(minute == 0 ? "" : " \(minute)분")"
+    case "zh-Hans":
+        return "\(hour < 12 ? "早上" : "晚上")\(clockHour)点\(minute == 0 ? "" : "\(minute)分")"
+    default:
+        let period: String
+        if hour == 0 { period = "ночи" }
+        else if hour < 12 { period = "утра" }
+        else if hour < 17 { period = "дня" }
+        else { period = "вечера" }
+        return "\(clockHour)\(minutes) \(period)"
+    }
+}
+
+nonisolated func planRealtimeAsked(kind: String, spoken: String, day: String, time: String, language: String) -> String {
+    let clock = planRealtimeSpokenClock(time, language: language)
+    switch planRealtimeSpeechLanguage(language) {
+    case "en":
+        switch kind {
+        case "moved": return "Move \(spoken) to \(day) at \(clock)."
+        case "added": return "Add \(spoken) on \(day) at \(clock)."
+        default: return "Remove \(spoken) on \(day)."
+        }
+    case "pl":
+        switch kind {
+        case "moved": return "Przenieś \(spoken) na \(day), na \(clock)."
+        case "added": return "Dodaj \(spoken) na \(day), na \(clock)."
+        default: return "Usuń \(spoken) na \(day)."
+        }
+    case "fr":
+        switch kind {
+        case "moved": return "Déplace \(spoken) à \(day), à \(clock)."
+        case "added": return "Ajoute \(spoken) à \(day), à \(clock)."
+        default: return "Retire \(spoken) \(day)."
+        }
+    case "es":
+        switch kind {
+        case "moved": return "Pasa \(spoken) a \(day), a las \(clock)."
+        case "added": return "Añade \(spoken) el \(day) a las \(clock)."
+        default: return "Quita \(spoken) de \(day)."
+        }
+    case "de":
+        switch kind {
+        case "moved": return "Verschiebe \(spoken) auf \(day) um \(clock)."
+        case "added": return "Füge \(spoken) am \(day) um \(clock) hinzu."
+        default: return "Entferne \(spoken) am \(day)."
+        }
+    case "it":
+        switch kind {
+        case "moved": return "Sposta \(spoken) a \(day), alle \(clock)."
+        case "added": return "Aggiungi \(spoken) \(day) alle \(clock)."
+        default: return "Togli \(spoken) di \(day)."
+        }
+    case "ja":
+        switch kind {
+        case "moved": return "\(spoken)を\(day)の\(clock)に移して。"
+        case "added": return "\(day)の\(clock)に\(spoken)を追加して。"
+        default: return "\(day)の\(spoken)を外して。"
+        }
+    case "ko":
+        switch kind {
+        case "moved": return "\(spoken)을 \(day) \(clock)으로 옮겨 줘."
+        case "added": return "\(day) \(clock)에 \(spoken)을 추가해 줘."
+        default: return "\(day) \(spoken)을 지워 줘."
+        }
+    case "zh-Hans":
+        switch kind {
+        case "moved": return "把\(spoken)改到\(day) \(clock)。"
+        case "added": return "在\(day) \(clock)加上\(spoken)。"
+        default: return "去掉\(day)的\(spoken)。"
+        }
+    default:
+        switch kind {
+        case "moved": return "Перенеси \(spoken) на \(day), на \(clock)."
+        case "added": return "Добавь \(spoken) на \(day), на \(clock)."
+        default: return "Убери \(spoken) на \(day)."
+        }
+    }
+}
+
 nonisolated func planRealtimeMovedSpeak(spoken: String, day: String, time: String, language: String) -> String {
     let copy = planRealtimeSpeech[planRealtimeSpeechLanguage(language)] ?? planRealtimeSpeech["ru"]!
-    return copy.moved(spoken, day, time)
+    return copy.moved(spoken, day, planRealtimeSpokenClock(time, language: language))
 }
 
 nonisolated func planRealtimeRemovedSpeak(spoken: String, day: String, language: String) -> String {
