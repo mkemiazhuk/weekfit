@@ -554,6 +554,9 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(dayText.includes('ignore nutrition'), false);
     assert.equal(dayText.includes('minutes: 0'), false);
     assert.match(dayText, /что лучше съесть/);
+    assert.match(dayText, /сама придумай одно конкретное блюдо под дефицит/);
+    assert.equal(dayText.includes('Не выдумывай блюда'), false);
+    assert.equal(dayText.includes('рыбу, творог, яйца'), false);
 
     const created = await request(server.url, 'POST', '/v1/planner-voice/activities', { body: tennis() });
     assert.equal(created.body.saved, true);
