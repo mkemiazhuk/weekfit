@@ -16,6 +16,19 @@ final class WeekFitAIBalanceTests: XCTestCase {
         )
     }
 
+    func testLargeTopUpsHaveLocalizedTitlesQuantitiesAndSortLast() {
+        XCTAssertTrue(WeekFitAIBilling.isTopUp("com.weekfit.topup.voice60"))
+        XCTAssertTrue(WeekFitAIBilling.isTopUp("com.weekfit.topup.photos100"))
+        XCTAssertEqual(WeekFitAIBalancePack.quantity("com.weekfit.topup.voice60"), 60)
+        XCTAssertEqual(WeekFitAIBalancePack.quantity("com.weekfit.topup.photos100"), 100)
+        XCTAssertLessThan(WeekFitAIBalancePack.quantityRank("com.weekfit.topup.voice30"),
+                          WeekFitAIBalancePack.quantityRank("com.weekfit.topup.voice60"))
+        XCTAssertLessThan(WeekFitAIBalancePack.quantityRank("com.weekfit.topup.photos50"),
+                          WeekFitAIBalancePack.quantityRank("com.weekfit.topup.photos100"))
+        XCTAssertEqual(WeekFitAIBalanceContent.packTitle("com.weekfit.topup.voice60", locale: english), "60 minutes")
+        XCTAssertEqual(WeekFitAIBalanceContent.packTitle("com.weekfit.topup.photos100", locale: english), "100 food photos")
+    }
+
     func testCompactClockUsesShortUnitsWithoutCommas() {
         XCTAssertEqual(WeekFitAIClock.compact(seconds: 0, locale: english), "0m")
         XCTAssertEqual(WeekFitAIClock.compact(seconds: 45, locale: english), "45s")

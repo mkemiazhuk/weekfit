@@ -9,8 +9,8 @@ nonisolated enum WeekFitAIBilling {
     /// Sandbox was requested, but this build must not call Production.
     static var refused: Bool { WeekFitCloudAPI.sandboxRefused }
     static var environment: String { WeekFitCloudAPI.billingDecision.environmentHeader }
-    static let products = ["com.weekfit.topup.photos20", "com.weekfit.topup.photos50",
-                           "com.weekfit.topup.voice15", "com.weekfit.topup.voice30"]
+    static let products = ["com.weekfit.topup.photos20", "com.weekfit.topup.photos50", "com.weekfit.topup.photos100",
+                           "com.weekfit.topup.voice15", "com.weekfit.topup.voice30", "com.weekfit.topup.voice60"]
     static func isTopUp(_ id: String) -> Bool { products.contains(id) }
 }
 

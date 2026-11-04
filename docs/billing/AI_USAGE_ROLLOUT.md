@@ -11,8 +11,10 @@ Monthly `com.weekfit.subscription.monthly` and Annual `com.weekfit.subscription.
 | --- | --- | --- |
 | com.weekfit.topup.photos20 | 20 photos | PLN 4.99 |
 | com.weekfit.topup.photos50 | 50 photos | PLN 9.99 |
-| com.weekfit.topup.voice15 | 900 seconds | PLN 6.99 |
-| com.weekfit.topup.voice30 | 1,800 seconds | PLN 11.99 |
+| com.weekfit.topup.photos100 | 100 photos | PLN 17.99 |
+| com.weekfit.topup.voice15 | 900 seconds | PLN 12.99 |
+| com.weekfit.topup.voice30 | 1,800 seconds | PLN 24.99 |
+| com.weekfit.topup.voice60 | 3,600 seconds | PLN 44.99 |
 
 Confirm available price points in App Store Connect. UI uses StoreKit displayPrice, never these constants. StoreKit testing USD prices are illustrative, not production pricing. The obsolete fixture annual trial has been removed; both subscriptions are at the same fixture level. No Pro or Unlimited products.
 
