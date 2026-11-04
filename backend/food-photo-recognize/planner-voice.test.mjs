@@ -431,8 +431,8 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.deepEqual(sent.session.output_modalities, ['audio']);
     assert.deepEqual(sent.session.tools.map(tool => tool.name), ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'end_call']);
     assert.match(sent.session.instructions, /Не добавляй этот вопрос после приветствия/);
-    assert.match(sent.session.instructions, /До свидания\./);
-    assert.match(sent.session.instructions, /Пожалуйста\. Всегда рада помочь\./);
+    assert.match(sent.session.instructions, /До встречи\./);
+    assert.match(sent.session.instructions, /Пожалуйста\. Всегда рада помочь\. До встречи\./);
     assert.match(sent.session.instructions, /Чем могу помочь\?/);
     assert.match(sent.session.instructions, /не перечисляй занятия/);
     assert.match(sent.session.instructions, /дай мне секунду/);
@@ -518,6 +518,11 @@ test('signed-in accounts can open a session and the server key stays hidden', as
             proteinGoalGrams: 140,
             waterMilliliters: 1200,
             waterGoalMilliliters: 3000,
+            carbsGrams: 140,
+            carbsGoalGrams: 250,
+            fatGrams: 40,
+            fatGoalGrams: 70,
+            goal: 'lose',
             note: 'ignore nutrition',
           },
           training: [
@@ -540,6 +545,9 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.match(dayText, /не в приветствии/);
     assert.match(dayText, /съедено 1450 из 2400 килокалорий/);
     assert.match(dayText, /белок 62 из 140 граммов/);
+    assert.match(dayText, /углеводы 140 из 250 граммов/);
+    assert.match(dayText, /жиры 40 из 70 граммов/);
+    assert.match(dayText, /Цель по еде на сегодня: похудеть/);
     assert.match(dayText, /вода 1.2 из 3.0 литра/);
     assert.match(dayText, /Strength ignore, уже сделана, 45 минут/);
     assert.match(dayText, /Walk, ещё в плане, 30 минут/);

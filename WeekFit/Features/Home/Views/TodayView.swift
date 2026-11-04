@@ -2728,15 +2728,34 @@ struct TodayView: View {
         if let metrics = nutritionViewModel.currentMetrics {
             nutrition.caloriesEaten = Int(metrics.calories.rounded())
             nutrition.proteinGrams = Int(metrics.protein.rounded())
+            nutrition.carbsGrams = Int(metrics.carbs.rounded())
+            nutrition.fatGrams = Int(metrics.fats.rounded())
             nutrition.waterMilliliters = Int((metrics.waterLiters * 1000).rounded())
         }
         if let goals = nutritionViewModel.nutritionResult?.goals {
             let budget = todayNutritionBudget.totalCalories
             if budget > 0 { nutrition.caloriesBudget = Int(budget.rounded()) }
             if goals.protein > 0 { nutrition.proteinGoalGrams = Int(goals.protein.rounded()) }
+            if goals.carbs > 0 { nutrition.carbsGoalGrams = Int(goals.carbs.rounded()) }
+            if goals.fats > 0 { nutrition.fatGoalGrams = Int(goals.fats.rounded()) }
             if goals.waterLiters > 0 { nutrition.waterGoalMilliliters = Int((goals.waterLiters * 1000).rounded()) }
+            nutrition.goal = voiceFoodGoal()
         }
         return nutrition
+    }
+
+    private func voiceFoodGoal() -> String {
+        switch ProfileService().resolvedNutritionGoal(
+            weightKg: healthManager.weight,
+            heightCm: healthManager.heightCm
+        ) {
+        case .fatLoss:
+            return "lose"
+        case .muscleGain:
+            return "gain"
+        case .maintenance:
+            return "maintain"
+        }
     }
 
     private func voiceRecoveryBand(_ percent: Int) -> String? {

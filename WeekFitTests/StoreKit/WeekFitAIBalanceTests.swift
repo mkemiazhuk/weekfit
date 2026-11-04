@@ -152,6 +152,36 @@ final class WeekFitAIBalanceTests: XCTestCase {
         XCTAssertEqual(WeekFitAIBalancePack.quantity("com.weekfit.topup.photos50"), 50)
         XCTAssertNil(WeekFitAIBalancePack.quantity("com.weekfit.topup.unknown"))
         XCTAssertEqual(String(format: WeekFitLocalizedString("ai.balance.save", locale: Locale(identifier: "ru")), 14), "Выгоднее на 14%")
+        XCTAssertEqual(
+            WeekFitAIBalancePack.unitSavingsPercent(
+                price: Decimal(string: "44.99")!,
+                quantity: 60,
+                basePrice: Decimal(string: "12.99")!,
+                baseQuantity: 15
+            ),
+            13
+        )
+        XCTAssertEqual(
+            WeekFitAIBalancePack.unitSavingsPercent(
+                price: Decimal(string: "24.99")!,
+                quantity: 30,
+                basePrice: Decimal(string: "12.99")!,
+                baseQuantity: 15
+            ),
+            3
+        )
+        XCTAssertNil(
+            WeekFitAIBalancePack.unitSavingsPercent(
+                price: Decimal(string: "12.99")!,
+                quantity: 15,
+                basePrice: Decimal(string: "12.99")!,
+                baseQuantity: 15
+            )
+        )
+        XCTAssertEqual(
+            String(format: WeekFitLocalizedString("ai.balance.savePerMinute", locale: Locale(identifier: "ru")), 13),
+            "−13% за минуту"
+        )
     }
 
     func testPackEstimatesReadNaturally() {

@@ -69,11 +69,25 @@ enum WeekFitAIBalancePack: String, Identifiable, Equatable {
     /// Savings per minute or photo against the smallest pack, from real store prices.
     /// Small differences are rounding in the price tiers, not a deal.
     static func savingsPercent(price: Decimal, quantity: Int, basePrice: Decimal, baseQuantity: Int) -> Int? {
+        unitSavingsPercent(price: price, quantity: quantity, basePrice: basePrice, baseQuantity: baseQuantity, minimum: 5)
+    }
+
+    /// Percent cheaper per unit than the base pack, floored from the unrounded unit prices.
+    /// Returns nil when the pack is not actually cheaper.
+    static func unitSavingsPercent(
+        price: Decimal,
+        quantity: Int,
+        basePrice: Decimal,
+        baseQuantity: Int,
+        minimum: Int = 1
+    ) -> Int? {
         guard quantity > baseQuantity, baseQuantity > 0, basePrice > 0, price > 0 else { return nil }
-        let unit = NSDecimalNumber(decimal: price).doubleValue / Double(quantity)
-        let baseUnit = NSDecimalNumber(decimal: basePrice).doubleValue / Double(baseQuantity)
-        let percent = Int(((1 - unit / baseUnit) * 100).rounded(.down))
-        return percent >= 5 ? percent : nil
+        let unit = price / Decimal(quantity)
+        let baseUnit = basePrice / Decimal(baseQuantity)
+        guard baseUnit > 0, unit < baseUnit else { return nil }
+        let ratio = (baseUnit - unit) / baseUnit * 100
+        let percent = Int(NSDecimalNumber(decimal: ratio).doubleValue.rounded(.down))
+        return percent >= minimum ? percent : nil
     }
 
     /// Smaller packs sort first. Unknown products stay after the known catalog.

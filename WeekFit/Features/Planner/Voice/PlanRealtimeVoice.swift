@@ -204,6 +204,11 @@ struct PlanVoiceDayContext: Equatable {
         var caloriesBudget: Int?
         var proteinGrams: Int?
         var proteinGoalGrams: Int?
+        var carbsGrams: Int?
+        var carbsGoalGrams: Int?
+        var fatGrams: Int?
+        var fatGoalGrams: Int?
+        var goal: String?
         var waterMilliliters: Int?
         var waterGoalMilliliters: Int?
     }
@@ -251,7 +256,9 @@ struct PlanVoiceDayContext: Equatable {
 private extension PlanVoiceDayContext.Nutrition {
     var isEmpty: Bool {
         caloriesEaten == nil && caloriesBudget == nil && proteinGrams == nil
-            && proteinGoalGrams == nil && waterMilliliters == nil && waterGoalMilliliters == nil
+            && proteinGoalGrams == nil && carbsGrams == nil && carbsGoalGrams == nil
+            && fatGrams == nil && fatGoalGrams == nil && goal == nil
+            && waterMilliliters == nil && waterGoalMilliliters == nil
     }
 
     func jsonObject() -> [String: Any] {
@@ -260,6 +267,11 @@ private extension PlanVoiceDayContext.Nutrition {
         if let caloriesBudget { body["caloriesBudget"] = caloriesBudget }
         if let proteinGrams { body["proteinGrams"] = proteinGrams }
         if let proteinGoalGrams { body["proteinGoalGrams"] = proteinGoalGrams }
+        if let carbsGrams { body["carbsGrams"] = carbsGrams }
+        if let carbsGoalGrams { body["carbsGoalGrams"] = carbsGoalGrams }
+        if let fatGrams { body["fatGrams"] = fatGrams }
+        if let fatGoalGrams { body["fatGoalGrams"] = fatGoalGrams }
+        if let goal, ["lose", "maintain", "gain"].contains(goal) { body["goal"] = goal }
         if let waterMilliliters { body["waterMilliliters"] = waterMilliliters }
         if let waterGoalMilliliters { body["waterGoalMilliliters"] = waterGoalMilliliters }
         return body

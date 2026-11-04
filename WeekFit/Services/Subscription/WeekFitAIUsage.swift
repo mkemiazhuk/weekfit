@@ -319,6 +319,10 @@ final class WeekFitAIUsageStore: ObservableObject {
         self.isEnabled = isEnabled
         self.isRefused = isRefused
         self.retryPause = retryPause
+        if isEnabled(), !isRefused() {
+            usage = WeekFitAIUsageCache.latest
+            products = WeekFitAIProductCache.latest
+        }
     }
 
     private func readUsage() async throws -> WeekFitAIUsage {

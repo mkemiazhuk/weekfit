@@ -509,6 +509,8 @@ export function consoleDocument() {
   let responseAudio = false;
   let goodbyeFallback = null;
   let goodbyeTail = null;
+  let farewellForced = false;
+  let farewellWait = null;
   let presence = null;
   let closing = null;
   let presenceAsked = false;
@@ -523,7 +525,7 @@ export function consoleDocument() {
   let sdpResolve = null;
   const pending = new Map();
   const CHECK = {
-    ru: { there: (n) => (n ? n + ', ты ещё здесь?' : 'Ты ещё здесь?'), bye: 'До свидания.' },
+    ru: { there: (n) => (n ? n + ', ты ещё здесь?' : 'Ты ещё здесь?'), bye: 'До встречи.' },
     en: { there: (n) => (n ? 'Still there, ' + n + '?' : 'Still there?'), bye: "I'll end the call now. Bye!" },
     pl: { there: (n) => (n ? n + ', jesteś tam?' : 'Jesteś tam?'), bye: 'Kończę rozmowę. Na razie!' },
     fr: { there: (n) => (n ? n + ', tu es là ?' : 'Tu es là ?'), bye: "Je termine l'appel. À plus !" },
@@ -600,8 +602,10 @@ export function consoleDocument() {
     clearPresence();
     if (goodbyeFallback) clearTimeout(goodbyeFallback);
     if (goodbyeTail) clearTimeout(goodbyeTail);
+    if (farewellWait) clearTimeout(farewellWait);
     goodbyeFallback = null;
     goodbyeTail = null;
+    farewellWait = null;
     callNumber++;
     release();
     post({ type: 'state', value: 'ended', reason: reason || 'user' });
@@ -679,10 +683,13 @@ export function consoleDocument() {
   function cancelGoodbye() {
     hangup = false;
     hangupConfirmed = false;
+    farewellForced = false;
     if (goodbyeFallback) clearTimeout(goodbyeFallback);
     if (goodbyeTail) clearTimeout(goodbyeTail);
+    if (farewellWait) clearTimeout(farewellWait);
     goodbyeFallback = null;
     goodbyeTail = null;
+    farewellWait = null;
   }
 
   function watchLevel(stream, kind) {
@@ -720,6 +727,16 @@ export function consoleDocument() {
   function armGoodbyeFallback() {
     if (goodbyeFallback || goodbyeTail) return;
     goodbyeFallback = setTimeout(() => stop('goodbye'), 12000);
+  }
+
+  function ensureSpokenFarewell() {
+    if (farewellWait) clearTimeout(farewellWait);
+    farewellWait = setTimeout(() => {
+      farewellWait = null;
+      if (!hangup || farewellForced || responseAudio || audioPlaying) return;
+      farewellForced = true;
+      speakExact(presenceLine('bye'), false);
+    }, 400);
   }
 
   function finishGoodbye() {
@@ -888,6 +905,10 @@ export function consoleDocument() {
         voiced = true;
         post({ type: 'state', value: 'voice' });
       }
+      if (farewellWait) {
+        clearTimeout(farewellWait);
+        farewellWait = null;
+      }
       return;
     }
     if (type === 'output_audio_buffer.stopped' || type === 'output_audio_buffer.cleared') {
@@ -928,7 +949,10 @@ export function consoleDocument() {
         }
         // The goodbye audio can finish before end_call arrives; don't wait for a stop that already happened.
         if (!audioPlaying && responseAudio) finishGoodbye();
-        else armGoodbyeFallback();
+        else {
+          if (!responseAudio) ensureSpokenFarewell();
+          armGoodbyeFallback();
+        }
         return;
       }
       if (!audioPlaying && !toolBusy && !presence && !closing) armPresence();
@@ -1209,14 +1233,24 @@ function nutritionSnapshot(raw) {
   const caloriesBudget = boundedInteger(raw.caloriesBudget, 1, 20000);
   const proteinGrams = boundedInteger(raw.proteinGrams, 0, 1000);
   const proteinGoalGrams = boundedInteger(raw.proteinGoalGrams, 1, 1000);
+  const carbsGrams = boundedInteger(raw.carbsGrams, 0, 2000);
+  const carbsGoalGrams = boundedInteger(raw.carbsGoalGrams, 1, 2000);
+  const fatGrams = boundedInteger(raw.fatGrams, 0, 1000);
+  const fatGoalGrams = boundedInteger(raw.fatGoalGrams, 1, 1000);
   const waterMilliliters = boundedInteger(raw.waterMilliliters, 0, 20000);
   const waterGoalMilliliters = boundedInteger(raw.waterGoalMilliliters, 1, 20000);
+  const foodGoal = ['lose', 'maintain', 'gain'].includes(raw.goal) ? raw.goal : null;
   if (caloriesEaten != null) nutrition.caloriesEaten = caloriesEaten;
   if (caloriesBudget != null) nutrition.caloriesBudget = caloriesBudget;
   if (proteinGrams != null) nutrition.proteinGrams = proteinGrams;
   if (proteinGoalGrams != null) nutrition.proteinGoalGrams = proteinGoalGrams;
+  if (carbsGrams != null) nutrition.carbsGrams = carbsGrams;
+  if (carbsGoalGrams != null) nutrition.carbsGoalGrams = carbsGoalGrams;
+  if (fatGrams != null) nutrition.fatGrams = fatGrams;
+  if (fatGoalGrams != null) nutrition.fatGoalGrams = fatGoalGrams;
   if (waterMilliliters != null) nutrition.waterMilliliters = waterMilliliters;
   if (waterGoalMilliliters != null) nutrition.waterGoalMilliliters = waterGoalMilliliters;
+  if (foodGoal) nutrition.goal = foodGoal;
   return Object.keys(nutrition).length ? nutrition : null;
 }
 
@@ -1296,6 +1330,18 @@ function dayContextLine(dayContext, language) {
       bits.push(facts.proteinOf(nutrition.proteinGrams, nutrition.proteinGoalGrams));
     } else if (nutrition.proteinGrams != null) {
       bits.push(facts.protein(nutrition.proteinGrams));
+    }
+    if (nutrition.carbsGrams != null && nutrition.carbsGoalGrams != null && facts.carbsOf) {
+      bits.push(facts.carbsOf(nutrition.carbsGrams, nutrition.carbsGoalGrams));
+    }
+    if (nutrition.fatGrams != null && nutrition.fatGoalGrams != null && facts.fatsOf) {
+      bits.push(facts.fatsOf(nutrition.fatGrams, nutrition.fatGoalGrams));
+    }
+    if (nutrition.goal && facts.foodGoal) {
+      const name = nutrition.goal === 'lose' ? facts.goalLose
+        : nutrition.goal === 'gain' ? facts.goalGain
+        : facts.goalMaintain;
+      if (name) bits.push(facts.foodGoal(name));
     }
     if (nutrition.waterMilliliters != null) {
       const liters = (nutrition.waterMilliliters / 1000).toFixed(1);
@@ -1417,7 +1463,7 @@ function endCallTool() {
   return {
     type: 'function',
     name: 'end_call',
-    description: 'Hang up after the request is done and they decline more help. «всё, спасибо», «все спасибо» and «спасибо, всё» are a Russian decline: say exactly "Пожалуйста. Всегда рада помочь." and call this in that same response. Another decline uses only the exact goodbye. A bare спасибо, alright, okay, or thanks in the middle of a task is not a decline. Do not announce that you are ending the call. Do not use this before the save is confirmed.',
+    description: 'Hang up only after the farewell has been spoken in this same response. «всё, спасибо», «все спасибо», «спасибо, всё», «пока», «до свидания» and «до встречи» are a Russian goodbye: say exactly "Пожалуйста. Всегда рада помочь. До встречи." for the thanks lines, and exactly "До встречи." for the others, then call this. A bare спасибо, alright, okay, or thanks in the middle of a task is not a goodbye. Do not announce that you are ending the call. Do not use this before the save is confirmed. Do not call this in a response that has no spoken farewell.',
     parameters: {
       type: 'object',
       additionalProperties: false,

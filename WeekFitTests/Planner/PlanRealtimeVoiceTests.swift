@@ -149,6 +149,11 @@ final class PlanRealtimeVoiceTests: XCTestCase {
         context.nutrition.caloriesBudget = 2400
         context.nutrition.proteinGrams = 62
         context.nutrition.proteinGoalGrams = 140
+        context.nutrition.carbsGrams = 140
+        context.nutrition.carbsGoalGrams = 250
+        context.nutrition.fatGrams = 40
+        context.nutrition.fatGoalGrams = 70
+        context.nutrition.goal = "lose"
         context.nutrition.waterMilliliters = 1200
         context.nutrition.waterGoalMilliliters = 3000
         context.training = [PlanVoiceDayContext.Training(title: "Strength", minutes: 45, done: true)]
@@ -156,6 +161,9 @@ final class PlanRealtimeVoiceTests: XCTestCase {
         let nutrition = object["nutrition"] as? [String: Any]
         XCTAssertEqual(nutrition?["caloriesEaten"] as? Int, 1450)
         XCTAssertEqual(nutrition?["proteinGrams"] as? Int, 62)
+        XCTAssertEqual(nutrition?["carbsGoalGrams"] as? Int, 250)
+        XCTAssertEqual(nutrition?["fatGrams"] as? Int, 40)
+        XCTAssertEqual(nutrition?["goal"] as? String, "lose")
         XCTAssertEqual(nutrition?["waterMilliliters"] as? Int, 1200)
         let training = object["training"] as? [[String: Any]]
         XCTAssertEqual(training?.first?["title"] as? String, "Strength")

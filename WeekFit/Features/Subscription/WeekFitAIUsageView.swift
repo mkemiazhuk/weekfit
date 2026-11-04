@@ -1,5 +1,6 @@
 import StoreKit
 import SwiftUI
+import UIKit
 
 /// Modal entry to AI balance. With a pack it opens that top-up directly.
 /// One close button returns to where the user came from; a credited purchase closes it too.
@@ -16,9 +17,8 @@ struct WeekFitAIBalanceSheet: View {
                 WeekFitAIUsageView(onClose: { dismiss() })
             }
         }
+        .toolbar(.hidden, for: .navigationBar)
         .background(palette.appScreenBackground.ignoresSafeArea())
-        .toolbarBackground(palette.appScreenBackground, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
         .weekFitSheetChrome()
     }
 }
@@ -73,23 +73,30 @@ struct WeekFitAIUsageView: View {
     @State private var pack: WeekFitAIBalancePack?
 
     var body: some View {
-        WeekFitAIBalanceScreen(
-            content: store.usage.map { WeekFitAIBalanceContent.make($0) },
-            isLoading: store.usage == nil && (store.isRefreshing || store.message == nil),
-            message: store.message,
-            showsSubscribe: store.usage?.active == false || store.requiresSubscription,
-            showsManage: store.usage != nil,
-            isBusy: store.isBusy,
-            onAdd: { selected in
-                store.preparePurchase()
-                pack = selected
-            },
-            onRetry: { Task { await store.refresh() } },
-            onSubscribe: { showPaywall = true },
-            onManage: { showManage = true }
-        )
+        VStack(spacing: 0) {
+            usageHeader
+            WeekFitAIBalanceScreen(
+                content: store.usage.map { WeekFitAIBalanceContent.make($0) },
+                isLoading: store.usage == nil && (store.isRefreshing || store.message == nil),
+                message: store.message,
+                showsSubscribe: store.usage?.active == false || store.requiresSubscription,
+                showsManage: store.usage != nil,
+                isBusy: store.isBusy,
+                onAdd: { selected in
+                    store.preparePurchase()
+                    pack = selected
+                },
+                onRetry: { Task { await store.refresh() } },
+                onSubscribe: { showPaywall = true },
+                onManage: { showManage = true }
+            )
+        }
+        .background(palette.appScreenBackground.ignoresSafeArea())
+        .toolbar(.hidden, for: .navigationBar)
+        .navigationBarBackButtonHidden(true)
         .blur(radius: coversBackground ? 16 : 0)
         .animation(.easeInOut(duration: 0.25), value: coversBackground)
+        .animation(nil, value: store.usage == nil)
         .task { await store.refresh() }
         .refreshable { await store.refresh() }
         .onChange(of: scenePhase) { _, phase in
@@ -113,10 +120,9 @@ struct WeekFitAIUsageView: View {
                 .environment(\.weekFitPalette, palette)
         }
         .navigationDestination(item: $pack) { selected in
-            WeekFitAIBalancePurchaseSheet(store: store, pack: selected, onClose: onClose)
+            WeekFitAIBalancePurchaseSheet(store: store, pack: selected, isPushed: true, onClose: onClose)
                 .environment(\.weekFitPalette, palette)
         }
-        .weekFitAIBalanceCloseButton(onClose)
         .sensoryFeedback(.success, trigger: store.didCreditPurchase) { _, credited in credited }
         .onChange(of: pack) { _, current in
             if current == nil { Task { await store.refresh() } }
@@ -129,6 +135,24 @@ struct WeekFitAIUsageView: View {
     }
 
     private var coversBackground: Bool { showPaywall }
+
+    private var usageHeader: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Text(WeekFitLocalizedString("ai.usage.title"))
+                .font(.system(.title2, design: .rounded).weight(.bold))
+                .foregroundStyle(WeekFitTheme.primaryText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityAddTraits(.isHeader)
+            if let onClose {
+                WeekFitCloseButton(size: .regular, playsHaptic: false, action: onClose)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .padding(.bottom, 6)
+    }
 }
 
 struct WeekFitAIBalanceScreen: View {
@@ -155,8 +179,6 @@ struct WeekFitAIBalanceScreen: View {
             }
         }
         .background(palette.appScreenBackground.ignoresSafeArea())
-        .navigationTitle(text("ai.usage.title"))
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var stack: some View {
@@ -474,24 +496,42 @@ struct WeekFitAIBalancePurchaseSheet: View {
     @ObservedObject var store: WeekFitAIUsageStore
     var pack: WeekFitAIBalancePack
     var locale: Locale? = nil
+    /// Pushed from the balance screen. The root top-up closes the sheet instead.
+    var isPushed: Bool = false
     var onClose: (() -> Void)? = nil
-    @Environment(\.weekFitPalette) private var palette
+    @Environment(\.dismiss) private var dismiss
     @State private var selectedID: String?
 
     var body: some View {
         WeekFitAIBalancePurchaseLayout(
             title: text(pack.titleKey),
-            symbol: pack == .time ? "waveform" : "camera.fill",
+            symbol: nil,
             intro: text(pack.introKey),
             options: options,
             selectedID: selectedID,
-            summary: summary,
-            terms: [text(pack.noteKey), text("ai.usage.subscriptionRequired")],
+            summary: nil,
+            terms: pack == .time
+                ? [text("ai.balance.purchasedMinutesNeverExpire"), text("ai.balance.premiumRequiredToUse")]
+                : [text("ai.balance.purchasedPhotosNeverExpire"), text("ai.balance.premiumRequiredToUse")],
             buyTitle: buyTitle,
             isBusy: store.isBusy,
+            canPurchase: canPurchase,
             status: statusText,
             emptyMessage: options.isEmpty && !store.isRefreshing ? text("ai.usage.unavailable") : nil,
             showsClose: false,
+            usesMinuteRows: true,
+            isLoadingProducts: options.isEmpty && store.isRefreshing,
+            storeCaption: text("ai.balance.appStorePurchase"),
+            onLeading: {
+                if isPushed {
+                    dismiss()
+                } else if let onClose {
+                    onClose()
+                } else {
+                    dismiss()
+                }
+            },
+            leadingIsClose: !isPushed,
             onSelect: { id in
                 guard !store.isBusy else { return }
                 selectedID = id
@@ -502,14 +542,15 @@ struct WeekFitAIBalancePurchaseSheet: View {
             },
             onClose: { onClose?() }
         )
-        .weekFitAIBalanceCloseButton(onClose)
-        .navigationBarBackButtonHidden(onClose != nil)
-        .navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(palette.appScreenBackground, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .onAppear(perform: selectSmallestIfNeeded)
-        .onChange(of: optionIDs) { _, _ in selectSmallestIfNeeded() }
+        .toolbar(.hidden, for: .navigationBar)
+        .navigationBarBackButtonHidden(true)
+        .background {
+            if isPushed {
+                WeekFitNavigationPopEnabler()
+            }
+        }
+        .onAppear(perform: selectSmallestWithoutAnimation)
+        .onChange(of: optionIDs) { _, _ in selectSmallestWithoutAnimation() }
     }
 
     private var optionIDs: [String] { options.map(\.id) }
@@ -520,30 +561,29 @@ struct WeekFitAIBalancePurchaseSheet: View {
             WeekFitAIBalancePack.quantity(product.id).map { (price: product.price, quantity: $0) }
         }
         return products.map { product in
+            let quantity = WeekFitAIBalancePack.quantity(product.id)
             let savings = base.flatMap { base in
-                WeekFitAIBalancePack.quantity(product.id).flatMap {
-                    WeekFitAIBalancePack.savingsPercent(
+                quantity.flatMap { count in
+                    WeekFitAIBalancePack.unitSavingsPercent(
                         price: product.price,
-                        quantity: $0,
+                        quantity: count,
                         basePrice: base.price,
                         baseQuantity: base.quantity
                     )
                 }
             }
             let title = WeekFitAIBalanceContent.packTitle(product.id, locale: locale) ?? product.displayName
-            let quantity = WeekFitAIBalancePack.quantity(product.id)
             let parts = WeekFitAIBalancePackOption.split(title: title, quantity: quantity)
+            let badgeKey = pack == .time ? "ai.balance.savePerMinute" : "ai.balance.savePerPhoto"
             return WeekFitAIBalancePackOption(
                 id: product.id,
                 title: title,
                 price: product.displayPrice,
-                badge: savings.map { String(format: text("ai.balance.save"), locale: resolvedLocale, $0) },
+                badge: savings.map { String(format: text(badgeKey), locale: resolvedLocale, $0) },
                 amount: parts.amount,
                 unit: parts.unit,
                 unitPrice: quantity.map { unitPrice(product, quantity: $0) },
-                estimate: quantity.flatMap { pack.estimate(quantity: $0) }.map {
-                    WeekFitLocalizedQuantityFormat(pack.estimateKey, count: $0, locale: resolvedLocale)
-                }
+                estimate: nil
             )
         }
     }
@@ -554,17 +594,6 @@ struct WeekFitAIBalancePurchaseSheet: View {
         let each = (product.price / Decimal(quantity)).formatted(product.priceFormatStyle.presentation(.narrow))
         let key = pack == .time ? "ai.balance.perMinute" : "ai.balance.perPhoto"
         return String(format: text(key), locale: resolvedLocale, each)
-    }
-
-    private var summary: WeekFitAIBalanceOrderSummary? {
-        guard let option = options.first(where: { $0.id == selectedID }) else { return nil }
-        return WeekFitAIBalanceOrderSummary(
-            title: text("ai.balance.orderSummary"),
-            item: option.title,
-            price: option.price,
-            totalTitle: text("ai.balance.total"),
-            note: text("ai.balance.taxNote")
-        )
     }
 
     private var sortedProducts: [Product] {
@@ -583,9 +612,16 @@ struct WeekFitAIBalancePurchaseSheet: View {
     }
 
     private var buyTitle: String {
-        guard let product = selectedProduct else { return text(pack.titleKey) }
+        guard let product = selectedProduct, !product.displayPrice.isEmpty else {
+            return text("ai.balance.buyPending")
+        }
         let quantity = WeekFitAIBalanceContent.packTitle(product.id, locale: locale) ?? product.displayName
         return String(format: text("ai.balance.buy"), locale: locale ?? WeekFitCurrentLocale(), quantity, product.displayPrice)
+    }
+
+    private var canPurchase: Bool {
+        guard let product = selectedProduct else { return false }
+        return !product.displayPrice.isEmpty && !store.isBusy
     }
 
     private var statusText: String? {
@@ -598,6 +634,14 @@ struct WeekFitAIBalancePurchaseSheet: View {
             return text("ai.balance.crediting")
         case .idle, .purchasing:
             return nil
+        }
+    }
+
+    private func selectSmallestWithoutAnimation() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            selectSmallestIfNeeded()
         }
     }
 
@@ -623,10 +667,16 @@ struct WeekFitAIBalancePurchaseLayout: View {
     var terms: [String]
     var buyTitle: String
     var isBusy: Bool
+    var canPurchase: Bool = true
     var status: String?
     var emptyMessage: String?
     var scrolls: Bool = true
     var showsClose: Bool = true
+    var usesMinuteRows: Bool = false
+    var isLoadingProducts: Bool = false
+    var storeCaption: String? = nil
+    var onLeading: (() -> Void)? = nil
+    var leadingIsClose: Bool = false
     var onSelect: (String) -> Void
     var onBuy: () -> Void
     var onClose: () -> Void
@@ -637,6 +687,33 @@ struct WeekFitAIBalancePurchaseLayout: View {
     @Environment(\.weekFitPalette) private var palette
 
     var body: some View {
+        Group {
+            if usesMinuteRows {
+                minuteScreen
+            } else {
+                legacyScreen
+            }
+        }
+        .animation(reduceMotion ? nil : .snappy(duration: 0.28), value: selectedID)
+        .sensoryFeedback(.selection, trigger: selectedID)
+    }
+
+    /// Fixed header and a docked buy bar. Prices fill in without moving the screen.
+    private var minuteScreen: some View {
+        VStack(spacing: 0) {
+            header
+            ScrollView {
+                choices
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+        .background(palette.appScreenBackground.ignoresSafeArea())
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            minuteFooter
+        }
+    }
+
+    private var legacyScreen: some View {
         VStack(spacing: 0) {
             header
             Group {
@@ -652,77 +729,135 @@ struct WeekFitAIBalancePurchaseLayout: View {
             footer
         }
         .background(palette.appScreenBackground.ignoresSafeArea())
-        .animation(reduceMotion ? nil : .snappy(duration: 0.28), value: selectedID)
-        .sensoryFeedback(.selection, trigger: selectedID)
     }
 
     private var accent: Color { WeekFitTheme.primaryCTA }
+
+    /// Muted sage from the activity metric. Dark stays this tone; light uses the same hue.
+    private var sage: Color { WeekFitSemanticMetricTokens.activity }
 
     // MARK: Header
 
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
-            if let symbol {
-                Image(systemName: symbol)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(accent)
-                    .frame(width: 40, height: 40)
-                    .background(Circle().fill(accent.opacity(palette.isLight ? 0.14 : 0.2)))
-                    .accessibilityHidden(true)
+            if let onLeading {
+                if leadingIsClose {
+                    WeekFitCloseButton(size: .regular, playsHaptic: false, action: onLeading)
+                } else {
+                    WeekFitDetailScreenBackButton(action: onLeading)
+                }
             }
-            Text(title)
-                .font(.system(.title2, design: .rounded).weight(.bold))
-                .foregroundStyle(WeekFitTheme.primaryText)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityAddTraits(.isHeader)
-            if showsClose {
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 10) {
+                    if let symbol {
+                        Image(systemName: symbol)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(accent)
+                            .frame(width: 32, height: 32)
+                            .background(Circle().fill(accent.opacity(palette.isLight ? 0.14 : 0.2)))
+                            .accessibilityHidden(true)
+                    }
+                    Text(title)
+                        .font(.system(usesMinuteRows ? .title2 : .title3, design: .rounded).weight(.bold))
+                        .foregroundStyle(WeekFitTheme.primaryText)
+                        .lineLimit(usesMinuteRows ? 2 : 1)
+                        .minimumScaleFactor(0.8)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityAddTraits(.isHeader)
+                }
+                Text(intro)
+                    .font(.subheadline)
+                    .foregroundStyle(WeekFitTheme.secondaryText)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if showsClose, onLeading == nil {
                 WeekFitCloseButton(size: .regular, playsHaptic: false, action: onClose)
             }
         }
         .padding(.horizontal, 20)
-        .padding(.top, showsClose ? 20 : 8)
-        .padding(.bottom, 6)
+        .padding(.top, usesMinuteRows ? 18 : 14)
+        .padding(.bottom, usesMinuteRows ? 10 : 4)
     }
 
     // MARK: Choices
 
     private var choices: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(intro)
-                .font(.subheadline)
-                .foregroundStyle(WeekFitTheme.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
             if let emptyMessage {
                 Text(emptyMessage)
                     .font(.subheadline)
                     .foregroundStyle(WeekFitTheme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 16)
-            } else {
-                // Room above the grid for the savings badge that sits on the card edge.
-                LazyVGrid(columns: columns, spacing: 18) {
-                    ForEach(options) { option in
-                        packCard(option)
+            } else if usesMinuteRows {
+                if isLoadingProducts {
+                    VStack(spacing: 12) {
+                        ForEach(0..<3, id: \.self) { _ in
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .fill(WeekFitTheme.cardSurface)
+                                .frame(height: 100)
+                                .redacted(reason: .placeholder)
+                        }
                     }
+                    .padding(.top, 8)
+                    .accessibilityHidden(true)
+                } else {
+                    VStack(spacing: 12) {
+                        ForEach(options) { option in
+                            minuteRow(option)
+                        }
+                    }
+                    .padding(.top, 8)
+                    minuteTerms
+                        .padding(.top, 18)
                 }
-                .padding(.top, 26)
+            } else {
+                packRow
+                    .padding(.top, 16)
                 if let summary {
                     orderSummary(summary)
-                        .padding(.top, 22)
+                        .padding(.top, 18)
                 }
                 termsList
-                    .padding(.top, 18)
+                    .padding(.top, 14)
             }
         }
         .padding(.horizontal, 20)
-        .padding(.top, 2)
         .padding(.bottom, 14)
+        .frame(maxWidth: .infinity, alignment: .top)
+    }
+
+    @ViewBuilder
+    private var packRow: some View {
+        if usesThreeAcross {
+            HStack(alignment: .top, spacing: 8) {
+                ForEach(options) { option in
+                    packCard(option)
+                }
+            }
+            .frame(minHeight: 196, maxHeight: 228, alignment: .top)
+        } else {
+            LazyVGrid(columns: columns, spacing: 18) {
+                ForEach(options) { option in
+                    packCard(option)
+                }
+            }
+        }
+    }
+
+    /// Three packs (15 / 30 / 60, or the photo packs) stay on one row.
+    private var usesThreeAcross: Bool {
+        !dynamicTypeSize.isAccessibilitySize && options.count == 3
     }
 
     private var columns: [GridItem] {
-        let count = dynamicTypeSize.isAccessibilitySize ? 1 : 2
-        return Array(repeating: GridItem(.flexible(), spacing: 12), count: count)
+        let count = dynamicTypeSize.isAccessibilitySize ? 1 : (usesThreeAcross ? 3 : min(max(options.count, 1), 2))
+        return Array(repeating: GridItem(.flexible(), spacing: usesThreeAcross ? 8 : 12), count: count)
     }
 
     private func packCard(_ option: WeekFitAIBalancePackOption) -> some View {
@@ -733,47 +868,56 @@ struct WeekFitAIBalancePurchaseLayout: View {
         } label: {
             VStack(spacing: 0) {
                 Text(option.amount ?? option.title)
-                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .font(.system(size: usesThreeAcross ? 28 : 40, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(WeekFitTheme.primaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 if let unit = option.unit {
                     Text(unit)
-                        .font(.subheadline.weight(.medium))
+                        .font(usesThreeAcross ? .caption.weight(.medium) : .subheadline.weight(.medium))
                         .foregroundStyle(WeekFitTheme.secondaryText)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .minimumScaleFactor(0.7)
                 }
                 if let estimate = option.estimate {
                     Text(estimate)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(selected ? accent : WeekFitTheme.primaryText.opacity(0.72))
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 8)
+                        .lineLimit(usesThreeAcross ? 3 : nil)
+                        .minimumScaleFactor(usesThreeAcross ? 0.8 : 1)
+                        .fixedSize(horizontal: false, vertical: !usesThreeAcross)
+                        .padding(.top, usesThreeAcross ? 6 : 8)
+                }
+                if usesThreeAcross {
+                    Spacer(minLength: 8)
                 }
                 Rectangle()
                     .fill(WeekFitTheme.borderSoft)
-                    .frame(width: 28, height: 1)
-                    .padding(.vertical, 12)
+                    .frame(width: usesThreeAcross ? 20 : 28, height: 1)
+                    .padding(.vertical, usesThreeAcross ? 8 : 12)
                     .accessibilityHidden(true)
                 Text(option.price)
-                    .font(.system(.headline, design: .rounded))
+                    .font(usesThreeAcross ? .system(.subheadline, design: .rounded).weight(.semibold) : .system(.headline, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(WeekFitTheme.primaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 if let unitPrice = option.unitPrice {
                     Text(unitPrice)
-                        .font(.caption)
+                        .font(usesThreeAcross ? .caption2 : .caption)
                         .monospacedDigit()
                         .foregroundStyle(WeekFitTheme.secondaryText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                         .padding(.top, 2)
                 }
             }
             .multilineTextAlignment(.center)
-            .padding(.horizontal, 12)
-            .padding(.top, 22)
-            .padding(.bottom, 18)
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, usesThreeAcross ? 6 : 12)
+            .padding(.top, usesThreeAcross ? 16 : 22)
+            .padding(.bottom, usesThreeAcross ? 12 : 18)
+            .frame(maxWidth: .infinity, maxHeight: usesThreeAcross ? .infinity : nil, alignment: .top)
             .background {
                 if !palette.isLight && !reduceTransparency {
                     WeekFitDarkGlassPlate(
@@ -802,20 +946,23 @@ struct WeekFitAIBalancePurchaseLayout: View {
             }
             .overlay(alignment: .topTrailing) {
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.system(size: usesThreeAcross ? 16 : 20, weight: .semibold))
                     .foregroundStyle(selected ? accent : WeekFitTheme.borderSoft)
-                    .padding(10)
+                    .padding(usesThreeAcross ? 6 : 10)
                     .accessibilityHidden(true)
             }
             .overlay(alignment: .top) {
                 if let badge = option.badge {
                     Text(badge)
-                        .font(.caption.weight(.bold))
+                        .font((usesThreeAcross ? Font.caption2 : Font.caption).weight(.bold))
                         .foregroundStyle(WeekFitTheme.primaryCTAForeground)
                         .lineLimit(1)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 5)
+                        .minimumScaleFactor(0.7)
+                        .padding(.horizontal, usesThreeAcross ? 8 : 12)
+                        .padding(.vertical, usesThreeAcross ? 4 : 5)
                         .background { Capsule().fill(accent) }
+                        .padding(.horizontal, usesThreeAcross ? 4 : 0)
+                        .frame(maxWidth: usesThreeAcross ? .infinity : nil)
                         .offset(y: -12)
                         .accessibilityHidden(true)
                 }
@@ -904,6 +1051,177 @@ struct WeekFitAIBalancePurchaseLayout: View {
         .padding(.horizontal, 4)
     }
 
+    private func minuteRow(_ option: WeekFitAIBalancePackOption) -> some View {
+        let selected = option.id == selectedID
+        let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
+        return Button {
+            onSelect(option.id)
+        } label: {
+            HStack(alignment: .center, spacing: 14) {
+                minuteRadio(selected: selected)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(option.title)
+                        .font(.system(.title3, design: .rounded).weight(.semibold))
+                        .foregroundStyle(WeekFitTheme.primaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let badge = option.badge {
+                        Text(badge)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(sage)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background {
+                                Capsule().fill(sage.opacity(palette.isLight ? 0.14 : 0.20))
+                            }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(option.price)
+                        .font(.system(.title3, design: .rounded).weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(WeekFitTheme.primaryText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    if let unitPrice = option.unitPrice {
+                        Text(unitPrice)
+                            .font(.footnote)
+                            .monospacedDigit()
+                            .foregroundStyle(WeekFitTheme.secondaryText)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, minHeight: dynamicTypeSize.isAccessibilitySize ? 128 : 100, alignment: .center)
+            .background {
+                shape.fill(selected ? sage.opacity(palette.isLight ? 0.16 : 0.18) : WeekFitTheme.cardSurface)
+            }
+            .overlay {
+                shape.strokeBorder(
+                    selected ? sage.opacity(0.95) : minuteIdleBorder,
+                    lineWidth: selected ? 1.5 : 1
+                )
+            }
+            .contentShape(shape)
+        }
+        .buttonStyle(WeekFitAIBalanceCardPressStyle(reduceMotion: reduceMotion))
+        .disabled(isBusy)
+        .accessibilityLabel([option.title, option.price, option.unitPrice, option.badge].compactMap { $0 }.joined(separator: ", "))
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+    }
+
+    private func minuteRadio(selected: Bool) -> some View {
+        ZStack {
+            Circle()
+                .fill(selected ? sage : Color.clear)
+            Circle()
+                .strokeBorder(selected ? sage : minuteRadioIdle, lineWidth: 1.5)
+            if selected {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(minuteCheck)
+            }
+        }
+        .frame(width: 22, height: 22)
+        .accessibilityHidden(true)
+    }
+
+    private var minuteIdleBorder: Color {
+        palette.isLight ? WeekFitLightTokens.cardBorder : Color.white.opacity(0.16)
+    }
+
+    private var minuteRadioIdle: Color {
+        palette.isLight ? WeekFitTheme.secondaryText : Color.white.opacity(0.62)
+    }
+
+    private var minuteCheck: Color {
+        Color(red: 0.067, green: 0.086, blue: 0.133)
+    }
+
+    private var minuteButtonFill: Color {
+        palette.isLight ? WeekFitTheme.primaryCTA : sage
+    }
+
+    private var minuteButtonInk: Color {
+        palette.isLight ? WeekFitTheme.primaryCTAForeground : minuteCheck
+    }
+
+    private var minuteTerms: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(Array(terms.enumerated()), id: \.offset) { index, term in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Image(systemName: index == 0 ? "infinity" : "crown")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(sage)
+                        .frame(width: 18, alignment: .center)
+                        .accessibilityHidden(true)
+                    Text(term)
+                        .font(.subheadline)
+                        .foregroundStyle(WeekFitTheme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var minuteFooter: some View {
+        VStack(spacing: 8) {
+            if let status {
+                Text(status)
+                    .font(.subheadline)
+                    .foregroundStyle(WeekFitTheme.primaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if let storeCaption {
+                Text(storeCaption)
+                    .font(.footnote)
+                    .foregroundStyle(WeekFitTheme.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+            }
+            Button(action: onBuy) {
+                HStack(spacing: 8) {
+                    if isBusy {
+                        ProgressView()
+                            .tint(minuteButtonInk)
+                    }
+                    Text(buyTitle)
+                        .font(.system(.body, design: .rounded).weight(.bold))
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .foregroundStyle(minuteButtonInk)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .frame(minHeight: 56)
+                .background { Capsule().fill(minuteButtonFill) }
+                .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(!canPurchase || isBusy)
+            .opacity(canPurchase || isBusy ? 1 : 0.45)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
+        .background(palette.appScreenBackground)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(WeekFitTheme.borderSoft)
+                .frame(height: 0.5)
+        }
+    }
+
     // MARK: Footer
 
     private var footer: some View {
@@ -927,6 +1245,24 @@ struct WeekFitAIBalancePurchaseLayout: View {
         .padding(.horizontal, 20)
         .padding(.top, 10)
         .padding(.bottom, 14)
+    }
+}
+
+private struct WeekFitNavigationPopEnabler: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> Controller { Controller() }
+    func updateUIViewController(_ controller: Controller, context: Context) {}
+
+    final class Controller: UIViewController, UIGestureRecognizerDelegate {
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            guard let navigation = navigationController, navigation.viewControllers.count > 1 else { return }
+            navigation.interactivePopGestureRecognizer?.isEnabled = true
+            navigation.interactivePopGestureRecognizer?.delegate = self
+        }
+
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            (navigationController?.viewControllers.count ?? 0) > 1
+        }
     }
 }
 

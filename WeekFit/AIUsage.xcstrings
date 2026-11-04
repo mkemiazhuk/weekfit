@@ -1189,16 +1189,16 @@
     "ai.balance.addTime": {
       "extractionState": "manual",
       "localizations": {
-        "de": { "stringUnit": { "state": "translated", "value": "Zeit hinzufügen" } },
-        "en": { "stringUnit": { "state": "translated", "value": "Add time" } },
-        "es": { "stringUnit": { "state": "translated", "value": "Añadir tiempo" } },
-        "fr": { "stringUnit": { "state": "translated", "value": "Ajouter du temps" } },
-        "it": { "stringUnit": { "state": "translated", "value": "Aggiungi tempo" } },
-        "ja": { "stringUnit": { "state": "translated", "value": "時間を追加" } },
-        "ko": { "stringUnit": { "state": "translated", "value": "시간 추가" } },
-        "pl": { "stringUnit": { "state": "translated", "value": "Dodaj czas" } },
-        "ru": { "stringUnit": { "state": "translated", "value": "Добавить время" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "添加时间" } }
+        "de": { "stringUnit": { "state": "translated", "value": "Minuten hinzufügen" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Add minutes" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Añadir minutos" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Ajouter des minutes" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Aggiungi minuti" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "分を追加" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "분 추가" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Dodaj minuty" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Добавить минуты" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "添加分钟" } }
       }
     },
     "ai.balance.addPhotos": {
@@ -1559,31 +1559,121 @@
     "ai.balance.timeIntro": {
       "extractionState": "manual",
       "localizations": {
-        "de": { "stringUnit": { "state": "translated", "value": "Wähle, wie viel Zeit du hinzufügen möchtest." } },
-        "en": { "stringUnit": { "state": "translated", "value": "Choose how much time to add." } },
-        "es": { "stringUnit": { "state": "translated", "value": "Elige cuánto tiempo añadir." } },
-        "fr": { "stringUnit": { "state": "translated", "value": "Choisissez combien de temps ajouter." } },
-        "it": { "stringUnit": { "state": "translated", "value": "Scegli quanto tempo aggiungere." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "追加する時間を選んでください。" } },
-        "ko": { "stringUnit": { "state": "translated", "value": "추가할 시간을 선택하세요." } },
-        "pl": { "stringUnit": { "state": "translated", "value": "Wybierz, ile czasu dodać." } },
-        "ru": { "stringUnit": { "state": "translated", "value": "Выберите, сколько времени добавить." } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "选择要添加的时间。" } }
+        "de": { "stringUnit": { "state": "translated", "value": "Für Gespräche mit dem KI-Assistenten" } },
+        "en": { "stringUnit": { "state": "translated", "value": "For conversations with your AI assistant" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Para conversaciones con el asistente de IA" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Pour parler avec l’assistant IA" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Per parlare con l’assistente IA" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "AIアシスタントとの会話に" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "AI 도우미와 대화하는 데 사용해요" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Do rozmów z asystentem AI" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Для разговоров с AI-помощником" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "用于与 AI 助手对话" } }
+      }
+    },
+    "ai.balance.purchasedMinutesNeverExpire": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Gekaufte Minuten verfallen nicht." } },
+        "en": { "stringUnit": { "state": "translated", "value": "Purchased minutes never expire." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Los minutos comprados no caducan." } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Les minutes achetées n’expirent pas." } },
+        "it": { "stringUnit": { "state": "translated", "value": "I minuti acquistati non scadono." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "購入した分数に期限はありません。" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "구매한 시간은 만료되지 않습니다." } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Kupione minuty nie wygasają." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Купленные минуты не сгорают." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "已购买的分钟不会过期。" } }
+      }
+    },
+    "ai.balance.premiumRequiredToUse": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Zur Nutzung brauchst du aktives Premium." } },
+        "en": { "stringUnit": { "state": "translated", "value": "An active Premium subscription is required to use them." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Para usarlos necesitas Premium activo." } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Un abonnement Premium actif est nécessaire pour les utiliser." } },
+        "it": { "stringUnit": { "state": "translated", "value": "Per usarli serve un Premium attivo." } },
+        "ja": { "stringUnit": { "state": "translated", "value": "利用には有効なPremiumが必要です。" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "사용하려면 활성 Premium이 필요해요." } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Do korzystania potrzebujesz aktywnego Premium." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Для использования нужна активная Premium." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "使用需要有效的 Premium。" } }
+      }
+    },
+    "ai.balance.savePerMinute": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "−%d %% pro Minute" } },
+        "en": { "stringUnit": { "state": "translated", "value": "−%d%% per minute" } },
+        "es": { "stringUnit": { "state": "translated", "value": "−%d%% por minuto" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "−%d %% par minute" } },
+        "it": { "stringUnit": { "state": "translated", "value": "−%d%% al minuto" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "1分あたり−%d%%" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "분당 −%d%%" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "−%d%% za minutę" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "−%d%% за минуту" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "每分钟 −%d%%" } }
+      }
+    },
+    "ai.balance.savePerPhoto": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "−%d %% pro Foto" } },
+        "en": { "stringUnit": { "state": "translated", "value": "−%d%% per photo" } },
+        "es": { "stringUnit": { "state": "translated", "value": "−%d%% por foto" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "−%d %% par photo" } },
+        "it": { "stringUnit": { "state": "translated", "value": "−%d%% a foto" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "1枚あたり−%d%%" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "사진당 −%d%%" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "−%d%% za zdjęcie" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "−%d%% за фото" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "每张 −%d%%" } }
+      }
+    },
+    "ai.balance.appStorePurchase": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Kauf über den App Store" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Purchase through the App Store" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Compra a través del App Store" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Achat via l’App Store" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Acquisto tramite l’App Store" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "App Storeで購入" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "App Store를 통한 구매" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Zakup przez App Store" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Покупка через App Store" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "通过 App Store 购买" } }
+      }
+    },
+    "ai.balance.buyPending": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": { "stringUnit": { "state": "translated", "value": "Kaufen" } },
+        "en": { "stringUnit": { "state": "translated", "value": "Buy" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Comprar" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Acheter" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Acquista" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "購入" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "구매" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Kup" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Купить" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "购买" } }
       }
     },
     "ai.balance.photosIntro": {
       "extractionState": "manual",
       "localizations": {
-        "de": { "stringUnit": { "state": "translated", "value": "Wähle, wie viele Fotos du hinzufügen möchtest." } },
-        "en": { "stringUnit": { "state": "translated", "value": "Choose how many photos to add." } },
-        "es": { "stringUnit": { "state": "translated", "value": "Elige cuántas fotos añadir." } },
-        "fr": { "stringUnit": { "state": "translated", "value": "Choisissez combien de photos ajouter." } },
-        "it": { "stringUnit": { "state": "translated", "value": "Scegli quante foto aggiungere." } },
-        "ja": { "stringUnit": { "state": "translated", "value": "追加する写真の枚数を選んでください。" } },
-        "ko": { "stringUnit": { "state": "translated", "value": "추가할 사진 수를 선택하세요." } },
-        "pl": { "stringUnit": { "state": "translated", "value": "Wybierz, ile zdjęć dodać." } },
-        "ru": { "stringUnit": { "state": "translated", "value": "Выберите, сколько фото добавить." } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "选择要添加的照片数量。" } }
+        "de": { "stringUnit": { "state": "translated", "value": "Für die Erkennung von Mahlzeiten auf Fotos" } },
+        "en": { "stringUnit": { "state": "translated", "value": "For recognizing meals from photos" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Para reconocer comidas en fotos" } },
+        "fr": { "stringUnit": { "state": "translated", "value": "Pour reconnaître les repas sur les photos" } },
+        "it": { "stringUnit": { "state": "translated", "value": "Per riconoscere i pasti dalle foto" } },
+        "ja": { "stringUnit": { "state": "translated", "value": "写真から食事を読み取るために" } },
+        "ko": { "stringUnit": { "state": "translated", "value": "사진으로 식사를 인식하는 데 사용해요" } },
+        "pl": { "stringUnit": { "state": "translated", "value": "Do rozpoznawania posiłków ze zdjęć" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Для распознавания еды по фото" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "用于从照片识别餐食" } }
       }
     },
     "ai.balance.save": {
