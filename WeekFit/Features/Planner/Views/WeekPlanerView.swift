@@ -337,7 +337,7 @@ private struct WeekPlannerLiveQueryView: View {
 
     private func openRequestedPlanActivityIfNeeded() {
         guard tabIsActive, let request = appSession.planActivityOpenRequest else { return }
-        guard let activity = plannedActivities.first(where: { $0.id == request.activityID }) else {
+        guard plannedActivities.contains(where: { $0.id == request.activityID }) else {
             if !plannedActivities.isEmpty {
                 appSession.clearPlanActivityOpenRequest()
             }
@@ -345,7 +345,6 @@ private struct WeekPlannerLiveQueryView: View {
         }
         viewModel.selectedDate = calendar.startOfDay(for: request.day)
         appSession.clearPlanActivityOpenRequest()
-        openTimelineActivity(activity)
     }
     
     private func plannerConfirmationSheet(_ activity: PlannedActivity) -> some View {
@@ -699,6 +698,10 @@ private struct WeekPlannerLiveQueryView: View {
         }
 
         if PlanTimelineRouter.shouldOpenActivityDetail(for: activity) {
+            if shouldEditMorningAdjustment(activity) {
+                viewModel.startEditing(activity)
+                return
+            }
             Task {
                 let session = await sessionResolver.resolve(activity, healthManager: healthManager)
                 selectedActivitySession = session
@@ -720,6 +723,16 @@ private struct WeekPlannerLiveQueryView: View {
                 customMeals: customMeals
             )
         )
+    }
+
+    /// An accepted morning change is still a plan item. Open the editor, not the workout summary.
+    private func shouldEditMorningAdjustment(_ activity: PlannedActivity) -> Bool {
+        guard !activity.isCompleted else { return false }
+        let dayKey = ProposalInputFingerprintBuilder.dayKey(for: activity.date)
+        return CoachProvenanceLookupCache.adjustment(
+            forActivityId: activity.id,
+            dayKey: dayKey
+        ) != nil
     }
 
     private func openTimelineMeal(_ meal: Meals) {
