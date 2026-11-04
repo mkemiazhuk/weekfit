@@ -112,9 +112,14 @@ WeekFit не ставит медицинских диагнозов. По воп
 ```
 WeekFit 1.5
 
-• Premium includes monthly AI food photos and Maya voice minutes, with optional top-ups that never expire
-• New welcome: your entire day in one place — activity, meals, and recovery, plus what to do next
-• Maya is easier to reach from Today, with a calmer call start
+• Call Maya from Today. She greets you by name, speaks your language, and can read or change today’s plan, meals, and recovery.
+• A call stays open until you end it, or you say you need nothing else after she has finished what you asked.
+• Premium includes monthly AI food photos and 5 minutes with Maya. Top-ups never expire, and their prices show right away.
+• A new welcome puts your whole day in one place: activity, meals, recovery, and the one next step.
+• Today is lighter. Cards, weather, and your plan sit on thin glass, with Maya’s portrait on her call card.
+• New sessions follow your recent habits. Snowboarding, alpine skiing, and padel are included, and recovery stays distinct from workouts.
+• The evening Coach note comes once a day and focuses on what to do next. A sharp morning stress rise is explained in plain words.
+• Food photos keep ingredient amounts. The app follows your phone’s language.
 ```
 
 **RU:**
