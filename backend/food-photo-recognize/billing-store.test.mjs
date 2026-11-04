@@ -75,3 +75,19 @@ test('spent refund debt is repaid once, not deducted again in every future month
  assert.equal(store.snapshot(wallet,sub).photos.included,20);
  setNow(Date.UTC(2024,2,31,12));assert.equal(store.snapshot(wallet,sub).photos.included,30);
 });
+
+for (const [product, resource, quantity] of [
+ ['com.weekfit.topup.photos100', 'photos', 100],
+ ['com.weekfit.topup.voice60', 'voice', 3600],
+]) {
+ test(`${product} credits full quantity once and refunds once`, t => {
+  const {store, sub, wallet, purchase} = setup(t);
+  const transaction = purchase('large-pack', product);
+  store.grant(wallet, transaction);
+  store.grant(wallet, transaction);
+  assert.equal(store.snapshot(wallet, sub)[resource].purchased, quantity);
+  store.refund(transaction);
+  store.refund(transaction);
+  assert.equal(store.snapshot(wallet, sub)[resource].purchased, 0);
+ });
+}

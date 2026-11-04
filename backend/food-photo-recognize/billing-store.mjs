@@ -7,8 +7,10 @@ import { ServiceError } from './recognition.mjs';
 export const TOPUPS = Object.freeze({
   'com.weekfit.topup.photos20': { resource: 'photos', quantity: 20 },
   'com.weekfit.topup.photos50': { resource: 'photos', quantity: 50 },
+  'com.weekfit.topup.photos100': { resource: 'photos', quantity: 100 },
   'com.weekfit.topup.voice15': { resource: 'voice', quantity: 900 },
   'com.weekfit.topup.voice30': { resource: 'voice', quantity: 1800 },
+  'com.weekfit.topup.voice60': { resource: 'voice', quantity: 3600 },
 });
 export const ALLOWANCES = Object.freeze({ photos: 30, voice: 300 });
 export const hash = value => createHash('sha256').update(value).digest('hex');

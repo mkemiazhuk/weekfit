@@ -33,7 +33,7 @@
       "type": "Consumable"
     },
     {
-      "displayPrice": "1.79",
+      "displayPrice": "3.49",
       "familyShareable": false,
       "internalID": "AI-voice15",
       "localizations": [
@@ -48,7 +48,7 @@
       "type": "Consumable"
     },
     {
-      "displayPrice": "2.99",
+      "displayPrice": "6.49",
       "familyShareable": false,
       "internalID": "AI-voice30",
       "localizations": [
@@ -60,6 +60,36 @@
       ],
       "productID": "com.weekfit.topup.voice30",
       "referenceName": "30 minutes with Maya",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "4.49",
+      "familyShareable": false,
+      "internalID": "AI-photos100",
+      "localizations": [
+        {
+          "description": "Additional AI usage. Requires an active Premium subscription. Purchased balance does not expire.",
+          "displayName": "100 photo recognitions",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "com.weekfit.topup.photos100",
+      "referenceName": "100 photo recognitions",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "11.49",
+      "familyShareable": false,
+      "internalID": "AI-voice60",
+      "localizations": [
+        {
+          "description": "Additional AI usage. Requires an active Premium subscription. Purchased balance does not expire.",
+          "displayName": "60 minutes with Maya",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "com.weekfit.topup.voice60",
+      "referenceName": "60 minutes with Maya",
       "type": "Consumable"
     }
   ],

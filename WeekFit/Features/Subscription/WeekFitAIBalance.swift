@@ -45,8 +45,10 @@ enum WeekFitAIBalancePack: String, Identifiable, Equatable {
         switch productID {
         case "com.weekfit.topup.voice15": 15
         case "com.weekfit.topup.voice30": 30
+        case "com.weekfit.topup.voice60": 60
         case "com.weekfit.topup.photos20": 20
         case "com.weekfit.topup.photos50": 50
+        case "com.weekfit.topup.photos100": 100
         default: nil
         }
     }
@@ -79,7 +81,8 @@ enum WeekFitAIBalancePack: String, Identifiable, Equatable {
         switch productID {
         case "com.weekfit.topup.voice15", "com.weekfit.topup.photos20": 0
         case "com.weekfit.topup.voice30", "com.weekfit.topup.photos50": 1
-        default: 2
+        case "com.weekfit.topup.voice60", "com.weekfit.topup.photos100": 2
+        default: 3
         }
     }
 }
@@ -168,8 +171,10 @@ struct WeekFitAIBalanceContent: Equatable {
         let key: String? = switch productID {
         case "com.weekfit.topup.photos20": "ai.balance.pack.photos20"
         case "com.weekfit.topup.photos50": "ai.balance.pack.photos50"
+        case "com.weekfit.topup.photos100": "ai.balance.pack.photos100"
         case "com.weekfit.topup.voice15": "ai.balance.pack.voice15"
         case "com.weekfit.topup.voice30": "ai.balance.pack.voice30"
+        case "com.weekfit.topup.voice60": "ai.balance.pack.voice60"
         default: nil
         }
         return key.map { text($0, locale) }
