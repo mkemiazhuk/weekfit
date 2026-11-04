@@ -35,7 +35,10 @@ xcuserdata/
 
 # Swift Package Manager
 .swiftpm/
-Package.resolved
+# Ignore regenerable package locks under local SPM packages, but keep the
+# Xcode project's lockfile so Firebase (and other remote) products resolve.
+**/Package.resolved
+!WeekFit.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 
 # Secrets
 .env
