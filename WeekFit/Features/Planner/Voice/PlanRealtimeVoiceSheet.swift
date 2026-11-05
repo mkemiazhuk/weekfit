@@ -580,6 +580,8 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                 speak: planVoiceLanguageSwitch(callLanguage),
                 error: nil
             ))
+        case "live_delegate":
+            return performPlanTool(name: "list_plan", arguments: "{\"scope\":\"today_planned\"}")
         case "log_water":
             return logWater(arguments)
         case "remind_water":

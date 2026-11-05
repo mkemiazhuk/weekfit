@@ -16,7 +16,6 @@ import { voiceGuide } from './planner-voice-guides.mjs';
 
 const DEFAULT_MODEL = 'gpt-realtime-2.1';
 const LIVE_MODEL = 'gpt-live-1';
-const DEFAULT_LIVE_BACKEND = 'gpt-6.1-sol';
 const VOICES = new Set(['marin', 'cedar', 'alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse']);
 
 /** Names, defaults, and spoken forms match the on-device planner catalog. Meals stay out. */
@@ -87,7 +86,6 @@ export function plannerVoiceSettings(env = {}) {
     plannerVoiceAllowedUids: allowed,
     plannerVoiceModel: model,
     plannerVoiceLiveModel: LIVE_MODEL,
-    plannerVoiceLiveBackendModel: (env.PLANNER_VOICE_LIVE_BACKEND_MODEL ?? DEFAULT_LIVE_BACKEND).trim() || DEFAULT_LIVE_BACKEND,
     // Optional stronger model for the listed app languages, e.g. ru,fr.
     plannerVoiceLanguageModel: languageModel && modelLanguages.length ? languageModel : null,
     plannerVoiceLanguageModelLanguages: modelLanguages,
@@ -532,6 +530,8 @@ export function consoleDocument() {
   let sessionName = '';
   let liveEngine = false;
   let liveGreet = false;
+  let liveDelegationId = null;
+  let userTranscript = '';
   let sdpResolve = null;
   const pending = new Map();
   const CHECK = {
@@ -765,11 +765,15 @@ export function consoleDocument() {
     if (!channel || channel.readyState !== 'open') return;
     toolFollowUp = true;
     if (liveEngine) {
+      const spoken = output && typeof output.speak === 'string' && output.speak
+        ? output.speak
+        : (output && output.saved ? 'Saved.' : 'No change was saved.');
       channel.send(JSON.stringify({
-        type: 'response.item.create',
-        item: { type: 'function_call_output', call_id: callId, output: JSON.stringify(output) },
+        type: 'session.commentary.append',
+        event_id: 'result_' + String(callId).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40),
+        delegation_id: liveDelegationId,
+        content: spoken.slice(0, 1500),
       }));
-      channel.send(JSON.stringify({ type: 'response.create' }));
       return;
     }
     channel.send(JSON.stringify({
@@ -843,6 +847,8 @@ export function consoleDocument() {
         liveEngine = options && options.engine === 'live';
         const reopen = Boolean(options && options.reconnected);
         liveGreet = liveEngine && !reopen;
+        liveDelegationId = null;
+        userTranscript = '';
         channel.onopen = () => {
           if (thisCall !== callNumber || !local || !channel) return;
           post({ type: 'state', value: 'connected' });
@@ -925,7 +931,34 @@ export function consoleDocument() {
       post({ type: 'state', value: 'ended', reason: 'provider' });
       return;
     }
-    if (type === 'response.output_item.done' && event.item && event.item.type === 'function_call') {
+    if (type === 'session.input_transcript.delta' && event.delta) {
+      userTranscript = (userTranscript + event.delta).slice(-800);
+      return;
+    }
+    if (liveEngine && type === 'session.delegation.created' && event.delegation && event.delegation.id) {
+      liveDelegationId = event.delegation.id;
+      if (channel && channel.readyState === 'open') {
+        channel.send(JSON.stringify({
+          type: 'session.thinking.append',
+          event_id: 'quiet_' + String(event.delegation.id).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24),
+          delegation_id: event.delegation.id,
+          content: '',
+        }));
+      }
+      toolBusy = true;
+      clearReplyWatch();
+      clearPresence();
+      post({ type: 'state', value: 'acting' });
+      post({
+        type: 'tool',
+        callId: event.delegation.id,
+        name: 'live_delegate',
+        arguments: JSON.stringify({ transcript: userTranscript }),
+      });
+      userTranscript = '';
+      return;
+    }
+    if (liveEngine && type === 'response.output_item.done' && event.item && event.item.type === 'function_call') {
       const name = event.item.name;
       const callId = event.item.call_id;
       const args = typeof event.item.arguments === 'string'
@@ -1200,30 +1233,16 @@ const LIVE_LIMIT = {
 export function plannerLiveConfiguration(config, payload) {
   const session = plannerSessionConfiguration(config, payload);
   const language = plannerVoiceLanguage(payload?.language);
-  const backend = config.plannerVoiceLiveBackendModel || DEFAULT_LIVE_BACKEND;
-  if (!/^gpt-[a-z0-9._-]+$/i.test(backend)) throw new ServiceError('planner_voice_live_unavailable', 503);
   return {
     model: LIVE_MODEL,
-    instructions: `${session.instructions}\n${LIVE_LIMIT[language] || LIVE_LIMIT.en}`,
+    instructions: `${session.instructions}\n${LIVE_LIMIT[language] || LIVE_LIMIT.en}\nDelegation policy:\nBackend tools:\n- Today's plan: read it, suggest one change, and create, move, shorten, or remove a planned activity only after an explicit request.\nGenerate <|SpawnThinking|> when:\n- The caller asks what to do, or asks to add, move, change, or remove something in today's plan.\nDo not generate <|SpawnThinking|> when:\n- You can answer from the conversation or a result already given.\n- You still need one short clarification.\nGenerate <|SpawnThinking|> before stating a saved change. The application runs the plan tools. Say a change happened only after its result says it was saved.`,
     audio: { output: { voice: session.audio.output.voice } },
     input: [{
       type: 'message',
       role: 'developer',
       content: [{ type: 'input_text', text: 'Greet now in the session language, then pause and listen.' }],
     }],
-    delegation: {
-      type: 'responses',
-      responses: {
-        model: backend,
-        instructions: 'Read today\'s plan before a suggestion. Change a record only through these tools, and only after the person\'s request is explicit and unambiguous. Say a save happened only when the tool returns saved true, using the saved time and duration. If a tool fails or the result is unknown, check the plan before trying again. Do not invent numbers, meals, or health data. Keep record ids exactly as the tools return them.',
-        tools: [
-          createActivityTool(), listPlanTool(), updateActivityTool(), deleteActivityTool(),
-          logWaterTool(), remindWaterTool(), endCallTool(), setCallLanguageTool(),
-        ],
-        tool_choice: 'auto',
-        parallel_tool_calls: false,
-      },
-    },
+    delegation: { type: 'client', acknowledgement_delay_ms: 800 },
   };
 }
 

@@ -864,6 +864,49 @@ test('a full line keeps later callers waiting and moves them forward', async () 
   }
 });
 
+test('realtime keeps one tool event and live uses the delegated item', async () => {
+  const script = consoleDocument().match(/<script>([\s\S]*?)<\/script>/)?.[1];
+  const run = async (engine) => {
+    const events = [];
+    const track = { enabled: false, stopped: false, stop() { this.stopped = true; } };
+    const stream = { getTracks: () => [track], getAudioTracks: () => [track] };
+    const channel = { readyState: 'open', send() {}, close() {} };
+    const window = { webkit: { messageHandlers: { plannerVoice: { postMessage: event => events.push(event) } } } };
+    class Peer {
+      createDataChannel() { return channel; }
+      addTrack() {}
+      async createOffer() { return { sdp: 'offer' }; }
+      async setLocalDescription() {}
+      async setRemoteDescription() {}
+      close() {}
+    }
+    runInNewContext(script, {
+      window,
+      RTCPeerConnection: Peer,
+      navigator: { mediaDevices: { getUserMedia: async () => stream } },
+      document: { createElement: () => ({ setAttribute() {}, remove() {} }), body: { appendChild() {} } },
+      fetch: async () => ({ ok: true, text: async () => 'answer' }),
+      setTimeout: () => 1,
+      clearTimeout() {},
+    });
+    await window.weekfit.start({ ephemeralKey: 'ek_test', idleSeconds: 75, reconnected: true, engine });
+    channel.onopen();
+    channel.onmessage({ data: JSON.stringify({
+      type: 'response.output_item.done',
+      item: { type: 'function_call', name: 'list_plan', call_id: 'call_plan', arguments: '{"scope":"today_planned"}' },
+    }) });
+    channel.onmessage({ data: JSON.stringify({
+      type: 'response.function_call_arguments.done',
+      name: 'list_plan',
+      call_id: 'call_plan',
+      arguments: '{"scope":"today_planned"}',
+    }) });
+    return events.filter(event => event.type === 'tool');
+  };
+  assert.equal((await run('realtime')).length, 1);
+  assert.equal((await run('live')).length, 1);
+});
+
 test('an omitted engine stays on realtime and live keeps the same plan tools', () => {
   assert.equal(plannerVoiceEngine({}), 'realtime');
   assert.equal(plannerVoiceEngine({ engine: 'realtime' }), 'realtime');
@@ -874,12 +917,12 @@ test('an omitted engine stays on realtime and live keeps the same plan tools', (
   const live = plannerLiveConfiguration(settings, { timeZone: 'Europe/Warsaw', language: 'ru', now: '2026-11-05T09:00:00+01:00' });
   assert.equal(realtime.model, 'gpt-realtime-2.1');
   assert.equal(live.model, 'gpt-live-1');
-  assert.equal(live.input[0].role, 'developer');
-  assert.equal(live.delegation.type, 'responses');
-  assert.equal(live.delegation.responses.parallel_tool_calls, false);
-  const names = live.delegation.responses.tools.map(tool => tool.name);
-  assert.deepEqual(names, ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'log_water', 'remind_water', 'end_call', 'set_call_language']);
-  assert.equal(names.includes('log_meal'), false);
+  assert.equal(realtime.tools.map(tool => tool.name).includes('create_activity'), true);
+  assert.equal(live.tools, undefined);
+  assert.equal(live.delegation.type, 'client');
+  assert.equal(live.delegation.responses, undefined);
+  assert.equal(JSON.stringify(live).includes('gpt-6'), false);
+  assert.equal(JSON.stringify(live).includes('gpt-realtime'), false);
   assert.match(live.instructions, /только сегодняшний план/);
   assert.match(live.instructions, /До встречи/);
 });
