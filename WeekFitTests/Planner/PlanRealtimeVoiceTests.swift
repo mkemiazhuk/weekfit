@@ -346,6 +346,45 @@ final class PlanRealtimeVoiceTests: XCTestCase {
         XCTAssertEqual(effect.drunkMilliliters, 0)
     }
 
+    func testTheSamePlanRefSurvivesAMoveAShorterDurationAndRemoval() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 11, day: 5, hour: 9))!
+        let morning = calendar.date(from: DateComponents(year: 2026, month: 11, day: 5, hour: 10))!
+        let evening = calendar.date(from: DateComponents(year: 2026, month: 11, day: 5, hour: 18))!
+        var book = PlanRealtimeRefBook()
+        let created = PlanRealtimeSourceActivity(
+            id: "walk-1",
+            title: "Walk",
+            date: morning,
+            durationMinutes: 45,
+            completed: false,
+            skipped: false,
+            voice: true
+        )
+        let first = planRealtimeAgenda([created], now: now, calendar: calendar, book: &book, spoken: { $0 })
+        XCTAssertEqual(first.map(\.ref), ["a1"])
+        var moved = created
+        moved.date = evening
+        moved.durationMinutes = 30
+        let second = planRealtimeAgenda([moved], now: now, calendar: calendar, book: &book, spoken: { $0 })
+        XCTAssertEqual(second.map(\.ref), ["a1"])
+        XCTAssertEqual(second[0].startTime, "18:00")
+        XCTAssertEqual(second[0].durationMinutes, 30)
+        let removed = planRealtimeAgenda([], now: now, calendar: calendar, book: &book, spoken: { $0 })
+        XCTAssertTrue(removed.isEmpty)
+        let reply = PlanRealtimeToolReply(
+            ok: true,
+            saved: true,
+            speak: "Moved the walk.",
+            error: nil,
+            schedule: [PlanRealtimeScheduleRow(ref: "a1", title: "Walk", startTime: "18:00", durationMinutes: 30, done: false)]
+        )
+        let items = reply.jsonObject["items"] as? [[String: Any]]
+        XCTAssertEqual(items?.first?["ref"] as? String, "a1")
+        XCTAssertEqual(reply.saved, true)
+    }
+
     func testLiveKeepsTodayAndRejectsAPastOrAnotherDay() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!

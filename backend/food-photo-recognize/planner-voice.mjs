@@ -16,6 +16,7 @@ import { voiceGuide } from './planner-voice-guides.mjs';
 
 const DEFAULT_MODEL = 'gpt-realtime-2.1';
 const LIVE_MODEL = 'gpt-live-1';
+const DEFAULT_LIVE_BACKEND = 'gpt-6.1-sol';
 const VOICES = new Set(['marin', 'cedar', 'alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse']);
 
 /** Names, defaults, and spoken forms match the on-device planner catalog. Meals stay out. */
@@ -86,6 +87,7 @@ export function plannerVoiceSettings(env = {}) {
     plannerVoiceAllowedUids: allowed,
     plannerVoiceModel: model,
     plannerVoiceLiveModel: LIVE_MODEL,
+    plannerVoiceLiveBackendModel: (env.PLANNER_VOICE_LIVE_BACKEND_MODEL ?? DEFAULT_LIVE_BACKEND).trim() || DEFAULT_LIVE_BACKEND,
     // Optional stronger model for the listed app languages, e.g. ru,fr.
     plannerVoiceLanguageModel: languageModel && modelLanguages.length ? languageModel : null,
     plannerVoiceLanguageModelLanguages: modelLanguages,
@@ -530,8 +532,7 @@ export function consoleDocument() {
   let sessionName = '';
   let liveEngine = false;
   let liveGreet = false;
-  let liveDelegationId = null;
-  let userTranscript = '';
+  const liveCalls = new Set();
   let sdpResolve = null;
   const pending = new Map();
   const CHECK = {
@@ -765,15 +766,12 @@ export function consoleDocument() {
     if (!channel || channel.readyState !== 'open') return;
     toolFollowUp = true;
     if (liveEngine) {
-      const spoken = output && typeof output.speak === 'string' && output.speak
-        ? output.speak
-        : (output && output.saved ? 'Saved.' : 'No change was saved.');
+      const payload = typeof output === 'string' ? output : JSON.stringify(output ?? { ok: false, saved: false });
       channel.send(JSON.stringify({
-        type: 'session.commentary.append',
-        event_id: 'result_' + String(callId).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40),
-        delegation_id: liveDelegationId,
-        content: spoken.slice(0, 1500),
+        type: 'response.item.create',
+        item: { type: 'function_call_output', call_id: callId, output: payload },
       }));
+      channel.send(JSON.stringify({ type: 'response.create' }));
       return;
     }
     channel.send(JSON.stringify({
@@ -847,8 +845,7 @@ export function consoleDocument() {
         liveEngine = options && options.engine === 'live';
         const reopen = Boolean(options && options.reconnected);
         liveGreet = liveEngine && !reopen;
-        liveDelegationId = null;
-        userTranscript = '';
+        liveCalls.clear();
         channel.onopen = () => {
           if (thisCall !== callNumber || !local || !channel) return;
           post({ type: 'state', value: 'connected' });
@@ -922,7 +919,7 @@ export function consoleDocument() {
           type: 'session.commentary.append',
           event_id: 'greeting_1',
           delegation_id: null,
-          content: 'Greet now in the session language, then pause and listen.',
+          content: ${JSON.stringify(LIVE_OPEN)},
         }));
       }
       return;
@@ -931,36 +928,11 @@ export function consoleDocument() {
       post({ type: 'state', value: 'ended', reason: 'provider' });
       return;
     }
-    if (type === 'session.input_transcript.delta' && event.delta) {
-      userTranscript = (userTranscript + event.delta).slice(-800);
-      return;
-    }
-    if (liveEngine && type === 'session.delegation.created' && event.delegation && event.delegation.id) {
-      liveDelegationId = event.delegation.id;
-      if (channel && channel.readyState === 'open') {
-        channel.send(JSON.stringify({
-          type: 'session.thinking.append',
-          event_id: 'quiet_' + String(event.delegation.id).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24),
-          delegation_id: event.delegation.id,
-          content: '',
-        }));
-      }
-      toolBusy = true;
-      clearReplyWatch();
-      clearPresence();
-      post({ type: 'state', value: 'acting' });
-      post({
-        type: 'tool',
-        callId: event.delegation.id,
-        name: 'live_delegate',
-        arguments: JSON.stringify({ transcript: userTranscript }),
-      });
-      userTranscript = '';
-      return;
-    }
     if (liveEngine && type === 'response.output_item.done' && event.item && event.item.type === 'function_call') {
       const name = event.item.name;
       const callId = event.item.call_id;
+      if (!callId || liveCalls.has(callId)) return;
+      liveCalls.add(callId);
       const args = typeof event.item.arguments === 'string'
         ? event.item.arguments
         : JSON.stringify(event.item.arguments || {});
@@ -1217,6 +1189,8 @@ export function plannerVoiceEngine(body) {
   throw new ServiceError('invalid_voice_engine', 422);
 }
 
+const LIVE_OPEN = 'Greet in the session language, then keep leading in the same turn. After the greeting, say one concrete observation from today\'s recovery, food, or plan, and one short question or one proposed change. Do not stop after hello. Do not list every number. If a fact is missing, skip it. After they answer, take the next step yourself instead of waiting silently. After a saved change, continue with the next useful point. Do not ask whether there is anything else.';
+
 const LIVE_LIMIT = {
   ru: 'Этот звонок меняет только сегодняшний план. Еду, здоровье, цели и завершённые записи не меняй. Другой день не планируй. Если просят сменить язык, говори на нём до конца звонка и не меняй язык приложения. Обычное «спасибо» звонок не завершает.',
   en: 'This call changes only today\'s plan. Do not change food, health, goals, or completed items, and do not plan another day. If they ask to switch language, speak it for the rest of this call and do not change the app language. A bare thanks does not end the call.',
@@ -1233,16 +1207,41 @@ const LIVE_LIMIT = {
 export function plannerLiveConfiguration(config, payload) {
   const session = plannerSessionConfiguration(config, payload);
   const language = plannerVoiceLanguage(payload?.language);
+  const backend = config.plannerVoiceLiveBackendModel || DEFAULT_LIVE_BACKEND;
+  if (!/^gpt-[a-z0-9._-]+$/i.test(backend)) throw new ServiceError('planner_voice_live_unavailable', 503);
   return {
     model: LIVE_MODEL,
-    instructions: `${session.instructions}\n${LIVE_LIMIT[language] || LIVE_LIMIT.en}\nDelegation policy:\nBackend tools:\n- Today's plan: read it, suggest one change, and create, move, shorten, or remove a planned activity only after an explicit request.\nGenerate <|SpawnThinking|> when:\n- The caller asks what to do, or asks to add, move, change, or remove something in today's plan.\nDo not generate <|SpawnThinking|> when:\n- You can answer from the conversation or a result already given.\n- You still need one short clarification.\nGenerate <|SpawnThinking|> before stating a saved change. The application runs the plan tools. Say a change happened only after its result says it was saved.`,
+    instructions: `${session.instructions}\n${LIVE_LIMIT[language] || LIVE_LIMIT.en}\n${LIVE_OPEN}\nDelegation policy:\nBackend tools:\n- Today's plan: read it, propose one change, and create, move, shorten, or remove one planned activity when the caller agrees or asks outright.\nGenerate <|SpawnThinking|> when:\n- You need today's facts before the first observation, or the caller asks to add, move, change, or remove a planned activity.\n- A short follow-up such as "move it" continues that change.\nDo not generate <|SpawnThinking|> when one short clarification is still required.\nGenerate <|SpawnThinking|> before saying that a change was saved. Say the saved activity, time, and duration only from the backend result.`,
     audio: { output: { voice: session.audio.output.voice } },
     input: [{
       type: 'message',
       role: 'developer',
-      content: [{ type: 'input_text', text: 'Greet now in the session language, then pause and listen.' }],
+      content: [{ type: 'input_text', text: LIVE_OPEN }],
     }],
-    delegation: { type: 'client', acknowledgement_delay_ms: 800 },
+    delegation: {
+      type: 'responses',
+      responses: {
+        model: backend,
+        instructions: [
+          'You choose plan tools for this live call. The application checks ownership and saves. Record ids and tool arguments stay language-independent.',
+          'Use the plan, meals, and recovery in the context below. Missing meals do not mean the person did not eat. Do not invent numbers or give a medical diagnosis.',
+          'A question or a tentative idea does not call a tool. An explicit request does, without asking "are you sure?".',
+          'Resolve "it" or "this one" to the activity just discussed. If several activities match, ask which one and do not call a tool.',
+          'create_activity adds one catalog activity. update_activity changes that same ref: time, duration, or both. delete_activity removes that ref. Never create a second activity to move or resize one.',
+          'Before and after another activity uses place and anchorRef. If the exact time conflicts, the tool offers one alternative and saves nothing until the caller accepts it.',
+          'Say a change happened only when saved is true. Speak the returned speak text: it is the saved activity, time, and duration. If saved is false or the result is unknown, say what failed and call list_plan before trying again.',
+          'After a saved change, the returned items are the current plan. Use those refs for the next request.',
+          'Change only today, and do not schedule a time that has already passed. Do not change food, health, goals, or completed activities.',
+          session.instructions,
+        ].join('\n'),
+        tools: [
+          createActivityTool(), listPlanTool(), updateActivityTool(), deleteActivityTool(),
+          logWaterTool(), remindWaterTool(), endCallTool(), setCallLanguageTool(),
+        ],
+        tool_choice: 'auto',
+        parallel_tool_calls: false,
+      },
+    },
   };
 }
 

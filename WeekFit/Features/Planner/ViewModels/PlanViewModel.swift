@@ -872,7 +872,7 @@ final class PlanViewModel: ObservableObject {
         activityRemindersEnabled: Bool,
         completionCheckInsEnabled: Bool
     ) throws {
-        guard let activity = activities.first(where: { $0.id == request.activityID }) else {
+        guard let activity = try storedVoiceActivity(id: request.activityID, activities: activities, modelContext: modelContext) else {
             throw VoiceSaveError.notFound
         }
         if activity.isCompleted {
@@ -960,12 +960,23 @@ final class PlanViewModel: ObservableObject {
         markPlannerDataChanged()
     }
 
+    private func storedVoiceActivity(
+        id: String,
+        activities: [PlannedActivity],
+        modelContext: ModelContext
+    ) throws -> PlannedActivity? {
+        if let found = activities.first(where: { $0.id == id }) { return found }
+        let identifier = id
+        let descriptor = FetchDescriptor<PlannedActivity>(predicate: #Predicate { $0.id == identifier })
+        return try modelContext.fetch(descriptor).first
+    }
+
     func deleteVoiceActivity(
         id: String,
         activities: [PlannedActivity],
         modelContext: ModelContext
     ) throws {
-        guard let activity = activities.first(where: { $0.id == id }) else {
+        guard let activity = try storedVoiceActivity(id: id, activities: activities, modelContext: modelContext) else {
             throw VoiceSaveError.notFound
         }
         if activity.isCompleted {

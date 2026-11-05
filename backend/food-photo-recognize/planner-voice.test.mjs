@@ -907,6 +907,59 @@ test('realtime keeps one tool event and live uses the delegated item', async () 
   assert.equal((await run('live')).length, 1);
 });
 
+test('a live tool result returns the saved record and ignores a duplicate call', async () => {
+  const script = consoleDocument().match(/<script>([\s\S]*?)<\/script>/)?.[1];
+  const events = [];
+  const sent = [];
+  const track = { enabled: false, stopped: false, stop() { this.stopped = true; } };
+  const stream = { getTracks: () => [track], getAudioTracks: () => [track] };
+  const channel = { readyState: 'open', send(body) { sent.push(JSON.parse(body)); }, close() {} };
+  const window = { webkit: { messageHandlers: { plannerVoice: { postMessage: event => events.push(event) } } } };
+  class Peer {
+    createDataChannel() { return channel; }
+    addTrack() {}
+    async createOffer() { return { sdp: 'offer' }; }
+    async setLocalDescription() {}
+    async setRemoteDescription() {}
+    close() {}
+  }
+  runInNewContext(script, {
+    window,
+    RTCPeerConnection: Peer,
+    navigator: { mediaDevices: { getUserMedia: async () => stream } },
+    document: { createElement: () => ({ setAttribute() {}, remove() {} }), body: { appendChild() {} } },
+    fetch: async () => ({ ok: true, text: async () => 'answer' }),
+    setTimeout: () => 1,
+    clearTimeout() {},
+  });
+  await window.weekfit.start({ ephemeralKey: 'ek_test', idleSeconds: 75, reconnected: true, engine: 'live' });
+  channel.onopen();
+  channel.onmessage({ data: JSON.stringify({
+    type: 'session.delegation.created',
+    delegation: { id: 'del_1', type: 'delegation', target: 'responses' },
+  }) });
+  const call = {
+    type: 'response.event',
+    event: {
+      type: 'response.output_item.done',
+      item: { type: 'function_call', name: 'update_activity', call_id: 'call_move', arguments: '{"ref":"a1","date":"","startTime":"18:00","durationMinutes":30,"catalogTitle":""}' },
+    },
+  };
+  channel.onmessage({ data: JSON.stringify(call) });
+  channel.onmessage({ data: JSON.stringify(call) });
+  const tools = events.filter(event => event.type === 'tool');
+  assert.equal(tools.length, 1);
+  assert.equal(tools[0].name, 'update_activity');
+  assert.equal(tools[0].callId, 'call_move');
+  window.weekfit.toolResult('call_move', { ok: true, saved: true, speak: 'Moved the walk to 18:00 for 30 minutes.', items: [{ ref: 'a1', title: 'Walk', startTime: '18:00', durationMinutes: 30, done: false }] });
+  const created = sent.find(item => item.type === 'response.item.create');
+  assert.equal(created.item.call_id, 'call_move');
+  assert.match(created.item.output, /"saved":true/);
+  assert.match(created.item.output, /"ref":"a1"/);
+  assert.equal(sent.filter(item => item.type === 'response.create').length, 1);
+  assert.equal(sent.some(item => item.type === 'session.commentary.append' && item.delegation_id === 'del_1'), false);
+});
+
 test('an omitted engine stays on realtime and live keeps the same plan tools', () => {
   assert.equal(plannerVoiceEngine({}), 'realtime');
   assert.equal(plannerVoiceEngine({ engine: 'realtime' }), 'realtime');
@@ -917,12 +970,17 @@ test('an omitted engine stays on realtime and live keeps the same plan tools', (
   const live = plannerLiveConfiguration(settings, { timeZone: 'Europe/Warsaw', language: 'ru', now: '2026-11-05T09:00:00+01:00' });
   assert.equal(realtime.model, 'gpt-realtime-2.1');
   assert.equal(live.model, 'gpt-live-1');
-  assert.equal(realtime.tools.map(tool => tool.name).includes('create_activity'), true);
-  assert.equal(live.tools, undefined);
-  assert.equal(live.delegation.type, 'client');
-  assert.equal(live.delegation.responses, undefined);
-  assert.equal(JSON.stringify(live).includes('gpt-6'), false);
-  assert.equal(JSON.stringify(live).includes('gpt-realtime'), false);
+  assert.equal(live.delegation.type, 'responses');
+  assert.equal(live.delegation.responses.model, 'gpt-6.1-sol');
+  assert.equal(live.delegation.responses.parallel_tool_calls, false);
+  const names = live.delegation.responses.tools.map(tool => tool.name);
+  assert.deepEqual(names, ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'log_water', 'remind_water', 'end_call', 'set_call_language']);
+  assert.equal(names.includes('log_meal'), false);
+  assert.match(live.delegation.responses.instructions, /update_activity changes that same ref/);
+  assert.match(live.instructions, /SpawnThinking/);
+  assert.match(live.instructions, /Do not stop after hello/);
+  assert.equal(live.input[0].content[0].text.includes('pause and listen'), false);
+  assert.equal(JSON.stringify(live.delegation).includes('gpt-realtime'), false);
   assert.match(live.instructions, /только сегодняшний план/);
   assert.match(live.instructions, /До встречи/);
 });

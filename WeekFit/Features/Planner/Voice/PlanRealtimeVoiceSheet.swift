@@ -49,6 +49,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     private var savedReplies: [String: (reply: String, at: Date)] = [:]
     private var refBook = PlanRealtimeRefBook()
     private var removedIDs = Set<String>()
+    private var voicedSources: [String: PlanRealtimeSourceActivity] = [:]
     private var secret: PlanRealtimeSessionSecret?
     private var pageReady = false
     private var pageStarted = false
@@ -580,8 +581,6 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                 speak: planVoiceLanguageSwitch(callLanguage),
                 error: nil
             ))
-        case "live_delegate":
-            return performPlanTool(name: "list_plan", arguments: "{\"scope\":\"today_planned\"}")
         case "log_water":
             return logWater(arguments)
         case "remind_water":
@@ -731,8 +730,17 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                 idempotencyKey: key
             )
             do {
-                _ = try onSave(request)
+                let savedID = try onSave(request)
                 applied.insert(key)
+                voicedSources[savedID] = PlanRealtimeSourceActivity(
+                    id: savedID,
+                    title: item.catalogTitle,
+                    date: start,
+                    durationMinutes: item.durationMinutes,
+                    completed: false,
+                    skipped: false,
+                    voice: true
+                )
                 noteSaved(
                     id: key,
                     spoken: PlannerOptionLocalization.localizedTitle(for: item.catalogTitle),
@@ -741,7 +749,13 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                     kind: "added",
                     reply: commit.speak ?? ""
                 )
-                return planRealtimeToolReply(action: .insert, speak: commit.speak)
+                return PlanRealtimeToolReply(
+                    ok: true,
+                    saved: true,
+                    speak: commit.speak,
+                    error: nil,
+                    schedule: todaySchedule()
+                )
             } catch PlanViewModel.VoiceSaveError.timeConflict {
                 let spoken = conflictSpeak(start: start, minutes: item.durationMinutes, excluding: nil)
                 noteReceipt(id: key + "-conflict", title: WeekFitLocalizedString("planner.voice.receipt.failed"), detail: spoken, success: false)
@@ -800,6 +814,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             do {
                 try onDelete(entry.activityID)
                 removedIDs.insert(entry.activityID)
+                voicedSources.removeValue(forKey: entry.activityID)
                 let day = dayLabel(entry.day, today: today, tomorrow: tomorrow)
                 let reply = planRealtimeRemovedSpeak(spoken: entry.spoken, day: day, language: callLanguage)
                 noteReceipt(
@@ -817,7 +832,8 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                     ok: true,
                     saved: true,
                     speak: reply,
-                    error: nil
+                    error: nil,
+                    schedule: todaySchedule()
                 ))
             } catch PlanViewModel.VoiceSaveError.alreadyDone {
                 return encode(notice("already_done"))
@@ -827,28 +843,36 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         case "update_activity":
             guard let draft = planRealtimeEditDraft(arguments),
                   let entry = agenda.first(where: { $0.ref == draft.ref }),
-                  let activity = activities.first(where: { $0.id == entry.activityID }),
                   let onUpdate else {
                 return encode(notice("missing"))
             }
-            if activity.isCompleted {
+            let activity = activities.first(where: { $0.id == entry.activityID })
+            let remembered = voicedSources[entry.activityID]
+            if activity == nil, remembered == nil {
+                return encode(notice("missing"))
+            }
+            if activity?.isCompleted == true {
                 return encode(notice("already_done"))
             }
+            let activityID = activity?.id ?? entry.activityID
+            let originalDate = activity?.date ?? remembered?.date ?? Date()
+            let originalTitle = activity?.title ?? remembered?.title ?? entry.title
+            let originalDuration = activity?.durationMinutes ?? remembered?.durationMinutes ?? entry.durationMinutes
             if engine == "live" {
                 let today = planRealtimeDayString(Date(), calendar: calendar)
-                let day = draft.date.isEmpty ? planRealtimeDayString(activity.date, calendar: calendar) : draft.date
+                let day = draft.date.isEmpty ? planRealtimeDayString(originalDate, calendar: calendar) : draft.date
                 if !planRealtimeLiveChangeAllowed(day: day, today: today, start: nil, now: Date()), day != today {
                     return encode(PlanRealtimeToolReply(ok: false, saved: false, speak: planVoiceEngineLimit(language: callLanguage, past: false), error: "live_limit"))
                 }
             }
-            let sameKind = draft.catalogTitle.isEmpty || draft.catalogTitle == activity.title
+            let sameKind = draft.catalogTitle.isEmpty || draft.catalogTitle == originalTitle
             if draft.date.isEmpty && draft.startTime.isEmpty && draft.durationMinutes == 0 && sameKind {
                 return encode(notice("unchanged"))
             }
             guard let start = planRealtimeMergedStart(
                 day: draft.date,
                 time: draft.startTime,
-                original: activity.date,
+                original: originalDate,
                 calendar: calendar
             ) else {
                 return encode(notice("missing"))
@@ -856,7 +880,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             if draft.durationMinutes != 0 && (draft.durationMinutes < 1 || draft.durationMinutes > 360) {
                 return encode(notice("missing"))
             }
-            let duration = draft.durationMinutes == 0 ? activity.durationMinutes : draft.durationMinutes
+            let duration = draft.durationMinutes == 0 ? originalDuration : draft.durationMinutes
             if engine == "live", !planRealtimeLiveChangeAllowed(day: planRealtimeDayString(start, calendar: calendar), today: planRealtimeDayString(Date(), calendar: calendar), start: start, now: Date()) {
                 let today = planRealtimeDayString(Date(), calendar: calendar)
                 let past = planRealtimeDayString(start, calendar: calendar) == today
@@ -864,11 +888,25 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             }
             do {
                 try onUpdate(PlanVoiceUpdateRequest(
-                    activityID: activity.id,
+                    activityID: activityID,
                     start: start,
                     durationMinutes: duration,
                     catalogTitle: draft.catalogTitle.isEmpty ? nil : draft.catalogTitle
                 ))
+                if let activity {
+                    activity.date = start
+                    activity.durationMinutes = duration
+                    if !draft.catalogTitle.isEmpty { activity.title = draft.catalogTitle }
+                }
+                voicedSources[activityID] = PlanRealtimeSourceActivity(
+                    id: activityID,
+                    title: draft.catalogTitle.isEmpty ? originalTitle : draft.catalogTitle,
+                    date: start,
+                    durationMinutes: duration,
+                    completed: false,
+                    skipped: false,
+                    voice: true
+                )
                 let day = planRealtimeDayString(start, calendar: calendar)
                 let parts = calendar.dateComponents([.hour, .minute], from: start)
                 let time = String(format: "%02d:%02d", parts.hour ?? 0, parts.minute ?? 0)
@@ -879,16 +917,17 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                     time: time,
                     language: callLanguage
                 )
-                noteSaved(id: activity.id + time, spoken: spoken, start: start, minutes: duration, kind: "moved", reply: reply)
+                noteSaved(id: activityID + time, spoken: spoken, start: start, minutes: duration, kind: "moved", reply: reply)
                 return encode(PlanRealtimeToolReply(
                     ok: true,
                     saved: true,
                     speak: reply,
-                    error: nil
+                    error: nil,
+                    schedule: todaySchedule()
                 ))
             } catch PlanViewModel.VoiceSaveError.timeConflict {
-                let spoken = conflictSpeak(start: start, minutes: duration, excluding: activity.id)
-                noteReceipt(id: activity.id + "-conflict", title: WeekFitLocalizedString("planner.voice.receipt.failed"), detail: spoken, success: false)
+                let spoken = conflictSpeak(start: start, minutes: duration, excluding: activityID)
+                noteReceipt(id: activityID + "-conflict", title: WeekFitLocalizedString("planner.voice.receipt.failed"), detail: spoken, success: false)
                 return encode(PlanRealtimeToolReply(ok: false, saved: false, speak: spoken, error: "time_conflict"))
             } catch PlanViewModel.VoiceSaveError.alreadyDone {
                 return encode(notice("already_done"))
@@ -1099,24 +1138,41 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     }
 
     private func currentAgenda() -> [PlanRealtimeAgendaEntry] {
-        planRealtimeAgenda(
-            activities.compactMap { activity in
-                guard !removedIDs.contains(activity.id) else { return nil }
-                return PlanRealtimeSourceActivity(
-                    id: activity.id,
-                    title: activity.title,
-                    date: activity.date,
-                    durationMinutes: activity.durationMinutes,
-                    completed: activity.isCompleted,
-                    skipped: activity.isSkipped,
-                    voice: planRealtimeVoiceInclude(activity)
-                )
-            },
+        var sources = activities.compactMap { activity -> PlanRealtimeSourceActivity? in
+            guard !removedIDs.contains(activity.id) else { return nil }
+            return PlanRealtimeSourceActivity(
+                id: activity.id,
+                title: activity.title,
+                date: activity.date,
+                durationMinutes: activity.durationMinutes,
+                completed: activity.isCompleted,
+                skipped: activity.isSkipped,
+                voice: planRealtimeVoiceInclude(activity)
+            )
+        }
+        let known = Set(sources.map(\.id))
+        for (id, extra) in voicedSources where !known.contains(id) && !removedIDs.contains(id) {
+            sources.append(extra)
+        }
+        return planRealtimeAgenda(
+            sources,
             now: Date(),
             calendar: calendar,
             book: &refBook,
             spoken: PlannerOptionLocalization.localizedTitle(for:)
         )
+    }
+
+    private func todaySchedule() -> [PlanRealtimeScheduleRow] {
+        currentAgenda().filter { $0.scope == "today_planned" || $0.scope == "today_done" }.map {
+            PlanRealtimeScheduleRow(
+                ref: $0.ref,
+                title: $0.title,
+                startTime: $0.startTime,
+                durationMinutes: $0.durationMinutes,
+                done: $0.scope == "today_done"
+            )
+        }
     }
 
     private func deliver(callId: String, reply: String) {
