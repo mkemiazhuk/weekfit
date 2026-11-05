@@ -346,6 +346,21 @@ final class PlanRealtimeVoiceTests: XCTestCase {
         XCTAssertEqual(effect.drunkMilliliters, 0)
     }
 
+    func testLiveKeepsTodayAndRejectsAPastOrAnotherDay() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 11, day: 5, hour: 12))!
+        let later = calendar.date(byAdding: .hour, value: 2, to: now)!
+        let earlier = calendar.date(byAdding: .hour, value: -2, to: now)!
+        XCTAssertTrue(planRealtimeLiveChangeAllowed(day: "2026-11-05", today: "2026-11-05", start: later, now: now))
+        XCTAssertTrue(planRealtimeLiveChangeAllowed(day: "", today: "2026-11-05", start: later, now: now))
+        XCTAssertFalse(planRealtimeLiveChangeAllowed(day: "2026-11-06", today: "2026-11-05", start: later, now: now))
+        XCTAssertFalse(planRealtimeLiveChangeAllowed(day: "2026-11-05", today: "2026-11-05", start: earlier, now: now))
+        XCTAssertEqual(planRealtimeCallLanguage("{\"language\":\"fr\"}"), "fr")
+        XCTAssertNil(planRealtimeCallLanguage("{\"language\":\"xx\"}"))
+        XCTAssertEqual(PlanVoiceEngine.alternate == "live" || PlanVoiceEngine.alternate == "realtime", true)
+    }
+
     func testLostReplyReplaysTheSavedConfirmationAndDoesNotExpireAnActivity() {
         let start = Date(timeIntervalSince1970: 1_700_000_000)
         let fingerprint = planRealtimeSaveFingerprint(catalogTitle: "Walk", start: start, durationMinutes: 20)

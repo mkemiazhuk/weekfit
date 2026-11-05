@@ -15,6 +15,8 @@ import {
 import { voiceGuide } from './planner-voice-guides.mjs';
 
 const DEFAULT_MODEL = 'gpt-realtime-2.1';
+const LIVE_MODEL = 'gpt-live-1';
+const DEFAULT_LIVE_BACKEND = 'gpt-6.1-sol';
 const VOICES = new Set(['marin', 'cedar', 'alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse']);
 
 /** Names, defaults, and spoken forms match the on-device planner catalog. Meals stay out. */
@@ -84,6 +86,8 @@ export function plannerVoiceSettings(env = {}) {
     plannerVoiceEnabled: env.PLANNER_VOICE_ENABLED === '1',
     plannerVoiceAllowedUids: allowed,
     plannerVoiceModel: model,
+    plannerVoiceLiveModel: LIVE_MODEL,
+    plannerVoiceLiveBackendModel: (env.PLANNER_VOICE_LIVE_BACKEND_MODEL ?? DEFAULT_LIVE_BACKEND).trim() || DEFAULT_LIVE_BACKEND,
     // Optional stronger model for the listed app languages, e.g. ru,fr.
     plannerVoiceLanguageModel: languageModel && modelLanguages.length ? languageModel : null,
     plannerVoiceLanguageModelLanguages: modelLanguages,
@@ -413,6 +417,11 @@ export function createPlannerVoiceHandler(config, dependencies = {}) {
           return true;
         }
         try {
+          if (plannerVoiceEngine(payload) === 'live') {
+            line.release(uid, admission.ticket);
+            sendJson(res, 503, { error: 'planner_voice_live_unavailable' });
+            return true;
+          }
           const secret = await mintSecret(config, fetcher, uid, payload, log);
           line.activate(uid, admission.ticket);
           sendJson(res, 200, secret);
@@ -521,6 +530,8 @@ export function consoleDocument() {
   let toolFollowUp = false;
   let sessionLanguage = 'ru';
   let sessionName = '';
+  let liveEngine = false;
+  let liveGreet = false;
   let sdpResolve = null;
   const pending = new Map();
   const CHECK = {
@@ -742,12 +753,25 @@ export function consoleDocument() {
     if (!hangup || goodbyeTail) return;
     if (goodbyeFallback) clearTimeout(goodbyeFallback);
     goodbyeFallback = null;
-    goodbyeTail = setTimeout(() => stop('goodbye'), 20);
+    goodbyeTail = setTimeout(() => {
+      if (liveEngine && channel && channel.readyState === 'open') {
+        channel.send(JSON.stringify({ type: 'session.close' }));
+      }
+      stop('goodbye');
+    }, 20);
   }
 
   function sendToolOutput(callId, output) {
     if (!channel || channel.readyState !== 'open') return;
     toolFollowUp = true;
+    if (liveEngine) {
+      channel.send(JSON.stringify({
+        type: 'response.item.create',
+        item: { type: 'function_call_output', call_id: callId, output: JSON.stringify(output) },
+      }));
+      channel.send(JSON.stringify({ type: 'response.create' }));
+      return;
+    }
     channel.send(JSON.stringify({
       type: 'conversation.item.create',
       item: { type: 'function_call_output', call_id: callId, output: JSON.stringify(output) },
@@ -816,7 +840,9 @@ export function consoleDocument() {
         channel.onmessage = (event) => onEvent(event.data);
         sessionLanguage = String((options && options.language) || 'ru');
         sessionName = String((options && options.givenName) || '').replace(/[\\r\\n"]/g, '').slice(0, 40);
+        liveEngine = options && options.engine === 'live';
         const reopen = Boolean(options && options.reconnected);
+        liveGreet = liveEngine && !reopen;
         channel.onopen = () => {
           if (thisCall !== callNumber || !local || !channel) return;
           post({ type: 'state', value: 'connected' });
@@ -829,10 +855,12 @@ export function consoleDocument() {
           // Echo cancellation needs a moment on the speaker: an open microphone hears the
           // greeting, the server treats it as speech, and cuts the greeting off.
           greetingPending = true;
-          setTimeout(() => {
-            if (thisCall !== callNumber || !channel || channel.readyState !== 'open') return;
-            channel.send(JSON.stringify({ type: 'response.create' }));
-          }, 400);
+          if (!liveEngine) {
+            setTimeout(() => {
+              if (thisCall !== callNumber || !channel || channel.readyState !== 'open') return;
+              channel.send(JSON.stringify({ type: 'response.create' }));
+            }, 400);
+          }
           setTimeout(() => {
             if (thisCall !== callNumber || !greetingPending) return;
             greetingPending = false;
@@ -875,6 +903,55 @@ export function consoleDocument() {
     let event;
     try { event = JSON.parse(raw); } catch (e) { return; }
     const type = event.type || '';
+    if (type === 'response.event' && event.event) {
+      onEvent(JSON.stringify(event.event));
+      return;
+    }
+    if (liveEngine && type === 'response.function_call_arguments.done') return;
+    if (type === 'session.started') {
+      post({ type: 'state', value: 'voice' });
+      if (liveGreet && channel && channel.readyState === 'open') {
+        liveGreet = false;
+        channel.send(JSON.stringify({
+          type: 'session.commentary.append',
+          event_id: 'greeting_1',
+          delegation_id: null,
+          content: 'Greet now in the session language, then pause and listen.',
+        }));
+      }
+      return;
+    }
+    if (type === 'session.closed') {
+      post({ type: 'state', value: 'ended', reason: 'provider' });
+      return;
+    }
+    if (type === 'response.output_item.done' && event.item && event.item.type === 'function_call') {
+      const name = event.item.name;
+      const callId = event.item.call_id;
+      const args = typeof event.item.arguments === 'string'
+        ? event.item.arguments
+        : JSON.stringify(event.item.arguments || {});
+      if (name === 'set_call_language') {
+        try {
+          const requested = JSON.parse(args).language;
+          if (requested) sessionLanguage = String(requested);
+        } catch (e) {}
+      }
+      if (name === 'end_call') {
+        hangup = true;
+        hangupConfirmed = true;
+        clearPresence();
+        return;
+      }
+      if (['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'log_water', 'remind_water', 'set_call_language'].includes(name)) {
+        toolBusy = true;
+        clearReplyWatch();
+        clearPresence();
+        post({ type: 'state', value: 'acting' });
+        post({ type: 'tool', callId, name, arguments: args });
+      }
+      return;
+    }
     if (type === 'input_audio_buffer.speech_started') {
       if (goodbyeLocked) return;
       clearReplyWatch();
@@ -1098,6 +1175,56 @@ function localStamp(date, timeZone) {
   const value = (type) => parts.find(part => part.type === type).value;
   const hour = value('hour') === '24' ? '00' : value('hour');
   return `${value('year')}-${value('month')}-${value('day')}T${hour}:${value('minute')}`;
+}
+
+export function plannerVoiceEngine(body) {
+  const engine = typeof body?.engine === 'string' ? body.engine.trim() : '';
+  if (engine === '') return 'realtime';
+  if (engine === 'live' || engine === 'realtime') return engine;
+  throw new ServiceError('invalid_voice_engine', 422);
+}
+
+const LIVE_LIMIT = {
+  ru: 'Этот звонок меняет только сегодняшний план. Еду, здоровье, цели и завершённые записи не меняй. Другой день не планируй. Если просят сменить язык, говори на нём до конца звонка и не меняй язык приложения. Обычное «спасибо» звонок не завершает.',
+  en: 'This call changes only today\'s plan. Do not change food, health, goals, or completed items, and do not plan another day. If they ask to switch language, speak it for the rest of this call and do not change the app language. A bare thanks does not end the call.',
+  pl: 'Ta rozmowa zmienia tylko dzisiejszy plan. Nie zmieniaj jedzenia, zdrowia, celów ani ukończonych pozycji i nie planuj innego dnia. Jeśli poproszą o zmianę języka, mów w nim do końca rozmowy i nie zmieniaj języka aplikacji. Samo „dziękuję” nie kończy rozmowy.',
+  fr: 'Cet appel ne change que le plan d\'aujourd\'hui. Ne change pas la nourriture, la santé, les objectifs ni les activités terminées, et ne planifie pas un autre jour. S\'ils demandent une autre langue, parle-la jusqu\'à la fin de l\'appel sans changer la langue de l\'app. Un simple merci ne raccroche pas.',
+  es: 'Esta llamada solo cambia el plan de hoy. No cambies comida, salud, objetivos ni actividades terminadas, y no planifiques otro día. Si piden otro idioma, háblalo el resto de la llamada sin cambiar el idioma de la app. Un simple gracias no cuelga.',
+  de: 'Dieser Anruf ändert nur den Plan von heute. Ändere nicht Essen, Gesundheit, Ziele oder erledigte Einträge und plane keinen anderen Tag. Wenn sie die Sprache wechseln wollen, sprich sie bis zum Ende und ändere nicht die App-Sprache. Ein bloßes Danke beendet den Anruf nicht.',
+  it: 'Questa chiamata cambia solo il piano di oggi. Non cambiare cibo, salute, obiettivi o attività completate e non pianificare un altro giorno. Se chiedono un\'altra lingua, parlala fino alla fine senza cambiare la lingua dell\'app. Un semplice grazie non chiude.',
+  ja: 'この通話で変えるのは今日の予定だけ。食事、健康、目標、完了した記録は変えない。別の日は計画しない。言語を変えてほしいと言われたら、この通話の終わりまでその言語で話し、アプリの言語は変えない。ただの「ありがとう」では切らない。',
+  ko: '이 통화는 오늘 계획만 바꾼다. 음식, 건강, 목표, 완료된 기록은 바꾸지 않고 다른 날은 계획하지 않는다. 언어를 바꾸자고 하면 이 통화가 끝날 때까지 그 언어로 말하고 앱 언어는 바꾸지 않는다. 단순한 고마워는 통화를 끝내지 않는다.',
+  'zh-Hans': '这通电话只改今天的计划。不要改饮食、健康、目标或已完成的记录，也不要安排别的日子。如果对方要求换语言，就用那种语言说到通话结束，不要改应用语言。单独一句谢谢不会结束通话。',
+};
+
+export function plannerLiveConfiguration(config, payload) {
+  const session = plannerSessionConfiguration(config, payload);
+  const language = plannerVoiceLanguage(payload?.language);
+  const backend = config.plannerVoiceLiveBackendModel || DEFAULT_LIVE_BACKEND;
+  if (!/^gpt-[a-z0-9._-]+$/i.test(backend)) throw new ServiceError('planner_voice_live_unavailable', 503);
+  return {
+    model: LIVE_MODEL,
+    instructions: `${session.instructions}\n${LIVE_LIMIT[language] || LIVE_LIMIT.en}`,
+    audio: { output: { voice: session.audio.output.voice } },
+    input: [{
+      type: 'message',
+      role: 'developer',
+      content: [{ type: 'input_text', text: 'Greet now in the session language, then pause and listen.' }],
+    }],
+    delegation: {
+      type: 'responses',
+      responses: {
+        model: backend,
+        instructions: 'Read today\'s plan before a suggestion. Change a record only through these tools, and only after the person\'s request is explicit and unambiguous. Say a save happened only when the tool returns saved true, using the saved time and duration. If a tool fails or the result is unknown, check the plan before trying again. Do not invent numbers, meals, or health data. Keep record ids exactly as the tools return them.',
+        tools: [
+          createActivityTool(), listPlanTool(), updateActivityTool(), deleteActivityTool(),
+          logWaterTool(), remindWaterTool(), endCallTool(), setCallLanguageTool(),
+        ],
+        tool_choice: 'auto',
+        parallel_tool_calls: false,
+      },
+    },
+  };
 }
 
 export function plannerSessionConfiguration(config, payload) {
@@ -1491,6 +1618,22 @@ function remindWaterTool() {
         anchorRef: { type: 'string', description: 'Plan ref such as a1. Empty unless place is before or after.' },
       },
       required: ['date', 'startTime', 'place', 'anchorRef'],
+    },
+  };
+}
+
+function setCallLanguageTool() {
+  return {
+    type: 'function',
+    name: 'set_call_language',
+    description: 'Switch the spoken language for the rest of this call only. Does not change the app language setting.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        language: { type: 'string', enum: ['ru', 'en', 'zh-Hans', 'ko', 'ja', 'de', 'it', 'pl', 'fr', 'es'] },
+      },
+      required: ['language'],
     },
   };
 }

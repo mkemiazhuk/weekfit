@@ -12,6 +12,8 @@ import {
   createPlannerVoiceHandler,
   createPlannerVoiceStore,
   plannerSessionConfiguration,
+  plannerLiveConfiguration,
+  plannerVoiceEngine,
   plannerVoiceSettings,
 } from './planner-voice.mjs';
 import { plannerVoicePreviewPhrases } from './planner-voice-copy.mjs';
@@ -860,4 +862,24 @@ test('a full line keeps later callers waiting and moves them forward', async () 
   } finally {
     await server.close();
   }
+});
+
+test('an omitted engine stays on realtime and live keeps the same plan tools', () => {
+  assert.equal(plannerVoiceEngine({}), 'realtime');
+  assert.equal(plannerVoiceEngine({ engine: 'realtime' }), 'realtime');
+  assert.equal(plannerVoiceEngine({ engine: 'live' }), 'live');
+  assert.throws(() => plannerVoiceEngine({ engine: 'other' }));
+  const settings = plannerVoiceSettings({});
+  const realtime = plannerSessionConfiguration(settings, { timeZone: 'Europe/Warsaw', language: 'ru' });
+  const live = plannerLiveConfiguration(settings, { timeZone: 'Europe/Warsaw', language: 'ru', now: '2026-11-05T09:00:00+01:00' });
+  assert.equal(realtime.model, 'gpt-realtime-2.1');
+  assert.equal(live.model, 'gpt-live-1');
+  assert.equal(live.input[0].role, 'developer');
+  assert.equal(live.delegation.type, 'responses');
+  assert.equal(live.delegation.responses.parallel_tool_calls, false);
+  const names = live.delegation.responses.tools.map(tool => tool.name);
+  assert.deepEqual(names, ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'log_water', 'remind_water', 'end_call', 'set_call_language']);
+  assert.equal(names.includes('log_meal'), false);
+  assert.match(live.instructions, /только сегодняшний план/);
+  assert.match(live.instructions, /До встречи/);
 });

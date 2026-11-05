@@ -20,6 +20,7 @@ struct ProfileView: View {
     @EnvironmentObject private var reviewManager: ReviewPromptManager
     @EnvironmentObject private var unitsStore: WeekFitUnitsStore
     @EnvironmentObject private var subscriptionManager: SubscriptionManager
+    @AppStorage(PlanVoiceEngine.storageKey) private var voiceEngine = "realtime"
 
     @StateObject private var viewModel = ProfileViewModel()
     @State private var showResetConfirmation = false
@@ -207,6 +208,31 @@ struct ProfileView: View {
 
 private extension ProfileView {
 
+    private var voiceEngineSection: some View {
+        SettingsGroupedSection {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(planVoiceEngineTitle(languageManager.selectedLanguage.rawValue))
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(palette.textPrimary)
+                Picker(planVoiceEngineTitle(languageManager.selectedLanguage.rawValue), selection: $voiceEngine) {
+                    Text("Realtime").tag("realtime")
+                    Text("Live").tag("live")
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("settings.voice.engine")
+                Text(planVoiceEngineFootnote(languageManager.selectedLanguage.rawValue))
+                    .font(.footnote)
+                    .foregroundStyle(palette.textSecondary)
+            }
+            .padding(16)
+        }
+        .onChange(of: voiceEngine) { _, value in
+            let chosen = value == "live" ? "live" : "realtime"
+            if voiceEngine != chosen { voiceEngine = chosen }
+            PlanVoiceEngine.choose(chosen)
+        }
+    }
+
     var profileContent: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 22) {
@@ -229,6 +255,8 @@ private extension ProfileView {
                     items: viewModel.preferenceSettings,
                     showHealthStatus: false
                 )
+
+                voiceEngineSection
 
                 privacyDataSection
 
