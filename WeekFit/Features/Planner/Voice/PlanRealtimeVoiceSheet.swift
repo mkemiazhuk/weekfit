@@ -42,6 +42,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     var onRemindWater: ((Date, Int) throws -> Void)?
     var languageCode = "ru"
     var engine = PlanVoiceEngine.current
+    var addresseeSex = "unknown"
 
     private let bridge = PlanRealtimeScriptBridge()
     private var gate = PlanRealtimeCallGate()
@@ -178,7 +179,6 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             guard !ended else { return }
             let alreadyIntroduced = PlanRealtimeMayaMemory.introduced
             let reconnect = reconnecting
-            PlanRealtimeMayaMemory.markIntroduced()
             ringback.start()
             phase = .connecting
             // The call page loads while the session is opened, not after it.
@@ -202,7 +202,8 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                 dayContext: dayContext.jsonObject(),
                 ticket: ticket,
                 introduced: alreadyIntroduced,
-                reconnected: reconnect
+                reconnected: reconnect,
+                addressee: addresseeSex
             )
             self.secret = secret
             guard !ended else {
@@ -327,7 +328,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         guard case .failed = phase else { return }
         ended = false
         started = false
-        reconnecting = true
+        reconnecting = false
         receipt = nil
         turns = []
         notices = []
@@ -497,6 +498,8 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         case "answered":
             // The tone keeps playing until Maya's greeting is audible; a reconnect has no greeting.
             if awaitsGreeting { armToneFallback() } else { pickUp() }
+        case "introduced":
+            PlanRealtimeMayaMemory.markIntroduced()
         case "voice":
             pickUp()
             phase = .speaking
@@ -1195,6 +1198,8 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             "language": callLanguage,
             "givenName": ProfileService.resolvedGivenName(),
             "reconnected": reconnecting,
+            "introduced": PlanRealtimeMayaMemory.introduced,
+            "addressee": addresseeSex,
             "engine": engine,
         ]
         reconnecting = false
@@ -1256,6 +1261,7 @@ struct PlanRealtimeVoiceSheet: View {
     var onDelete: (String) throws -> Void
     var onLogWater: (Int) throws -> Int = { _ in throw PlanViewModel.VoiceSaveError.persistence }
     var onRemindWater: (Date, Int) throws -> Void = { _, _ in }
+    var addresseeSex: String = "unknown"
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -1276,7 +1282,8 @@ struct PlanRealtimeVoiceSheet: View {
         onLogWater: onLogWater,
         onRemindWater: onRemindWater,
         languageCode: languageManager.selectedLanguage.rawValue,
-            dayContext: dayContext
+            dayContext: dayContext,
+            addresseeSex: addresseeSex
         )
 
         ZStack {
@@ -1758,7 +1765,8 @@ extension PlanRealtimeSessionController {
         onLogWater: @escaping (Int) throws -> Int,
         onRemindWater: @escaping (Date, Int) throws -> Void,
         languageCode: String,
-        dayContext: PlanVoiceDayContext
+        dayContext: PlanVoiceDayContext,
+        addresseeSex: String
     ) {
         self.planningDay = planningDay
         self.activities = activities
@@ -1769,6 +1777,7 @@ extension PlanRealtimeSessionController {
         self.onRemindWater = onRemindWater
         self.languageCode = languageCode
         self.dayContext = dayContext
+        self.addresseeSex = addresseeSex
     }
 }
 

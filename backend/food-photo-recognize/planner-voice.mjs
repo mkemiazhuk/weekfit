@@ -511,6 +511,9 @@ export function consoleDocument() {
   let hangupConfirmed = false;
   let goodbyeLocked = false;
   let greetingPending = false;
+  let userSpokeBeforeGreeting = false;
+  let sessionIntroduced = false;
+  let introductionNoted = false;
   let voiced = false;
   let micOpen = false;
   let audioPlaying = false;
@@ -549,18 +552,8 @@ export function consoleDocument() {
     ko: { there: (n) => (n ? n + ', 아직 있어?' : '아직 있어?'), bye: '통화를 마칠게. 안녕!' },
     'zh-Hans': { there: (n) => (n ? n + '，你还在吗？' : '你还在吗？'), bye: '我先挂了。再见！' },
   };
-  const GREET = {
-    ru: 'Привет! Как ты?',
-    en: 'Hi! How are you?',
-    pl: 'Cześć! Jak się masz?',
-    fr: 'Salut ! Ça va ?',
-    es: '¡Hola! ¿Qué tal?',
-    de: 'Hi! Wie geht es dir?',
-    it: 'Ciao! Come stai?',
-    ja: 'こんにちは。調子はどう？',
-    ko: '안녕! 잘 지내?',
-    'zh-Hans': '你好！怎么样？',
-  };
+  const FIRST_GREET = ${JSON.stringify(Object.fromEntries(PLANNER_VOICE_LANGUAGES.map((code) => [code, greetingLine(code, '', false)])))};
+  const AGAIN_GREET = ${JSON.stringify(Object.fromEntries(PLANNER_VOICE_LANGUAGES.map((code) => [code, greetingLine(code, '', true)])))};
   const NUDGE = {
     ru: 'Человек уже договорил и слышит тишину. Сразу ответь на его последнюю фразу, одной короткой фразой. Не говори, что думаешь, и не отвечай только «я здесь».',
     en: 'They just finished speaking and heard silence. Answer their last sentence now, in one short sentence. Do not say you are thinking, and do not only say that you are here.',
@@ -894,6 +887,9 @@ export function consoleDocument() {
         sessionLanguage = String((options && options.language) || 'ru');
         sessionName = String((options && options.givenName) || '').replace(/[\\r\\n"]/g, '').slice(0, 40);
         liveEngine = options && options.engine === 'live';
+        sessionIntroduced = Boolean(options && options.introduced);
+        userSpokeBeforeGreeting = false;
+        introductionNoted = false;
         const reopen = Boolean(options && options.reconnected);
         liveGreet = liveEngine && !reopen;
         liveCalls.clear();
@@ -906,15 +902,17 @@ export function consoleDocument() {
             openMic();
             return;
           }
-          // Echo cancellation needs a moment on the speaker: an open microphone hears the
-          // greeting, the server treats it as speech, and cuts the greeting off.
+          // The microphone stays open so a question can replace the greeting and the greeting can be interrupted.
           greetingPending = true;
-          if (!liveEngine) {
-            setTimeout(() => {
-              if (thisCall !== callNumber || !channel || channel.readyState !== 'open') return;
-              channel.send(JSON.stringify({ type: 'response.create' }));
-            }, 400);
-          }
+          openMic();
+          setTimeout(() => {
+            if (thisCall !== callNumber || !channel || channel.readyState !== 'open') return;
+            if (userSpokeBeforeGreeting) {
+              greetingPending = false;
+              return;
+            }
+            if (!liveEngine) channel.send(JSON.stringify({ type: 'response.create' }));
+          }, 400);
           setTimeout(() => {
             if (thisCall !== callNumber || !greetingPending) return;
             greetingPending = false;
@@ -970,11 +968,13 @@ export function consoleDocument() {
       post({ type: 'state', value: 'voice' });
       if (liveGreet && channel && channel.readyState === 'open') {
         liveGreet = false;
+        if (userSpokeBeforeGreeting) return;
+        const greet = (sessionIntroduced ? AGAIN_GREET : FIRST_GREET)[sessionLanguage] || FIRST_GREET.ru;
         channel.send(JSON.stringify({
           type: 'session.commentary.append',
           event_id: 'greeting_1',
           delegation_id: null,
-          content: GREET[sessionLanguage] || GREET.en,
+          content: greet,
         }));
       }
       return;
@@ -1011,6 +1011,11 @@ export function consoleDocument() {
       return;
     }
     if (type === 'input_audio_buffer.speech_started') {
+      if (greetingPending && !voiced) userSpokeBeforeGreeting = true;
+      if (!introductionNoted) {
+        introductionNoted = true;
+        post({ type: 'state', value: 'introduced' });
+      }
       if (goodbyeLocked) return;
       clearReplyWatch();
       clearPresence();
@@ -1042,6 +1047,10 @@ export function consoleDocument() {
       clearReplyWatch();
       clearPresence();
       // The app keeps its connecting tone until this, so the line is never silent before Maya speaks.
+      if (!introductionNoted) {
+        introductionNoted = true;
+        post({ type: 'state', value: 'introduced' });
+      }
       if (!voiced) {
         voiced = true;
         post({ type: 'state', value: 'voice' });
@@ -1244,16 +1253,16 @@ export function plannerVoiceEngine(body) {
 const LIVE_OPEN = 'On a plain greeting, say only the greeting and wait. Do not mention the sauna or any other activity. If they already asked a question, answer that question.';
 
 const RECOVERY_BAND = {
-  ru: { good: 'хорошо восстановлена', ok: 'умеренно готова', need_rest: 'лучше полегче' },
-  en: { good: 'well recovered', ok: 'moderately ready', need_rest: 'take it easier' },
-  pl: { good: 'dobrze zregenerowana', ok: 'umiarkowanie gotowa', need_rest: 'lepiej spokojniej' },
-  fr: { good: 'bien récupérée', ok: 'modérément prête', need_rest: 'mieux y aller doucement' },
-  es: { good: 'bien recuperada', ok: 'moderadamente lista', need_rest: 'mejor ir más suave' },
-  de: { good: 'gut erholt', ok: 'mäßig bereit', need_rest: 'besser leichter' },
-  it: { good: 'ben recuperata', ok: 'moderatamente pronta', need_rest: 'meglio andarci piano' },
-  ja: { good: 'よく回復している', ok: 'まずまず回復している', need_rest: '無理をしない方がいい' },
-  ko: { good: '잘 회복됨', ok: '보통으로 준비됨', need_rest: '더 가볍게' },
-  'zh-Hans': { good: '恢复良好', ok: '恢复中等偏上', need_rest: '宜放缓' },
+  ru: { good: 'хорошо', ok: 'умеренная готовность', need_rest: 'низкое восстановление' },
+  en: { good: 'good recovery', ok: 'moderate readiness', need_rest: 'low recovery' },
+  pl: { good: 'dobra regeneracja', ok: 'umiarkowana gotowość', need_rest: 'niska regeneracja' },
+  fr: { good: 'bonne récupération', ok: 'disponibilité modérée', need_rest: 'faible récupération' },
+  es: { good: 'recuperación buena', ok: 'disponibilidad moderada', need_rest: 'recuperación baja' },
+  de: { good: 'gute Erholung', ok: 'mäßige Bereitschaft', need_rest: 'geringe Erholung' },
+  it: { good: 'recupero buono', ok: 'disponibilità moderata', need_rest: 'recupero basso' },
+  ja: { good: '回復良好', ok: '中程度の準備', need_rest: '回復が低め' },
+  ko: { good: '좋은 회복', ok: '중간 준비', need_rest: '낮은 회복' },
+  'zh-Hans': { good: '恢复良好', ok: '中等准备', need_rest: '恢复偏低' },
 };
 
 function answerRules(language) {
@@ -1262,7 +1271,7 @@ function answerRules(language) {
   const rules = {
     ru: [
       'На обычное приветствие скажи только приветствие и жди. Сауну и другое занятие не заводи, пока человек сам не спросил. Если первые слова уже вопрос, ответь на него.',
-      `На вопрос про восстановление и еду используй только данные звонка. Назови процент и слова класса: ${band.good}, ${band.ok} или ${band.need_rest}. «${band.ok}» не называй средней. Затем скажи, что записано, и сколько осталось до целей. Затем одно следующее действие и причину из этих цифр. Нет записи еды не значит, что человек не ел. Не предлагай одни и те же продукты каждый раз: смотри на остаток, записанные приёмы и время.`,
+      `На вопрос про восстановление и еду используй только данные звонка. Назови процент и слова класса: ${band.good}, ${band.ok} или ${band.need_rest}. Не говори «ты умеренно готова». «${band.ok}» не называй средней. Затем скажи, что записано, и разницу между дневной целью и записанным потреблением. Затем одно предложение, не приказ, и причину из этих цифр. Нет записи еды не значит, что человек не ел. Не предлагай одни и те же продукты каждый раз: смотри на остаток белка, записанные приёмы, время и полноту дневника.`,
       'На вопрос, поесть до занятия или после, используй время этого занятия и время последней записанной еды. Если времени еды нет, задай один короткий вопрос или ответь условно. Не выбирай «после» только потому, что занятие есть в плане.',
       '«Её», «это занятие» и «то же» — это последнее занятие, которое уже однозначно обсудили, и его ref. Если подходят несколько, спроси какое. Не выбирай последнюю запись только потому, что она последняя.',
       'После инструмента список items — это уже текущий план. Если человек сообщает новое, например что уже поел или как себя чувствует, используй это в следующем ответе. Такая реплика не становится записью еды и не новым измерением. Тот же факт заново не спрашивай.',
@@ -1341,7 +1350,52 @@ function answerRules(language) {
       '单独的「谢谢」或「知道了」不结束通话。「再见」「回头见」「就这些」才结束。说一句短告别，并在同一轮调用 end_call。',
     ],
   };
-  return (rules[code] || rules.en).join('\n');
+  return (rules[code] || rules.en).concat([deliveryRules(code)]).join('\n');
+}
+
+function deliveryRules(language) {
+  const lines = {
+    ru: 'Рекомендацию формулируй как предложение, не приказ. Не говори «ешь свой…». Не называй продукт низкокалорийным или богатым белком без данных о продукте и порции. В речи округляй расчётные калории до десятка: «около 1780», не «примерно 1782». Точные числа оставляй в данных. Остаток калорий — это дневная цель минус записанное потребление. Не называй его обязательной едой и не советуй автоматически добирать весь остаток. На «что это значит?» объясни практический смысл числа. Для конкретной рекомендации учти остаток белка, время дня и полноту дневника. Не заменяй объяснение словами «обычная еда, без спешки».',
+    en: 'Phrase a recommendation as a suggestion, not an order. Do not say "eat your…". Do not call a food low-calorie or high-protein without data about the product and the portion. In speech, round calculated calories to the nearest ten: "about 1780", not "about 1782". Keep exact numbers in the data. Remaining calories are the daily goal minus logged intake. Do not treat that as a required amount of food and do not automatically tell them to eat the whole remainder. If they ask what a number means, explain its practical meaning. A specific suggestion also uses remaining protein, the time of day, and how complete the diary is. Do not replace that explanation with "ordinary food, no rush".',
+    pl: 'Zalecenie formułuj jako propozycję, nie polecenie. Nie mów „zjedz swoje…”. Nie nazywaj produktu niskokalorycznym ani bogatym w białko bez danych o produkcie i porcji. W mowie zaokrąglaj wyliczone kalorie do dziesiątki: „około 1780”, nie „około 1782”. Dokładne liczby zostaw w danych. Reszta kalorii to cel dzienny minus zapisane spożycie. Nie przedstawiaj jej jako obowiązkowej porcji i nie radź automatycznie zjadać całości. Na „co to znaczy?” wyjaśnij praktyczny sens liczby. Do konkretnej propozycji weź też resztę białka, porę dnia i kompletność dziennika. Nie zastępuj wyjaśnienia słowami „zwykłe jedzenie, bez pośpiechu”.',
+    fr: 'Formule une recommandation comme une proposition, pas un ordre. Ne dis pas « mange ton… ». N\'appelle pas un aliment peu calorique ou riche en protéines sans données sur le produit et la portion. À l\'oral, arrondis les calories calculées à la dizaine : « environ 1780 », pas « environ 1782 ». Garde les valeurs exactes dans les données. Le reste de calories est l\'objectif du jour moins ce qui est noté. Ne le présente pas comme une quantité obligatoire et ne conseille pas automatiquement de tout finir. À « qu\'est-ce que ça veut dire ? », explique le sens pratique du nombre. Une suggestion précise tient aussi compte des protéines restantes, de l\'heure et du journal complet ou non. Ne remplace pas l\'explication par « un repas ordinaire, sans se presser ».',
+    es: 'Formula la recomendación como una propuesta, no como una orden. No digas «cómete tu…». No llames a un producto bajo en calorías o rico en proteína sin datos del producto y de la porción. Al hablar, redondea las calorías calculadas a la decena: «unos 1780», no «unos 1782». Deja los valores exactos en los datos. Las calorías que quedan son la meta del día menos lo registrado. No las presentes como una cantidad obligatoria y no aconsejes automáticamente comer todo el resto. Si preguntan «¿qué significa esto?», explica el sentido práctico del número. Una sugerencia concreta también usa la proteína que queda, la hora y si el diario está completo. No sustituyas la explicación por «comida normal, sin prisa».',
+    de: 'Formuliere eine Empfehlung als Vorschlag, nicht als Befehl. Sag nicht „iss dein…“. Nenne ein Lebensmittel nicht kalorienarm oder eiweißreich ohne Angaben zu Produkt und Portion. Sprich berechnete Kalorien auf zehn gerundet: „etwa 1780“, nicht „etwa 1782“. Genaue Werte bleiben in den Daten. Die übrigen Kalorien sind das Tagesziel minus das Eingetragene. Das ist keine Pflichtmenge und kein Grund, automatisch alles aufzuessen. Auf „was bedeutet das?“ erkläre den praktischen Sinn der Zahl. Ein konkreter Vorschlag berücksichtigt auch das übrige Protein, die Tageszeit und wie vollständig das Tagebuch ist. Ersetze die Erklärung nicht durch „normales Essen, ohne Eile“.',
+    it: 'Formula il consiglio come una proposta, non come un ordine. Non dire «mangia il tuo…». Non chiamare un alimento ipocalorico o ricco di proteine senza dati sul prodotto e sulla porzione. A voce, arrotonda le calorie calcolate alla decina: «circa 1780», non «circa 1782». Lascia i valori esatti nei dati. Le calorie restanti sono l\'obiettivo del giorno meno quanto è registrato. Non presentarle come una quantità obbligatoria e non consigliare automaticamente di finirle tutte. A «che cosa significa?», spiega il senso pratico del numero. Un consiglio concreto considera anche le proteine rimaste, l\'ora e quanto è completo il diario. Non sostituire la spiegazione con «cibo normale, senza fretta».',
+    ja: '提案は命令にしない。「自分の…を食べて」と言わない。食品と分量のデータがなければ、低カロリーや高たんぱくとは言わない。話すときは計算したカロリーを十の位に丸める。「約1780」であり「約1782」ではない。正確な数値はデータに残す。残りのカロリーは一日の目標から記録した摂取を引いた差である。必ず食べる量として扱わず、残りを全部食べるよう自動では勧めない。「これはどういう意味？」には数の実際の意味を説明する。具体的な提案では残りのたんぱく質、時刻、日記が揃っているかも見る。「普通の食事で急がなくていい」で説明を代えない。',
+    ko: '권유는 제안으로 말하고 명령으로 하지 않는다. “네 …를 먹어”라고 하지 않는다. 식품과 분량 데이터가 없으면 저칼로리나 고단백이라고 하지 않는다. 말할 때는 계산된 칼로리를 십 단위로 반올림한다. “약 1780”이지 “약 1782”가 아니다. 정확한 값은 데이터에 둔다. 남은 칼로리는 하루 목표에서 기록된 섭취를 뺀 차이다. 꼭 먹어야 하는 양으로 말하지 않고, 나머지를 다 먹으라고 자동으로 권하지 않는다. “이게 무슨 뜻이야?”에는 숫자의 실제 의미를 설명한다. 구체적인 제안에는 남은 단백질, 시각, 일기가 얼마나 채워졌는지도 본다. “평범한 식사, 서두르지 마”로 설명을 바꾸지 않는다.',
+    'zh-Hans': '建议说成提议，不要说成命令。不要说「吃掉你的…」。没有食物和分量的数据，就不要说它低热量或高蛋白。说话时把算出的热量四舍五入到十位：「大约1780」，不是「大约1782」。精确数字留在数据里。剩余热量是每日目标减去已记录摄入。不要把它说成必须吃完的量，也不要自动建议把差额全部补上。问「这是什么意思？」时，解释这个数字的实际含义。具体建议还要看剩余蛋白质、时间，以及日记是否记全。不要用「普通的饭，不用着急」代替解释。',
+  };
+  return lines[language] || lines.en;
+}
+
+function addressRule(language, addressee) {
+  const sex = addressee === 'female' || addressee === 'male' ? addressee : 'unknown';
+  const label = {
+    ru: { female: 'женский', male: 'мужской', unknown: 'неизвестен' },
+    en: { female: 'female', male: 'male', unknown: 'unknown' },
+    pl: { female: 'żeński', male: 'męski', unknown: 'nieznany' },
+    fr: { female: 'féminin', male: 'masculin', unknown: 'inconnu' },
+    es: { female: 'femenino', male: 'masculino', unknown: 'desconocido' },
+    de: { female: 'weiblich', male: 'männlich', unknown: 'unbekannt' },
+    it: { female: 'femminile', male: 'maschile', unknown: 'sconosciuto' },
+    ja: { female: '女性', male: '男性', unknown: '不明' },
+    ko: { female: '여성', male: '남성', unknown: '알 수 없음' },
+    'zh-Hans': { female: '女', male: '男', unknown: '未知' },
+  }[language] || { female: 'female', male: 'male', unknown: 'unknown' };
+  const lines = {
+    ru: `О себе говори в женском роде: «я добавила», «я перенесла». Поле профиля сейчас: ${label[sex]}. Род человека бери только из этого поля. По голосу и имени его не определяй. Если поле неизвестно, не согласуй слова с человеком: «Восстановление — 77%», «Сегодня можно выбрать лёгкую нагрузку». Класс восстановления называй по шкале, не «ты умеренно готова».`,
+    en: `Speak about yourself in the feminine where the language marks it. The profile field is ${label[sex]}. Use that field only. Do not infer it from the voice or the name. If it is unknown, do not attach a gendered adjective to the person: say "Recovery is 77 percent" and "A light session is an option today". Name the recovery band from the scale, not "you are moderately ready".`,
+    pl: `O sobie mów w rodzaju żeńskim, jeśli język to zaznacza. Pole profilu: ${label[sex]}. Bierz je tylko stamtąd. Nie wnioskuj z głosu ani z imienia. Gdy jest nieznane, nie odmieniaj przymiotnika przy osobie: „Regeneracja — 77%”, „Dziś można wybrać lekkie obciążenie”. Klasę regeneracji nazywaj według skali.`,
+    fr: `Parle de toi au féminin quand la langue le marque. Champ du profil : ${label[sex]}. Ne le prends que là. Ne le déduis pas de la voix ni du prénom. S'il est inconnu, n'accorde pas un adjectif avec la personne : « Récupération — 77 % », « Aujourd'hui, une charge légère est possible ». Nomme la classe selon l'échelle.`,
+    es: `Habla de ti en femenino cuando el idioma lo marca. Campo del perfil: ${label[sex]}. Úsalo solo desde ahí. No lo deduzcas de la voz ni del nombre. Si es desconocido, no concuerdes un adjetivo con la persona: «Recuperación — 77%», «Hoy se puede elegir una carga ligera». Nombra la clase según la escala.`,
+    de: `Sprich über dich im Femininum, wo die Sprache es markiert. Profilfeld: ${label[sex]}. Nimm es nur von dort. Schließe es nicht aus der Stimme oder dem Namen. Ist es unbekannt, hänge kein Genus an die Person: „Erholung — 77 %“, „Heute kann eine leichte Belastung gewählt werden“. Nenne die Stufe nach der Skala.`,
+    it: `Parla di te al femminile dove la lingua lo segna. Campo del profilo: ${label[sex]}. Prendilo solo da lì. Non dedurlo dalla voce o dal nome. Se è sconosciuto, non concordare un aggettivo con la persona: «Recupero — 77%», «Oggi si può scegliere un carico leggero». Nomina la classe secondo la scala.`,
+    ja: `自分のことは女性として話す。プロフィールの値は${label[sex]}。それだけを使う。声や名前から決めない。不明なら人に性別のある言い方をしない。「回復は77%」「今日は軽い負荷を選べる」。回復の段階は尺度の名前で言う。`,
+    ko: `자기 자신은 여성으로 말한다. 프로필 값은 ${label[sex]}이다. 거기에서만 가져온다. 목소리나 이름으로 정하지 않는다. 알 수 없으면 사람에게 성별이 드러나는 말을 붙이지 않는다. 「회복은 77%」, 「오늘은 가벼운 부하를 고를 수 있다」. 회복 단계는 척도 이름으로 말한다.`,
+    'zh-Hans': `说到自己用女性。档案字段现在是${label[sex]}。只使用这个字段。不要根据声音或名字判断。如果未知，不要把带性别的形容词安到对方身上：「恢复是77%」，「今天可以选择轻负荷」。恢复等级用量表上的名称。`,
+  };
+  return lines[language] || lines.en;
 }
 
 const LIVE_LIMIT = {
@@ -1416,11 +1470,12 @@ export function plannerSessionConfiguration(config, payload) {
   const dayContext = dayContextSnapshot(payload?.dayContext);
   const introduced = payload?.introduced === true;
   const reconnected = payload?.reconnected === true;
+  const addressee = payload?.addressee === 'female' || payload?.addressee === 'male' ? payload.addressee : 'unknown';
   const session = {
     type: 'realtime',
     model: config.plannerVoiceLanguageModel && config.plannerVoiceLanguageModelLanguages?.includes(language)
       ? config.plannerVoiceLanguageModel : config.plannerVoiceModel,
-    instructions: instructions(days, planningDay, safeName, language, plan, dayContext, introduced, reconnected),
+    instructions: instructions(days, planningDay, safeName, language, plan, dayContext, introduced, reconnected, addressee),
     tools: [createActivityTool(), listPlanTool(), updateActivityTool(), deleteActivityTool(), logWaterTool(), remindWaterTool(), endCallTool()],
     tool_choice: 'auto',
     // Budget covers audio and tool calls, not just the short spoken transcript.
@@ -1602,6 +1657,48 @@ function mealSnapshot(raw) {
   return meals;
 }
 
+function spokenCalorieCount(value) {
+  const sign = value < 0 ? -1 : 1;
+  const magnitude = Math.abs(value);
+  const rounded = magnitude < 50 ? magnitude : Math.round(magnitude / 10) * 10;
+  return sign * rounded;
+}
+
+function spokenCaloriePair(eaten, budget, language) {
+  const said = spokenCalorieCount(eaten);
+  const goal = spokenCalorieCount(budget);
+  const lines = {
+    ru: `вслух около ${said} из около ${goal}`,
+    en: `say about ${said} of about ${goal}`,
+    pl: `powiedz około ${said} z około ${goal}`,
+    fr: `dis environ ${said} sur environ ${goal}`,
+    es: `di unos ${said} de unos ${goal}`,
+    de: `sag etwa ${said} von etwa ${goal}`,
+    it: `di' circa ${said} di circa ${goal}`,
+    ja: `話すときは約${said}、目標は約${goal}`,
+    ko: `말할 때는 약 ${said}, 목표는 약 ${goal}`,
+    'zh-Hans': `说话时大约${said}，目标大约${goal}`,
+  };
+  return lines[language] || lines.en;
+}
+
+function calorieGapLine(left, language) {
+  const spoken = spokenCalorieCount(left);
+  const lines = {
+    ru: `разница между дневной целью и записанным потреблением: точно ${left}, вслух около ${spoken}. Это не обязательный объём еды и не повод советовать добрать весь остаток`,
+    en: `difference between the daily goal and logged intake: exactly ${left}, say about ${spoken}. This is not a required amount of food and not a reason to eat the whole remainder`,
+    pl: `różnica między celem dziennym a zapisanym spożyciem: dokładnie ${left}, powiedz około ${spoken}. To nie jest obowiązkowa ilość jedzenia i nie powód, by radzić zjeść całość`,
+    fr: `différence entre l'objectif du jour et ce qui est noté : exactement ${left}, dis environ ${spoken}. Ce n'est pas une quantité obligatoire et pas une raison de tout finir`,
+    es: `diferencia entre la meta del día y lo registrado: exactamente ${left}, di unos ${spoken}. No es una cantidad obligatoria ni un motivo para comer todo el resto`,
+    de: `Differenz zwischen Tagesziel und Eingetragenem: genau ${left}, sag etwa ${spoken}. Das ist keine Pflichtmenge und kein Grund, alles aufzuessen`,
+    it: `differenza tra l'obiettivo del giorno e quanto è registrato: esattamente ${left}, di' circa ${spoken}. Non è una quantità obbligatoria e non un motivo per finirla tutta`,
+    ja: `一日の目標と記録した摂取の差: 正確には${left}、話すときは約${spoken}。必ず食べる量ではなく、残りを全部食べる理由でもない`,
+    ko: `하루 목표와 기록된 섭취의 차이: 정확히는 ${left}, 말할 때는 약 ${spoken}. 꼭 먹어야 하는 양이 아니고 나머지를 다 먹을 이유도 아니다`,
+    'zh-Hans': `每日目标与已记录摄入的差：精确是${left}，说话时大约${spoken}。这不是必须吃完的量，也不是把差额全部补上的理由`,
+  };
+  return lines[language] || lines.en;
+}
+
 function dayContextLine(dayContext, language) {
   const facts = voiceGuide(language).facts;
   if (!dayContext) return facts.none;
@@ -1632,8 +1729,9 @@ function dayContextLine(dayContext, language) {
     const bits = [];
     if (nutrition.caloriesEaten != null && nutrition.caloriesBudget != null) {
       bits.push(facts.eatenOf(nutrition.caloriesEaten, nutrition.caloriesBudget));
+      bits.push(spokenCaloriePair(nutrition.caloriesEaten, nutrition.caloriesBudget, language));
       const left = nutrition.caloriesBudget - nutrition.caloriesEaten;
-      bits.push(language === 'ru' ? `осталось ${left} килокалорий до цели` : `${left} kilocalories left to the goal`);
+      bits.push(calorieGapLine(left, language));
     } else if (nutrition.caloriesEaten != null) {
       bits.push(facts.eaten(nutrition.caloriesEaten));
     }
@@ -1679,7 +1777,7 @@ function dayContextLine(dayContext, language) {
   return parts.join(' ');
 }
 
-function instructions(days, planningDay, givenName, language, plan = [], dayContext = null, introduced = false, reconnected = false) {
+function instructions(days, planningDay, givenName, language, plan = [], dayContext = null, introduced = false, reconnected = false, addressee = 'unknown') {
   const phrases = plannerVoicePhrases(language);
   const catalog = CATALOG.map(item => (
     `${item.catalogTitle} = ${spokenActivityName(item.catalogTitle, language)} (${item.defaultDurationMinutes} min, ${item.plannerTypeTitle})`
@@ -1698,6 +1796,7 @@ function instructions(days, planningDay, givenName, language, plan = [], dayCont
     givenName ? guide.name(givenName) : guide.noName,
     guide.introduced(introduced),
     reconnected ? guide.reconnected : guide.opening(greetingLine(language, givenName, introduced)),
+    addressRule(language, addressee),
     guide.dates(days, planningDay),
     dayContextLine(dayContext, language),
     plan.length ? guide.plan(rows) : guide.emptyPlan,

@@ -32,7 +32,9 @@ const PHRASES = {
   ru: {
     englishName: 'Russian',
     assistantName: 'Майя',
-    greeting: (name) => (name ? `Привет, ${name}! Как ты?` : 'Привет! Как ты?'),
+    greeting: (_name, introduced) => (introduced
+      ? 'Привет! Рада тебя слышать. Что обсудим сегодня?'
+      : 'Привет! Я Мая. Помогу разобраться, как ты себя чувствуешь, что у тебя по питанию и как лучше спланировать день. Вместе подберём подходящие активности — я могу добавить их в план, перенести или убрать по твоей просьбе. С чего начнём?'),
     goodbye: 'До встречи.',
     anythingElse: 'Что-нибудь ещё?',
     closing: '«нет, всё», «нет, всё, спасибо», «больше ничего», «ничего», «это всё», «всё, спасибо», «до свидания», «до встречи», «увидимся», «пока»',
@@ -48,7 +50,9 @@ const PHRASES = {
   en: {
     englishName: 'English',
     assistantName: 'Maya',
-    greeting: (name) => (name ? `Hey ${name}, how are you feeling today?` : 'Hey, how are you feeling today?'),
+    greeting: (_name, introduced) => (introduced
+      ? 'Hi! Good to hear you. What should we talk about today?'
+      : 'Hi! I\'m Maya. I can help you see how you\'re feeling, where your food stands, and how to shape the day. I can add activities to the plan, move them, or remove them when you ask. Where should we start?'),
     goodbye: 'Talk soon!',
     anythingElse: 'Anything else?',
     closing: '"no, I\'m good", "no, that\'s all", "nothing else", "that\'s all", "that\'s it", "goodbye", "bye"',
@@ -64,7 +68,9 @@ const PHRASES = {
   pl: {
     englishName: 'Polish',
     assistantName: 'Maya',
-    greeting: (name) => (name ? `Cześć, ${name}! Jak się dzisiaj czujesz?` : 'Cześć! Jak się dzisiaj czujesz?'),
+    greeting: (_name, introduced) => (introduced
+      ? 'Cześć! Miło cię słyszeć. O czym dziś pogadamy?'
+      : 'Cześć! Jestem Maya. Pomogę zobaczyć, jak się czujesz, co z jedzeniem i jak ułożyć dzień. Mogę dodać aktywność do planu, przenieść ją albo usunąć, kiedy poprosisz. Od czego zaczynamy?'),
     goodbye: 'Na razie!',
     anythingElse: 'Coś jeszcze?',
     closing: '«nie», «nic więcej», «to wszystko», «do widzenia», «pa»',
@@ -80,7 +86,9 @@ const PHRASES = {
   fr: {
     englishName: 'French',
     assistantName: 'Maya',
-    greeting: (name) => (name ? `Salut ${name} ! Comment tu te sens aujourd'hui ?` : "Salut ! Comment tu te sens aujourd'hui ?"),
+    greeting: (_name, introduced) => (introduced
+      ? "Salut ! Contente de t'entendre. On parle de quoi aujourd'hui ?"
+      : "Salut ! Je suis Maya. Je t'aide à voir comment tu te sens, où en est l'alimentation et comment organiser la journée. Je peux ajouter une activité au planning, la déplacer ou la retirer si tu me le demandes. On commence par quoi ?"),
     goodbye: 'À plus !',
     anythingElse: 'Autre chose ?',
     closing: '«non», «rien d\'autre», «c\'est tout», «au revoir»',
@@ -96,7 +104,9 @@ const PHRASES = {
   es: {
     englishName: 'Spanish',
     assistantName: 'Maya',
-    greeting: (name) => (name ? `¡Hola, ${name}! ¿Cómo estás hoy?` : '¡Hola! ¿Cómo estás hoy?'),
+    greeting: (_name, introduced) => (introduced
+      ? '¡Hola! Me alegra oírte. ¿De qué hablamos hoy?'
+      : '¡Hola! Soy Maya. Te ayudo a ver cómo te sientes, cómo va la comida y cómo organizar el día. Puedo añadir una actividad al plan, moverla o quitarla cuando me lo pidas. ¿Por dónde empezamos?'),
     goodbye: '¡Hasta luego!',
     anythingElse: '¿Algo más?',
     closing: '«no», «nada más», «eso es todo», «adiós»',
@@ -112,7 +122,9 @@ const PHRASES = {
   de: {
     englishName: 'German',
     assistantName: 'Maya',
-    greeting: (name) => (name ? `Hi ${name}! Wie fühlst du dich heute?` : 'Hi! Wie fühlst du dich heute?'),
+    greeting: (_name, introduced) => (introduced
+      ? 'Hi! Schön, dich zu hören. Was besprechen wir heute?'
+      : 'Hi! Ich bin Maya. Ich helfe dir zu sehen, wie es dir geht, wie die Ernährung aussieht und wie du den Tag planst. Eine Aktivität kann ich auf deine Bitte in den Plan setzen, verschieben oder entfernen. Womit fangen wir an?'),
     goodbye: 'Bis dann!',
     anythingElse: 'Noch etwas?',
     closing: '«nein», «nichts weiter», «das war\'s», «auf Wiedersehen»',
@@ -128,7 +140,9 @@ const PHRASES = {
   'zh-Hans': {
     englishName: 'Chinese',
     assistantName: 'Maya',
-    greeting: (name) => (name ? `你好，${name}！今天感觉怎么样？` : '你好！今天感觉怎么样？'),
+    greeting: (_name, introduced) => (introduced
+      ? '你好！听到你的声音真好。今天想聊什么？'
+      : '你好！我是 Maya。我帮你看看状态、饮食，以及怎么安排今天。你要的话，我可以把活动加进计划、改时间或删掉。我们从哪开始？'),
     goodbye: '回头见！',
     anythingElse: '还有别的吗？',
     closing: '「不用了」「没有了」「就这样」「再见」',
@@ -144,7 +158,9 @@ const PHRASES = {
   ja: {
     englishName: 'Japanese',
     assistantName: 'Maya',
-    greeting: (name) => (name ? `こんにちは、${name}。今日の調子はどう？` : 'こんにちは。今日の調子はどう？'),
+    greeting: (_name, introduced) => (introduced
+      ? 'こんにちは。声が聞けてうれしいです。今日は何を話しますか？'
+      : 'こんにちは。マヤです。調子、食事、今日の計画を一緒に整理します。頼まれたら、予定を追加したり、動かしたり、消したりできます。どこから始めますか？'),
     goodbye: 'またね！',
     anythingElse: 'ほかにある？',
     closing: '「いいえ」「ほかにはない」「以上です」「さようなら」',
@@ -160,7 +176,9 @@ const PHRASES = {
   it: {
     englishName: 'Italian',
     assistantName: 'Maya',
-    greeting: (name) => (name ? `Ciao ${name}! Come ti senti oggi?` : 'Ciao! Come ti senti oggi?'),
+    greeting: (_name, introduced) => (introduced
+      ? 'Ciao! Che bello sentirti. Di che cosa parliamo oggi?'
+      : 'Ciao! Sono Maya. Ti aiuto a capire come ti senti, com\'è l\'alimentazione e come organizzare la giornata. Se me lo chiedi, posso aggiungere un\'attività al piano, spostarla o toglierla. Da dove partiamo?'),
     goodbye: 'A dopo!',
     anythingElse: 'Altro?',
     closing: '«no», «nient\'altro», «è tutto», «arrivederci»',
@@ -176,7 +194,9 @@ const PHRASES = {
   ko: {
     englishName: 'Korean',
     assistantName: 'Maya',
-    greeting: (name) => (name ? `안녕, ${name}! 오늘 기분은 어때?` : '안녕! 오늘 기분은 어때?'),
+    greeting: (_name, introduced) => (introduced
+      ? '안녕! 목소리 들려서 반가워. 오늘은 무엇을 이야기할까?'
+      : '안녕! 나는 마야야. 컨디션, 식사, 오늘 계획을 같이 정리해 줄게. 말하면 활동을 계획에 넣거나, 옮기거나, 지울 수 있어. 무엇부터 할까?'),
     goodbye: '나중에 봐!',
     anythingElse: '또 있을까?',
     closing: '「아니요」, 「없어요」, 「그거예요」, 「안녕히 가세요」',

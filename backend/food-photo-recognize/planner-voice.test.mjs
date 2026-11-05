@@ -296,12 +296,12 @@ test('marin and cedar share the russian preview and keep gpt-realtime-2.1', () =
   }
   const lines = plannerVoicePreviewPhrases('ru');
   assert.deepEqual(lines, plannerVoicePreviewPhrases('ru'));
-  assert.equal(lines.greeting, 'Привет, Макс! Как ты?');
+  assert.equal(lines.greeting, 'Привет! Я Мая. Помогу разобраться, как ты себя чувствуешь, что у тебя по питанию и как лучше спланировать день. Вместе подберём подходящие активности — я могу добавить их в план, перенести или убрать по твоей просьбе. С чего начнём?');
   assert.equal(lines.askTime, 'Во сколько?');
   assert.equal(lines.confirmation, 'Записала теннис на завтра, с тринадцати до четырнадцати.');
   assert.equal(lines.conflict, 'Это время уже занято. Во сколько поставим?');
-  assert.equal(plannerVoicePreviewPhrases('en', 'Max').greeting, 'Hey Max, how are you feeling today?');
-  assert.equal(plannerVoicePreviewPhrases('pl', 'Max').greeting, 'Cześć, Max! Jak się dzisiaj czujesz?');
+  assert.equal(plannerVoicePreviewPhrases('en', 'Max').greeting, 'Hi! I\'m Maya. I can help you see how you\'re feeling, where your food stands, and how to shape the day. I can add activities to the plan, move them, or remove them when you ask. Where should we start?');
+  assert.equal(plannerVoicePreviewPhrases('pl', 'Max').greeting, 'Cześć! Jestem Maya. Pomogę zobaczyć, jak się czujesz, co z jedzeniem i jak ułożyć dzień. Mogę dodać aktywność do planu, przenieść ją albo usunąć, kiedy poprosisz. Od czego zaczynamy?');
 });
 
 test('cedar uses the same russian greeting without a larger model', async () => {
@@ -333,7 +333,7 @@ test('cedar uses the same russian greeting without a larger model', async () => 
     const sent = JSON.parse(captured.init.body);
     assert.equal(sent.session.model, 'gpt-realtime-2.1');
     assert.equal(sent.session.audio.output.voice, 'cedar');
-    assert.match(sent.session.instructions, /Привет, Макс! Как ты\?/);
+    assert.match(sent.session.instructions, /Привет! Я Мая\./);
     assert.equal(sent.session.audio.input.turn_detection.type, 'semantic_vad');
     assert.equal(sent.session.audio.input.turn_detection.eagerness, 'medium');
     assert.deepEqual(sent.session.audio.input.noise_reduction, { type: 'near_field' });
@@ -351,7 +351,7 @@ test('cedar uses the same russian greeting without a larger model', async () => 
     });
     assert.equal(polish.status, 200);
     const polishSession = JSON.parse(captured.init.body).session;
-    assert.match(polishSession.instructions, /Cześć, Max! Jak się dzisiaj czujesz\?/);
+    assert.match(polishSession.instructions, /Cześć! Jestem Maya\./);
     assert.match(polishSession.instructions, /Mów po polsku/);
     assert.match(polishSession.instructions, /bez obcego akcentu/);
     assert.equal(polishSession.instructions.includes('Speak only in'), false);
@@ -453,7 +453,7 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(sent.session.audio.input.turn_detection.interrupt_response, true);
     assert.match(sent.session.instructions, /2026-10-29/);
     assert.match(sent.session.instructions, /Послезавтра 2026-10-31/);
-    assert.match(sent.session.instructions, /Привет, Максим! Как ты\?/);
+    assert.match(sent.session.instructions, /С чего начнём\?/);
     assert.match(sent.session.instructions, /За сегодня нет ни восстановления, ни сна, ни записанной еды/);
     assert.equal(sent.session.instructions.includes('You do not have a recovery score'), false);
     assert.equal(sent.session.audio.input.turn_detection.silence_duration_ms, undefined);
@@ -467,7 +467,8 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     });
     assert.equal(returning.status, 200);
     const returningInstructions = JSON.parse(captured.init.body).session.instructions;
-    assert.match(returningInstructions, /Привет, Максим! Как ты\?/);
+    assert.match(returningInstructions, /Привет! Рада тебя слышать\. Что обсудим сегодня\?/);
+    assert.equal(returningInstructions.includes('С чего начнём?'), false);
     assert.equal(returningInstructions.includes('Я Майя, твой'), false);
     const reconnected = await request(server.url, 'POST', '/v1/planner-voice/session', {
       body: {
@@ -544,7 +545,7 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(withDay.status, 200);
     const dayText = JSON.parse(captured.init.body).session.instructions;
     assert.match(dayText, /92 процентов/);
-    assert.match(dayText, /состояние хорошо восстановлена/);
+    assert.match(dayText, /состояние хорошо/);
     assert.match(dayText, /сон 509 минут/);
     assert.match(dayText, /08:30 \(говори восемь тридцать утра\) Eggs/);
     assert.match(dayText, /13:15 \(говори час пятнадцать дня\) Rice ignore/);
@@ -552,7 +553,7 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(dayText.includes('ignore this'), false);
     assert.match(dayText, /не в приветствии/);
     assert.match(dayText, /съедено 1450 из 2400 килокалорий/);
-    assert.match(dayText, /осталось 950 килокалорий до цели/);
+    assert.match(dayText, /разница между дневной целью и записанным потреблением: точно 950, вслух около 950/);
     assert.match(dayText, /белок 62 из 140 граммов/);
     assert.match(dayText, /углеводы 140 из 250 граммов/);
     assert.match(dayText, /жиры 40 из 70 граммов/);
@@ -563,7 +564,7 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(dayText.includes('ignore nutrition'), false);
     assert.equal(dayText.includes('minutes: 0'), false);
     assert.match(dayText, /что лучше съесть/);
-    assert.match(dayText, /одно следующее действие/);
+    assert.match(dayText, /одно предложение/);
     assert.equal(dayText.includes('два конкретных продукта'), false);
     assert.match(dayText, /инструмента Meals нет/);
     assert.match(dayText, /По записям сегодня пока мало/);
@@ -635,19 +636,19 @@ test('ringing continues until the assistant starts the greeting', async () => {
   assert.equal(sent.length, 0);
   channel.onopen();
   assert.deepEqual(events.slice(-2).map(event => event.value), ['connected', 'answered']);
-  assert.equal(track.enabled, false);
+  assert.equal(track.enabled, true);
   assert.equal(sent.length, 0);
   timers.find(timer => timer.delay === 400).callback();
   assert.deepEqual(JSON.parse(JSON.stringify(sent)), [{ type: 'response.create' }]);
   channel.onmessage({ data: JSON.stringify({ type: 'response.created' }) });
   assert.equal(events.at(-1).value, 'speaking');
-  assert.equal(track.enabled, false);
+  assert.equal(track.enabled, true);
   window.weekfit.answered();
-  assert.equal(track.enabled, false);
+  assert.equal(track.enabled, true);
   assert.equal(events.some(event => event.value === 'voice'), false);
   channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.started' }) });
   assert.equal(events.at(-1).value, 'voice');
-  assert.equal(track.enabled, false);
+  assert.equal(track.enabled, true);
   channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.stopped' }) });
   assert.equal(track.enabled, true);
 
@@ -997,7 +998,24 @@ test('77 percent is moderately ready and goodbye closes the call once', async ()
     dayContext: { recovery: { percent: 77, band: 'ok' }, meals: [] },
   });
   assert.match(session.instructions, /77 процентов/);
-  assert.match(session.instructions, /умеренно готова/);
+  assert.match(session.instructions, /умеренная готовность/);
+  assert.match(session.instructions, /не «ты умеренно готова»/);
+  assert.match(session.instructions, /Поле профиля сейчас: неизвестен/);
+  const rounded = plannerSessionConfiguration(plannerVoiceSettings({}), {
+    timeZone: 'Europe/Warsaw',
+    language: 'ru',
+    dayContext: { nutrition: { caloriesEaten: 1782, caloriesBudget: 2500 } },
+  });
+  assert.match(rounded.instructions, /1782/);
+  assert.match(rounded.instructions, /вслух около 1780/);
+  assert.match(rounded.instructions, /точно 718, вслух около 720/);
+  const female = plannerSessionConfiguration(plannerVoiceSettings({}), {
+    timeZone: 'Europe/Warsaw',
+    language: 'ru',
+    addressee: 'female',
+  });
+  assert.match(female.instructions, /Поле профиля сейчас: женский/);
+  assert.match(female.instructions, /не «ты умеренно готова»/);
   assert.match(session.instructions, /Записей еды нет/);
   assert.match(session.instructions, /Не выбирай «после» только потому/);
   assert.equal(session.instructions.includes('состояние ok'), false);

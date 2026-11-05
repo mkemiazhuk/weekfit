@@ -552,7 +552,8 @@ struct TodayView: View {
                         completionCheckInsEnabled: completionCheckInsEnabled,
                         blocksPlannerTime: false
                     )
-                }
+                },
+                addresseeSex: voiceAddresseeSex
             )
             .environmentObject(languageManager)
             .interactiveDismissDisabled(true)
@@ -2777,6 +2778,14 @@ struct TodayView: View {
             return "gain"
         case .maintenance:
             return "maintain"
+        }
+    }
+
+    private var voiceAddresseeSex: String {
+        switch healthManager.biologicalSex {
+        case .male: return "male"
+        case .female: return "female"
+        case .unknown: return "unknown"
         }
     }
 

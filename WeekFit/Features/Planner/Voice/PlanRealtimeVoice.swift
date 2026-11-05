@@ -447,7 +447,8 @@ struct PlanRealtimeClient {
         dayContext: [String: Any] = [:],
         ticket: String,
         introduced: Bool,
-        reconnected: Bool = false
+        reconnected: Bool = false,
+        addressee: String = "unknown"
     ) async throws -> PlanRealtimeSessionSecret {
         var body: [String: Any] = [
             "ticket": ticket,
@@ -459,6 +460,7 @@ struct PlanRealtimeClient {
             "plan": plan,
             "introduced": introduced,
             "reconnected": reconnected,
+            "addressee": addressee == "male" || addressee == "female" ? addressee : "unknown",
             "engine": PlanVoiceEngine.current,
         ]
         if !dayContext.isEmpty {
