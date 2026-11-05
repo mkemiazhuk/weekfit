@@ -10,12 +10,12 @@ enum WeekFitLightTokens {
     static let backgroundElevated = Color(red: 0.969, green: 0.965, blue: 0.949) // #F7F6F2
     static let backgroundTopGlow = Color(red: 1.000, green: 0.976, blue: 0.925) // #FFF9EC
 
-    // Surfaces — true white cards so they lift cleanly off the milk canvas.
-    static let surfacePrimary = Color.white
+    // Surfaces — warm porcelain cards, lighter than the milk canvas.
+    static let surfacePrimary = Color(red: 1.000, green: 0.993, blue: 0.980) // #FFFDFB
     static let surfaceSecondary = Color(red: 0.961, green: 0.957, blue: 0.945) // #F5F4F1
     static let surfaceTertiary = Color(red: 0.937, green: 0.929, blue: 0.914) // #EFEEE9
-    /// Standard card body — pure white (no warm cast).
-    static let surfaceCard = Color.white
+    /// Standard card body — warm porcelain, lighter than the milk canvas.
+    static let surfaceCard = Color(red: 0.996, green: 0.988, blue: 0.973) // #FEFCF8
     static let internalTile = Color(red: 0.953, green: 0.949, blue: 0.937) // #F3F2EF
     static let thumbnailWell = Color(red: 0.941, green: 0.937, blue: 0.925) // #F0EFEC
 
@@ -38,7 +38,7 @@ enum WeekFitLightTokens {
     static let divider = Color(red: 0.847, green: 0.839, blue: 0.820) // #D8D6D1
     /// Warm stone hairline — readable on milk without a hard outline.
     static let cardBorder = Color(red: 0.36, green: 0.34, blue: 0.31) // #5C574F
-    static let cardBorderStrokeOpacity: Double = 0.11
+    static let cardBorderStrokeOpacity: Double = 0.07
     /// Soft top-edge highlight (precision rim, not a visible outline).
     static let cardEdgeHighlight = Color.white
     /// Airy chart / ring track (#E5E5EA).
@@ -46,10 +46,10 @@ enum WeekFitLightTokens {
 
     // MARK: - Shadows (short contact only — wide ambient casts a rectangular slab on milk)
 
-    static let shadowAmbient = Color.black
-    static let shadowContact = Color.black
-    static let cardContactShadowOpacity: Double = 0.035
-    static let cardAmbientShadowOpacity: Double = 0.014
+    static let shadowAmbient = Color(red: 0.28, green: 0.22, blue: 0.16)
+    static let shadowContact = Color(red: 0.28, green: 0.22, blue: 0.16)
+    static let cardContactShadowOpacity: Double = 0.06
+    static let cardAmbientShadowOpacity: Double = 0.04
 
     // MARK: - Metrics (aliases → WeekFitSemanticMetricTokens)
 

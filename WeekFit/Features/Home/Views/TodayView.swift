@@ -2630,7 +2630,7 @@ struct TodayView: View {
                 title: title,
                 message: caption,
                 systemImage: upNextIcon(for: activity),
-                tone: .sage,
+                tone: upNextTone(for: activity),
                 trailingTime: activityTime(activity.date),
                 showsChevron: true
             )
@@ -4145,6 +4145,16 @@ struct TodayView: View {
             forActivityId: activity.id,
             dayKey: dayKey
         )?.kind
+    }
+
+    /// Activity stays green with the move ring. Recovery, including stretching, uses the recovery ring.
+    private func upNextTone(for activity: PlannedActivity) -> TodayMiddleCard.Tone {
+        switch activity.timelineEventKind {
+        case .recovery, .sauna, .sleep:
+            return .lavender
+        case .workout, .food, .drink, .calendar, .bodyWeight, .mood, .coachNote, .plannedActivity:
+            return .sage
+        }
     }
 
     private func upNextIcon(for activity: PlannedActivity, isLive: Bool = false) -> String {

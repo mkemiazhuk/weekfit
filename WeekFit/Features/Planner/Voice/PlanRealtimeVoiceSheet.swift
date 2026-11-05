@@ -161,6 +161,10 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                 guard let client = try? await self.makeClient() else { return }
                 await client.reportUsage(responseId: responseId, inputTokens: input, outputTokens: output)
             }
+        case "timing":
+            let stage = payload["stage"] as? String ?? ""
+            let ms = (payload["ms"] as? NSNumber)?.intValue ?? (payload["ms"] as? Int ?? 0)
+            print("planner.voice.timing \(stage) \(ms)")
         default:
             break
         }

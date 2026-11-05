@@ -316,11 +316,17 @@ struct PlanTimelineRow: View {
         } else {
             RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
                 .fill(agendaCardFill)
+                .overlay {
+                    if palette.isLight {
+                        RoundedRectangle(cornerRadius: PlanTimelineLayout.cardCornerRadius, style: .continuous)
+                            .fill(accent.opacity(0.07))
+                    }
+                }
         }
     }
 
     private var agendaCardFill: Color {
-        palette.isLight ? Color.white.opacity(0.96) : WeekFitTheme.cardBackground
+        palette.isLight ? WeekFitLightTokens.surfaceCard : WeekFitTheme.cardBackground
     }
 
     private var agendaBorderColor: Color {

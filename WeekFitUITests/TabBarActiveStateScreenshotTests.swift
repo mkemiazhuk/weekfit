@@ -60,7 +60,7 @@ final class TabBarActiveStateScreenshotTests: XCTestCase {
                 case "today": return "Today"
                 case "coach": return "Coach"
                 case "meals": return "Meals"
-                case "plan": return "Plan & journal"
+                case "plan": return "Plan"
                 default: return name.capitalized
                 }
             }()

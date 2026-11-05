@@ -438,9 +438,9 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.match(sent.session.instructions, /Не добавляй этот вопрос после приветствия/);
     assert.match(sent.session.instructions, /До встречи\./);
     assert.equal(sent.session.instructions.includes('Пожалуйста. Всегда рада помочь. До встречи.'), false);
-    assert.match(sent.session.instructions, /Короткое прощание допустимо/);
-    assert.match(sent.session.instructions, /сессия завершилась/);
-    assert.match(sent.session.tools.find(tool => tool.name === 'end_call').description, /short farewell/);
+    assert.match(sent.session.instructions, /в ответе звучит только «До встречи\.»/);
+    assert.equal(sent.session.instructions.includes('Не объявляй, что завершаешь разговор.'), false);
+    assert.match(sent.session.tools.find(tool => tool.name === 'end_call').description, /only spoken words are the farewell/);
     assert.match(sent.session.tools.find(tool => tool.name === 'end_call').description, /хорошо, спасибо/);
     assert.match(sent.session.instructions, /Чем могу помочь\?/);
     assert.match(sent.session.instructions, /не перечисляй занятия/);
@@ -1007,6 +1007,8 @@ test('77 percent is moderately ready and goodbye closes the call once', async ()
   assert.match(session.instructions, /умеренная готовность/);
   assert.match(session.instructions, /не «ты умеренно готова»/);
   assert.match(session.instructions, /Поле профиля сейчас: неизвестен/);
+  assert.match(session.instructions, /Нагрузку за день называй только если она есть в данных звонка/);
+  assert.doesNotMatch(session.instructions, /подходящей нагрузке/);
   const rounded = plannerSessionConfiguration(plannerVoiceSettings({}), {
     timeZone: 'Europe/Warsaw',
     language: 'ru',
@@ -1119,7 +1121,7 @@ test('plan context uses the spoken name and the same clock as a confirmation', (
     plan: [{ ref: 'a1', scope: 'today_planned', title: 'сауну', catalogTitle: 'Sauna', startTime: '18:00', durationMinutes: 20 }],
   });
   assert.match(russian.instructions, /сауну \[Sauna\] 18:00 20m \(говори шесть вечера\)/);
-  assert.match(russian.instructions, /естественная русская артикуляция/);
+  assert.match(russian.instructions, /без английского ритма на русских словах/);
   assert.match(russian.instructions, /Не выбирай последнюю запись только потому/);
   assert.equal(russian.instructions.includes('A plain greeting'), false);
   assert.equal(russian.audio.output.voice, 'marin');

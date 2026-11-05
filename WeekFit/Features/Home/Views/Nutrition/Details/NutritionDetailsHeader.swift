@@ -33,11 +33,6 @@ struct NutritionDetailsHeader: View {
         .padding(.top, 8)
         .padding(.bottom, 11)
         .background((background ?? palette.appScreenBackground).ignoresSafeArea(edges: .top))
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(palette.isLight ? WeekFitLightTokens.divider.opacity(0.55) : WeekFitTheme.whiteOpacity(0.04))
-                .frame(height: 1)
-        }
     }
 
     private var dateColor: Color {

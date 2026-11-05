@@ -322,7 +322,7 @@ struct PlanAgendaSectionSurface: ViewModifier {
             return WeekFitPlanChromeTokens.daySummaryFill(kind: dayKind, isLight: palette.isLight)
         }
         return palette.isLight
-            ? Color.white.opacity(0.97)
+            ? WeekFitLightTokens.surfaceCard
             : WeekFitTheme.cardBackground
     }
 

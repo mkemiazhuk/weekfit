@@ -119,10 +119,10 @@ struct WeekFitPremiumCardModifier: ViewModifier {
             // Whisper of ambient light — top fractionally brighter; almost subconscious.
             let peak: Double
             switch emphasis {
-            case .elevated: peak = reduceTransparency ? 0.10 : 0.14
-            case .accent: peak = reduceTransparency ? 0.08 : 0.11
-            case .standard: peak = reduceTransparency ? 0.07 : 0.10
-            case .compact: peak = reduceTransparency ? 0.05 : 0.08
+            case .elevated: peak = reduceTransparency ? 0.16 : 0.28
+            case .accent: peak = reduceTransparency ? 0.12 : 0.22
+            case .standard: peak = reduceTransparency ? 0.10 : 0.20
+            case .compact: peak = reduceTransparency ? 0.08 : 0.16
             }
             return LinearGradient(
                 colors: [
@@ -286,10 +286,10 @@ struct WeekFitPremiumCardModifier: ViewModifier {
         if palette.isLight {
             let base = WeekFitLightTokens.cardContactShadowOpacity
             switch emphasis {
-            case .elevated: return Color.black.opacity(base * 1.15)
-            case .accent: return Color.black.opacity(base * 1.05)
-            case .standard: return Color.black.opacity(base)
-            case .compact: return Color.black.opacity(base * 0.85)
+            case .elevated: return WeekFitLightTokens.shadowContact.opacity(base * 1.15)
+            case .accent: return WeekFitLightTokens.shadowContact.opacity(base * 1.05)
+            case .standard: return WeekFitLightTokens.shadowContact.opacity(base)
+            case .compact: return WeekFitLightTokens.shadowContact.opacity(base * 0.85)
             }
         }
         return .clear
@@ -315,10 +315,10 @@ struct WeekFitPremiumCardModifier: ViewModifier {
             // Very soft bloom — keep radius/y tiny so it never reads as a grey rectangle.
             let base = WeekFitLightTokens.cardAmbientShadowOpacity
             switch emphasis {
-            case .elevated: return Color.black.opacity(base * 1.1)
-            case .accent: return Color.black.opacity(base)
-            case .standard: return Color.black.opacity(base * 0.9)
-            case .compact: return Color.black.opacity(base * 0.75)
+            case .elevated: return WeekFitLightTokens.shadowAmbient.opacity(base * 1.1)
+            case .accent: return WeekFitLightTokens.shadowAmbient.opacity(base)
+            case .standard: return WeekFitLightTokens.shadowAmbient.opacity(base * 0.9)
+            case .compact: return WeekFitLightTokens.shadowAmbient.opacity(base * 0.75)
             }
         }
         let factor: CGFloat
@@ -334,10 +334,10 @@ struct WeekFitPremiumCardModifier: ViewModifier {
     private var ambientShadowRadius: CGFloat {
         if palette.isLight {
             switch emphasis {
-            case .elevated: return 4
-            case .accent: return 3.5
-            case .standard: return 3.5
-            case .compact: return 3
+            case .elevated: return 8
+            case .accent: return 7
+            case .standard: return 7
+            case .compact: return 5
             }
         }
         switch emphasis {
@@ -351,10 +351,10 @@ struct WeekFitPremiumCardModifier: ViewModifier {
     private var ambientShadowY: CGFloat {
         if palette.isLight {
             switch emphasis {
-            case .elevated: return 2
-            case .accent: return 2
-            case .standard: return 1.5
-            case .compact: return 1.5
+            case .elevated: return 4
+            case .accent: return 3
+            case .standard: return 3
+            case .compact: return 2
             }
         }
         switch emphasis {

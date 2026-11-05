@@ -97,7 +97,7 @@ enum WeekFitPlanChromeTokens {
             case .endurance, .load, .mixed:
                 return activityDayFill
             case .open:
-                return Color.white.opacity(0.97)
+                return WeekFitLightTokens.surfaceCard
             }
         }
         return WeekFitTheme.cardBackground

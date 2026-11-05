@@ -894,8 +894,8 @@ struct ExpertCoachView: View {
     private var coachCard: some View {
         let ui = coachUIPresentation
         let live = isLiveWorkoutZoneChrome
-        // Live HR zone color stays on the outline — not a tinted card matte.
-        let cardAccent = live ? nil : (ui?.accentColor ?? WeekFitTheme.coachAccent)
+        // Color belongs to an active workout only. Resting guidance stays uncolored;
+        // the live zone stays on the outline, not a tinted card.
 
         return VStack(alignment: .leading, spacing: 0) {
             stateBadge
@@ -916,7 +916,7 @@ struct ExpertCoachView: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .weekFitPrimaryCard(
-            accent: cardAccent,
+            accent: nil,
             featured: true
         )
         .overlay {
@@ -1074,7 +1074,7 @@ struct ExpertCoachView: View {
                    !CoachUIPresentationDedup.isNearDuplicate(avoid, explanation) {
                     recoveringGuidanceRow(
                         icon: "pause.fill",
-                        iconColor: textSecondary.opacity(0.85),
+                        iconColor: CoachPalette.warning,
                         label: WeekFitLocalizedString("coach.hero.dontRush"),
                         text: avoid,
                         emphasis: false
@@ -1098,7 +1098,10 @@ struct ExpertCoachView: View {
                 if let primaryWhy = whyRows.first {
                     recoveringGuidanceRow(
                         icon: "questionmark",
-                        iconColor: WeekFitTheme.coachAccent.opacity(0.85),
+                        iconColor: whyAccent(
+                            primaryWhy.title,
+                            supporting: whyRows.dropFirst().first?.title
+                        ),
                         label: WeekFitLocalizedString("coach.why"),
                         text: primaryWhy.title,
                         emphasis: false,
@@ -1226,6 +1229,9 @@ struct ExpertCoachView: View {
             if isLimitedRecovery { return textSecondary.opacity(0.72) }
             if isLiveChrome, let zone {
                 return HeartRateZones.color(for: zone)
+            }
+            if isLiveChrome {
+                return CoachPalette.activity
             }
             if isCompleted || isRecovering {
                 return CoachPalette.recovery
@@ -1704,6 +1710,17 @@ struct ExpertCoachView: View {
             return CoachPalette.fueling
         }
         return CoachPalette.recovery
+    }
+
+    private func whyAccent(_ title: String, supporting: String?) -> Color {
+        let text = [title, supporting].compactMap { $0 }.joined(separator: " ")
+        if CoachCopyQualityAudit.mentionsHydration(text) {
+            return CoachPalette.hydration
+        }
+        if CoachCopyQualityAudit.mentionsFuel(text) {
+            return CoachPalette.fueling
+        }
+        return CoachPalette.warning
     }
 
     // MARK: - Unavailable / Registry Gap

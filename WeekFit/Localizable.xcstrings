@@ -184660,61 +184660,61 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plan & Journal"
+            "value" : "Plan"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plan & journal"
+            "value" : "Plan"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plan y diario"
+            "value" : "Plan"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plan et journal"
+            "value" : "Plan"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Piano e diario"
+            "value" : "Piano"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "予定と記録"
+            "value" : "予定"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "계획과 기록"
+            "value" : "계획"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plan i dziennik"
+            "value" : "Plan"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "План и журнал"
+            "value" : "План"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "计划与记录"
+            "value" : "计划"
           }
         }
       }
@@ -349081,61 +349081,61 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plan & Journal"
+            "value" : "Plan"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plan & journal"
+            "value" : "Plan"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plan y diario"
+            "value" : "Plan"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plan et journal"
+            "value" : "Plan"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Piano e diario"
+            "value" : "Piano"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "予定と記録"
+            "value" : "予定"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "계획과 기록"
+            "value" : "계획"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plan i dziennik"
+            "value" : "Plan"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "План и журнал"
+            "value" : "План"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "计划与记录"
+            "value" : "计划"
           }
         }
       }

@@ -531,6 +531,13 @@ export function consoleDocument() {
   let thinkHold = false;
   let answerNow = false;
   let replyWatch = null;
+  const marks = {};
+  function mark(stage, from) {
+    const now = Date.now();
+    const start = from ? marks[from] : 0;
+    marks[stage] = now;
+    post({ type: 'timing', stage: stage, ms: start ? Math.max(0, now - start) : 0 });
+  }
   let toolBusy = false;
   let toolFollowUp = false;
   let sessionLanguage = 'ru';
@@ -650,6 +657,7 @@ export function consoleDocument() {
   function nudgeReply() {
     if (!channel || channel.readyState !== 'open' || hangup || goodbyeLocked || toolBusy || audioPlaying) return;
     const text = NUDGE[sessionLanguage] || NUDGE.en;
+    mark('nudge', 'speech_stopped');
     channel.send(JSON.stringify({
       type: 'response.create',
       response: { instructions: text },
@@ -809,6 +817,7 @@ export function consoleDocument() {
   function sendToolOutput(callId, output) {
     if (!channel || channel.readyState !== 'open') return;
     toolFollowUp = true;
+    mark('tool_result', 'tool_started');
     if (liveEngine) {
       const payload = typeof output === 'string' ? output : JSON.stringify(output ?? { ok: false, saved: false });
       channel.send(JSON.stringify({
@@ -1006,6 +1015,7 @@ export function consoleDocument() {
         clearReplyWatch();
         clearPresence();
         post({ type: 'state', value: 'acting' });
+        mark('tool_started', 'speech_stopped');
         post({ type: 'tool', callId, name, arguments: args });
       }
       return;
@@ -1026,6 +1036,7 @@ export function consoleDocument() {
       return;
     }
     if (type === 'input_audio_buffer.speech_stopped') {
+      mark('speech_stopped');
       if (!goodbyeLocked && !hangup && wantsToHangUp(userSaid)) {
         if (goodbyeIntent) clearTimeout(goodbyeIntent);
         goodbyeIntent = setTimeout(() => {
@@ -1038,12 +1049,15 @@ export function consoleDocument() {
     }
     if (type === 'response.created') {
       responseAudio = false;
+      mark('response_created', 'speech_stopped');
       if (!goodbyeLocked) post({ type: 'state', value: 'speaking' });
       return;
     }
     if (type === 'output_audio_buffer.started') {
       audioPlaying = true;
       responseAudio = true;
+      mark('audio_started', marks.tool_result ? 'tool_result' : 'response_created');
+      delete marks.tool_result;
       clearReplyWatch();
       clearPresence();
       // The app keeps its connecting tone until this, so the line is never silent before Maya speaks.
@@ -1130,6 +1144,7 @@ export function consoleDocument() {
       clearReplyWatch();
       clearPresence();
       post({ type: 'state', value: 'acting' });
+      mark('tool_started', 'speech_stopped');
       post({ type: 'tool', callId: event.call_id, name: event.name, arguments: event.arguments });
       return;
     }
@@ -1274,7 +1289,7 @@ function answerRules(language) {
       'На вопрос, поесть до занятия или после, используй время этого занятия и время последней записанной еды. Если времени еды нет, задай один короткий вопрос или ответь условно. Не выбирай «после» только потому, что занятие есть в плане.',
       '«Её», «это занятие» и «то же» — это последнее занятие, которое уже однозначно обсудили, и его ref. Если подходят несколько, спроси какое. Не выбирай последнюю запись только потому, что она последняя.',
       'После инструмента список items — это уже текущий план. Если человек сообщает новое, например что уже поел или как себя чувствует, используй это в следующем ответе. Такая реплика не становится записью еды и не новым измерением. Тот же факт заново не спрашивай.',
-      '«Спасибо», «хорошо, спасибо» и «понятно» звонок не заканчивают: короткий ответ и пауза, без прощания. «Пока», «до свидания», «до встречи» и «это всё, заканчиваем» заканчивают. Скажи одно короткое прощание и в том же ответе вызови end_call.',
+      '«Спасибо», «хорошо, спасибо» и «понятно» звонок не заканчивают: короткий ответ и пауза. «Пока», «до свидания», «до встречи» и «это всё, заканчиваем» заканчивают: в ответе звучит только «До встречи.», и в том же ответе end_call. Других слов нет.',
     ],
     en: [
       'A plain greeting gets only the greeting, then wait. Do not bring up the sauna or another activity unless they asked. If their first words are already a question, answer it.',
@@ -1354,7 +1369,7 @@ function answerRules(language) {
 
 function deliveryRules(language) {
   const lines = {
-    ru: 'Совет формулируй как предложение по фактам этого звонка, не как приказ. Не приписывай продукту калорийность или белок без данных о продукте и порции. Расчётные калории в речи округляй до десятка, точные значения оставляй в данных. На вопрос, что значит число, объясни это число; для совета смотри также белок, время и полноту дневника.',
+    ru: 'Совет формулируй как предложение по фактам этого звонка, не как приказ. Не приписывай продукту калорийность, белок или сытость без данных о продукте и порции. Расчётные калории в речи округляй до десятка, точные значения оставляй в данных. На вопрос, что значит число, объясни это число. Белок называй, только если спросили про белок или сытость и эта цифра есть в данных.',
     en: 'Make a suggestion from the facts in this call, not an order. Do not assign calories or protein to a food without data on the product and the portion. When speaking, round calculated calories to the nearest ten and keep exact values in the data. If they ask what a number means, explain that number; a suggestion also uses protein, the time of day, and how complete the diary is.',
     pl: 'Zalecenie oprzyj na faktach tej rozmowy, nie na poleceniu. Nie przypisuj produktowi kalorii ani białka bez danych o produkcie i porcji. Wyliczone kalorie mów w zaokrągleniu do dziesiątki, dokładne liczby zostaw w danych. Gdy pytają, co znaczy liczba, wyjaśnij tę liczbę; do propozycji weź też białko, porę i kompletność dziennika.',
     fr: 'Appuie la suggestion sur les faits de cet appel, pas sur un ordre. N\'attribue pas de calories ou de protéines à un aliment sans données sur le produit et la portion. À l\'oral, arrondis les calories calculées à la dizaine et garde les valeurs exactes dans les données. S\'ils demandent ce qu\'un nombre veut dire, explique ce nombre ; une suggestion tient aussi compte des protéines, de l\'heure et du journal.',
@@ -1383,16 +1398,16 @@ function addressRule(language, addressee) {
     'zh-Hans': { female: '女', male: '男', unknown: '未知' },
   }[language] || { female: 'female', male: 'male', unknown: 'unknown' };
   const lines = {
-    ru: `О себе говори в женском роде. Поле профиля сейчас: ${label[sex]}. Род человека бери только из этого поля, не из голоса и не из имени. Если поле неизвестно, не согласуй прилагательные с человеком: говори о показателе и о подходящей нагрузке. Подпись шкалы в данных — для тебя, не готовая фраза.`,
-    en: `Speak about yourself in the feminine where the language marks it. The profile field is ${label[sex]}. Use that field only. Do not infer it from the voice or the name. If it is unknown, do not attach a gendered adjective to the person; talk about the score and a suitable load. The scale label in the data is for you, not a line to recite.`,
-    pl: `O sobie mów w rodzaju żeńskim, jeśli język to zaznacza. Pole profilu: ${label[sex]}. Bierz je tylko stamtąd. Nie wnioskuj z głosu ani z imienia. Gdy jest nieznane, nie odmieniaj przymiotnika przy osobie: „Regeneracja — 77%”, „Dziś można wybrać lekkie obciążenie”. Klasę regeneracji nazywaj według skali.`,
-    fr: `Parle de toi au féminin quand la langue le marque. Champ du profil : ${label[sex]}. Ne le prends que là. Ne le déduis pas de la voix ni du prénom. S'il est inconnu, n'accorde pas un adjectif avec la personne : « Récupération — 77 % », « Aujourd'hui, une charge légère est possible ». Nomme la classe selon l'échelle.`,
-    es: `Habla de ti en femenino cuando el idioma lo marca. Campo del perfil: ${label[sex]}. Úsalo solo desde ahí. No lo deduzcas de la voz ni del nombre. Si es desconocido, no concuerdes un adjetivo con la persona: «Recuperación — 77%», «Hoy se puede elegir una carga ligera». Nombra la clase según la escala.`,
-    de: `Sprich über dich im Femininum, wo die Sprache es markiert. Profilfeld: ${label[sex]}. Nimm es nur von dort. Schließe es nicht aus der Stimme oder dem Namen. Ist es unbekannt, hänge kein Genus an die Person: „Erholung — 77 %“, „Heute kann eine leichte Belastung gewählt werden“. Nenne die Stufe nach der Skala.`,
-    it: `Parla di te al femminile dove la lingua lo segna. Campo del profilo: ${label[sex]}. Prendilo solo da lì. Non dedurlo dalla voce o dal nome. Se è sconosciuto, non concordare un aggettivo con la persona: «Recupero — 77%», «Oggi si può scegliere un carico leggero». Nomina la classe secondo la scala.`,
-    ja: `自分のことは女性として話す。プロフィールの値は${label[sex]}。それだけを使う。声や名前から決めない。不明なら人に性別のある言い方をしない。「回復は77%」「今日は軽い負荷を選べる」。回復の段階は尺度の名前で言う。`,
-    ko: `자기 자신은 여성으로 말한다. 프로필 값은 ${label[sex]}이다. 거기에서만 가져온다. 목소리나 이름으로 정하지 않는다. 알 수 없으면 사람에게 성별이 드러나는 말을 붙이지 않는다. 「회복은 77%」, 「오늘은 가벼운 부하를 고를 수 있다」. 회복 단계는 척도 이름으로 말한다.`,
-    'zh-Hans': `说到自己用女性。档案字段现在是${label[sex]}。只使用这个字段。不要根据声音或名字判断。如果未知，不要把带性别的形容词安到对方身上：「恢复是77%」，「今天可以选择轻负荷」。恢复等级用量表上的名称。`,
+    ru: `О себе говори в женском роде. Поле профиля сейчас: ${label[sex]}. Род человека бери только из этого поля, не из голоса и не из имени. Если поле неизвестно, не согласуй прилагательные с человеком. Нагрузку за день называй только если она есть в данных звонка. Подпись шкалы в данных — для тебя, не готовая фраза.`,
+    en: `Speak about yourself in the feminine where the language marks it. The profile field is ${label[sex]}. Use that field only. Do not infer it from the voice or the name. If it is unknown, do not attach a gendered adjective to the person. Mention today's load only when that load is in the call data. The scale label in the data is for you, not a line to recite.`,
+    pl: `O sobie mów w rodzaju żeńskim, jeśli język to zaznacza. Pole profilu: ${label[sex]}. Bierz je tylko stamtąd. Nie wnioskuj z głosu ani z imienia. Gdy jest nieznane, nie odmieniaj przymiotnika przy osobie. Obciążenie dnia nazywaj tylko wtedy, gdy jest w danych rozmowy. Klasę regeneracji nazywaj według skali.`,
+    fr: `Parle de toi au féminin quand la langue le marque. Champ du profil : ${label[sex]}. Ne le prends que là. Ne le déduis pas de la voix ni du prénom. S'il est inconnu, n'accorde pas un adjectif avec la personne. Ne parle de la charge du jour que si elle est dans les données de l'appel. Nomme la classe selon l'échelle.`,
+    es: `Habla de ti en femenino cuando el idioma lo marca. Campo del perfil: ${label[sex]}. Úsalo solo desde ahí. No lo deduzcas de la voz ni del nombre. Si es desconocido, no concuerdes un adjetivo con la persona. Menciona la carga del día solo si está en los datos de la llamada. Nombra la clase según la escala.`,
+    de: `Sprich über dich im Femininum, wo die Sprache es markiert. Profilfeld: ${label[sex]}. Nimm es nur von dort. Schließe es nicht aus der Stimme oder dem Namen. Ist es unbekannt, hänge kein Genus an die Person. Die Belastung des Tages nennst du nur, wenn sie in den Anrufdaten steht. Nenne die Stufe nach der Skala.`,
+    it: `Parla di te al femminile dove la lingua lo segna. Campo del profilo: ${label[sex]}. Prendilo solo da lì. Non dedurlo dalla voce o dal nome. Se è sconosciuto, non concordare un aggettivo con la persona. Nomina il carico del giorno solo se è nei dati della chiamata. Nomina la classe secondo la scala.`,
+    ja: `自分のことは女性として話す。プロフィールの値は${label[sex]}。それだけを使う。声や名前から決めない。不明なら人に性別のある言い方をしない。今日の負荷は通話データにあるときだけ言う。回復の段階は尺度の名前で言う。`,
+    ko: `자기 자신은 여성으로 말한다. 프로필 값은 ${label[sex]}이다. 거기에서만 가져온다. 목소리나 이름으로 정하지 않는다. 알 수 없으면 사람에게 성별이 드러나는 말을 붙이지 않는다. 오늘 부하는 통화 데이터에 있을 때만 말한다. 회복 단계는 척도 이름으로 말한다.`,
+    'zh-Hans': `说到自己用女性。档案字段现在是${label[sex]}。只使用这个字段。不要根据声音或名字判断。如果未知，不要把带性别的形容词安到对方身上。今天的负荷只在通话数据里有的时候才说。恢复等级用量表上的名称。`,
   };
   return lines[language] || lines.en;
 }
@@ -1438,7 +1453,7 @@ export function plannerLiveConfiguration(config, payload) {
           'Say a change happened only when saved is true. Speak the returned speak text: it is the saved activity, time, and duration. If saved is false or the result is unknown, say what failed and call list_plan before trying again.',
           'After a saved change, the returned items are the current plan. Use those refs for the next request.',
           'Change only today, and do not schedule a time that has already passed. Do not change food, health, goals, or completed activities.',
-          'Call end_call after one short goodbye when they clearly end the call. Do not call it for thanks, «хорошо, спасибо», or «понятно».',
+          'Call end_call in the same response as the farewell when they clearly end the call. The only spoken words in that response are the farewell. Do not call it for thanks, «хорошо, спасибо», or «понятно».',
           session.instructions,
         ].join('\n'),
         tools: [
@@ -1929,7 +1944,7 @@ function endCallTool() {
   return {
     type: 'function',
     name: 'end_call',
-    description: 'Hang up after a short farewell when the person clearly wants to end the call. «пока», «до свидания», «до встречи», and «это всё, заканчиваем» are explicit endings, and so are «всё, спасибо», «все спасибо», and «спасибо, всё». Say one short farewell, then call this in the same response so the session ends. «хорошо, спасибо», a bare спасибо, понятно, alright, okay, or thanks is not an ending: do not say goodbye and do not call this. Do not announce that you are ending the call. Do not call this in a response that has no spoken farewell.',
+    description: 'Call when the person clearly ends the call: пока, до свидания, до встречи, это всё заканчиваем, всё спасибо, все спасибо, спасибо всё. In that response the only spoken words are the farewell already specified. Then call this tool. «хорошо, спасибо», a bare спасибо, понятно, alright, okay, or thanks is not an ending: no farewell and do not call this. Do not call this in a response that has no spoken farewell.',
     parameters: {
       type: 'object',
       additionalProperties: false,
