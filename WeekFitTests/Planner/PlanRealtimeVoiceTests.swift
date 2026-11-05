@@ -121,7 +121,7 @@ final class PlanRealtimeVoiceTests: XCTestCase {
     func testPlanSpeechListsTomorrowAndAMove() {
         XCTAssertEqual(
             planRealtimeListSpeak(scope: "tomorrow", items: [], language: "ru"),
-            "На завтра ничего не запланировано."
+            "На завтра ничего нет."
         )
         XCTAssertEqual(
             planRealtimeListSpeak(
@@ -170,6 +170,54 @@ final class PlanRealtimeVoiceTests: XCTestCase {
         XCTAssertEqual(training?.first?["done"] as? Bool, true)
     }
 
+    func testAnchorBeforeSaunaUsesTheOpenGap() {
+        let calendar = voiceCalendar()
+        let sauna = agenda("a1", "18:00", 20)
+        let result = planRealtimeResolveAnchor(
+            place: "before",
+            anchorRef: "a1",
+            durationMinutes: 20,
+            agenda: [sauna],
+            calendar: calendar
+        )
+        XCTAssertEqual(result, .save(day: "2026-11-05", time: "17:40", duration: 20))
+    }
+
+    func testBusyGapOffersTheNearestTimeAndDoesNotSave() {
+        let calendar = voiceCalendar()
+        let walk = agenda("a1", "17:40", 20)
+        let sauna = agenda("a2", "18:00", 20)
+        let result = planRealtimeResolveAnchor(
+            place: "before",
+            anchorRef: "a2",
+            durationMinutes: 20,
+            agenda: [walk, sauna],
+            calendar: calendar
+        )
+        XCTAssertEqual(result, .suggest(day: "2026-11-05", time: "17:20", duration: 20))
+    }
+
+    func testMissingAnchorDoesNotInventATime() {
+        let result = planRealtimeResolveAnchor(
+            place: "after",
+            anchorRef: "a9",
+            durationMinutes: 20,
+            agenda: [agenda("a1", "18:00", 20)],
+            calendar: voiceCalendar()
+        )
+        XCTAssertEqual(result, .missing)
+    }
+
+    func testWaterAmountRequiresARealQuantity() {
+        XCTAssertNil(planRealtimeWaterMilliliters(#"{"milliliters":0}"#))
+        XCTAssertEqual(planRealtimeWaterMilliliters(#"{"milliliters":250}"#), 250)
+    }
+
+    func testRussianRangeClockUsesOneForm() {
+        XCTAssertEqual(planRealtimeRussianRangeClock(hour: 12, minute: 30), "двенадцати тридцати")
+        XCTAssertEqual(planRealtimeRussianRangeClock(hour: 13, minute: 15), "тринадцати пятнадцати")
+    }
+
     func testDayStringUsesTheCalendarZone() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "Asia/Tokyo")!
@@ -193,6 +241,25 @@ final class PlanRealtimeVoiceTests: XCTestCase {
         utcParts.day = 29
         utcParts.hour = 10
         XCTAssertEqual(planRealtimeInstant("2026-10-29T10:00:00.000Z"), utcParts.date)
+    }
+
+    private func voiceCalendar() -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        return calendar
+    }
+
+    private func agenda(_ ref: String, _ time: String, _ minutes: Int) -> PlanRealtimeAgendaEntry {
+        PlanRealtimeAgendaEntry(
+            ref: ref,
+            activityID: ref,
+            scope: "today_planned",
+            title: "Sauna",
+            spoken: "сауну",
+            day: "2026-11-05",
+            startTime: time,
+            durationMinutes: minutes
+        )
     }
 
     private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: Int, _ calendar: Calendar) -> Date {
@@ -271,6 +338,33 @@ final class PlanRealtimeVoiceTests: XCTestCase {
         await WeekFitVoiceStopQueue.shared.flush()
         XCTAssertEqual(probe.calls, [sessionId, sessionId])
         await WeekFitVoiceStopQueue.shared.resetTransport()
+    }
+
+    func testWaterReminderDoesNotBlockTheScheduleOrCountAsDrunk() {
+        let effect = planRealtimeWaterReminderEffect()
+        XCTAssertFalse(effect.blocksSchedule)
+        XCTAssertEqual(effect.drunkMilliliters, 0)
+    }
+
+    func testLostReplyReplaysTheSavedConfirmationAndDoesNotExpireAnActivity() {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let fingerprint = planRealtimeSaveFingerprint(catalogTitle: "Walk", start: start, durationMinutes: 20)
+        XCTAssertEqual(
+            fingerprint,
+            planRealtimeSaveFingerprint(catalogTitle: "Walk", start: start, durationMinutes: 20)
+        )
+        let saved = "Записала прогулку на сегодня, с семнадцати сорока до восемнадцати."
+        let now = Date()
+        XCTAssertEqual(
+            planRealtimeReplayReply(reply: saved, savedAt: now.addingTimeInterval(-10), now: now, within: 60),
+            saved
+        )
+        XCTAssertNil(planRealtimeReplayReply(reply: saved, savedAt: now.addingTimeInterval(-90), now: now, within: 60))
+        XCTAssertEqual(
+            planRealtimeReplayReply(reply: saved, savedAt: now.addingTimeInterval(-900), now: now, within: nil),
+            saved
+        )
+        XCTAssertNil(planRealtimeReplayReply(reply: nil, savedAt: now, now: now, within: nil))
     }
 }
 

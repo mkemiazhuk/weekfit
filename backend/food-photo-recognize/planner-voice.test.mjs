@@ -165,7 +165,7 @@ test('full command commits tennis and a missing time does not', () => {
   assert.equal(saved.body.saved, true);
   assert.equal(saved.body.activity.start, '2026-10-29T10:00:00.000Z');
   assert.equal(saved.body.activity.localEnd, '2026-10-29T14:00');
-  assert.equal(saved.body.speak, 'Записала теннис на завтра, с часа дня до двух часов дня.');
+  assert.equal(saved.body.speak, 'Записала теннис на завтра, с тринадцати до четырнадцати.');
 
   const missing = commitPlannerActivity(store, 'local-developer', tennis({
     idempotencyKey: 'call_tennis_2',
@@ -208,7 +208,7 @@ test('relative evening in Tokyo crosses midnight', () => {
   assert.equal(saved.status, 200, JSON.stringify(saved.body));
   assert.equal(saved.body.activity.localStart, '2026-10-31T23:30');
   assert.equal(saved.body.activity.localEnd, '2026-11-01T01:00');
-  assert.equal(saved.body.speak, 'Записала теннис на послезавтра, с одиннадцати тридцать вечера до часа утра.');
+  assert.equal(saved.body.speak, 'Записала теннис на послезавтра, с двадцати трёх тридцати до часа.');
 
   const blocked = commitPlannerActivity(store, 'local-developer', tennis({
     idempotencyKey: 'call_tokyo_blocked',
@@ -282,7 +282,7 @@ test('app language chooses the spoken lines and the time zone does not', () => {
     now: '2026-10-28T16:30:00Z',
     date: '2026-10-29',
   }));
-  assert.equal(russianInTokyo.body.speak, 'Записала теннис на сегодня, с часа дня до двух часов дня.');
+  assert.equal(russianInTokyo.body.speak, 'Записала теннис на сегодня, с тринадцати до четырнадцати.');
 });
 
 test('marin and cedar share the russian preview and keep the mini model', () => {
@@ -295,7 +295,7 @@ test('marin and cedar share the russian preview and keep the mini model', () => 
   assert.deepEqual(lines, plannerVoicePreviewPhrases('ru'));
   assert.equal(lines.greeting, 'Привет, Макс! Как ты?');
   assert.equal(lines.askTime, 'Во сколько?');
-  assert.equal(lines.confirmation, 'Записала теннис на завтра, с часа дня до двух часов дня.');
+  assert.equal(lines.confirmation, 'Записала теннис на завтра, с тринадцати до четырнадцати.');
   assert.equal(lines.conflict, 'Это время уже занято. Во сколько поставим?');
   assert.equal(plannerVoicePreviewPhrases('en', 'Max').greeting, 'Hey Max, how are you feeling today?');
   assert.equal(plannerVoicePreviewPhrases('pl', 'Max').greeting, 'Cześć, Max! Jak się dzisiaj czujesz?');
@@ -429,10 +429,15 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(sent.session.model, 'gpt-realtime-2.1-mini');
     assert.equal(sent.session.audio.input.transcription, undefined);
     assert.deepEqual(sent.session.output_modalities, ['audio']);
-    assert.deepEqual(sent.session.tools.map(tool => tool.name), ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'end_call']);
+    assert.deepEqual(sent.session.tools.map(tool => tool.name), ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'log_water', 'remind_water', 'end_call']);
+    assert.equal(sent.session.tools.some(tool => tool.name === 'log_meal'), false);
+    assert.equal(sent.session.tools.find(tool => tool.name === 'create_activity').parameters.properties.catalogTitle.enum.includes('Drink Water'), false);
     assert.match(sent.session.instructions, /Не добавляй этот вопрос после приветствия/);
     assert.match(sent.session.instructions, /До встречи\./);
     assert.match(sent.session.instructions, /Пожалуйста\. Всегда рада помочь\. До встречи\./);
+    assert.match(sent.session.instructions, /Короткое прощание допустимо/);
+    assert.match(sent.session.instructions, /сессия завершилась/);
+    assert.match(sent.session.tools.find(tool => tool.name === 'end_call').description, /short farewell/);
     assert.match(sent.session.instructions, /Чем могу помочь\?/);
     assert.match(sent.session.instructions, /не перечисляй занятия/);
     assert.match(sent.session.instructions, /дай мне секунду/);
@@ -554,9 +559,10 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(dayText.includes('ignore nutrition'), false);
     assert.equal(dayText.includes('minutes: 0'), false);
     assert.match(dayText, /что лучше съесть/);
-    assert.match(dayText, /сама придумай одно конкретное блюдо под дефицит/);
+    assert.match(dayText, /два конкретных продукта под дефицит/);
+    assert.match(dayText, /инструмента Meals нет/);
+    assert.match(dayText, /По записям сегодня пока мало/);
     assert.equal(dayText.includes('Не выдумывай блюда'), false);
-    assert.equal(dayText.includes('рыбу, творог, яйца'), false);
 
     const created = await request(server.url, 'POST', '/v1/planner-voice/activities', { body: tennis() });
     assert.equal(created.body.saved, true);

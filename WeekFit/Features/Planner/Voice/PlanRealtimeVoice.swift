@@ -55,13 +55,33 @@ nonisolated struct PlanRealtimeToolReply: Equatable {
     var saved: Bool
     var speak: String?
     var error: String?
+    var schedule: [PlanRealtimeScheduleRow] = []
 
     var jsonObject: [String: Any] {
         var body: [String: Any] = ["ok": ok, "saved": saved]
         if let speak { body["speak"] = speak }
         if let error { body["error"] = error }
+        if !schedule.isEmpty {
+            body["items"] = schedule.map {
+                [
+                    "ref": $0.ref,
+                    "title": $0.title,
+                    "startTime": $0.startTime,
+                    "durationMinutes": $0.durationMinutes,
+                    "done": $0.done,
+                ] as [String: Any]
+            }
+        }
         return body
     }
+}
+
+nonisolated struct PlanRealtimeScheduleRow: Equatable {
+    var ref: String
+    var title: String
+    var startTime: String
+    var durationMinutes: Int
+    var done: Bool
 }
 
 nonisolated enum PlanRealtimeLocalAction: Equatable {
@@ -142,6 +162,8 @@ nonisolated struct PlanRealtimeActivityDraft: Equatable {
     var date: String
     var startTime: String
     var durationMinutes: Int
+    var place: String = ""
+    var anchorRef: String = ""
 }
 
 nonisolated struct PlanRealtimeSourceActivity: Equatable {
@@ -590,6 +612,36 @@ private func russianMinuteWords(_ minute: Int) -> String {
     return one == 0 ? tens[ten] : "\(tens[ten]) \(under[one])"
 }
 
+func planRealtimeSaveFingerprint(catalogTitle: String, start: Date, durationMinutes: Int) -> String {
+    "\(catalogTitle)|\(Int(start.timeIntervalSince1970.rounded()))|\(durationMinutes)"
+}
+
+func planRealtimeReplayReply(reply: String?, savedAt: Date?, now: Date, within seconds: TimeInterval?) -> String? {
+    guard let reply, let savedAt else { return nil }
+    if let seconds, now.timeIntervalSince(savedAt) > seconds { return nil }
+    return reply
+}
+
+func planRealtimeWaterReminderEffect() -> (blocksSchedule: Bool, drunkMilliliters: Int) {
+    let reminder = PlannedActivity(
+        date: Date(),
+        type: "habit",
+        title: "Drink Water",
+        durationMinutes: 5,
+        icon: "drop.fill",
+        imageName: "habit-water",
+        colorRed: 0.2,
+        colorGreen: 0.6,
+        colorBlue: 0.9,
+        isCompleted: false,
+        source: "planner"
+    )
+    return (
+        reminder.blocksPlannerTime,
+        QuickLogActivityPortions.waterMilliliters(for: reminder)
+    )
+}
+
 nonisolated func planRealtimeSpokenClock(_ time: String, language: String) -> String {
     let parts = time.split(separator: ":")
     guard parts.count == 2,
@@ -904,3 +956,163 @@ private let planRealtimeSpeech: [String: PlanRealtimeSpeechCopy] = [
         more: { count in "还有\(count)项。" }
     ),
 ]
+
+enum PlanRealtimeAnchorResult: Equatable {
+    case save(day: String, time: String, duration: Int)
+    case suggest(day: String, time: String, duration: Int)
+    case missing
+    case ambiguous
+}
+
+func planRealtimeWaterMilliliters(_ arguments: String) -> Int? {
+    guard let object = planRealtimeJSON(arguments) else { return nil }
+    let raw = object["milliliters"]
+    let value: Int?
+    if let int = raw as? Int {
+        value = int
+    } else if let number = raw as? Double {
+        value = Int(number)
+    } else {
+        value = nil
+    }
+    guard let value, (50...2000).contains(value) else { return nil }
+    return value
+}
+
+func planRealtimeRemindDraft(_ arguments: String) -> (date: String, startTime: String, place: String, anchorRef: String)? {
+    guard let object = planRealtimeJSON(arguments) else { return nil }
+    let place = object["place"] as? String ?? ""
+    guard place.isEmpty || place == "before" || place == "after" else { return nil }
+    return (
+        object["date"] as? String ?? "",
+        object["startTime"] as? String ?? "",
+        place,
+        object["anchorRef"] as? String ?? ""
+    )
+}
+
+func planRealtimeDefaultDuration(_ catalogTitle: String) -> Int {
+    switch catalogTitle {
+    case "Stretching", "Walk", "Sauna", "Yoga", "Breathing":
+        return 20
+    case "Sleep Routine", "No Screens", "Morning Routine":
+        return 15
+    default:
+        return 45
+    }
+}
+
+func planRealtimeResolveAnchor(
+    place: String,
+    anchorRef: String,
+    durationMinutes: Int,
+    agenda: [PlanRealtimeAgendaEntry],
+    calendar: Calendar
+) -> PlanRealtimeAnchorResult {
+    let duration = max(durationMinutes, 1)
+    let matches = agenda.filter { $0.ref == anchorRef }
+    if matches.isEmpty { return .missing }
+    if matches.count > 1 { return .ambiguous }
+    guard let anchor = matches.first,
+          let anchorStart = planRealtimeClockDate(day: anchor.day, time: anchor.startTime, calendar: calendar) else {
+        return .missing
+    }
+    let ideal = place == "before"
+        ? calendar.date(byAdding: .minute, value: -duration, to: anchorStart)
+        : calendar.date(byAdding: .minute, value: anchor.durationMinutes, to: anchorStart)
+    guard let ideal else { return .missing }
+    let busy = agenda.compactMap { entry -> (Date, Date)? in
+        guard let start = planRealtimeClockDate(day: entry.day, time: entry.startTime, calendar: calendar) else { return nil }
+        let end = calendar.date(byAdding: .minute, value: max(entry.durationMinutes, 1), to: start) ?? start
+        return (start, end)
+    }
+    if !planRealtimeOverlaps(ideal, duration: duration, busy: busy, calendar: calendar) {
+        return .save(day: anchor.day, time: planRealtimeClockText(ideal, calendar: calendar), duration: duration)
+    }
+    guard let nearest = planRealtimeNearestFree(
+        ideal: ideal,
+        duration: duration,
+        day: anchor.day,
+        busy: busy,
+        calendar: calendar
+    ) else { return .missing }
+    return .suggest(day: anchor.day, time: planRealtimeClockText(nearest, calendar: calendar), duration: duration)
+}
+
+func planRealtimeClockDate(day: String, time: String, calendar: Calendar) -> Date? {
+    guard day.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil,
+          time.range(of: #"^\d{2}:\d{2}$"#, options: .regularExpression) != nil else { return nil }
+    let dateParts = day.split(separator: "-").compactMap { Int($0) }
+    let timeParts = time.split(separator: ":").compactMap { Int($0) }
+    guard dateParts.count == 3, timeParts.count == 2 else { return nil }
+    var parts = DateComponents()
+    parts.calendar = calendar
+    parts.timeZone = calendar.timeZone
+    parts.year = dateParts[0]
+    parts.month = dateParts[1]
+    parts.day = dateParts[2]
+    parts.hour = timeParts[0]
+    parts.minute = timeParts[1]
+    return calendar.date(from: parts)
+}
+
+func planRealtimeClockText(_ date: Date, calendar: Calendar) -> String {
+    let parts = calendar.dateComponents([.hour, .minute], from: date)
+    return String(format: "%02d:%02d", parts.hour ?? 0, parts.minute ?? 0)
+}
+
+func planRealtimeOverlaps(_ start: Date, duration: Int, busy: [(Date, Date)], calendar: Calendar) -> Bool {
+    let end = calendar.date(byAdding: .minute, value: duration, to: start) ?? start
+    return busy.contains { start < $0.1 && end > $0.0 }
+}
+
+func planRealtimeNearestFree(
+    ideal: Date,
+    duration: Int,
+    day: String,
+    busy: [(Date, Date)],
+    calendar: Calendar
+) -> Date? {
+    guard let opening = planRealtimeClockDate(day: day, time: "06:00", calendar: calendar),
+          let closing = planRealtimeClockDate(day: day, time: "22:00", calendar: calendar) else { return nil }
+    var best: Date?
+    var bestDistance = TimeInterval.greatestFiniteMagnitude
+    var cursor = opening
+    while cursor <= closing {
+        let end = calendar.date(byAdding: .minute, value: duration, to: cursor) ?? cursor
+        if end <= closing,
+           !planRealtimeOverlaps(cursor, duration: duration, busy: busy, calendar: calendar) {
+            let distance = abs(cursor.timeIntervalSince(ideal))
+            if distance < bestDistance {
+                best = cursor
+                bestDistance = distance
+            }
+        }
+        guard let next = calendar.date(byAdding: .minute, value: 5, to: cursor) else { break }
+        cursor = next
+    }
+    return best
+}
+
+func planRealtimeRussianRangeClock(hour: Int, minute: Int) -> String {
+    let names = [
+        "полуночи", "часа", "двух", "трёх", "четырёх", "пяти", "шести", "семи", "восьми", "девяти", "десяти", "одиннадцати",
+        "двенадцати", "тринадцати", "четырнадцати", "пятнадцати", "шестнадцати", "семнадцати", "восемнадцати", "девятнадцати",
+        "двадцати", "двадцати одного", "двадцати двух", "двадцати трёх",
+    ]
+    guard (0...23).contains(hour) else { return String(hour) }
+    if hour == 0, minute == 0 { return names[0] }
+    var minutes = ""
+    if (1...59).contains(minute) {
+        let under = ["", "одного", "двух", "трёх", "четырёх", "пяти", "шести", "семи", "восьми", "девяти", "десяти", "одиннадцати", "двенадцати", "тринадцати", "четырнадцати", "пятнадцати", "шестнадцати", "семнадцати", "восемнадцати", "девятнадцати"]
+        if minute < 20 {
+            minutes = minute < 10 ? "ноль \(under[minute])" : under[minute]
+        } else {
+            let tens = ["", "", "двадцати", "тридцати", "сорока", "пятидесяти"]
+            let one = minute % 10
+            let ten = minute / 10
+            minutes = one == 0 ? tens[ten] : "\(tens[ten]) \(under[one])"
+        }
+    }
+    return minutes.isEmpty ? names[hour] : "\(names[hour]) \(minutes)"
+}

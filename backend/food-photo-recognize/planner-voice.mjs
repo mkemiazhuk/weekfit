@@ -38,7 +38,6 @@ const CATALOG = [
   ['Sauna', 'Recovery', 20],
   ['Yoga', 'Recovery', 20],
   ['Breathing', 'Recovery', 20],
-  ['Drink Water', 'Habit', 15],
   ['Sleep Routine', 'Habit', 15],
   ['No Screens', 'Habit', 15],
   ['Morning Routine', 'Habit', 15],
@@ -983,7 +982,7 @@ export function consoleDocument() {
       }
       return;
     }
-    if (type === 'response.function_call_arguments.done' && ['create_activity', 'list_plan', 'update_activity', 'delete_activity'].includes(event.name)) {
+    if (type === 'response.function_call_arguments.done' && ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'log_water', 'remind_water'].includes(event.name)) {
       toolBusy = true;
       clearReplyWatch();
       clearPresence();
@@ -1123,7 +1122,7 @@ export function plannerSessionConfiguration(config, payload) {
     model: config.plannerVoiceLanguageModel && config.plannerVoiceLanguageModelLanguages?.includes(language)
       ? config.plannerVoiceLanguageModel : config.plannerVoiceModel,
     instructions: instructions(days, planningDay, safeName, language, plan, dayContext, introduced, reconnected),
-    tools: [createActivityTool(), listPlanTool(), updateActivityTool(), deleteActivityTool(), endCallTool()],
+    tools: [createActivityTool(), listPlanTool(), updateActivityTool(), deleteActivityTool(), logWaterTool(), remindWaterTool(), endCallTool()],
     tool_choice: 'auto',
     // Budget covers audio and tool calls, not just the short spoken transcript.
     max_output_tokens: 2048,
@@ -1392,17 +1391,19 @@ function createActivityTool() {
   return {
     type: 'function',
     name: 'create_activity',
-    description: 'Create one activity in the current plan. Do not confirm success before the tool result.',
+    description: 'Create one catalog activity. Not a meal, not water already drunk, and not a water reminder. For before or after one plan item, set place to before or after and anchorRef to its ref, and leave startTime empty. Do not ask for a clock time when that ref is unique. Say the speak field once, and only after saved is true.',
     parameters: {
       type: 'object',
       additionalProperties: false,
       properties: {
         catalogTitle: { type: 'string', enum: CATALOG.map(item => item.catalogTitle) },
         date: { type: 'string', description: 'YYYY-MM-DD in the user time zone, or an empty string when the day was not spoken.' },
-        startTime: { type: 'string', description: 'HH:mm, 24-hour. Empty string when the time was not spoken.' },
+        startTime: { type: 'string', description: 'HH:mm, 24-hour. Empty when place and anchorRef choose the time.' },
         durationMinutes: { type: 'integer', description: 'Minutes. 0 when the person did not say a duration.' },
+        place: { type: 'string', enum: ['', 'before', 'after'], description: 'Empty unless the time is before or after another plan item.' },
+        anchorRef: { type: 'string', description: 'Plan ref such as a1. Empty unless place is before or after.' },
       },
-      required: ['catalogTitle', 'date', 'startTime', 'durationMinutes'],
+      required: ['catalogTitle', 'date', 'startTime', 'durationMinutes', 'place', 'anchorRef'],
     },
   };
 }
@@ -1411,7 +1412,7 @@ function listPlanTool() {
   return {
     type: 'function',
     name: 'list_plan',
-    description: 'Read activities already on the plan. Use today_done for what was completed today, tomorrow for what is planned tomorrow, today_planned for what is still planned today.',
+    description: 'Read the plan before suggesting an activity or a time. items has ref, title, startTime, durationMinutes, and done. Do not read speak aloud. ok false means the plan was not read: say so. This does not save anything.',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -1459,11 +1460,46 @@ function deleteActivityTool() {
   };
 }
 
+function logWaterTool() {
+  return {
+    type: 'function',
+    name: 'log_water',
+    description: 'Record water the person already drank, in milliliters. This is the only way to increase water already drunk. Do not use it for a reminder or a plan activity. Do not invent an amount: if they did not say one, ask once. A glass is 250.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        milliliters: { type: 'integer', description: 'Milliliters already drunk, from 50 to 2000. 0 when they did not say an amount.' },
+      },
+      required: ['milliliters'],
+    },
+  };
+}
+
+function remindWaterTool() {
+  return {
+    type: 'function',
+    name: 'remind_water',
+    description: 'Put a water reminder on the plan. It does not increase water already drunk and it is not a 15-minute activity. For before or after one plan item, set place and anchorRef and leave startTime empty. Do not ask for a clock time when that ref is unique.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        date: { type: 'string', description: 'YYYY-MM-DD, or empty for today.' },
+        startTime: { type: 'string', description: 'HH:mm, or empty when place and anchorRef choose the time.' },
+        place: { type: 'string', enum: ['', 'before', 'after'] },
+        anchorRef: { type: 'string', description: 'Plan ref such as a1. Empty unless place is before or after.' },
+      },
+      required: ['date', 'startTime', 'place', 'anchorRef'],
+    },
+  };
+}
+
 function endCallTool() {
   return {
     type: 'function',
     name: 'end_call',
-    description: 'Hang up only after the farewell has been spoken in this same response. «всё, спасибо», «все спасибо», «спасибо, всё», «пока», «до свидания» and «до встречи» are a Russian goodbye: say exactly "Пожалуйста. Всегда рада помочь. До встречи." for the thanks lines, and exactly "До встречи." for the others, then call this. A bare спасибо, alright, okay, or thanks in the middle of a task is not a goodbye. Do not announce that you are ending the call. Do not use this before the save is confirmed. Do not call this in a response that has no spoken farewell.',
+    description: 'Hang up after a short farewell when the person clearly wants to end the call. «пока», «до свидания», «до встречи», «всё, спасибо», «все спасибо» and «спасибо, всё» are explicit Russian endings. A short «До встречи.» is enough; the thanks lines may be «Пожалуйста. Всегда рада помочь. До встречи.» Say that farewell, then call this in the same response so the session ends. A bare спасибо, alright, okay, or thanks in the middle of a task is not an ending. Do not announce that you are ending the call. Do not use this before a save is confirmed. Do not call this in a response that has no spoken farewell.',
     parameters: {
       type: 'object',
       additionalProperties: false,

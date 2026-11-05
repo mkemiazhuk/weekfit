@@ -37,11 +37,14 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     var onSave: ((PlanVoiceCreateRequest) throws -> String)?
     var onUpdate: ((PlanVoiceUpdateRequest) throws -> Void)?
     var onDelete: ((String) throws -> Void)?
+    var onLogWater: ((Int) throws -> Int)?
+    var onRemindWater: ((Date, Int) throws -> Void)?
     var languageCode = "ru"
 
     private let bridge = PlanRealtimeScriptBridge()
     private var gate = PlanRealtimeCallGate()
     private var applied: Set<String> = []
+    private var savedReplies: [String: (reply: String, at: Date)] = [:]
     private var refBook = PlanRealtimeRefBook()
     private var removedIDs = Set<String>()
     private var secret: PlanRealtimeSessionSecret?
@@ -561,17 +564,75 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     }
 
     private func performTool(callId: String, name: String, arguments: String) async -> String {
-        if name != "create_activity" {
+        switch name {
+        case "log_water":
+            return logWater(arguments)
+        case "remind_water":
+            return remindWater(arguments)
+        case "create_activity":
+            break
+        default:
             return performPlanTool(name: name, arguments: arguments)
         }
-        guard let draft = planRealtimeDraft(arguments) else {
+        guard var draft = planRealtimeDraft(arguments) else {
             return encode(planRealtimeToolReply(action: .reject("unknown_activity"), speak: nil))
+        }
+        if draft.startTime.isEmpty, draft.place == "before" || draft.place == "after" {
+            switch resolveAnchor(place: draft.place, anchorRef: draft.anchorRef, duration: draft.durationMinutes > 0 ? draft.durationMinutes : planRealtimeDefaultDuration(draft.catalogTitle)) {
+            case .save(let day, let time, let duration):
+                draft.date = day
+                draft.startTime = time
+                draft.durationMinutes = duration
+            case .suggest(let day, let time, let duration):
+                let spoken = placementSpeech(day: day, time: time, duration: duration)
+                return encode(PlanRealtimeToolReply(ok: false, saved: false, speak: spoken, error: "time_conflict"))
+            case .missing:
+                return encode(notice("missing"))
+            case .ambiguous:
+                return encode(notice("missing"))
+            }
+        }
+        guard !draft.startTime.isEmpty else {
+            let ask = callLanguage.hasPrefix("ru") ? "Во сколько?" : "What time?"
+            return encode(PlanRealtimeToolReply(ok: false, saved: false, speak: ask, error: "start_time_required"))
+        }
+        if let start = planRealtimeClockDate(day: draft.date, time: draft.startTime, calendar: calendar) {
+            let fingerprint = planRealtimeSaveFingerprint(
+                catalogTitle: draft.catalogTitle,
+                start: start,
+                durationMinutes: draft.durationMinutes
+            )
+            if let replay = replayedSave(fingerprint, within: nil) {
+                return replay
+            }
+            if let existing = activities.first(where: {
+                $0.title == draft.catalogTitle
+                    && $0.durationMinutes == draft.durationMinutes
+                    && abs($0.date.timeIntervalSince(start)) < 1
+            }) {
+                let reply = encode(PlanRealtimeToolReply(ok: true, saved: true, speak: savedActivitySpeech(existing), error: nil))
+                rememberSave(fingerprint, reply: reply)
+                return reply
+            }
         }
         let key = planRealtimeIdempotencyKey(callId)
         do {
             let client = try await makeClient()
             let commit = try await commit(client: client, key: key, draft: draft, transportFailed: false, lookedUp: false)
-            return encode(apply(commit, key: key))
+            let spoken = apply(commit, key: key)
+            let reply = encode(spoken)
+            if spoken.saved,
+               let start = planRealtimeClockDate(day: draft.date, time: draft.startTime, calendar: calendar) {
+                rememberSave(
+                    planRealtimeSaveFingerprint(
+                        catalogTitle: draft.catalogTitle,
+                        start: start,
+                        durationMinutes: draft.durationMinutes
+                    ),
+                    reply: reply
+                )
+            }
+            return reply
         } catch PlanRealtimeClientError.transport {
             return encode(planRealtimeToolReply(action: .reject("save_failed"), speak: nil))
         } catch {
@@ -688,9 +749,18 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                 .map { (spoken: $0.spoken, startTime: $0.startTime) }
             return encode(PlanRealtimeToolReply(
                 ok: true,
-                saved: true,
+                saved: false,
                 speak: planRealtimeListSpeak(scope: scope, items: items, language: callLanguage),
-                error: nil
+                error: nil,
+                schedule: agenda.filter { $0.scope == scope }.map {
+                    PlanRealtimeScheduleRow(
+                        ref: $0.ref,
+                        title: $0.title,
+                        startTime: $0.startTime,
+                        durationMinutes: $0.durationMinutes,
+                        done: $0.scope == "today_done"
+                    )
+                }
             ))
         case "delete_activity":
             guard let ref = planRealtimeDeleteRef(arguments),
@@ -792,6 +862,38 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         }
     }
 
+    private func replayedSave(_ fingerprint: String, within seconds: TimeInterval?) -> String? {
+        guard let item = savedReplies[fingerprint] else { return nil }
+        return planRealtimeReplayReply(reply: item.reply, savedAt: item.at, now: Date(), within: seconds)
+    }
+
+    private func rememberSave(_ fingerprint: String, reply: String) {
+        savedReplies[fingerprint] = (reply, Date())
+    }
+
+    private func savedActivitySpeech(_ activity: PlannedActivity) -> String {
+        let title = PlannerOptionLocalization.localizedTitle(for: activity.title)
+        let end = calendar.date(byAdding: .minute, value: activity.durationMinutes, to: activity.date) ?? activity.date
+        if callLanguage.hasPrefix("ru") {
+            let from = planRealtimeRussianRangeClock(
+                hour: calendar.component(.hour, from: activity.date),
+                minute: calendar.component(.minute, from: activity.date)
+            )
+            let to = planRealtimeRussianRangeClock(
+                hour: calendar.component(.hour, from: end),
+                minute: calendar.component(.minute, from: end)
+            )
+            return "Записала \(title.lowercased()) на \(savedDayLabel(activity.date)), с \(from) до \(to)."
+        }
+        return "Saved \(title) at \(planRealtimeClockText(activity.date, calendar: calendar))."
+    }
+
+    private func savedDayLabel(_ date: Date) -> String {
+        if calendar.isDateInToday(date) { return callLanguage.hasPrefix("ru") ? "сегодня" : "today" }
+        if calendar.isDateInTomorrow(date) { return callLanguage.hasPrefix("ru") ? "завтра" : "tomorrow" }
+        return planRealtimeDayString(date, calendar: calendar)
+    }
+
     private func conflictSpeak(start: Date, minutes: Int, excluding: String?) -> String {
         let end = start.addingTimeInterval(TimeInterval(max(minutes, 1) * 60))
         let other = activities.first { activity in
@@ -804,6 +906,145 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             return String(format: WeekFitLocalizedString("planner.voice.conflict.with"), title)
         }
         return planRealtimePlanNotice("conflict", language: callLanguage)
+    }
+
+    private func logWater(_ arguments: String) -> String {
+        guard let milliliters = planRealtimeWaterMilliliters(arguments) else {
+            let ask = callLanguage.hasPrefix("ru") ? "Сколько миллилитров?" : "How many milliliters?"
+            return encode(PlanRealtimeToolReply(ok: false, saved: false, speak: ask, error: "amount_required"))
+        }
+        guard let onLogWater else {
+            return encode(planRealtimeToolReply(action: .reject("save_failed"), speak: nil))
+        }
+        do {
+            if let replay = replayedSave("water|\(milliliters)", within: 60) {
+                return replay
+            }
+            let stored = try onLogWater(milliliters)
+            guard stored >= 50 else {
+                return encode(planRealtimeToolReply(action: .reject("save_failed"), speak: nil))
+            }
+            let speak = callLanguage.hasPrefix("ru")
+                ? "Записала \(stored) миллилитров уже выпитой воды."
+                : "Logged \(stored) milliliters of water already drunk."
+            noteReceipt(id: "water-\(stored)", title: speak, detail: "\(stored) мл", success: true)
+            let reply = encode(PlanRealtimeToolReply(ok: true, saved: true, speak: speak, error: nil))
+            rememberSave("water|\(milliliters)", reply: reply)
+            rememberSave("water|\(stored)", reply: reply)
+            return reply
+        } catch {
+            return encode(planRealtimeToolReply(action: .reject("save_failed"), speak: nil))
+        }
+    }
+
+    private func remindWater(_ arguments: String) -> String {
+        guard let draft = planRealtimeRemindDraft(arguments) else {
+            return encode(planRealtimeToolReply(action: .reject("save_failed"), speak: nil))
+        }
+        let placed: (day: String, time: String, duration: Int)
+        if draft.startTime.isEmpty, draft.place == "before" || draft.place == "after" {
+            switch resolveAnchor(place: draft.place, anchorRef: draft.anchorRef, duration: 5) {
+            case .save(let day, let time, let duration):
+                placed = (day, time, duration)
+            case .suggest(let day, let time, let duration):
+                return encode(PlanRealtimeToolReply(ok: false, saved: false, speak: placementSpeech(day: day, time: time, duration: duration), error: "time_conflict"))
+            case .missing, .ambiguous:
+                return encode(notice("missing"))
+            }
+        } else if !draft.startTime.isEmpty {
+            let day = draft.date.isEmpty ? planRealtimeDayString(Date(), calendar: calendar) : draft.date
+            guard let start = planRealtimeClockDate(day: day, time: draft.startTime, calendar: calendar) else {
+                return encode(planRealtimeToolReply(action: .reject("save_failed"), speak: nil))
+            }
+            if anchorBusy(start, duration: 5) {
+                return encode(PlanRealtimeToolReply(ok: false, saved: false, speak: planRealtimePlanNotice("conflict", language: callLanguage), error: "time_conflict"))
+            }
+            placed = (day, draft.startTime, 5)
+        } else {
+            let ask = callLanguage.hasPrefix("ru") ? "Во сколько напомнить?" : "What time should I remind you?"
+            return encode(PlanRealtimeToolReply(ok: false, saved: false, speak: ask, error: "start_time_required"))
+        }
+        guard let start = planRealtimeClockDate(day: placed.day, time: placed.time, calendar: calendar),
+              let onRemindWater else {
+            return encode(planRealtimeToolReply(action: .reject("save_failed"), speak: nil))
+        }
+        let fingerprint = planRealtimeSaveFingerprint(catalogTitle: "Drink Water", start: start, durationMinutes: placed.duration)
+        if let replay = replayedSave(fingerprint, within: nil) {
+            return replay
+        }
+        if activities.contains(where: {
+            $0.title == "Drink Water" && $0.durationMinutes <= 5 && abs($0.date.timeIntervalSince(start)) < 1
+        }) {
+            let speak = anchorSpeech(day: placed.day, time: placed.time, duration: placed.duration, saved: true)
+            let reply = encode(PlanRealtimeToolReply(ok: true, saved: true, speak: speak, error: nil))
+            rememberSave(fingerprint, reply: reply)
+            return reply
+        }
+        do {
+            try onRemindWater(start, placed.duration)
+            let speak = anchorSpeech(day: placed.day, time: placed.time, duration: placed.duration, saved: true)
+            noteReceipt(id: "remind-\(placed.day)-\(placed.time)", title: speak, detail: placed.time, success: true)
+            let reply = encode(PlanRealtimeToolReply(ok: true, saved: true, speak: speak, error: nil))
+            rememberSave(fingerprint, reply: reply)
+            return reply
+        } catch {
+            return encode(planRealtimeToolReply(action: .reject("save_failed"), speak: nil))
+        }
+    }
+
+    private func resolveAnchor(place: String, anchorRef: String, duration: Int) -> PlanRealtimeAnchorResult {
+        planRealtimeResolveAnchor(
+            place: place,
+            anchorRef: anchorRef,
+            durationMinutes: duration,
+            agenda: currentAgenda(),
+            calendar: calendar
+        )
+    }
+
+    private func anchorBusy(_ start: Date, duration: Int) -> Bool {
+        let busy = currentAgenda().compactMap { entry -> (Date, Date)? in
+            guard let itemStart = planRealtimeClockDate(day: entry.day, time: entry.startTime, calendar: calendar) else { return nil }
+            let end = calendar.date(byAdding: .minute, value: max(entry.durationMinutes, 1), to: itemStart) ?? itemStart
+            return (itemStart, end)
+        }
+        return planRealtimeOverlaps(start, duration: duration, busy: busy, calendar: calendar)
+    }
+
+    private func placementSpeech(day: String, time: String, duration: Int) -> String {
+        guard let start = planRealtimeClockDate(day: day, time: time, calendar: calendar) else { return time }
+        let end = calendar.date(byAdding: .minute, value: duration, to: start) ?? start
+        let startParts = calendar.dateComponents([.hour, .minute], from: start)
+        let endParts = calendar.dateComponents([.hour, .minute], from: end)
+        if callLanguage.hasPrefix("ru") {
+            let from = planRealtimeRussianRangeClock(hour: startParts.hour ?? 0, minute: startParts.minute ?? 0)
+            let to = planRealtimeRussianRangeClock(hour: endParts.hour ?? 0, minute: endParts.minute ?? 0)
+            return "Это время занято. Ближайшее свободное — с \(from) до \(to). Поставить?"
+        }
+        let from = String(format: "%02d:%02d", startParts.hour ?? 0, startParts.minute ?? 0)
+        let to = String(format: "%02d:%02d", endParts.hour ?? 0, endParts.minute ?? 0)
+        return "That time is taken. The nearest free time is \(from) to \(to). Should I use it?"
+    }
+
+    private func anchorSpeech(day: String, time: String, duration: Int, saved: Bool) -> String {
+        guard let start = planRealtimeClockDate(day: day, time: time, calendar: calendar) else { return time }
+        let end = calendar.date(byAdding: .minute, value: duration, to: start) ?? start
+        let startParts = calendar.dateComponents([.hour, .minute], from: start)
+        let endParts = calendar.dateComponents([.hour, .minute], from: end)
+        if callLanguage.hasPrefix("ru") {
+            let from = planRealtimeRussianRangeClock(hour: startParts.hour ?? 0, minute: startParts.minute ?? 0)
+            let to = planRealtimeRussianRangeClock(hour: endParts.hour ?? 0, minute: endParts.minute ?? 0)
+            if saved {
+                return "Поставила напоминание выпить воду с \(from) до \(to). Это не выпитая вода."
+            }
+            return "Рядом это время занято. Ближайшее свободное — с \(from) до \(to). Поставить?"
+        }
+        let from = String(format: "%02d:%02d", startParts.hour ?? 0, startParts.minute ?? 0)
+        let to = String(format: "%02d:%02d", endParts.hour ?? 0, endParts.minute ?? 0)
+        if saved {
+            return "Set a reminder to drink water from \(from) to \(to). That is not water already drunk."
+        }
+        return "That time is taken. The nearest free time is \(from) to \(to). Should I use it?"
     }
 
     private func notice(_ kind: String) -> PlanRealtimeToolReply {
@@ -922,6 +1163,8 @@ struct PlanRealtimeVoiceSheet: View {
     var onSave: (PlanVoiceCreateRequest) throws -> String
     var onUpdate: (PlanVoiceUpdateRequest) throws -> Void
     var onDelete: (String) throws -> Void
+    var onLogWater: (Int) throws -> Int = { _ in throw PlanViewModel.VoiceSaveError.persistence }
+    var onRemindWater: (Date, Int) throws -> Void = { _, _ in }
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -938,8 +1181,10 @@ struct PlanRealtimeVoiceSheet: View {
             activities: activities,
             onSave: onSave,
             onUpdate: onUpdate,
-            onDelete: onDelete,
-            languageCode: languageManager.selectedLanguage.rawValue,
+        onDelete: onDelete,
+        onLogWater: onLogWater,
+        onRemindWater: onRemindWater,
+        languageCode: languageManager.selectedLanguage.rawValue,
             dayContext: dayContext
         )
 
@@ -1412,6 +1657,8 @@ extension PlanRealtimeSessionController {
         onSave: @escaping (PlanVoiceCreateRequest) throws -> String,
         onUpdate: @escaping (PlanVoiceUpdateRequest) throws -> Void,
         onDelete: @escaping (String) throws -> Void,
+        onLogWater: @escaping (Int) throws -> Int,
+        onRemindWater: @escaping (Date, Int) throws -> Void,
         languageCode: String,
         dayContext: PlanVoiceDayContext
     ) {
@@ -1420,6 +1667,8 @@ extension PlanRealtimeSessionController {
         self.onSave = onSave
         self.onUpdate = onUpdate
         self.onDelete = onDelete
+        self.onLogWater = onLogWater
+        self.onRemindWater = onRemindWater
         self.languageCode = languageCode
         self.dayContext = dayContext
     }
@@ -1455,7 +1704,9 @@ nonisolated func planRealtimeDraft(_ arguments: String) -> PlanRealtimeActivityD
         catalogTitle: title,
         date: object["date"] as? String ?? "",
         startTime: object["startTime"] as? String ?? "",
-        durationMinutes: object["durationMinutes"] as? Int ?? 0
+        durationMinutes: object["durationMinutes"] as? Int ?? 0,
+        place: object["place"] as? String ?? "",
+        anchorRef: object["anchorRef"] as? String ?? ""
     )
 }
 

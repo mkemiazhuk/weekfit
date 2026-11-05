@@ -530,6 +530,28 @@ struct TodayView: View {
                         activities: plannedActivities,
                         modelContext: modelContext
                     )
+                },
+                onLogWater: { milliliters in
+                    try PlanViewModel().saveVoiceHydration(
+                        milliliters: milliliters,
+                        modelContext: modelContext
+                    )
+                },
+                onRemindWater: { start, minutes in
+                    _ = try PlanViewModel().saveVoiceActivity(
+                        PlanVoiceCreateRequest(
+                            catalogTitle: "Drink Water",
+                            plannerTypeTitle: "Habit",
+                            start: start,
+                            durationMinutes: minutes,
+                            idempotencyKey: "remind-\(Int(start.timeIntervalSince1970))"
+                        ),
+                        activities: plannedActivities,
+                        modelContext: modelContext,
+                        activityRemindersEnabled: activityRemindersEnabled,
+                        completionCheckInsEnabled: completionCheckInsEnabled,
+                        blocksPlannerTime: false
+                    )
                 }
             )
             .environmentObject(languageManager)

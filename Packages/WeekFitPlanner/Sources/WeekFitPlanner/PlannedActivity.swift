@@ -187,6 +187,10 @@ public extension PlannedActivity {
     }
 
     var blocksPlannerTime: Bool {
+        let normalizedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalizedTitle == "drink water", durationMinutes <= 5 {
+            return false
+        }
         switch timelineEventKind {
         case .workout, .recovery, .sauna, .calendar, .sleep, .plannedActivity:
             return true

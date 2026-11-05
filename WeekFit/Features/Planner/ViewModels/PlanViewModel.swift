@@ -763,7 +763,8 @@ final class PlanViewModel: ObservableObject {
         activities: [PlannedActivity],
         modelContext: ModelContext,
         activityRemindersEnabled: Bool,
-        completionCheckInsEnabled: Bool
+        completionCheckInsEnabled: Bool,
+        blocksPlannerTime: Bool? = nil
     ) throws -> String {
         guard let type = PlannerType.allCases.first(where: { $0.title == request.plannerTypeTitle }),
               let option = type.options.first(where: { $0.title == request.catalogTitle }) else {
@@ -774,7 +775,7 @@ final class PlanViewModel: ObservableObject {
             newStart: request.start,
             durationMinutes: request.durationMinutes,
             activities: activities,
-            newEventBlocksPlannerTime: type.blocksPlannerTime
+            newEventBlocksPlannerTime: blocksPlannerTime ?? type.blocksPlannerTime
         ) {
             throw VoiceSaveError.timeConflict
         }
@@ -817,6 +818,50 @@ final class PlanViewModel: ObservableObject {
         selectedDate = calendar.startOfDay(for: request.start)
         markPlannerDataChanged()
         return activity.id
+    }
+
+    /// Completed hydration log. Duration stores milliliters and does not block the plan.
+    /// Returns the milliliters read back from the saved activity.
+    @discardableResult
+    func saveVoiceHydration(milliliters: Int, modelContext: ModelContext) throws -> Int {
+        let profile = QuickLogNutritionProfile(
+            id: "drink_water",
+            title: "Water",
+            subtitle: "Hydration",
+            imageName: "hydration",
+            icon: "drop.fill",
+            kind: .drink,
+            caloriesPerServing: 0,
+            proteinPerServing: 0,
+            carbsPerServing: 0,
+            fatPerServing: 0,
+            fiberPerServing: 0,
+            defaultServingAmount: 250,
+            servingUnit: .milliliters,
+            gramsPerServing: nil,
+            mlPerServing: 250
+        )
+        let selection = QuickLogSelection(
+            portions: Double(milliliters) / 250,
+            mode: .milliliters,
+            alternateAmount: Double(milliliters)
+        )
+        guard let savedID = QuickLogActivitySync.sync(
+            profile: profile,
+            selection: selection,
+            plannedActivities: [],
+            modelContext: modelContext
+        ) else {
+            throw VoiceSaveError.persistence
+        }
+        let descriptor = FetchDescriptor<PlannedActivity>(
+            predicate: #Predicate { $0.id == savedID }
+        )
+        let recorded = try modelContext.fetch(descriptor).first
+            .map { QuickLogActivityPortions.waterMilliliters(for: $0) } ?? 0
+        markPlannerDataChanged()
+        guard recorded >= 50 else { throw VoiceSaveError.persistence }
+        return recorded
     }
 
     /// Moves, resizes, or retitles one planned activity. Completed items stay as history.

@@ -252,8 +252,8 @@ export function confirmationLine(catalogTitle, activity, days, language) {
   return phrases.added(
     spokenActivityName(catalogTitle, code),
     day,
-    clockWords(activity.localStart, code, code === 'ru' ? 'gen' : 'nom'),
-    clockWords(activity.localEnd, code, code === 'ru' ? 'gen' : 'nom'),
+    rangeClock(activity.localStart, code),
+    rangeClock(activity.localEnd, code),
   );
 }
 
@@ -296,8 +296,36 @@ export function spokenClock(time, language, grammaticalCase = 'nom') {
   return minute === 0 ? String(hour) : `${hour}:${String(minute).padStart(2, '0')}`;
 }
 
-function clockWords(stamp, language, grammaticalCase = 'nom') {
-  return spokenClock(stamp.slice(11, 16), language, grammaticalCase);
+const RUSSIAN_RANGE_HOUR = [
+  'полуночи', 'часа', 'двух', 'трёх', 'четырёх', 'пяти', 'шести', 'семи', 'восьми', 'девяти', 'десяти', 'одиннадцати',
+  'двенадцати', 'тринадцати', 'четырнадцати', 'пятнадцати', 'шестнадцати', 'семнадцати', 'восемнадцати', 'девятнадцати',
+  'двадцати', 'двадцати одного', 'двадцати двух', 'двадцати трёх',
+];
+
+function russianRangeMinutes(minute) {
+  if (minute === 0) return '';
+  const under = ['', 'одного', 'двух', 'трёх', 'четырёх', 'пяти', 'шести', 'семи', 'восьми', 'девяти', 'десяти', 'одиннадцати', 'двенадцати', 'тринадцати', 'четырнадцати', 'пятнадцати', 'шестнадцати', 'семнадцати', 'восемнадцати', 'девятнадцати'];
+  if (minute < 20) return minute < 10 ? `ноль ${under[minute]}` : under[minute];
+  const tens = ['', '', 'двадцати', 'тридцати', 'сорока', 'пятидесяти'];
+  const one = minute % 10;
+  const ten = Math.floor(minute / 10);
+  return one === 0 ? tens[ten] : `${tens[ten]} ${under[one]}`;
+}
+
+function russianRangeClock(hour, minute) {
+  if (hour === 0 && minute === 0) return 'полуночи';
+  const name = RUSSIAN_RANGE_HOUR[hour] || String(hour);
+  const minutes = russianRangeMinutes(minute);
+  return minutes ? `${name} ${minutes}` : name;
+}
+
+function rangeClock(stamp, language) {
+  const match = /^(\d{2}):(\d{2})$/.exec(String(stamp || '').slice(11, 16));
+  if (!match) return spokenClock(String(stamp || '').slice(11, 16), language);
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (plannerVoiceLanguage(language) === 'ru') return russianRangeClock(hour, minute);
+  return spokenClock(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`, language);
 }
 
 function spokenDate(iso, language) {
