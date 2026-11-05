@@ -14,7 +14,7 @@ import {
 } from './planner-voice-copy.mjs';
 import { voiceGuide } from './planner-voice-guides.mjs';
 
-const DEFAULT_MODEL = 'gpt-realtime-2.1-mini';
+const DEFAULT_MODEL = 'gpt-realtime-2.1';
 const VOICES = new Set(['marin', 'cedar', 'alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse']);
 
 /** Names, defaults, and spoken forms match the on-device planner catalog. Meals stay out. */
