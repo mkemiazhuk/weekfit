@@ -193,7 +193,8 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                     [
                         "ref": $0.ref,
                         "scope": $0.scope,
-                        "title": $0.title,
+                        "title": $0.spoken,
+                        "catalogTitle": $0.title,
                         "startTime": $0.startTime,
                         "durationMinutes": $0.durationMinutes,
                     ]
@@ -789,15 +790,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                 saved: false,
                 speak: planRealtimeListSpeak(scope: scope, items: items, language: callLanguage),
                 error: nil,
-                schedule: agenda.filter { $0.scope == scope }.map {
-                    PlanRealtimeScheduleRow(
-                        ref: $0.ref,
-                        title: $0.title,
-                        startTime: $0.startTime,
-                        durationMinutes: $0.durationMinutes,
-                        done: $0.scope == "today_done"
-                    )
-                }
+                schedule: agenda.filter { $0.scope == scope }.map { scheduleRow($0) }
             ))
         case "delete_activity":
             guard let ref = planRealtimeDeleteRef(arguments),
@@ -1163,16 +1156,19 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         )
     }
 
+    private func scheduleRow(_ entry: PlanRealtimeAgendaEntry) -> PlanRealtimeScheduleRow {
+        PlanRealtimeScheduleRow(
+            ref: entry.ref,
+            title: entry.spoken,
+            catalogTitle: entry.title,
+            startTime: entry.startTime,
+            durationMinutes: entry.durationMinutes,
+            done: entry.scope == "today_done"
+        )
+    }
+
     private func todaySchedule() -> [PlanRealtimeScheduleRow] {
-        currentAgenda().filter { $0.scope == "today_planned" || $0.scope == "today_done" }.map {
-            PlanRealtimeScheduleRow(
-                ref: $0.ref,
-                title: $0.title,
-                startTime: $0.startTime,
-                durationMinutes: $0.durationMinutes,
-                done: $0.scope == "today_done"
-            )
-        }
+        currentAgenda().filter { $0.scope == "today_planned" || $0.scope == "today_done" }.map { scheduleRow($0) }
     }
 
     private func deliver(callId: String, reply: String) {

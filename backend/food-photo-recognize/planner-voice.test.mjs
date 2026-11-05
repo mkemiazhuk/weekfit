@@ -16,7 +16,7 @@ import {
   plannerVoiceEngine,
   plannerVoiceSettings,
 } from './planner-voice.mjs';
-import { plannerVoicePreviewPhrases } from './planner-voice-copy.mjs';
+import { plannerVoicePreviewPhrases, spokenClock } from './planner-voice-copy.mjs';
 
 const token = 'weekfit-dev-local-token';
 
@@ -258,7 +258,7 @@ test('app language chooses the spoken lines and the time zone does not', () => {
     idempotencyKey: 'call_tennis_pl',
     language: 'pl',
   }));
-  assert.equal(polish.body.speak, 'Dodałam tenis na jutro, od 13 do 14.');
+  assert.equal(polish.body.speak, 'Dodałam tenis na jutro, od 1 wieczorem do 2 wieczorem.');
 
   const missingTime = commitPlannerActivity(store, 'local-developer', tennis({
     idempotencyKey: 'call_tennis_pl_time',
@@ -981,7 +981,7 @@ test('an omitted engine stays on realtime and live keeps the same plan tools', (
   assert.match(live.delegation.responses.instructions, /update_activity changes that same ref/);
   assert.match(live.instructions, /SpawnThinking/);
   assert.match(live.instructions, /say only the greeting and wait/);
-  assert.match(live.instructions, /Do not choose after only because/);
+  assert.match(live.instructions, /Не выбирай «после» только потому/);
   assert.match(live.instructions, /end_call/);
   assert.equal(live.instructions.includes('Do not stop after hello'), false);
   assert.equal(live.input[0].content[0].text.includes('pause and listen'), false);
@@ -1075,4 +1075,40 @@ test('77 percent is moderately ready and goodbye closes the call once', async ()
   ]);
   assert.equal(bye.events.some(item => item.value === 'ended'), true);
   assert.equal(bye.sent.filter(item => item.type === 'session.close').length, 1);
+});
+
+test('plan context uses the spoken name and the same clock as a confirmation', () => {
+  assert.equal(spokenClock('18:00', 'pl'), '6 wieczorem');
+  assert.equal(spokenClock('18:30', 'fr'), '6h30 du soir');
+  assert.equal(spokenClock('18:00', 'es'), '6 de la tarde');
+  assert.equal(spokenClock('18:00', 'de'), '6 Uhr abends');
+  assert.equal(spokenClock('18:00', 'it'), '6 di sera');
+  assert.equal(spokenClock('18:00', 'ja'), '午後6時');
+  assert.equal(spokenClock('18:30', 'ko'), '오후 6시 30분');
+  assert.equal(spokenClock('18:00', 'zh-Hans'), '晚上6点');
+  assert.equal(spokenClock('08:30', 'ru'), 'восемь тридцать утра');
+  assert.equal(spokenClock('18:00', 'en'), '6pm');
+  const settings = plannerVoiceSettings({});
+  const russian = plannerSessionConfiguration(settings, {
+    timeZone: 'Europe/Warsaw',
+    language: 'ru',
+    plan: [{ ref: 'a1', scope: 'today_planned', title: 'сауну', catalogTitle: 'Sauna', startTime: '18:00', durationMinutes: 20 }],
+  });
+  assert.match(russian.instructions, /сауну \[Sauna\] 18:00 20m \(говори шесть вечера\)/);
+  assert.match(russian.instructions, /естественная русская артикуляция/);
+  assert.match(russian.instructions, /Не выбирай последнюю запись только потому/);
+  assert.equal(russian.instructions.includes('A plain greeting'), false);
+  assert.equal(russian.audio.output.voice, 'marin');
+  assert.equal(russian.model, 'gpt-realtime-2.1');
+  assert.equal(russian.reasoning, undefined);
+  const polish = plannerSessionConfiguration(settings, {
+    timeZone: 'Europe/Warsaw',
+    language: 'pl',
+    plan: [{ ref: 'a1', scope: 'today_planned', title: 'saunę', catalogTitle: 'Sauna', startTime: '18:00', durationMinutes: 20 }],
+  });
+  assert.match(polish.instructions, /powiedz 6 wieczorem/);
+  assert.match(polish.instructions, /nie pytaj „Coś jeszcze\?”/);
+  assert.match(polish.instructions, /wywołaj end_call/);
+  assert.equal(polish.instructions.includes('Dopiero po potwierdzonym wyniku'), false);
+  assert.equal(polish.instructions.includes('A plain greeting'), false);
 });

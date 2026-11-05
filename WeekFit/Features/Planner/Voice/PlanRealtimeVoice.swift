@@ -158,13 +158,17 @@ nonisolated struct PlanRealtimeToolReply: Equatable {
         if let error { body["error"] = error }
         if !schedule.isEmpty {
             body["items"] = schedule.map {
-                [
+                var row: [String: Any] = [
                     "ref": $0.ref,
                     "title": $0.title,
                     "startTime": $0.startTime,
                     "durationMinutes": $0.durationMinutes,
                     "done": $0.done,
-                ] as [String: Any]
+                ]
+                if !$0.catalogTitle.isEmpty {
+                    row["catalogTitle"] = $0.catalogTitle
+                }
+                return row
             }
         }
         return body
@@ -174,6 +178,7 @@ nonisolated struct PlanRealtimeToolReply: Equatable {
 nonisolated struct PlanRealtimeScheduleRow: Equatable {
     var ref: String
     var title: String
+    var catalogTitle: String = ""
     var startTime: String
     var durationMinutes: Int
     var done: Bool

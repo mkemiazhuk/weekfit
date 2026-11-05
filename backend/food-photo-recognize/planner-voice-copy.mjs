@@ -288,11 +288,20 @@ export function spokenClock(time, language, grammaticalCase = 'nom') {
   const hour = Number(match[1]);
   const minute = Number(match[2]);
   if (hour > 23 || minute > 59) return String(time);
+  const code = plannerVoiceLanguage(language);
+  if (code === 'ru') return russianClock(hour, minute, grammaticalCase);
   const clockHour = hour % 12 || 12;
   const minutes = minute === 0 ? '' : `:${String(minute).padStart(2, '0')}`;
-  const code = plannerVoiceLanguage(language);
+  const padded = minute === 0 ? '' : String(minute).padStart(2, '0');
   if (code === 'en') return `${clockHour}${minutes}${hour < 12 ? 'am' : 'pm'}`;
-  if (code === 'ru') return russianClock(hour, minute, grammaticalCase);
+  if (code === 'pl') return `${clockHour}${minutes} ${hour < 12 ? 'rano' : 'wieczorem'}`;
+  if (code === 'fr') return `${clockHour}h${padded} ${hour < 12 ? 'du matin' : 'du soir'}`;
+  if (code === 'es') return `${clockHour}${minutes} ${hour < 12 ? 'de la mañana' : 'de la tarde'}`;
+  if (code === 'de') return `${clockHour}${minutes} Uhr ${hour < 12 ? 'morgens' : 'abends'}`;
+  if (code === 'it') return `${clockHour}${minutes} ${hour < 12 ? 'di mattina' : 'di sera'}`;
+  if (code === 'ja') return `${hour < 12 ? '午前' : '午後'}${clockHour}時${minute === 0 ? '' : `${minute}分`}`;
+  if (code === 'ko') return `${hour < 12 ? '오전' : '오후'} ${clockHour}시${minute === 0 ? '' : ` ${minute}분`}`;
+  if (code === 'zh-Hans') return `${hour < 12 ? '早上' : '晚上'}${clockHour}点${minute === 0 ? '' : `${minute}分`}`;
   return minute === 0 ? String(hour) : `${hour}:${String(minute).padStart(2, '0')}`;
 }
 

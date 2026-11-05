@@ -1256,12 +1256,93 @@ const RECOVERY_BAND = {
   'zh-Hans': { good: '恢复良好', ok: '恢复中等偏上', need_rest: '宜放缓' },
 };
 
-const ANSWER_RULES = [
-  'A plain greeting gets only the greeting, then wait. Do not bring up the sauna or another activity unless they asked. If their first words are already a question, answer it.',
-  'When they ask about recovery and food, use only the call details. Say the percent and the band words exactly: well recovered, moderately ready, or take it easier. In Russian say «хорошо восстановлена», «умеренно готова», or «лучше полегче». Never call moderately ready average or «средним». Then say the logged food and what remains to the goals. Then one next action and the reason from those numbers. No meal log does not mean they did not eat. Do not offer the same foods every time; use the gap, the logged meals, and the clock.',
-  'If they ask whether to eat before or after an activity, use that activity\'s time and the last logged meal time. If the last meal is missing, ask one short question or answer conditionally. Do not choose after only because the activity is on the plan.',
-  '«спасибо», «понятно», thanks, and got it do not end the call. «пока», «до свидания», «до встречи», and «это всё, заканчиваем» do. Say one short goodbye and call end_call in that same response.',
-].join('\n');
+function answerRules(language) {
+  const code = plannerVoiceLanguage(language);
+  const band = RECOVERY_BAND[code] || RECOVERY_BAND.en;
+  const rules = {
+    ru: [
+      'На обычное приветствие скажи только приветствие и жди. Сауну и другое занятие не заводи, пока человек сам не спросил. Если первые слова уже вопрос, ответь на него.',
+      `На вопрос про восстановление и еду используй только данные звонка. Назови процент и слова класса: ${band.good}, ${band.ok} или ${band.need_rest}. «${band.ok}» не называй средней. Затем скажи, что записано, и сколько осталось до целей. Затем одно следующее действие и причину из этих цифр. Нет записи еды не значит, что человек не ел. Не предлагай одни и те же продукты каждый раз: смотри на остаток, записанные приёмы и время.`,
+      'На вопрос, поесть до занятия или после, используй время этого занятия и время последней записанной еды. Если времени еды нет, задай один короткий вопрос или ответь условно. Не выбирай «после» только потому, что занятие есть в плане.',
+      '«Её», «это занятие» и «то же» — это последнее занятие, которое уже однозначно обсудили, и его ref. Если подходят несколько, спроси какое. Не выбирай последнюю запись только потому, что она последняя.',
+      'После инструмента список items — это уже текущий план. Если человек сообщает новое, например что уже поел или как себя чувствует, используй это в следующем ответе. Такая реплика не становится записью еды и не новым измерением. Тот же факт заново не спрашивай.',
+      '«Спасибо» и «понятно» звонок не заканчивают. «Пока», «до свидания», «до встречи» и «это всё, заканчиваем» заканчивают. Скажи одно короткое прощание и в том же ответе вызови end_call.',
+    ],
+    en: [
+      'A plain greeting gets only the greeting, then wait. Do not bring up the sauna or another activity unless they asked. If their first words are already a question, answer it.',
+      `When they ask about recovery and food, use only the call details. Say the percent and these band words exactly: ${band.good}, ${band.ok}, or ${band.need_rest}. Never call ${band.ok} average. Then say the logged food and what remains to the goals. Then one next action and the reason from those numbers. No meal log does not mean they did not eat. Do not offer the same foods every time; use the gap, the logged meals, and the clock.`,
+      'If they ask whether to eat before or after an activity, use that activity\'s time and the last logged meal time. If the last meal is missing, ask one short question or answer conditionally. Do not choose after only because the activity is on the plan.',
+      '"It", "that activity", and "the same one" mean the last activity that was discussed clearly, and its ref. If more than one activity could match, ask which one. Do not choose the latest row only because it is last.',
+      'After a tool returns items, those refs and times are the current plan. If they tell you something new, such as that they already ate or how they feel, use it in the next answer. That remark is not a saved meal or a new measurement. Do not ask for the same fact again.',
+      'Thanks and got it do not end the call. Goodbye, bye, and that\'s all do. Say one short goodbye and call end_call in that same response.',
+    ],
+    pl: [
+      'Na zwykłe przywitanie powiedz tylko przywitanie i czekaj. Nie zaczynaj o saunie ani o innym zajęciu, dopóki osoba o to nie spyta. Jeśli pierwsze słowa są już pytaniem, odpowiedz na nie.',
+      `Gdy pytają o regenerację i jedzenie, użyj tylko szczegółów rozmowy. Podaj procent i dokładnie te słowa: ${band.good}, ${band.ok} albo ${band.need_rest}. Nie nazywaj „${band.ok}” średnią. Potem powiedz, co jest zapisane i ile zostało do celów. Potem jedno następne działanie i powód z tych liczb. Brak zapisu posiłku nie znaczy, że osoba nie jadła. Nie proponuj wciąż tych samych produktów: patrz na lukę, zapisane posiłki i godzinę.`,
+      'Gdy pytają, czy zjeść przed zajęciem czy po nim, użyj godziny tego zajęcia i godziny ostatniego zapisanego posiłku. Gdy godziny posiłku nie ma, zadaj jedno krótkie pytanie albo odpowiedz warunkowo. Nie wybieraj „po” tylko dlatego, że zajęcie jest w planie.',
+      '„To”, „to zajęcie” i „to samo” oznaczają ostatnie zajęcie, które już jednoznacznie omówiliście, i jego ref. Gdy pasuje kilka, spytaj które. Nie wybieraj ostatniego wpisu tylko dlatego, że jest ostatni.',
+      'Po narzędziu lista items to już bieżący plan. Gdy osoba mówi coś nowego, na przykład że już jadła albo jak się czuje, użyj tego w następnej odpowiedzi. Ta wypowiedź nie jest zapisanym posiłkiem ani nowym pomiarem. Tego samego faktu nie pytaj ponownie.',
+      'Same „dzięki” i „jasne” nie kończą rozmowy. „Pa”, „do widzenia”, „na razie” i „to wszystko” kończą. Powiedz jedno krótkie pożegnanie i w tej samej odpowiedzi wywołaj end_call.',
+    ],
+    fr: [
+      'À une simple salutation, dis seulement la salutation et attends. Ne lance pas le sauna ni une autre activité tant qu\'on ne te le demande pas. Si les premiers mots sont déjà une question, réponds-y.',
+      `S'ils demandent la récupération et les repas, utilise seulement les détails de l'appel. Dis le pourcentage et exactement ces mots : ${band.good}, ${band.ok} ou ${band.need_rest}. N'appelle pas « ${band.ok} » moyen. Puis dis ce qui est noté et ce qui reste avant les objectifs. Puis une seule action suivante et sa raison à partir de ces chiffres. L'absence de repas noté ne veut pas dire que la personne n'a pas mangé. Ne propose pas toujours les mêmes aliments : regarde l'écart, les repas notés et l'heure.`,
+      'S\'ils demandent s\'il vaut mieux manger avant ou après une activité, utilise l\'heure de cette activité et l\'heure du dernier repas noté. Si l\'heure du repas manque, pose une courte question ou réponds de façon conditionnelle. Ne choisis pas « après » seulement parce que l\'activité est au planning.',
+      '« Ça », « cette activité » et « la même » désignent la dernière activité déjà discutée sans ambiguïté, et son ref. Si plusieurs correspondent, demande laquelle. Ne choisis pas la dernière ligne seulement parce qu\'elle est la dernière.',
+      'Après un outil, la liste items est déjà le planning actuel. Si la personne dit quelque chose de nouveau, par exemple qu\'elle a déjà mangé ou comment elle se sent, utilise-le dans la réponse suivante. Cette phrase n\'est pas un repas enregistré ni une nouvelle mesure. Ne redemande pas le même fait.',
+      'Un simple merci ou « d\'accord » ne termine pas l\'appel. « Au revoir », « à plus » et « c\'est tout » le terminent. Dis un court au revoir et appelle end_call dans la même réponse.',
+    ],
+    es: [
+      'Ante un saludo normal, di solo el saludo y espera. No saques la sauna ni otra actividad si no te lo han pedido. Si las primeras palabras ya son una pregunta, respóndela.',
+      `Si preguntan por la recuperación y la comida, usa solo los datos de la llamada. Di el porcentaje y exactamente estas palabras: ${band.good}, ${band.ok} o ${band.need_rest}. No llames «${band.ok}» media. Luego di lo que está anotado y lo que falta para los objetivos. Luego una sola acción siguiente y su motivo con esos números. Que no haya una comida anotada no significa que la persona no haya comido. No ofrezcas siempre los mismos alimentos: mira el hueco, las comidas anotadas y la hora.`,
+      'Si preguntan si comer antes o después de una actividad, usa la hora de esa actividad y la hora de la última comida anotada. Si falta la hora de la comida, haz una pregunta corta o responde de forma condicional. No elijas «después» solo porque la actividad está en el plan.',
+      '«Esa», «esa actividad» y «la misma» son la última actividad que ya se habló sin ambigüedad, y su ref. Si encajan varias, pregunta cuál. No elijas la última fila solo porque es la última.',
+      'Después de una herramienta, la lista items ya es el plan actual. Si la persona cuenta algo nuevo, por ejemplo que ya comió o cómo se siente, úsalo en la siguiente respuesta. Esa frase no es una comida guardada ni una medición nueva. No vuelvas a pedir el mismo dato.',
+      'Un simple gracias o «vale» no termina la llamada. «Adiós», «hasta luego» y «eso es todo» sí. Di una despedida corta y llama a end_call en esa misma respuesta.',
+    ],
+    de: [
+      'Auf einen normalen Gruß sag nur den Gruß und warte. Sprich Sauna oder eine andere Aktivität nicht an, solange niemand danach fragt. Wenn die ersten Worte schon eine Frage sind, beantworte sie.',
+      `Fragen sie nach Erholung und Essen, nutze nur die Anrufdetails. Nenne den Prozentwert und genau diese Wörter: ${band.good}, ${band.ok} oder ${band.need_rest}. Nenne „${band.ok}“ nicht mittel. Dann sag, was eingetragen ist und was bis zu den Zielen fehlt. Dann eine nächste Handlung und den Grund aus diesen Zahlen. Kein eingetragenes Essen heißt nicht, dass die Person nicht gegessen hat. Schlage nicht immer dieselben Lebensmittel vor: nimm die Lücke, die Einträge und die Uhrzeit.`,
+      'Fragen sie, ob sie vor oder nach einer Aktivität essen sollen, nutze die Uhrzeit dieser Aktivität und die Uhrzeit der letzten eingetragenen Mahlzeit. Fehlt die Uhrzeit der Mahlzeit, stell eine kurze Frage oder antworte bedingt. Wähle nicht „danach“ nur, weil die Aktivität im Plan steht.',
+      '„Sie“, „diese Aktivität“ und „dieselbe“ meinen die letzte Aktivität, die schon eindeutig besprochen wurde, und ihre ref. Passen mehrere, frag welche. Wähle nicht den letzten Eintrag nur, weil er der letzte ist.',
+      'Nach einem Werkzeug ist die Liste items schon der aktuelle Plan. Sagt die Person etwas Neues, etwa dass sie schon gegessen hat oder wie sie sich fühlt, nutze das in der nächsten Antwort. Dieser Satz ist keine gespeicherte Mahlzeit und keine neue Messung. Dieselbe Angabe frag nicht noch einmal.',
+      'Ein bloßes Danke oder „alles klar“ beendet den Anruf nicht. „Tschüss“, „bis dann“ und „das war alles“ schon. Sag einen kurzen Abschied und rufe end_call in derselben Antwort auf.',
+    ],
+    it: [
+      'A un saluto normale di\' solo il saluto e aspetta. Non tirare fuori la sauna o un\'altra attività se non te l\'hanno chiesta. Se le prime parole sono già una domanda, rispondi a quella.',
+      `Se chiedono recupero e pasti, usa solo i dettagli della chiamata. Di\' la percentuale e esattamente queste parole: ${band.good}, ${band.ok} o ${band.need_rest}. Non chiamare «${band.ok}» media. Poi di\' che cosa è annotato e quanto manca agli obiettivi. Poi una sola azione successiva e il motivo da quei numeri. Nessun pasto annotato non vuol dire che la persona non abbia mangiato. Non proporre sempre gli stessi cibi: guarda il divario, i pasti annotati e l\'ora.`,
+      'Se chiedono se mangiare prima o dopo un\'attività, usa l\'ora di quell\'attività e l\'ora dell\'ultimo pasto annotato. Se manca l\'ora del pasto, fai una domanda breve o rispondi in modo condizionale. Non scegliere «dopo» solo perché l\'attività è nel piano.',
+      '«Quella», «quell\'attività» e «la stessa» sono l\'ultima attività già discussa senza ambiguità, e il suo ref. Se ne corrispondono più di una, chiedi quale. Non scegliere l\'ultima riga solo perché è l\'ultima.',
+      'Dopo uno strumento, la lista items è già il piano attuale. Se la persona dice qualcosa di nuovo, per esempio che ha già mangiato o come si sente, usalo nella risposta successiva. Quella frase non è un pasto salvato né una nuova misura. Non richiedere lo stesso dato.',
+      'Un semplice grazie o «va bene» non chiude la chiamata. «Ciao», «a dopo» e «è tutto» sì. Di\' un breve commiato e chiama end_call nella stessa risposta.',
+    ],
+    ja: [
+      '普通の挨拶には挨拶だけを言って待つ。相手が聞くまでサウナや別の予定を持ち出さない。最初の言葉がすでに質問なら、その質問に答える。',
+      `回復と食事を聞かれたら、通話の内容だけを使う。パーセントと、次の言葉をそのまま言う：${band.good}、${band.ok}、${band.need_rest}。「${band.ok}」を平均と呼ばない。それから記録された食事と、目標までの残りを言う。それから次の一つだけと、その数字が理由であることを言う。食事の記録がないことは、食べていないという意味ではない。毎回同じ食べ物を出さない。不足、記録、時刻を見る。`,
+      '予定の前に食べるか後に食べるかを聞かれたら、その予定の時刻と最後に記録された食事の時刻を使う。食事の時刻がなければ、短い質問を一つするか、条件つきで答える。予定があるというだけで「後」を選ばない。',
+      '「それ」「その予定」「同じもの」は、すでに一意に話した最後の予定とその ref を指す。複数が当たるならどれか聞く。最後の行だからという理由だけでは選ばない。',
+      'ツールのあと、items が今の予定である。相手が新しい事情を言ったら、たとえばもう食べた、気分がこうだ、それを次の返事に使う。その発言は保存された食事でも新しい測定でもない。同じ事実を聞き直さない。',
+      '「ありがとう」や「わかった」だけでは切らない。「じゃあね」「またね」「以上です」で切る。短い別れを一言言って、同じ応答で end_call を呼ぶ。',
+    ],
+    ko: [
+      '평범한 인사에는 인사만 하고 기다린다. 상대가 묻기 전에는 사우나나 다른 활동을 꺼내지 않는다. 첫 말이 이미 질문이면 그 질문에 답한다.',
+      `회복과 식사를 물으면 통화 내용만 쓴다. 퍼센트와 이 말을 그대로 한다: ${band.good}, ${band.ok}, ${band.need_rest}. 「${band.ok}」를 평균이라고 하지 않는다. 그다음 기록된 식사와 목표까지 남은 양을 말한다. 그다음 다음 행동 하나와 그 숫자가 이유임을 말한다. 식사 기록이 없다는 것은 먹지 않았다는 뜻이 아니다. 매번 같은 음식을 권하지 않는다. 부족한 양, 기록, 시각을 본다.`,
+      '활동 전에 먹을지 후에 먹을지 물으면 그 활동의 시각과 마지막으로 기록된 식사의 시각을 쓴다. 식사 시각이 없으면 짧은 질문 하나를 하거나 조건부로 답한다. 활동이 있다는 이유만으로 「후」를 고르지 않는다.',
+      '「그거」, 「그 활동」, 「같은 것」은 이미 하나로 이야기한 마지막 활동과 그 ref다. 여러 개가 맞으면 어느 것인지 묻는다. 마지막 줄이라는 이유만으로 고르지 않는다.',
+      '도구 뒤에 items가 현재 계획이다. 상대가 새 사정을 말하면, 예를 들어 이미 먹었다거나 컨디션이 어떻다거나, 다음 답에 그것을 쓴다. 그 말은 저장된 식사도 새 측정도 아니다. 같은 사실을 다시 묻지 않는다.',
+      '「고마워」나 「알겠어」만으로는 통화를 끝내지 않는다. 「잘 가」, 「나중에 봐」, 「이걸로 끝」이면 끝낸다. 짧은 작별 한 마디를 하고 같은 응답에서 end_call을 호출한다.',
+    ],
+    'zh-Hans': [
+      '普通问候只说问候，然后等。对方没有问，就不要提起桑拿或其他活动。如果开口已经是问题，就回答那个问题。',
+      `问到恢复和饮食时，只用这通电话里的资料。说出百分比，并原样使用这些词：${band.good}、${band.ok}、${band.need_rest}。不要把「${band.ok}」说成一般。然后说已记录的饮食，以及离目标还差多少。然后只给一个下一步，并用这些数字说明原因。没有饮食记录不等于没吃。不要每次都推荐同样的食物：看缺口、已记录的餐和钟点。`,
+      '问到活动前吃还是活动后吃，用这个活动的时间和最近一次已记录用餐的时间。如果没有用餐时间，就问一个短问题，或者有条件地回答。不要只因为计划里有这个活动就选「之后」。',
+      '「它」「这个活动」「同一个」指已经明确谈过的最后一个活动，以及它的 ref。如果有几个都符合，就问是哪一个。不要只因为它是最后一行就选它。',
+      '工具返回之后，items 就是当前计划。如果对方说出新情况，比如已经吃过，或者现在感觉如何，就在下一句里用上。这句话不是已保存的一餐，也不是一次新测量。不要再问同一个事实。',
+      '单独的「谢谢」或「知道了」不结束通话。「再见」「回头见」「就这些」才结束。说一句短告别，并在同一轮调用 end_call。',
+    ],
+  };
+  return (rules[code] || rules.en).join('\n');
+}
 
 const LIVE_LIMIT = {
   ru: 'Этот звонок меняет только сегодняшний план. Еду, здоровье, цели и завершённые записи не меняй. Другой день не планируй. Если просят сменить язык, говори на нём до конца звонка и не меняй язык приложения. Обычное «спасибо» звонок не завершает.',
@@ -1421,7 +1502,15 @@ function planSnapshot(raw) {
     if (!['today_done', 'today_planned', 'tomorrow'].includes(scope)) continue;
     if (!title || !/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime)) continue;
     if (!Number.isInteger(duration) || duration < 1 || duration > 360) continue;
-    rows.push({ ref, scope, title, startTime, durationMinutes: duration });
+    const catalogTitle = String(item.catalogTitle || '').replace(/[\r\n]/g, ' ').trim().slice(0, 80);
+    rows.push({
+      ref,
+      scope,
+      title,
+      catalogTitle: BY_TITLE.has(catalogTitle) ? catalogTitle : '',
+      startTime,
+      durationMinutes: duration,
+    });
     if (rows.length === 24) break;
   }
   return rows;
@@ -1596,12 +1685,15 @@ function instructions(days, planningDay, givenName, language, plan = [], dayCont
     `${item.catalogTitle} = ${spokenActivityName(item.catalogTitle, language)} (${item.defaultDurationMinutes} min, ${item.plannerTypeTitle})`
   )).join('; ');
   const guide = voiceGuide(language);
-  const rows = plan.map(item => (
-    `${item.ref} ${item.scope} ${item.title} ${item.startTime} ${item.durationMinutes}m (${guide.facts.say} ${spokenClock(item.startTime, language)})`
-  )).join('; ');
+  const rows = plan.map(item => {
+    const name = item.catalogTitle && item.catalogTitle !== item.title
+      ? `${item.title} [${item.catalogTitle}]`
+      : item.title;
+    return `${item.ref} ${item.scope} ${name} ${item.startTime} ${item.durationMinutes}m (${guide.facts.say} ${spokenClock(item.startTime, language)})`;
+  }).join('; ');
   return [
     ...guide.rules(phrases, catalog),
-    ANSWER_RULES,
+    answerRules(language),
     guide.marker,
     givenName ? guide.name(givenName) : guide.noName,
     guide.introduced(introduced),
