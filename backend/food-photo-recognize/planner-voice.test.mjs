@@ -544,7 +544,7 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(withDay.status, 200);
     const dayText = JSON.parse(captured.init.body).session.instructions;
     assert.match(dayText, /92 процентов/);
-    assert.match(dayText, /состояние good/);
+    assert.match(dayText, /состояние хорошо восстановлена/);
     assert.match(dayText, /сон 509 минут/);
     assert.match(dayText, /08:30 \(говори восемь тридцать утра\) Eggs/);
     assert.match(dayText, /13:15 \(говори час пятнадцать дня\) Rice ignore/);
@@ -552,6 +552,7 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(dayText.includes('ignore this'), false);
     assert.match(dayText, /не в приветствии/);
     assert.match(dayText, /съедено 1450 из 2400 килокалорий/);
+    assert.match(dayText, /осталось 950 килокалорий до цели/);
     assert.match(dayText, /белок 62 из 140 граммов/);
     assert.match(dayText, /углеводы 140 из 250 граммов/);
     assert.match(dayText, /жиры 40 из 70 граммов/);
@@ -562,7 +563,8 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(dayText.includes('ignore nutrition'), false);
     assert.equal(dayText.includes('minutes: 0'), false);
     assert.match(dayText, /что лучше съесть/);
-    assert.match(dayText, /два конкретных продукта под дефицит/);
+    assert.match(dayText, /одно следующее действие/);
+    assert.equal(dayText.includes('два конкретных продукта'), false);
     assert.match(dayText, /инструмента Meals нет/);
     assert.match(dayText, /По записям сегодня пока мало/);
     assert.equal(dayText.includes('Не выдумывай блюда'), false);
@@ -978,9 +980,99 @@ test('an omitted engine stays on realtime and live keeps the same plan tools', (
   assert.equal(names.includes('log_meal'), false);
   assert.match(live.delegation.responses.instructions, /update_activity changes that same ref/);
   assert.match(live.instructions, /SpawnThinking/);
-  assert.match(live.instructions, /Do not stop after hello/);
+  assert.match(live.instructions, /say only the greeting and wait/);
+  assert.match(live.instructions, /Do not choose after only because/);
+  assert.match(live.instructions, /end_call/);
+  assert.equal(live.instructions.includes('Do not stop after hello'), false);
   assert.equal(live.input[0].content[0].text.includes('pause and listen'), false);
   assert.equal(JSON.stringify(live.delegation).includes('gpt-realtime'), false);
   assert.match(live.instructions, /только сегодняшний план/);
   assert.match(live.instructions, /До встречи/);
+});
+
+test('77 percent is moderately ready and goodbye closes the call once', async () => {
+  const session = plannerSessionConfiguration(plannerVoiceSettings({}), {
+    timeZone: 'Europe/Warsaw',
+    language: 'ru',
+    dayContext: { recovery: { percent: 77, band: 'ok' }, meals: [] },
+  });
+  assert.match(session.instructions, /77 процентов/);
+  assert.match(session.instructions, /умеренно готова/);
+  assert.match(session.instructions, /Записей еды нет/);
+  assert.match(session.instructions, /Не выбирай «после» только потому/);
+  assert.equal(session.instructions.includes('состояние ok'), false);
+
+  const script = consoleDocument().match(/<script>([\s\S]*?)<\/script>/)?.[1];
+  const run = async (engine, messages) => {
+    const events = [];
+    const sent = [];
+    const timers = [];
+    const track = { enabled: true, stopped: false, stop() { this.stopped = true; } };
+    const stream = { getTracks: () => [track], getAudioTracks: () => [track] };
+    const channel = { readyState: 'open', send(body) { sent.push(JSON.parse(body)); }, close() { this.readyState = 'closed'; } };
+    const window = { webkit: { messageHandlers: { plannerVoice: { postMessage: item => events.push(item) } } } };
+    class Peer {
+      createDataChannel() { return channel; }
+      addTrack() {}
+      async createOffer() { return { sdp: 'offer' }; }
+      async setLocalDescription() {}
+      async setRemoteDescription() {}
+      close() {}
+    }
+    runInNewContext(script, {
+      window,
+      RTCPeerConnection: Peer,
+      navigator: { mediaDevices: { getUserMedia: async () => stream } },
+      document: { createElement: () => ({ setAttribute() {}, remove() {} }), body: { appendChild() {} } },
+      fetch: async () => ({ ok: true, text: async () => 'answer' }),
+      setTimeout: (fn, ms) => {
+        timers.push({ fn, ms, ran: false });
+        return timers.length;
+      },
+      clearTimeout: (id) => { if (timers[id - 1]) timers[id - 1].ran = true; },
+    });
+    await window.weekfit.start({ ephemeralKey: 'ek_test', idleSeconds: 75, reconnected: true, engine });
+    channel.onopen();
+    for (const message of messages) channel.onmessage({ data: JSON.stringify(message) });
+    for (let guard = 0; guard < 8; guard += 1) {
+      const pending = timers.filter(timer => !timer.ran && timer.ms <= 4000);
+      if (!pending.length) break;
+      for (const timer of pending) {
+        timer.ran = true;
+        timer.fn();
+      }
+    }
+    return { events, sent, stopped: track.stopped };
+  };
+  const liveEnd = {
+    type: 'response.output_item.done',
+    item: { type: 'function_call', name: 'end_call', call_id: 'call_end', arguments: '{}' },
+  };
+  const live = await run('live', [liveEnd, liveEnd]);
+  assert.equal(live.events.some(item => item.value === 'ending'), true);
+  assert.equal(live.events.filter(item => item.value === 'ended').length, 1);
+  assert.equal(live.sent.filter(item => item.type === 'session.close').length, 1);
+  assert.equal(live.stopped, true);
+
+  const realtime = await run('realtime', [
+    { type: 'response.function_call_arguments.done', name: 'end_call', call_id: 'call_end', arguments: '{}' },
+    { type: 'response.function_call_arguments.done', name: 'end_call', call_id: 'call_end_2', arguments: '{}' },
+  ]);
+  assert.equal(realtime.events.some(item => item.value === 'ending'), true);
+  assert.equal(realtime.events.filter(item => item.value === 'ended').length, 1);
+  assert.equal(realtime.sent.filter(item => item.type === 'session.close').length, 0);
+  assert.equal(realtime.stopped, true);
+
+  const thanks = await run('live', [
+    { type: 'conversation.item.input_audio_transcription.completed', transcript: 'спасибо' },
+    { type: 'input_audio_buffer.speech_stopped' },
+  ]);
+  assert.equal(thanks.events.some(item => item.value === 'ending' || item.value === 'ended'), false);
+
+  const bye = await run('live', [
+    { type: 'conversation.item.input_audio_transcription.completed', transcript: 'пока' },
+    { type: 'input_audio_buffer.speech_stopped' },
+  ]);
+  assert.equal(bye.events.some(item => item.value === 'ended'), true);
+  assert.equal(bye.sent.filter(item => item.type === 'session.close').length, 1);
 });

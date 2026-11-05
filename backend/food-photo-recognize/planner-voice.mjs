@@ -519,6 +519,8 @@ export function consoleDocument() {
   let goodbyeTail = null;
   let farewellForced = false;
   let farewellWait = null;
+  let userSaid = '';
+  let goodbyeIntent = null;
   let presence = null;
   let closing = null;
   let presenceAsked = false;
@@ -546,6 +548,18 @@ export function consoleDocument() {
     ja: { there: (n) => (n ? n + '、まだいる？' : 'まだいる？'), bye: '通話を終えるね。またね！' },
     ko: { there: (n) => (n ? n + ', 아직 있어?' : '아직 있어?'), bye: '통화를 마칠게. 안녕!' },
     'zh-Hans': { there: (n) => (n ? n + '，你还在吗？' : '你还在吗？'), bye: '我先挂了。再见！' },
+  };
+  const GREET = {
+    ru: 'Привет! Как ты?',
+    en: 'Hi! How are you?',
+    pl: 'Cześć! Jak się masz?',
+    fr: 'Salut ! Ça va ?',
+    es: '¡Hola! ¿Qué tal?',
+    de: 'Hi! Wie geht es dir?',
+    it: 'Ciao! Come stai?',
+    ja: 'こんにちは。調子はどう？',
+    ko: '안녕! 잘 지내?',
+    'zh-Hans': '你好！怎么样？',
   };
   const NUDGE = {
     ru: 'Человек уже договорил и слышит тишину. Сразу ответь на его последнюю фразу, одной короткой фразой. Не говори, что думаешь, и не отвечай только «я здесь».',
@@ -667,6 +681,15 @@ export function consoleDocument() {
       hangup = true;
       hangupConfirmed = false;
     }
+    if (liveEngine) {
+      channel.send(JSON.stringify({
+        type: 'session.commentary.append',
+        event_id: 'line_' + Date.now(),
+        delegation_id: null,
+        content: text,
+      }));
+      return;
+    }
     channel.send(JSON.stringify({
       type: 'response.create',
       response: { instructions: 'Say exactly this and nothing else: ' + text },
@@ -735,9 +758,35 @@ export function consoleDocument() {
     } catch (e) {}
   }
 
-  function armGoodbyeFallback() {
+  function armGoodbyeFallback(ms) {
     if (goodbyeFallback || goodbyeTail) return;
-    goodbyeFallback = setTimeout(() => stop('goodbye'), 12000);
+    goodbyeFallback = setTimeout(() => finishGoodbye(), ms || 12000);
+  }
+
+  function wantsToHangUp(text) {
+    return /(?:^|\\s)пока(?:\\s|$|[.!,])|до свидания|до встречи|это всё,\\s*заканчиваем|that's all|goodbye|(?:^|\\s)bye(?:\\s|$|[.!,])/i.test(text || '');
+  }
+
+  function beginHangup() {
+    hangup = true;
+    hangupConfirmed = true;
+    clearPresence();
+    if (goodbyeIntent) clearTimeout(goodbyeIntent);
+    goodbyeIntent = null;
+    if (goodbyeLocked) return;
+    goodbyeLocked = true;
+    closeMic();
+    post({ type: 'state', value: 'ending' });
+    if (audioPlaying) {
+      armGoodbyeFallback(12000);
+      return;
+    }
+    if (responseAudio || farewellForced) {
+      finishGoodbye();
+      return;
+    }
+    ensureSpokenFarewell();
+    armGoodbyeFallback(4000);
   }
 
   function ensureSpokenFarewell() {
@@ -755,9 +804,11 @@ export function consoleDocument() {
     if (goodbyeFallback) clearTimeout(goodbyeFallback);
     goodbyeFallback = null;
     goodbyeTail = setTimeout(() => {
-      if (liveEngine && channel && channel.readyState === 'open') {
-        channel.send(JSON.stringify({ type: 'session.close' }));
-      }
+      try {
+        if (liveEngine && channel && channel.readyState === 'open') {
+          channel.send(JSON.stringify({ type: 'session.close' }));
+        }
+      } catch (e) {}
       stop('goodbye');
     }, 20);
   }
@@ -910,6 +961,10 @@ export function consoleDocument() {
       onEvent(JSON.stringify(event.event));
       return;
     }
+    if (/input/.test(type) && /transcript|transcription/.test(type)) {
+      const text = event.transcript || event.delta || (event.item && (event.item.transcript || event.item.text)) || '';
+      if (text) userSaid = (userSaid + ' ' + text).slice(-500);
+    }
     if (liveEngine && type === 'response.function_call_arguments.done') return;
     if (type === 'session.started') {
       post({ type: 'state', value: 'voice' });
@@ -919,13 +974,13 @@ export function consoleDocument() {
           type: 'session.commentary.append',
           event_id: 'greeting_1',
           delegation_id: null,
-          content: ${JSON.stringify(LIVE_OPEN)},
+          content: GREET[sessionLanguage] || GREET.en,
         }));
       }
       return;
     }
     if (type === 'session.closed') {
-      post({ type: 'state', value: 'ended', reason: 'provider' });
+      stop('provider');
       return;
     }
     if (liveEngine && type === 'response.output_item.done' && event.item && event.item.type === 'function_call') {
@@ -943,9 +998,7 @@ export function consoleDocument() {
         } catch (e) {}
       }
       if (name === 'end_call') {
-        hangup = true;
-        hangupConfirmed = true;
-        clearPresence();
+        beginHangup();
         return;
       }
       if (['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'log_water', 'remind_water', 'set_call_language'].includes(name)) {
@@ -968,6 +1021,13 @@ export function consoleDocument() {
       return;
     }
     if (type === 'input_audio_buffer.speech_stopped') {
+      if (!goodbyeLocked && !hangup && wantsToHangUp(userSaid)) {
+        if (goodbyeIntent) clearTimeout(goodbyeIntent);
+        goodbyeIntent = setTimeout(() => {
+          goodbyeIntent = null;
+          if (!hangup) beginHangup();
+        }, 2500);
+      }
       if (!goodbyeLocked && !hangup) armReplyWatch();
       return;
     }
@@ -989,6 +1049,11 @@ export function consoleDocument() {
       if (farewellWait) {
         clearTimeout(farewellWait);
         farewellWait = null;
+      }
+      if (hangup && goodbyeFallback) {
+        clearTimeout(goodbyeFallback);
+        goodbyeFallback = null;
+        armGoodbyeFallback(12000);
       }
       return;
     }
@@ -1022,18 +1087,7 @@ export function consoleDocument() {
         nudgeReply();
       }
       if (hangup) {
-        post({ type: 'state', value: 'ending' });
-        // They said goodbye themselves: an echoed «пока» must not reopen the call.
-        if (hangupConfirmed) {
-          goodbyeLocked = true;
-          closeMic();
-        }
-        // The goodbye audio can finish before end_call arrives; don't wait for a stop that already happened.
-        if (!audioPlaying && responseAudio) finishGoodbye();
-        else {
-          if (!responseAudio) ensureSpokenFarewell();
-          armGoodbyeFallback();
-        }
+        beginHangup();
         return;
       }
       if (!audioPlaying && !toolBusy && !presence && !closing) armPresence();
@@ -1046,9 +1100,7 @@ export function consoleDocument() {
       return;
     }
     if (type === 'response.function_call_arguments.done' && event.name === 'end_call') {
-      hangup = true;
-      hangupConfirmed = true;
-      clearPresence();
+      beginHangup();
       return;
     }
     if (type === 'response.function_call_arguments.done' && event.name === 'need_a_moment') {
@@ -1189,7 +1241,27 @@ export function plannerVoiceEngine(body) {
   throw new ServiceError('invalid_voice_engine', 422);
 }
 
-const LIVE_OPEN = 'Greet in the session language, then keep leading in the same turn. After the greeting, say one concrete observation from today\'s recovery, food, or plan, and one short question or one proposed change. Do not stop after hello. Do not list every number. If a fact is missing, skip it. After they answer, take the next step yourself instead of waiting silently. After a saved change, continue with the next useful point. Do not ask whether there is anything else.';
+const LIVE_OPEN = 'On a plain greeting, say only the greeting and wait. Do not mention the sauna or any other activity. If they already asked a question, answer that question.';
+
+const RECOVERY_BAND = {
+  ru: { good: 'хорошо восстановлена', ok: 'умеренно готова', need_rest: 'лучше полегче' },
+  en: { good: 'well recovered', ok: 'moderately ready', need_rest: 'take it easier' },
+  pl: { good: 'dobrze zregenerowana', ok: 'umiarkowanie gotowa', need_rest: 'lepiej spokojniej' },
+  fr: { good: 'bien récupérée', ok: 'modérément prête', need_rest: 'mieux y aller doucement' },
+  es: { good: 'bien recuperada', ok: 'moderadamente lista', need_rest: 'mejor ir más suave' },
+  de: { good: 'gut erholt', ok: 'mäßig bereit', need_rest: 'besser leichter' },
+  it: { good: 'ben recuperata', ok: 'moderatamente pronta', need_rest: 'meglio andarci piano' },
+  ja: { good: 'よく回復している', ok: 'まずまず回復している', need_rest: '無理をしない方がいい' },
+  ko: { good: '잘 회복됨', ok: '보통으로 준비됨', need_rest: '더 가볍게' },
+  'zh-Hans': { good: '恢复良好', ok: '恢复中等偏上', need_rest: '宜放缓' },
+};
+
+const ANSWER_RULES = [
+  'A plain greeting gets only the greeting, then wait. Do not bring up the sauna or another activity unless they asked. If their first words are already a question, answer it.',
+  'When they ask about recovery and food, use only the call details. Say the percent and the band words exactly: well recovered, moderately ready, or take it easier. In Russian say «хорошо восстановлена», «умеренно готова», or «лучше полегче». Never call moderately ready average or «средним». Then say the logged food and what remains to the goals. Then one next action and the reason from those numbers. No meal log does not mean they did not eat. Do not offer the same foods every time; use the gap, the logged meals, and the clock.',
+  'If they ask whether to eat before or after an activity, use that activity\'s time and the last logged meal time. If the last meal is missing, ask one short question or answer conditionally. Do not choose after only because the activity is on the plan.',
+  '«спасибо», «понятно», thanks, and got it do not end the call. «пока», «до свидания», «до встречи», and «это всё, заканчиваем» do. Say one short goodbye and call end_call in that same response.',
+].join('\n');
 
 const LIVE_LIMIT = {
   ru: 'Этот звонок меняет только сегодняшний план. Еду, здоровье, цели и завершённые записи не меняй. Другой день не планируй. Если просят сменить язык, говори на нём до конца звонка и не меняй язык приложения. Обычное «спасибо» звонок не завершает.',
@@ -1211,7 +1283,7 @@ export function plannerLiveConfiguration(config, payload) {
   if (!/^gpt-[a-z0-9._-]+$/i.test(backend)) throw new ServiceError('planner_voice_live_unavailable', 503);
   return {
     model: LIVE_MODEL,
-    instructions: `${session.instructions}\n${LIVE_LIMIT[language] || LIVE_LIMIT.en}\n${LIVE_OPEN}\nDelegation policy:\nBackend tools:\n- Today's plan: read it, propose one change, and create, move, shorten, or remove one planned activity when the caller agrees or asks outright.\nGenerate <|SpawnThinking|> when:\n- You need today's facts before the first observation, or the caller asks to add, move, change, or remove a planned activity.\n- A short follow-up such as "move it" continues that change.\nDo not generate <|SpawnThinking|> when one short clarification is still required.\nGenerate <|SpawnThinking|> before saying that a change was saved. Say the saved activity, time, and duration only from the backend result.`,
+    instructions: `${session.instructions}\n${LIVE_LIMIT[language] || LIVE_LIMIT.en}\n${LIVE_OPEN}\nDelegation policy:\nBackend tools:\n- Today's plan, and ending the call.\nGenerate <|SpawnThinking|> when:\n- They ask to add, move, change, or remove a planned activity, or a short follow-up such as "move it" continues that change.\n- They clearly end the call: bye, goodbye, «пока», «до свидания», «до встречи», or «это всё, заканчиваем». The backend must call end_call.\nDo not generate <|SpawnThinking|> for a bare thanks, «спасибо», or «понятно», or when one short clarification is still required.\nGenerate <|SpawnThinking|> before saying that a change was saved. Say the saved activity, time, and duration only from the backend result.`,
     audio: { output: { voice: session.audio.output.voice } },
     input: [{
       type: 'message',
@@ -1232,6 +1304,7 @@ export function plannerLiveConfiguration(config, payload) {
           'Say a change happened only when saved is true. Speak the returned speak text: it is the saved activity, time, and duration. If saved is false or the result is unknown, say what failed and call list_plan before trying again.',
           'After a saved change, the returned items are the current plan. Use those refs for the next request.',
           'Change only today, and do not schedule a time that has already passed. Do not change food, health, goals, or completed activities.',
+          'Call end_call after one short goodbye when they clearly end the call. Do not call it for thanks or «понятно».',
           session.instructions,
         ].join('\n'),
         tools: [
@@ -1448,7 +1521,10 @@ function dayContextLine(dayContext, language) {
     const recovery = dayContext.recovery;
     const bits = [];
     if (recovery.percent) bits.push(facts.percent(recovery.percent));
-    if (recovery.band) bits.push(facts.band(recovery.band));
+    if (recovery.band) {
+      const words = (RECOVERY_BAND[language] || RECOVERY_BAND.en)[recovery.band];
+      if (words) bits.push(facts.band(words));
+    }
     if (recovery.sleepMinutes) bits.push(facts.sleep(recovery.sleepMinutes));
     parts.push(facts.recovery(bits.join(', ')));
   } else {
@@ -1467,6 +1543,8 @@ function dayContextLine(dayContext, language) {
     const bits = [];
     if (nutrition.caloriesEaten != null && nutrition.caloriesBudget != null) {
       bits.push(facts.eatenOf(nutrition.caloriesEaten, nutrition.caloriesBudget));
+      const left = nutrition.caloriesBudget - nutrition.caloriesEaten;
+      bits.push(language === 'ru' ? `осталось ${left} килокалорий до цели` : `${left} kilocalories left to the goal`);
     } else if (nutrition.caloriesEaten != null) {
       bits.push(facts.eaten(nutrition.caloriesEaten));
     }
@@ -1523,6 +1601,7 @@ function instructions(days, planningDay, givenName, language, plan = [], dayCont
   )).join('; ');
   return [
     ...guide.rules(phrases, catalog),
+    ANSWER_RULES,
     guide.marker,
     givenName ? guide.name(givenName) : guide.noName,
     guide.introduced(introduced),
@@ -1660,7 +1739,7 @@ function endCallTool() {
   return {
     type: 'function',
     name: 'end_call',
-    description: 'Hang up after a short farewell when the person clearly wants to end the call. «пока», «до свидания», «до встречи», «всё, спасибо», «все спасибо» and «спасибо, всё» are explicit Russian endings. A short «До встречи.» is enough; the thanks lines may be «Пожалуйста. Всегда рада помочь. До встречи.» Say that farewell, then call this in the same response so the session ends. A bare спасибо, alright, okay, or thanks in the middle of a task is not an ending. Do not announce that you are ending the call. Do not use this before a save is confirmed. Do not call this in a response that has no spoken farewell.',
+    description: 'Hang up after a short farewell when the person clearly wants to end the call. «пока», «до свидания», «до встречи», «это всё, заканчиваем», «всё, спасибо», «все спасибо» and «спасибо, всё» are explicit endings. A short «До встречи.» is enough. Say that farewell, then call this in the same response so the session ends. A bare спасибо, понятно, alright, okay, or thanks is not an ending. Do not announce that you are ending the call. Do not use this before a save is confirmed. Do not call this in a response that has no spoken farewell.',
     parameters: {
       type: 'object',
       additionalProperties: false,
