@@ -64,7 +64,7 @@ struct ActivityBadgeRibbon: View {
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
-                    .hueRotation(.degrees(hueShift))
+                    .hueRotation(.degrees(sculpture.hasSuffix("-color") ? 0 : hueShift))
                     .saturation(locked ? 0.85 : 1)
                     .opacity(locked ? 0.92 : 1)
                     .shadow(color: Color.black.opacity(locked ? 0.12 : 0.22), radius: size * 0.08, y: size * 0.04)
@@ -122,14 +122,14 @@ struct ActivityBadgeRibbon: View {
 enum ActivityBadgeArt {
     static func asset(for awardID: String) -> String? {
         switch ActivityBadgeEngine.awardBaseID(awardID) {
-        case "activity.cycling": return "badge-art-cycling"
-        case "activity.running": return "badge-art-running"
-        case "activity.swimming": return "badge-art-swim"
-        case "activity.hiking": return "badge-art-hike"
-        case "activity.snowboarding": return "badge-art-snowboard"
-        case "activity.alpine-skiing": return "badge-art-ski"
-        case "activity.upper-body": return "badge-art-upper"
-        case "activity.core": return "badge-art-core"
+        case "activity.cycling": return "badge-art-cycling-color"
+        case "activity.running": return "badge-art-running-color"
+        case "activity.swimming": return "badge-art-swim-color"
+        case "activity.hiking": return "badge-art-hike-color"
+        case "activity.snowboarding": return "badge-art-snowboard-color"
+        case "activity.alpine-skiing": return "badge-art-ski-color"
+        case "activity.upper-body": return "badge-art-upper-color"
+        case "activity.core": return "badge-art-core-color"
         case "activity.lower-body": return "badge-art-lower"
         case "activity.full-body": return "badge-art-full"
         case "activity.tennis": return "badge-art-tennis"
