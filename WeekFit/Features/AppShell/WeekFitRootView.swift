@@ -375,7 +375,7 @@ struct WeekFitRootView: View {
                     .presentationDragIndicator(.visible)
                 }
             }
-            .sheet(isPresented: $activityBadges.showCollection) {
+            .fullScreenCover(isPresented: $activityBadges.showCollection) {
                 ActivityCollectionScreen(
                     highlightedID: activityBadges.collectionHighlight,
                     dismissStyle: .close,
@@ -385,7 +385,6 @@ struct WeekFitRootView: View {
                     }
                 )
                 .environmentObject(nutritionViewModel)
-                .presentationDetents([.large])
             }
             .onReceive(NotificationCenter.default.publisher(for: ActivityBadgeCenter.routeNotification)) { note in
                 handleActivityBadgeRoute(note)
