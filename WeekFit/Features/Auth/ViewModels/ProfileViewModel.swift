@@ -42,6 +42,9 @@ final class ProfileViewModel: ObservableObject {
 
     func handleTap(_ item: ProfileItem) {
         switch item.type {
+        case .activityCollection:
+            destination = .activityCollection
+
         case .notifications:
             ProductAnalytics.notificationSettingsOpened()
             destination = .notifications

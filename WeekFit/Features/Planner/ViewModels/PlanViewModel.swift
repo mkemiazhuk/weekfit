@@ -957,6 +957,9 @@ final class PlanViewModel: ObservableObject {
             activityRemindersEnabled: activityRemindersEnabled,
             completionCheckInsEnabled: completionCheckInsEnabled
         )
+        if previous.title != activity.title {
+            ActivityBadgeCenter.renameHabitIfNeeded(from: previous.title, to: activity.title)
+        }
         markPlannerDataChanged()
     }
 

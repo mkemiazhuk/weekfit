@@ -136,17 +136,17 @@ private struct RecoveryDetailsHeader: View {
         HStack(alignment: .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.title2.weight(.bold))
+                    .font(.system(size: 27, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.textPrimary)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.85)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.68)
                     .accessibilityAddTraits(.isHeader)
 
                 Text(subtitle)
-                    .font(.subheadline)
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundStyle(palette.textSecondary)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.85)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 

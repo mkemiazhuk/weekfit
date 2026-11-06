@@ -15,6 +15,7 @@ struct ProfileItem: Identifiable {
 }
 
 enum ProfileItemType {
+    case activityCollection
     case notifications
     case language
     case appearance
@@ -30,6 +31,7 @@ enum ProfileItemType {
 }
 
 enum ProfileDestination: Identifiable {
+    case activityCollection
     case notifications
     case language
     case appearance
@@ -45,6 +47,7 @@ enum ProfileDestination: Identifiable {
 
     var id: String {
         switch self {
+        case .activityCollection: return "activityCollection"
         case .notifications: return "notifications"
         case .language: return "language"
         case .appearance: return "appearance"

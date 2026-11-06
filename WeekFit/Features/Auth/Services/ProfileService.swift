@@ -143,6 +143,12 @@
         func loadPreferenceSettings() -> [ProfileItem] {
             [
                 ProfileItem(
+                    icon: "rosette",
+                    title: ActivityBadgeCopy.profileTitle,
+                    subtitle: ActivityBadgeCopy.profileSubtitle,
+                    type: .activityCollection
+                ),
+                ProfileItem(
                     icon: "bell.fill",
                     title: "Notifications",
                     subtitle: "Workout and recovery reminders",

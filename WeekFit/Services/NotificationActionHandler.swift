@@ -16,6 +16,17 @@ final class NotificationActionHandler: NSObject, UNUserNotificationCenterDelegat
         let notificationType = userInfo[MorningProposalNotificationKey.notificationType] as? String
             ?? userInfo["notificationType"] as? String
 
+        if notificationType == ActivityBadgeNotificationKey.type {
+            await MainActor.run {
+                NotificationCenter.default.post(
+                    name: ActivityBadgeCenter.routeNotification,
+                    object: nil,
+                    userInfo: userInfo
+                )
+            }
+            return
+        }
+
         if notificationType == MorningProposalNotificationType.ready
             || response.notification.request.identifier.hasPrefix("morning-proposal-") {
             let dayKey = userInfo[MorningProposalNotificationKey.dayKey] as? String

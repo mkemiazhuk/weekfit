@@ -36,6 +36,9 @@ struct NotificationSettingsView: View {
     @AppStorage(NotificationPreferenceKey.sleepWindDown)
     private var sleepWindDownEnabled = false
 
+    @AppStorage(NotificationPreferenceKey.activitySuggestions)
+    private var activitySuggestionsEnabled = true
+
     private var background: Color { WeekFitTheme.backgroundColor }
 
     private var textPrimary: Color { WeekFitTheme.primaryText }
@@ -82,6 +85,15 @@ struct NotificationSettingsView: View {
                         softDivider
 
                         notificationRow(
+                            icon: "rosette",
+                            title: ActivityBadgeCopy.suggestionsTitle,
+                            subtitle: ActivityBadgeCopy.suggestionsSubtitle,
+                            isOn: $activitySuggestionsEnabled
+                        )
+
+                        softDivider
+
+                        notificationRow(
                             icon: "heart.fill",
                             title: AppText.Settings.Notifications.recoverySuggestionsTitle,
                             subtitle: AppText.Settings.Notifications.recoverySuggestionsSubtitle,
@@ -119,6 +131,13 @@ struct NotificationSettingsView: View {
         .onChange(of: morningPlanCheckEnabled) { _, enabled in
             if !enabled {
                 MorningProposalNotificationService.shared.cancelAll()
+            }
+        }
+        .onChange(of: activitySuggestionsEnabled) { _, enabled in
+            if enabled {
+                ActivitySuggestionNotificationService.shared.noteOpenedAndReschedule()
+            } else {
+                ActivitySuggestionNotificationService.shared.cancel()
             }
         }
         .onAppear {
@@ -182,6 +201,15 @@ private extension NotificationSettingsView {
             .fill(WeekFitTheme.borderSoft.opacity(0.55))
             .frame(height: 0.5)
             .padding(.leading, 68)
+    }
+
+    func notificationRow(
+        icon: String,
+        title: String,
+        subtitle: String,
+        isOn: Binding<Bool>
+    ) -> some View {
+        notificationRow(icon: icon, title: LocalizedStringResource(stringLiteral: title), subtitle: LocalizedStringResource(stringLiteral: subtitle), isOn: isOn)
     }
 
     func notificationRow(

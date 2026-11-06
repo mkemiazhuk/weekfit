@@ -140,6 +140,10 @@ struct ProfileView: View {
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(item: $viewModel.destination) { destination in
             switch destination {
+            case .activityCollection:
+                ActivityCollectionScreen()
+                    .settingsNavigationPush()
+
             case .editName:
                 EditNameView(viewModel: viewModel)
                     .settingsNavigationPush()
@@ -984,6 +988,8 @@ private extension ProfileView {
 
     func displayTitle(for item: ProfileItem) -> String {
         switch item.type {
+        case .activityCollection:
+            return ActivityBadgeCopy.profileTitle
         case .notifications:
             return WeekFitLocalizedString("settings.profile.item.notifications")
         case .language:
@@ -1015,6 +1021,8 @@ private extension ProfileView {
         }
 
         switch item.type {
+        case .activityCollection:
+            return ActivityBadgeCopy.profileSubtitle
         case .notifications:
             return WeekFitLocalizedString("settings.profile.item.notifications.subtitle")
         case .language:
@@ -1062,6 +1070,9 @@ private extension ProfileView {
 
     func rowTint(for item: ProfileItem) -> Color {
         switch item.type {
+        case .activityCollection:
+            return ActivityBadgePalette.lavender
+
         case .notifications:
             return accentGreen
 
@@ -1159,6 +1170,7 @@ private extension ProfileView {
     func accessibilityID(for item: ProfileItem) -> String {
         switch item.type {
         case .account: return "settings.account"
+        case .activityCollection: return "settings.activityCollection"
         case .appleHealth, .healthAccess: return "settings.appleHealth"
         case .notifications: return "settings.notifications"
         case .language: return "settings.language"

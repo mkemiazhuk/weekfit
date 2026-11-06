@@ -82,6 +82,8 @@ struct WeekFitRootView: View {
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var plannedActivities: [PlannedActivity]
 
+    @ObservedObject private var activityBadges = ActivityBadgeStore.shared
+
     var body: some View {
         rootShellWithEveningSummaryHandlers
             .environmentObject(authViewModel)
@@ -352,6 +354,41 @@ struct WeekFitRootView: View {
                 reconcileAppCalendarDay(source: "root.sceneActive", returnToToday: false)
                 syncNotifications(source: "root.sceneActive")
                 evaluateMorningProposalFromRoot(source: "root.sceneActive")
+                refreshActivityBadges(now: Date())
+            }
+            .onChange(of: plannedActivities.filter(\.isCompleted).count) { _, _ in
+                refreshActivityBadges(now: Date())
+            }
+            .sheet(isPresented: unlockSheetPresented) {
+                if let id = activityBadges.pendingUnlockID,
+                   let badge = ActivityBadgeCenter.display(id: id, activities: plannedActivities) {
+                    ActivityBadgeUnlockedSheet(
+                        badge: badge,
+                        onDone: { activityBadges.clearPending() },
+                        onViewCollection: {
+                            activityBadges.clearPending()
+                            activityBadges.collectionHighlight = id
+                            activityBadges.showCollection = true
+                        }
+                    )
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                }
+            }
+            .sheet(isPresented: $activityBadges.showCollection) {
+                ActivityCollectionScreen(
+                    highlightedID: activityBadges.collectionHighlight,
+                    dismissStyle: .close,
+                    onClose: {
+                        activityBadges.showCollection = false
+                        activityBadges.collectionHighlight = nil
+                    }
+                )
+                .environmentObject(nutritionViewModel)
+                .presentationDetents([.large])
+            }
+            .onReceive(NotificationCenter.default.publisher(for: ActivityBadgeCenter.routeNotification)) { note in
+                handleActivityBadgeRoute(note)
             }
             .onReceive(
                 NotificationCenter.default.publisher(for: .activityNotificationAction),
@@ -1063,6 +1100,48 @@ struct WeekFitRootView: View {
 
     private func acknowledgeHealthRefreshEvent() {
         acknowledgedHealthRefreshToken = appSession.healthRefreshTrigger
+    }
+
+    private var unlockSheetPresented: Binding<Bool> {
+        Binding(
+            get: { activityBadges.pendingUnlockID != nil },
+            set: { presented in
+                if !presented { activityBadges.clearPending() }
+            }
+        )
+    }
+
+    private func refreshActivityBadges(now: Date) {
+        let goal = nutritionViewModel.nutritionResult?.goals.waterLiters ?? 0
+        ActivityBadgeCenter.refresh(
+            activities: plannedActivities,
+            waterGoalLiters: goal,
+            now: now
+        )
+        ActivitySuggestionNotificationService.shared.noteOpenedAndReschedule(now: now)
+    }
+
+    private func handleActivityBadgeRoute(_ note: Notification) {
+        guard let id = note.userInfo?[ActivityBadgeNotificationKey.badgeID] as? String else { return }
+        returnToToday()
+        if activityBadges.isUnlocked(id) {
+            activityBadges.collectionHighlight = id
+            activityBadges.showCollection = true
+            return
+        }
+        guard let badge = ActivityBadgeCenter.display(id: id, activities: plannedActivities) else {
+            activityBadges.showCollection = true
+            return
+        }
+        let opensWater = ActivityBadgeCenter.start(
+            badge,
+            activities: plannedActivities,
+            modelContext: modelContext,
+            waterGoalLiters: nutritionViewModel.nutritionResult?.goals.waterLiters ?? 0
+        )
+        if opensWater {
+            activityBadges.openWaterLog = true
+        }
     }
 
     private func returnToToday() {

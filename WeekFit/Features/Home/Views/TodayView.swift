@@ -39,6 +39,7 @@ struct TodayView: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     
     @State private var showProfile = false
+    @ObservedObject private var activityBadges = ActivityBadgeStore.shared
     @State private var plannerVoiceEnabled = false
     @State private var showPlannerVoice = false
     @State private var showAIUsage = false
@@ -822,6 +823,17 @@ struct TodayView: View {
             openPendingMorningProposalReviewIfNeeded()
         }
         .weekFitSettingsSheet(isPresented: $showProfile)
+        .onAppear {
+            ActivityBadgeCenter.refresh(activities: plannedActivities, waterGoalLiters: waterGoal)
+        }
+        .onChange(of: plannedActivities.filter(\.isCompleted).count) { _, _ in
+            ActivityBadgeCenter.refresh(activities: plannedActivities, waterGoalLiters: waterGoal)
+        }
+        .onChange(of: activityBadges.openWaterLog) { _, open in
+            guard open else { return }
+            activityBadges.openWaterLog = false
+            showDirectDrinkLogSheet = true
+        }
         .sheet(
             isPresented: $showDirectWorkoutLogSheet,
             onDismiss: {
@@ -1624,7 +1636,14 @@ struct TodayView: View {
                     AnyView(quickActionsSection)
 
                 case .idle:
-                    erasedCoachEntryPoint()
+                    if let suggestion = ActivityBadgePresenter.focusSuggestion(
+                        ledger: activityBadges.ledger,
+                        inputs: plannedActivities.map(ActivityBadgeCenter.input(from:))
+                    ) {
+                        AnyView(badgeFocusCard(suggestion))
+                    } else {
+                        erasedCoachEntryPoint()
+                    }
                     AnyView(quickActionsSection)
                 }
             }
@@ -2948,9 +2967,11 @@ struct TodayView: View {
 
         let title = shortDisplayTitle(activityDisplayTitle(activity))
         let previousDuration = activity.actualDurationMinutes
-        let passedMinutes = max(1, Int(Date().timeIntervalSince(activity.date) / 60))
+        let elapsedSeconds = max(0, Int(Date().timeIntervalSince(activity.date)))
+        let passedMinutes = max(1, Int(elapsedSeconds / 60))
         activity.actualDurationMinutes = passedMinutes
         activity.isCompleted = true
+        ActivityBadgeCenter.noteLiveFinish(activity, elapsedSeconds: elapsedSeconds)
 
         do {
             try modelContext.save()
@@ -2977,6 +2998,7 @@ struct TodayView: View {
 
         ReviewEngagement.record(.activityLoggedOrCompleted)
         ProductAnalytics.activityCompleted(source: .today)
+        ActivityBadgeCenter.refresh(activities: plannedActivities, waterGoalLiters: waterGoal)
 
         CoachSnapshotInvalidator.invalidate(
             coordinator: coachCoordinator,
@@ -3194,6 +3216,36 @@ struct TodayView: View {
                 coachCoordinator.forceRecompute(reason: "appliedAcknowledgmentViewed.todayInsight")
             }
         })
+    }
+
+    private func badgeFocusCard(_ suggestion: ActivityBadgeDisplay) -> some View {
+        let tone: TodayMiddleCard.Tone = suggestion.category == .activity ? .sage : .lavender
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            let opensWater = ActivityBadgeCenter.start(
+                suggestion,
+                activities: plannedActivities,
+                modelContext: modelContext,
+                waterGoalLiters: waterGoal
+            )
+            if opensWater {
+                showDirectDrinkLogSheet = true
+            }
+        } label: {
+            TodayMiddleCard(
+                header: WeekFitLocalizedString("today.coachInsight.focusToday"),
+                title: suggestion.actionTitle,
+                message: ActivityBadgeCopy.unlockLine(
+                    minutes: suggestion.actionMinutes,
+                    badgeName: suggestion.name
+                ),
+                systemImage: suggestion.symbol,
+                tone: tone,
+                showsChevron: true
+            )
+        }
+        .buttonStyle(TodayCardPressStyle())
+        .accessibilityIdentifier("today.focus.badge")
     }
 
     private func neutralFocusCard() -> some View {
