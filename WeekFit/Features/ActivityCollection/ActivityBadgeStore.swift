@@ -260,7 +260,7 @@ enum ActivityBadgePresenter {
             let custom = ledger.customNames.keys.sorted()
             ids.append(contentsOf: custom)
         }
-        return ids.flatMap { id in
+        let groups = ids.compactMap { id -> [ActivityBadgeDisplay]? in
             let facts = ActivityBadgeEngine.awardFacts(
                 for: id,
                 inputs: inputs,
@@ -287,6 +287,8 @@ enum ActivityBadgePresenter {
                 activityName: activityName
             )
         }
+        // Let people browse the distinct activities before their count and streak variants.
+        return groups.compactMap(\.first) + groups.flatMap { $0.dropFirst() }
     }
 
     private static func cell(
