@@ -93,7 +93,7 @@ struct ActivityCollectionView: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 Text(ActivityBadgeCopy.screenTitle)
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .font(.system(size: 38, weight: .bold, design: .rounded))
                     .foregroundStyle(palette.textPrimary)
                 Text(ActivityBadgeCopy.progress(unlocked: unlocked, total: total))
                     .foregroundStyle(palette.textSecondary)
@@ -127,7 +127,7 @@ struct ActivityCollectionView: View {
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(palette.textSecondary)
             }
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 18) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 18) {
                 ForEach(section.cells) { badge in
                     Button {
                         selected = badge
@@ -138,10 +138,10 @@ struct ActivityCollectionView: View {
                                 category: badge.category,
                                 artworkID: badge.id,
                                 locked: !badge.isUnlocked,
-                                size: 138
+                                size: 98
                             )
                             Text(badge.caption)
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(palette.textPrimary)
                                 .multilineTextAlignment(.center)
                                 .lineLimit(2)
