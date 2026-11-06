@@ -107,23 +107,23 @@ enum ActivityBadgeArt {
             board = "award-board-activity-two"
             index = position - 8
             columns = 3
-            x = [100, 580, 1060]
-            y = [10, 500]
-            crop = 380
+            x = [80, 560, 1040]
+            y = [0, 490]
+            crop = 420
         } else if let position = ids.dropFirst(14).prefix(5).firstIndex(of: baseID) {
             board = "award-board-recovery"
             index = position - 14
             columns = 3
-            x = [100, 580, 1060]
-            y = [10, 500]
-            crop = 380
+            x = [80, 560, 1040]
+            y = [0, 490]
+            crop = 420
         } else {
             board = "award-board-habits"
             index = ids.dropFirst(19).firstIndex(of: baseID).map { $0 - 19 } ?? 4
             columns = 3
-            x = [100, 580, 1060]
-            y = [10, 500]
-            crop = 380
+            x = [80, 560, 1040]
+            y = [0, 490]
+            crop = 420
         }
         guard let source = UIImage(named: board)?.cgImage else { return nil }
         let rectangle = CGRect(x: x[index % columns], y: y[index / columns], width: crop, height: crop)
