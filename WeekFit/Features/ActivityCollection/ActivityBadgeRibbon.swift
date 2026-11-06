@@ -16,6 +16,7 @@ enum ActivityBadgePalette {
 }
 
 struct ActivityBadgeRibbon: View {
+    @Environment(\.weekFitPalette) private var palette
     let symbol: String
     let category: ActivityBadgeCategory
     var artworkID: String? = nil
@@ -24,12 +25,19 @@ struct ActivityBadgeRibbon: View {
 
     private var accent: Color {
         guard let artworkID else { return ActivityBadgePalette.tint(category) }
-        let base = ActivityBadgeEngine.awardBaseID(artworkID)
-        let index = ActivityBadgeCatalog.definitions.firstIndex { $0.id == base } ?? 0
-        switch index % 3 {
-        case 0: return ActivityBadgePalette.leaf
-        case 1: return ActivityBadgePalette.apricot
-        default: return ActivityBadgePalette.lavender
+        switch hueShift {
+        case -60: return ActivityBadgePalette.apricot
+        case 175: return ActivityBadgePalette.lavender
+        default: return ActivityBadgePalette.tint(category)
+        }
+    }
+
+    private var hueShift: Double {
+        guard let artworkID else { return 0 }
+        switch ActivityBadgeEngine.awardBaseID(artworkID) {
+        case "activity.running", "activity.upper-body", "activity.tennis", "habit.drink-water": return -60
+        case "activity.swimming", "activity.snowboarding", "recovery.breathing", "recovery.stretching": return 175
+        default: return 0
         }
     }
 
@@ -41,7 +49,12 @@ struct ActivityBadgeRibbon: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(accent.opacity(locked ? 0.09 : 0.15))
+                .fill(RadialGradient(
+                    colors: [palette.appScreenBackground, accent.opacity(locked ? 0.12 : 0.2)],
+                    center: .init(x: 0.4, y: 0.3),
+                    startRadius: 0,
+                    endRadius: size * 0.7
+                ))
                 .overlay {
                     Circle().strokeBorder(ActivityBadgePalette.cream.opacity(0.9), lineWidth: max(2, size * 0.025))
                 }
@@ -51,8 +64,8 @@ struct ActivityBadgeRibbon: View {
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
-                    .colorMultiply(accent)
-                    .saturation(locked ? 0.7 : 1)
+                    .hueRotation(.degrees(hueShift))
+                    .saturation(locked ? 0.85 : 1)
                     .opacity(locked ? 0.92 : 1)
                     .shadow(color: Color.black.opacity(locked ? 0.12 : 0.22), radius: size * 0.08, y: size * 0.04)
                     .padding(size * 0.08)
