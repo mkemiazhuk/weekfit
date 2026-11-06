@@ -22,16 +22,40 @@ struct ActivityBadgeRibbon: View {
     var locked: Bool = false
     var size: CGFloat = 112
 
+    private var accent: Color {
+        guard let artworkID else { return ActivityBadgePalette.tint(category) }
+        let base = ActivityBadgeEngine.awardBaseID(artworkID)
+        let index = ActivityBadgeCatalog.definitions.firstIndex { $0.id == base } ?? 0
+        switch index % 3 {
+        case 0: return ActivityBadgePalette.leaf
+        case 1: return ActivityBadgePalette.apricot
+        default: return ActivityBadgePalette.lavender
+        }
+    }
+
+    private var milestone: String? {
+        guard let artworkID, let range = artworkID.range(of: ".count.") else { return nil }
+        return String(artworkID[range.upperBound...])
+    }
+
     var body: some View {
         ZStack {
+            Circle()
+                .fill(accent.opacity(locked ? 0.09 : 0.15))
+                .overlay {
+                    Circle().strokeBorder(ActivityBadgePalette.cream.opacity(0.9), lineWidth: max(2, size * 0.025))
+                }
+                .shadow(color: accent.opacity(0.12), radius: size * 0.07, y: size * 0.03)
             if let sculpture {
                 Image(sculpture)
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
-                    .saturation(locked ? 0.55 : 1)
+                    .colorMultiply(accent)
+                    .saturation(locked ? 0.7 : 1)
                     .opacity(locked ? 0.92 : 1)
                     .shadow(color: Color.black.opacity(locked ? 0.12 : 0.22), radius: size * 0.08, y: size * 0.04)
+                    .padding(size * 0.08)
             } else {
                 Image(medalName)
                     .resizable()
@@ -45,6 +69,15 @@ struct ActivityBadgeRibbon: View {
                     .foregroundStyle(ActivityBadgePalette.cream)
                     .opacity(locked ? 0.7 : 1)
                     .offset(x: size * 0.012, y: size * -0.102)
+            }
+            if let milestone {
+                Text(milestone)
+                    .font(.system(size: size * 0.16, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Color.white)
+                    .frame(minWidth: size * 0.27, minHeight: size * 0.27)
+                    .background(accent.gradient, in: Circle())
+                    .overlay(Circle().strokeBorder(ActivityBadgePalette.cream, lineWidth: size * 0.018))
+                    .offset(x: -size * 0.32, y: size * 0.30)
             }
             if locked {
                 Image(systemName: "lock.fill")
