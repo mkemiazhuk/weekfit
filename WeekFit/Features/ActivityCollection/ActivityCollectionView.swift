@@ -67,13 +67,11 @@ struct ActivityCollectionView: View {
                 }
             }
         }
-        .sheet(item: $selected) { badge in
+        .fullScreenCover(item: $selected) { badge in
             ActivityAwardDetailScreen(badge: badge, onClose: { selected = nil }, onStart: {
                 selected = nil
                 onStart(badge)
             })
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
         }
         .onAppear {
             guard let highlightedID else { return }
@@ -83,18 +81,38 @@ struct ActivityCollectionView: View {
 
     private var collectionStack: some View {
         VStack(alignment: .leading, spacing: 22) {
-                    ProfilePremiumHeader(
-                        title: ActivityBadgeCopy.screenTitle,
-                        subtitle: ActivityBadgeCopy.progress(unlocked: unlocked, total: total),
-                        accent: ActivityBadgePalette.lavender,
-                        dismissStyle: dismissStyle,
-                        onClose: onClose
-                    )
-                    ForEach(sections) { section in
-                        sectionBlock(section)
-                    }
+            Button(action: onClose) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(palette.textPrimary)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(ActivityBadgePalette.cream.opacity(0.65)))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(AppText.Common.Action.close))
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text(ActivityBadgeCopy.screenTitle)
+                    .font(.system(size: 38, weight: .bold, design: .rounded))
+                    .foregroundStyle(palette.textPrimary)
+                Text(ActivityBadgeCopy.progress(unlocked: unlocked, total: total))
+                    .foregroundStyle(palette.textSecondary)
+                GeometryReader { geometry in
+                    Capsule().fill(ActivityBadgePalette.leaf.opacity(0.16))
+                        .overlay(alignment: .leading) {
+                            Capsule().fill(ActivityBadgePalette.leaf)
+                                .frame(width: geometry.size.width * CGFloat(unlocked) / CGFloat(max(total, 1)))
+                        }
+                }
+                .frame(height: 7)
+            }
+
+            ForEach(sections) { section in
+                sectionBlock(section)
+            }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 24)
+        .padding(.top, 16)
         .padding(.bottom, 28)
     }
 
@@ -109,7 +127,7 @@ struct ActivityCollectionView: View {
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(palette.textSecondary)
             }
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 18) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 18) {
                 ForEach(section.cells) { badge in
                     Button {
                         selected = badge
@@ -120,10 +138,10 @@ struct ActivityCollectionView: View {
                                 category: badge.category,
                                 artworkID: badge.id,
                                 locked: !badge.isUnlocked,
-                                size: 104
+                                size: 98
                             )
                             Text(badge.caption)
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(palette.textPrimary)
                                 .multilineTextAlignment(.center)
                                 .lineLimit(2)
