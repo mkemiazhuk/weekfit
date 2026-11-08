@@ -8,7 +8,7 @@ enum ActivityBadgePalette {
 
     static func tint(_ category: ActivityBadgeCategory) -> Color {
         switch category {
-        case .activity: return leaf
+        case .activity, .energy: return leaf
         case .recovery: return lavender
         case .habit: return apricot
         }
@@ -16,91 +16,69 @@ enum ActivityBadgePalette {
 }
 
 struct ActivityBadgeRibbon: View {
-    @Environment(\.weekFitPalette) private var palette
     let symbol: String
     let category: ActivityBadgeCategory
     var artworkID: String? = nil
     var locked: Bool = false
     var size: CGFloat = 112
 
-    private var accent: Color {
-        guard let artworkID else { return ActivityBadgePalette.tint(category) }
-        switch hueShift {
-        case -60: return ActivityBadgePalette.apricot
-        case 175: return ActivityBadgePalette.lavender
+    private var milestone: String? {
+        guard let artworkID else { return nil }
+        for marker in [".count.", ".km."] {
+            if let range = artworkID.range(of: marker) {
+                return String(artworkID[range.upperBound...])
+            }
+        }
+        return nil
+    }
+
+    /// Count plates from the example sheets already include the clay digit.
+    private var showsCountDisc: Bool {
+        guard let milestone, let sculpture else { return milestone != nil }
+        return !sculpture.hasSuffix("-\(milestone)")
+    }
+
+    private var countColor: Color {
+        switch milestone {
+        case "5": return ActivityBadgePalette.apricot
+        case "10": return ActivityBadgePalette.lavender
+        case "25": return ActivityBadgePalette.leaf
+        case "50": return ActivityBadgePalette.lavender
         default: return ActivityBadgePalette.tint(category)
         }
     }
 
-    private var hueShift: Double {
-        guard let artworkID else { return 0 }
-        switch ActivityBadgeEngine.awardBaseID(artworkID) {
-        case "activity.running", "activity.upper-body", "activity.tennis", "habit.drink-water": return -60
-        case "activity.swimming", "activity.snowboarding", "recovery.breathing", "recovery.stretching": return 175
-        default: return 0
-        }
-    }
-
-    private var milestone: String? {
-        guard let artworkID, let range = artworkID.range(of: ".count.") else { return nil }
-        return String(artworkID[range.upperBound...])
-    }
-
     var body: some View {
         ZStack {
-            Circle()
-                .fill(RadialGradient(
-                    colors: [palette.appScreenBackground, accent.opacity(locked ? 0.12 : 0.2)],
-                    center: .init(x: 0.4, y: 0.3),
-                    startRadius: 0,
-                    endRadius: size * 0.7
-                ))
-                .overlay {
-                    Circle().strokeBorder(ActivityBadgePalette.cream.opacity(0.9), lineWidth: max(2, size * 0.025))
-                }
-                .shadow(color: accent.opacity(0.12), radius: size * 0.07, y: size * 0.03)
             if let sculpture {
                 Image(sculpture)
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
-                    .hueRotation(.degrees(sculpture.hasSuffix("-color") ? 0 : hueShift))
-                    .saturation(locked ? 0.85 : 1)
-                    .opacity(locked ? 0.92 : 1)
-                    .shadow(color: Color.black.opacity(locked ? 0.12 : 0.22), radius: size * 0.08, y: size * 0.04)
-                    .padding(size * 0.08)
             } else {
                 Image(medalName)
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
-                    .saturation(locked ? 0 : 1)
                     .opacity(locked ? 0.5 : 1)
-                    .shadow(color: Color.black.opacity(locked ? 0.16 : 0.38), radius: size * 0.1, y: size * 0.05)
                 Image(systemName: symbol)
                     .font(.system(size: size * 0.09, weight: .semibold))
                     .foregroundStyle(ActivityBadgePalette.cream)
                     .opacity(locked ? 0.7 : 1)
                     .offset(x: size * 0.012, y: size * -0.102)
             }
-            if let milestone {
+            if showsCountDisc, let milestone {
                 Text(milestone)
                     .font(.system(size: size * 0.16, weight: .heavy, design: .rounded))
                     .foregroundStyle(Color.white)
                     .frame(minWidth: size * 0.27, minHeight: size * 0.27)
-                    .background(accent.gradient, in: Circle())
+                    .background(countColor, in: Circle())
                     .overlay(Circle().strokeBorder(ActivityBadgePalette.cream, lineWidth: size * 0.018))
-                    .offset(x: -size * 0.32, y: size * 0.30)
-            }
-            if locked {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: max(9, size * 0.11), weight: .bold))
-                    .foregroundStyle(ActivityBadgePalette.cream)
-                    .padding(5)
-                    .background(Circle().fill(Color.black.opacity(0.62)))
-                    .offset(x: size * 0.30, y: size * 0.28)
+                    .offset(x: -size * 0.28, y: size * 0.26)
             }
         }
+        .saturation(locked ? 0 : 1)
+        .opacity(locked ? 0.42 : 1)
         .frame(width: size, height: size)
         .accessibilityHidden(true)
     }
@@ -112,7 +90,7 @@ struct ActivityBadgeRibbon: View {
 
     private var medalName: String {
         switch category {
-        case .activity: return "badge-ribbon-activity"
+        case .activity, .energy: return "badge-ribbon-activity"
         case .recovery: return "badge-ribbon-recovery"
         case .habit: return "badge-ribbon-habit"
         }
@@ -121,15 +99,41 @@ struct ActivityBadgeRibbon: View {
 
 enum ActivityBadgeArt {
     static func asset(for awardID: String) -> String? {
+        switch awardID {
+        case "activity.cycling.count.5": return "badge-art-cycling-5"
+        case "activity.cycling.count.10": return "badge-art-cycling-10"
+        case "activity.cycling.count.25": return "badge-art-cycling-25"
+        case "activity.cycling.count.50": return "badge-art-cycling-50"
+        case "activity.cycling.streak": return "badge-art-cycling-streak"
+        case "activity.cycling.record": return "badge-art-cycling-record"
+        case "activity.cycling.km.1": return "badge-art-cycling-km-1"
+        case "activity.cycling.km.2": return "badge-art-cycling-km-2"
+        case "activity.cycling.km.3": return "badge-art-cycling-km-3"
+        case "activity.cycling.km.5": return "badge-art-cycling-km-5"
+        case "recovery.walk.km.1": return "badge-art-walk-km-1"
+        case "recovery.walk.km.2": return "badge-art-walk-km-2"
+        case "recovery.walk.km.3": return "badge-art-walk-km-3"
+        case "recovery.walk.km.5": return "badge-art-walk-km-5"
+        case "energy.kcal.300": return "badge-art-kcal-300"
+        case "energy.kcal.500": return "badge-art-kcal-500"
+        case "energy.kcal.1000": return "badge-art-kcal-1000"
+        case "energy.kcal.2000": return "badge-art-kcal-2000"
+        case "energy.kcal.3000": return "badge-art-kcal-3000"
+        case "habit.drink-water.record": return "badge-art-water-record"
+        default: break
+        }
+        if awardID.hasPrefix(ActivityBadgeEngine.customPrefix) {
+            return "badge-art-checkin"
+        }
         switch ActivityBadgeEngine.awardBaseID(awardID) {
-        case "activity.cycling": return "badge-art-cycling-color"
-        case "activity.running": return "badge-art-running-color"
-        case "activity.swimming": return "badge-art-swim-color"
-        case "activity.hiking": return "badge-art-hike-color"
-        case "activity.snowboarding": return "badge-art-snowboard-color"
-        case "activity.alpine-skiing": return "badge-art-ski-color"
-        case "activity.upper-body": return "badge-art-upper-color"
-        case "activity.core": return "badge-art-core-color"
+        case "activity.cycling": return "badge-art-cycling"
+        case "activity.running": return "badge-art-running"
+        case "activity.swimming": return "badge-art-swim"
+        case "activity.hiking": return "badge-art-hike"
+        case "activity.snowboarding": return "badge-art-snowboard"
+        case "activity.alpine-skiing": return "badge-art-ski"
+        case "activity.upper-body": return "badge-art-upper"
+        case "activity.core": return "badge-art-core"
         case "activity.lower-body": return "badge-art-lower"
         case "activity.full-body": return "badge-art-full"
         case "activity.tennis": return "badge-art-tennis"
@@ -138,7 +142,7 @@ enum ActivityBadgeArt {
         case "activity.hiit": return "badge-art-hiit"
         case "recovery.stretching": return "badge-art-stretch"
         case "recovery.walk": return "badge-art-walk"
-        case "recovery.sauna": return "badge-art-sauna"
+        case "recovery.sauna": return "badge-art-sauna-kcal"
         case "recovery.yoga": return "badge-art-yoga"
         case "recovery.breathing": return "badge-art-breathing"
         case "habit.drink-water": return "badge-art-water"

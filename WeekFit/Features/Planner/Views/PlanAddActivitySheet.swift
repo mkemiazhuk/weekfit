@@ -27,7 +27,6 @@ private enum PlannerMealSheetStep: Equatable {
 
 private struct PlannerMealSheetHost<Library: View>: View {
     @Binding var step: PlannerMealSheetStep
-    @Binding var detent: PresentationDetent
     @ViewBuilder let library: () -> Library
     let onBuilderSave: (Meals) -> Void
 
@@ -41,15 +40,6 @@ private struct PlannerMealSheetHost<Library: View>: View {
                 MealBuilderView(onSave: onBuilderSave)
             }
         }
-        .presentationDetents(
-            step == .library ? [.medium, .large] : [.large],
-            selection: $detent
-        )
-        .presentationDragIndicator(step == .library ? .visible : .hidden)
-        .weekFitSheetChrome(
-            cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
-            background: QuickActionSheetDesign.Color.sheetBackground(for: .activity)
-        )
     }
 }
 
@@ -68,7 +58,6 @@ struct PlanAddActivitySheet: View {
     @State private var showDeleteConfirmation = false
     @State private var showMealSheet = false
     @State private var mealSheetStep: PlannerMealSheetStep = .library
-    @State private var mealSheetDetent: PresentationDetent = .medium
     @State private var showOptionCatalogSheet = false
     @State private var isSaving = false
     @State private var showDatePicker = false
@@ -256,10 +245,9 @@ struct PlanAddActivitySheet: View {
         }
         .preferredColorScheme(palette.isLight ? .light : .dark)
         .environment(\.weekFitPalette, palette)
-        .sheet(isPresented: $showMealSheet) {
+        .fullScreenCover(isPresented: $showMealSheet) {
             PlannerMealSheetHost(
                 step: $mealSheetStep,
-                detent: $mealSheetDetent,
                 library: { mealLibrarySheet },
                 onBuilderSave: { newMeal in
                     saveMealToLibrary(newMeal)
@@ -270,15 +258,13 @@ struct PlanAddActivitySheet: View {
         .onChange(of: showMealSheet) { _, isPresented in
             guard !isPresented else { return }
             mealSheetStep = .library
-            mealSheetDetent = .medium
         }
         .sheet(isPresented: $viewModel.showCustomDuration) {
             customDurationSheet
                 .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
         }
-        .sheet(isPresented: $showOptionCatalogSheet) {
+        .fullScreenCover(isPresented: $showOptionCatalogSheet) {
             optionCatalogSheet
-                .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
         }
         .alert(WeekFitLocalizedString("planner.timeConflict.title"), isPresented: $viewModel.showTimeConflictAlert) {
             Button(WeekFitLocalizedString("common.action.ok"), role: .cancel) { }
@@ -800,7 +786,6 @@ private extension PlanAddActivitySheet {
         switch viewModel.selectedType {
         case .meal:
             mealSheetStep = .library
-            mealSheetDetent = .medium
             showMealSheet = true
         case .workout, .recovery, .habit:
             showOptionCatalogSheet = true
@@ -842,7 +827,6 @@ private extension PlanAddActivitySheet {
         ) {
             lightHaptic.impactOccurred()
             mealSheetStep = .builder
-            mealSheetDetent = .large
             showMealSheet = true
         }
     }
@@ -2039,7 +2023,6 @@ private extension PlanAddActivitySheet {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
     }
 
     private var libraryCatalogTitle: String {
@@ -2117,7 +2100,6 @@ private extension PlanAddActivitySheet {
 
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        mealSheetDetent = .large
                         mealSheetStep = .builder
                     } label: {
                         Image(systemName: "plus")

@@ -18,36 +18,12 @@ struct PlanRealtimeSessionSecret: Decodable, Equatable {
 enum PlanVoiceEngine {
     static let storageKey = "planner.voice.engine"
 
+    /// Older builds stored `live`. The next call always uses Realtime.
     static var current: String {
-        UserDefaults.standard.string(forKey: storageKey) == "live" ? "live" : "realtime"
-    }
-
-    static func choose(_ engine: String) {
-        UserDefaults.standard.set(engine == "live" ? "live" : "realtime", forKey: storageKey)
-    }
-
-    static var alternate: String { current == "live" ? "realtime" : "live" }
-}
-
-func planRealtimeLiveChangeAllowed(day: String, today: String, start: Date?, now: Date) -> Bool {
-    if !day.isEmpty, day != today { return false }
-    if let start, start.timeIntervalSince(now) < -60 { return false }
-    return true
-}
-
-func planVoiceEngineOffer(_ engine: String, language: String) -> String {
-    let live = engine == "live"
-    switch language {
-    case "ru": return live ? "Начать через Live" : "Начать через Realtime"
-    case "pl": return live ? "Zacznij przez Live" : "Zacznij przez Realtime"
-    case "fr": return live ? "Commencer avec Live" : "Commencer avec Realtime"
-    case "es": return live ? "Empezar con Live" : "Empezar con Realtime"
-    case "de": return live ? "Mit Live starten" : "Mit Realtime starten"
-    case "it": return live ? "Inizia con Live" : "Inizia con Realtime"
-    case "ja": return live ? "Liveで始める" : "Realtimeで始める"
-    case "ko": return live ? "Live로 시작" : "Realtime으로 시작"
-    case "zh-Hans": return live ? "用 Live 开始" : "用 Realtime 开始"
-    default: return live ? "Start with Live" : "Start with Realtime"
+        if UserDefaults.standard.string(forKey: storageKey) == "live" {
+            UserDefaults.standard.set("realtime", forKey: storageKey)
+        }
+        return "realtime"
     }
 }
 
@@ -63,50 +39,6 @@ func planVoiceLanguageSwitch(_ language: String) -> String {
     case "ko": return "이 통화는 고른 언어로 이어갈게. 앱 언어는 바꾸지 않아."
     case "zh-Hans": return "这通电话接下来用这个语言。应用语言不变。"
     default: return "I'll speak that language for the rest of this call. The app language stays as it is."
-    }
-}
-func planVoiceEngineTitle(_ language: String) -> String {
-    switch language {
-    case "ru": return "Голосовой помощник"
-    case "pl": return "Asystent głosowy"
-    case "fr": return "Assistant vocal"
-    case "es": return "Asistente de voz"
-    case "de": return "Sprachassistent"
-    case "it": return "Assistente vocale"
-    case "ja": return "音声アシスタント"
-    case "ko": return "음성 도우미"
-    case "zh-Hans": return "语音助手"
-    default: return "Voice assistant"
-    }
-}
-
-func planVoiceEngineFootnote(_ language: String) -> String {
-    switch language {
-    case "ru": return "Действует со следующего звонка. Текущий звонок не переключается."
-    case "pl": return "Zadziała od następnej rozmowy. Trwająca rozmowa się nie zmienia."
-    case "fr": return "S'applique au prochain appel. L'appel en cours ne change pas."
-    case "es": return "Se aplica a la próxima llamada. La llamada actual no cambia."
-    case "de": return "Gilt ab dem nächsten Anruf. Der laufende Anruf bleibt."
-    case "it": return "Vale dalla prossima chiamata. La chiamata in corso non cambia."
-    case "ja": return "次の通話から有効。今の通話は切り替わらない。"
-    case "ko": return "다음 통화부터 적용돼. 진행 중인 통화는 바뀌지 않아."
-    case "zh-Hans": return "从下一通电话开始生效。当前通话不会切换。"
-    default: return "Applies to the next call. The current call does not switch."
-    }
-}
-
-func planVoiceEngineLimit(language: String, past: Bool) -> String {
-    switch language {
-    case "ru": return past ? "Это время уже прошло. Назови сегодняшнее время, которое ещё впереди." : "В этом звонке я меняю только сегодняшний план."
-    case "pl": return past ? "Ta godzina już minęła. Podaj późniejszą godzinę dzisiaj." : "W tej rozmowie zmieniam tylko dzisiejszy plan."
-    case "fr": return past ? "Cette heure est déjà passée. Donne une heure plus tard aujourd'hui." : "Dans cet appel, je ne change que le plan d'aujourd'hui."
-    case "es": return past ? "Esa hora ya pasó. Di una hora de hoy que todavía no haya pasado." : "En esta llamada solo cambio el plan de hoy."
-    case "de": return past ? "Diese Uhrzeit ist vorbei. Nenne eine spätere Zeit heute." : "In diesem Anruf ändere ich nur den Plan von heute."
-    case "it": return past ? "Quell'orario è già passato. Dimmi un orario di oggi ancora avanti." : "In questa chiamata cambio solo il piano di oggi."
-    case "ja": return past ? "その時間は過ぎている。今日のこれからの時間を言って。" : "この通話で変えるのは今日の予定だけ。"
-    case "ko": return past ? "그 시간은 이미 지났어. 오늘 남은 시간을 말해 줘." : "이 통화에서는 오늘 계획만 바꿔."
-    case "zh-Hans": return past ? "这个时间已经过了。说一个今天还没到的时间。" : "这通电话只改今天的计划。"
-    default: return past ? "That time has already passed. Give me a later time today." : "In this call I only change today's plan."
     }
 }
 

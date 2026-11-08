@@ -255,7 +255,7 @@ final class ActivityIntelligenceSnapshotProvider {
             || activity.imageName.lowercased().hasPrefix("recovery-")
     }
 
-    func makeSnapshot(from workout: HKWorkout) -> ActivitySessionSnapshot {
+    func makeSnapshot(from workout: HKWorkout, plannedActivityId: String? = nil) -> ActivitySessionSnapshot {
         let title = workoutTitle(for: workout.workoutActivityType)
         let durations = WorkoutFitnessMetrics.durations(from: workout)
         let durationMinutes = max(1, Int((durations.workout / 60.0).rounded()))
@@ -293,7 +293,8 @@ final class ActivityIntelligenceSnapshotProvider {
                 steps: nil,
                 cadence: nil,
                 activeHeartRateIntervals: WorkoutFitnessMetrics.activeIntervals(from: workout)
-            )
+            ),
+            plannedActivityId: plannedActivityId
         )
     }
 

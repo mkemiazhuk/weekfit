@@ -38,7 +38,6 @@ struct WeekFitWeatherDetailSheet: View {
             .padding(.top, 12)
             .padding(.bottom, 16)
         }
-        .presentationBackground(tokens.backgroundPrimary)
         .task {
             WeekFitWeatherAttributionStore.shared.ensureLoaded()
         }

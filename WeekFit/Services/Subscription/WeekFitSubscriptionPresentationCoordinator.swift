@@ -3,7 +3,7 @@ import Foundation
 /// Pure rules for root-level subscription UI presentation.
 ///
 /// SwiftUI only supports one sheet/fullScreenCover presentation at a time.
-/// Settings is presented as a sheet from tab content; root also owns the feature
+/// Settings is a full-screen cover from tab content; root also owns the feature
 /// paywall fullScreenCover and the legacy-thanks sheet. Requesting either while
 /// Settings (or another root modal) is active queues a second presentation and
 /// emits "Currently, only presenting a single sheet is supported" — repeatedly
@@ -46,8 +46,7 @@ enum WeekFitSubscriptionPresentationCoordinator {
         return canPresent ? .present : .deferUntilClear
     }
 
-    /// Feature paywall must not open while Settings occupies the sheet slot
-    /// (bottom bar can still receive taps under a large detent sheet).
+    /// Feature paywall must not open while Settings occupies the presentation slot.
     static func shouldPresentFeaturePaywall(
         desired: Bool,
         isSettingsPresented: Bool,

@@ -143,7 +143,7 @@
         func loadPreferenceSettings() -> [ProfileItem] {
             [
                 ProfileItem(
-                    icon: "rosette",
+                    icon: "medal.fill",
                     title: ActivityBadgeCopy.profileTitle,
                     subtitle: ActivityBadgeCopy.profileSubtitle,
                     type: .activityCollection

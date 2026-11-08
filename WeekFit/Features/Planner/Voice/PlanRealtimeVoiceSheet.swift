@@ -28,7 +28,6 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     @Published private(set) var turns: [PlanVoiceTurn] = []
     @Published private(set) var notices: [PlanVoiceReceipt] = []
     @Published private(set) var microphoneDenied = false
-    @Published private(set) var offerOtherEngine = false
     @Published private(set) var inputLevel: Double = 0
     @Published private(set) var outputLevel: Double = 0
 
@@ -133,7 +132,6 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                     _ = try await webView?.evaluateJavaScript("window.weekfit.sdpAnswer(\(jsLiteral(answer.sdp)))")
                 } catch {
                     phase = .failed(WeekFitAIErrorMessage(error))
-                    offerOtherEngine = true
                     end()
                 }
             }
@@ -263,7 +261,6 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         webView?.navigationDelegate = nil
         webView?.uiDelegate = nil
         webView = nil
-        offerOtherEngine = true
         phase = .failed(message)
     }
 
@@ -337,7 +334,6 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         turns = []
         notices = []
         microphoneDenied = false
-        offerOtherEngine = false
         phase = .connecting
         begin()
     }
@@ -621,12 +617,6 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             return encode(PlanRealtimeToolReply(ok: false, saved: false, speak: ask, error: "start_time_required"))
         }
         if let start = planRealtimeClockDate(day: draft.date, time: draft.startTime, calendar: calendar) {
-            let today = planRealtimeDayString(Date(), calendar: calendar)
-            if engine == "live", !planRealtimeLiveChangeAllowed(day: draft.date, today: today, start: start, now: Date()) {
-                let otherDay = !draft.date.isEmpty && draft.date != today
-                let spoken = planVoiceEngineLimit(language: callLanguage, past: !otherDay)
-                return encode(PlanRealtimeToolReply(ok: false, saved: false, speak: spoken, error: "live_limit"))
-            }
             let fingerprint = planRealtimeSaveFingerprint(
                 catalogTitle: draft.catalogTitle,
                 start: start,
@@ -808,9 +798,6 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             if activities.first(where: { $0.id == entry.activityID })?.isCompleted == true {
                 return encode(notice("already_done"))
             }
-            if engine == "live", entry.day != planRealtimeDayString(Date(), calendar: calendar) {
-                return encode(PlanRealtimeToolReply(ok: false, saved: false, speak: planVoiceEngineLimit(language: callLanguage, past: false), error: "live_limit"))
-            }
             do {
                 try onDelete(entry.activityID)
                 removedIDs.insert(entry.activityID)
@@ -858,13 +845,6 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             let originalDate = activity?.date ?? remembered?.date ?? Date()
             let originalTitle = activity?.title ?? remembered?.title ?? entry.title
             let originalDuration = activity?.durationMinutes ?? remembered?.durationMinutes ?? entry.durationMinutes
-            if engine == "live" {
-                let today = planRealtimeDayString(Date(), calendar: calendar)
-                let day = draft.date.isEmpty ? planRealtimeDayString(originalDate, calendar: calendar) : draft.date
-                if !planRealtimeLiveChangeAllowed(day: day, today: today, start: nil, now: Date()), day != today {
-                    return encode(PlanRealtimeToolReply(ok: false, saved: false, speak: planVoiceEngineLimit(language: callLanguage, past: false), error: "live_limit"))
-                }
-            }
             let sameKind = draft.catalogTitle.isEmpty || draft.catalogTitle == originalTitle
             if draft.date.isEmpty && draft.startTime.isEmpty && draft.durationMinutes == 0 && sameKind {
                 return encode(notice("unchanged"))
@@ -881,11 +861,6 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
                 return encode(notice("missing"))
             }
             let duration = draft.durationMinutes == 0 ? originalDuration : draft.durationMinutes
-            if engine == "live", !planRealtimeLiveChangeAllowed(day: planRealtimeDayString(start, calendar: calendar), today: planRealtimeDayString(Date(), calendar: calendar), start: start, now: Date()) {
-                let today = planRealtimeDayString(Date(), calendar: calendar)
-                let past = planRealtimeDayString(start, calendar: calendar) == today
-                return encode(PlanRealtimeToolReply(ok: false, saved: false, speak: planVoiceEngineLimit(language: callLanguage, past: past), error: "live_limit"))
-            }
             do {
                 try onUpdate(PlanVoiceUpdateRequest(
                     activityID: activityID,
@@ -1325,7 +1300,7 @@ struct PlanRealtimeVoiceSheet: View {
                 controller.begin()
             }
         }
-        .sheet(isPresented: $showAIUsage) { WeekFitAIBalanceSheet() }
+        .fullScreenCover(isPresented: $showAIUsage) { WeekFitAIBalanceSheet() }
         .onDisappear { controller.end() }
         .onChange(of: controller.phase) { _, phase in
             if phase == .ended {
@@ -1470,13 +1445,6 @@ struct PlanRealtimeVoiceSheet: View {
                     Button(WeekFitLocalizedString("planner.voice.openSettings")) {
                         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
                         UIApplication.shared.open(url)
-                    }
-                    .font(.body.weight(.semibold))
-                }
-                if controller.offerOtherEngine {
-                    Button(planVoiceEngineOffer(PlanVoiceEngine.alternate, language: languageManager.selectedLanguage.rawValue)) {
-                        PlanVoiceEngine.choose(PlanVoiceEngine.alternate)
-                        controller.retry()
                     }
                     .font(.body.weight(.semibold))
                 }

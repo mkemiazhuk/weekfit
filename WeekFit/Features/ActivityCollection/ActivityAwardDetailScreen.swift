@@ -1,127 +1,178 @@
 import SwiftUI
+import WeekFitPlanner
 
 struct ActivityAwardDetailScreen: View {
     let badge: ActivityBadgeDisplay
     let onClose: () -> Void
     let onStart: () -> Void
     var scrolls = true
+    var healthManager: HealthManager? = nil
+    var plannedActivities: [PlannedActivity] = []
 
     @Environment(\.weekFitPalette) private var palette
+    @State private var openedSession: ActivitySessionSnapshot?
 
     var body: some View {
         ZStack {
             palette.appScreenBackground.ignoresSafeArea()
-            Group {
-                if scrolls {
-                    ScrollView(showsIndicators: false) { detailStack }
-                } else {
+            GeometryReader { geometry in
+                ScrollView(showsIndicators: false) {
                     detailStack
+                        .frame(minHeight: geometry.size.height)
                 }
             }
+        }
+        .fullScreenCover(item: $openedSession) { session in
+            if let healthManager {
+                ActivitySessionDetailView(session: session, healthManager: healthManager)
+            }
+        }
+    }
+
+    private func openActivity(_ source: ActivityAwardSource) {
+        guard let healthManager,
+              let activity = plannedActivities.first(where: { $0.id == source.recordID }) else { return }
+        Task {
+            openedSession = await PlannedActivitySessionResolver().resolve(activity, healthManager: healthManager)
         }
     }
 
     private var detailStack: some View {
-                VStack(spacing: 18) {
-                    HStack {
-                        Spacer()
-                        Button(action: onClose) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(palette.textPrimary)
-                                .frame(width: 44, height: 44)
-                                .background(Circle().fill(palette.textPrimary.opacity(0.08)))
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(Text(AppText.Common.Action.close))
-                    }
-                    ActivityBadgeRibbon(
-                        symbol: badge.symbol,
-                        category: badge.category,
-                        artworkID: badge.id,
-                        locked: !badge.isUnlocked,
-                        size: 220
-                    )
-                    VStack(spacing: 8) {
-                        Text(badge.name)
-                            .font(.system(size: 30, weight: .bold, design: .rounded))
-                            .foregroundStyle(palette.textPrimary)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(3)
-                            .minimumScaleFactor(0.55)
-                        Text(badge.activityName)
-                            .font(.system(size: 17, weight: .semibold, design: .rounded))
-                            .foregroundStyle(palette.textSecondary)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(3)
-                            .minimumScaleFactor(0.7)
-                        if badge.isUnlocked {
-                            Text(ActivityAwardCopy.result(badge))
-                                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                                .foregroundStyle(palette.textPrimary)
-                                .multilineTextAlignment(.center)
-                            if let date = ActivityAwardCopy.dateLine(badge) {
-                                Text(date)
-                                    .font(.subheadline)
-                                    .foregroundStyle(palette.textSecondary)
-                                    .multilineTextAlignment(.center)
-                            }
-                            if let extra = ActivityAwardCopy.supporting(badge) {
-                                Text(extra)
-                                    .font(.subheadline)
-                                    .foregroundStyle(palette.textSecondary)
-                                    .multilineTextAlignment(.center)
-                            }
-                        } else {
-                            Text(badge.condition)
-                                .font(.body)
-                                .foregroundStyle(palette.textSecondary)
-                                .multilineTextAlignment(.center)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Text(ActivityAwardCopy.result(badge))
-                                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                                .foregroundStyle(palette.textPrimary)
-                            if let fraction = ActivityAwardCopy.progressFraction(badge) {
-                                AwardProgressBar(fraction: fraction, tint: ActivityBadgePalette.tint(badge.category))
-                                    .padding(.top, 4)
-                            }
-                        }
-                    }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(ActivityAwardCopy.accessibilityLabel(for: badge))
-                    if !badge.isUnlocked, badge.canStart {
-                        Button(action: onStart) {
-                            Text(badge.actionTitle)
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(Color.white)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 52)
-                                .background(ActivityBadgePalette.tint(badge.category), in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.top, 8)
-                    }
-                }
-                .padding(.horizontal, 28)
+        VStack(spacing: 0) {
+            HStack {
+                ProfilePremiumDismissButton(style: .back, action: onClose)
+                Spacer(minLength: 0)
+            }
+            Spacer(minLength: 8)
+            ActivityBadgeRibbon(
+                symbol: badge.symbol,
+                category: badge.category,
+                artworkID: badge.id,
+                locked: false,
+                size: 248
+            )
+            .padding(.top, 28)
+            .padding(.bottom, 32)
+            Text(badge.name)
+                .font(.system(size: 28, weight: .bold))
+                .foregroundStyle(palette.textPrimary)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+                .minimumScaleFactor(0.7)
+            Text(ActivityAwardCopy.story(badge))
+                .font(.body)
+                .foregroundStyle(palette.textSecondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 12)
-                .padding(.bottom, 28)
+                .padding(.horizontal, 8)
+            if !badge.isUnlocked, badge.canStart {
+                Button(action: onStart) {
+                    Text(badge.actionTitle)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Color.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(ActivityBadgePalette.tint(badge.category), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 28)
+            }
+            Spacer(minLength: 24)
+            if badge.isUnlocked, let source = badge.source {
+                ActivityAwardSessionCard(
+                    source: source,
+                    onOpen: healthManager == nil ? nil : { openActivity(source) }
+                )
+            }
+        }
+        .padding(.horizontal, 28)
+        .padding(.top, 12)
+        .padding(.bottom, 28)
+        .frame(maxWidth: .infinity, minHeight: scrolls ? nil : 640)
     }
 }
 
-private struct AwardProgressBar: View {
-    var fraction: Double
-    var tint: Color
+struct ActivityAwardSessionCard: View {
+    let source: ActivityAwardSource
+    var onOpen: (() -> Void)? = nil
+
+    @Environment(\.weekFitPalette) private var palette
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(tint.opacity(0.18))
-                    Capsule()
-                    .fill(tint)
-                    .frame(width: geo.size.width * fraction)
+        VStack(alignment: .leading, spacing: 8) {
+            Text(ActivityBadgeCopy.sessionTitle)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(palette.textPrimary)
+            Button(action: { onOpen?() }) {
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(ActivityBadgePalette.leaf.opacity(0.16))
+                            .frame(width: 32, height: 32)
+                        Image(systemName: source.icon.isEmpty ? "figure.mixed.cardio" : source.icon)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(ActivityBadgePalette.leaf)
+                    }
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(source.title)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(palette.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        if let metric = ActivityAwardCopy.sessionMetric(source) {
+                            Text(metric)
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundStyle(ActivityBadgePalette.leaf)
+                                .lineLimit(1)
+                        }
+                        Text(ActivityAwardCopy.sessionWhen(source.startedAt))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(palette.textSecondary)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 8)
+                    if onOpen != nil {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(palette.textSecondary)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(palette.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(onOpen == nil)
+        }
+        .padding(.top, 8)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+struct ActivityAwardPlaques: View {
+    let awardIDs: [String]
+    var size: CGFloat = 32
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(awardIDs, id: \.self) { id in
+                ActivityBadgeRibbon(
+                    symbol: "medal.fill",
+                    category: category(for: id),
+                    artworkID: id,
+                    locked: false,
+                    size: size
+                )
             }
         }
-        .frame(height: 10)
         .accessibilityHidden(true)
+    }
+
+    private func category(for id: String) -> ActivityBadgeCategory {
+        if id.hasPrefix("energy.") { return .energy }
+        if id.hasPrefix("recovery.") { return .recovery }
+        if id.hasPrefix("habit.") { return .habit }
+        return .activity
     }
 }

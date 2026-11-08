@@ -93,10 +93,8 @@ struct LoginView: View {
         .onAppear {
             runEntranceAnimation()
         }
-        .sheet(isPresented: $showEmailSignIn) {
+        .fullScreenCover(isPresented: $showEmailSignIn) {
             EmailLoginSheet(authViewModel: authViewModel, brandGreen: brandGreen)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
         }
     }
 

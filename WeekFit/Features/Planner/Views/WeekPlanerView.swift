@@ -59,6 +59,9 @@ private struct WeekPlannerLiveQueryView: View {
     @State private var showNutritionDetails = false
     @State private var nutritionDetailsDate = Date()
     @State private var selectedActivitySession: ActivitySessionSnapshot?
+    @State private var selectedPlanAward: ActivityBadgeDisplay?
+
+    @ObservedObject private var activityBadges = ActivityBadgeStore.shared
 
     private let sessionResolver = PlannedActivitySessionResolver()
 
@@ -162,7 +165,7 @@ private struct WeekPlannerLiveQueryView: View {
         .accessibilityIdentifier("screen.plan")
         .id("planner-keepalive")
         .weekFitSettingsSheet(isPresented: $showProfile)
-        .sheet(
+        .fullScreenCover(
             isPresented: $viewModel.showAddActivity,
             onDismiss: {
                 viewModel.finishAddSheetDismiss()
@@ -176,33 +179,19 @@ private struct WeekPlannerLiveQueryView: View {
                 completionCheckInsEnabled: completionCheckInsEnabled
             )
             .environmentObject(languageManager)
-            .presentationDetents([.large])
-            .presentationDragIndicator(.hidden)
-            .presentationContentInteraction(.scrolls)
-            .weekFitSheetChrome(
-                cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
-                background: QuickActionSheetDesign.Color.sheetBackground(
-                    for: viewModel.selectedType == .meal ? .food : .activity
-                )
-            )
         }
-        .sheet(item: $selectedMeal) { meal in
+        .fullScreenCover(item: $selectedMeal) { meal in
             MealDetailsView(meal: meal)
                 .environmentObject(languageManager)
-                .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
         }
-        .sheet(item: $selectedFood) { food in
+        .fullScreenCover(item: $selectedFood) { food in
             CustomFoodDetailsView(
                 food: food,
                 existingMeals: customMeals
             )
             .environmentObject(languageManager)
-            .weekFitSheetChrome(
-                cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
-                background: QuickActionSheetDesign.Color.sheetBackground(for: .food)
-            )
         }
-        .sheet(item: $selectedLoggedActivity) { activity in
+        .fullScreenCover(item: $selectedLoggedActivity) { activity in
             LoggedMealDetailView(
                 activity: activity,
                 existingMeals: customMeals,
@@ -216,7 +205,6 @@ private struct WeekPlannerLiveQueryView: View {
                 }
             )
             .environmentObject(languageManager)
-            .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
         }
         .fullScreenCover(isPresented: $showNutritionDetails) {
             NutritionDetailsView(
@@ -244,6 +232,15 @@ private struct WeekPlannerLiveQueryView: View {
             ActivitySessionDetailView(
                 session: session,
                 healthManager: healthManager
+            )
+        }
+        .fullScreenCover(item: $selectedPlanAward) { badge in
+            ActivityAwardDetailScreen(
+                badge: badge,
+                onClose: { selectedPlanAward = nil },
+                onStart: { selectedPlanAward = nil },
+                healthManager: healthManager,
+                plannedActivities: plannedActivities
             )
         }
         .task(id: sessionDetailPrefetchKey) {
@@ -1171,6 +1168,17 @@ private extension WeekPlannerLiveQueryView {
         allowsCompletionToggle: Bool
     ) -> some View {
         let focusItemID = timelineFocusItemID(in: allTimelineItems)
+        let awardInputs = plannedActivities.map(ActivityBadgeCenter.input(from:))
+        let awardPlaques = ActivityBadgeEngine.plaques(
+            ledger: activityBadges.ledger,
+            inputs: awardInputs
+        )
+        let awardCells = ActivityBadgePresenter.sections(
+            ledger: activityBadges.ledger,
+            inputs: awardInputs,
+            activityName: { PlannerOptionLocalization.localizedTitle(for: $0) }
+        ).flatMap(\.cells)
+        let awardCellsByID = Dictionary(awardCells.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
             let activity = item.representative
             let status = resolvedActivityStatus(for: activity)
@@ -1222,12 +1230,12 @@ private extension WeekPlannerLiveQueryView {
                 completionControl: completionControl,
                 onToggleCompletion: allowsCompletionToggle
                     ? { toggleTimelineItemCompletion(item) }
-                    : nil
+                    : nil,
+                awards: (awardPlaques[activity.id] ?? []).compactMap { awardCellsByID[$0] },
+                onOpen: { openTimelineItem(item) },
+                onAward: { selectedPlanAward = $0 }
             )
             .contentShape(Rectangle())
-            .onTapGesture {
-                openTimelineItem(item)
-            }
             .id(item.id)
             .contextMenu {
                 if allowsCompletionToggle {

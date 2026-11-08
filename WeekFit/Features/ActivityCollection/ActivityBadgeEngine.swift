@@ -5,6 +5,8 @@ enum ActivityAwardUnit: String, Equatable, Codable {
     case days
     case minutes
     case milliliters
+    case kilometers
+    case kilocalories
 }
 
 enum ActivityAwardKind: String, Equatable {
@@ -25,6 +27,10 @@ struct ActivityAwardFacts: Equatable {
     var recordDate: Date?
     var recordUnit: ActivityAwardUnit?
     var firstMeasured: Int?
+    /// First time a walk or ride reached each kilometer tier.
+    var distanceTiers: [Int: Date] = [:]
+    /// How many measured sessions reached each kilometer tier.
+    var distanceCounts: [Int: Int] = [:]
 }
 
 struct ActivityAwardState: Equatable {
@@ -48,6 +54,21 @@ struct ActivityBadgeInput: Equatable {
     var durationMinutes: Int
     var actualDurationMinutes: Int?
     var source: String
+    var waterMilliliters: Int
+    var distanceMeters: Int? = nil
+    var activeKilocalories: Int? = nil
+    var icon: String = ""
+}
+
+struct ActivityAwardSource: Equatable, Identifiable {
+    var id: String { recordID }
+    var recordID: String
+    var title: String
+    var icon: String
+    var startedAt: Date
+    var durationMinutes: Int
+    var kilocalories: Int?
+    var distanceMeters: Int?
     var waterMilliliters: Int
 }
 
@@ -341,10 +362,18 @@ enum ActivityBadgeEngine {
     }
 
     static let awardTiers = [5, 10, 25, 50]
+    static let distanceAwardIDs: Set<String> = ["recovery.walk", "activity.cycling"]
+    static let distanceTiersKm = [1, 2, 3, 5]
+    static let calorieTiers = [300, 500, 1000, 2000, 3000]
     static let streakLengthGoal = 2
+
+    static func calorieAwardID(_ tier: Int) -> String { "energy.kcal.\(tier)" }
 
     static func awardBaseID(_ awardID: String) -> String {
         if let range = awardID.range(of: ".count.") {
+            return String(awardID[..<range.lowerBound])
+        }
+        if let range = awardID.range(of: ".km.") {
             return String(awardID[..<range.lowerBound])
         }
         if awardID.hasSuffix(".streak") {
@@ -354,6 +383,141 @@ enum ActivityBadgeEngine {
             return String(awardID.dropLast(".record".count))
         }
         return awardID
+    }
+
+    /// The session that earned this award. Later sessions that only repeat it are left out.
+    static func earningInput(
+        for awardID: String,
+        inputs: [ActivityBadgeInput],
+        ledger: ActivityBadgeLedger,
+        now: Date,
+        calendar: Calendar = .current
+    ) -> ActivityBadgeInput? {
+        if awardID.hasPrefix("energy.kcal.") {
+            let tier = Int(awardID.dropFirst("energy.kcal.".count)) ?? 0
+            guard tier > 0 else { return nil }
+            let events = calorieEvents(inputs: inputs, ledger: ledger, now: now)
+                .filter { ($0.activeKilocalories ?? 0) >= tier }
+            return pinned(events, to: ledger.storedAwards[awardID]?.earnedAt, now: now, calendar: calendar)
+        }
+        if awardID == "habit.drink-water" {
+            guard ledger.waterGoalMilliliters > 0,
+                  let crossing = firstWaterGoalCrossing(inputs, goal: ledger.waterGoalMilliliters) else { return nil }
+            return inputs.first { $0.recordID == crossing.recordID }
+        }
+        if awardID == "habit.drink-water.record" {
+            let facts = waterFacts(inputs, goal: ledger.waterGoalMilliliters, now: now, calendar: calendar)
+            guard let day = facts.recordDate else { return nil }
+            return inputs
+                .filter {
+                    $0.isCompleted && !$0.isSkipped && $0.waterMilliliters > 0
+                        && calendar.isDate($0.startedAt, inSameDayAs: day)
+                }
+                .max { $0.startedAt < $1.startedAt }
+        }
+        let base = awardBaseID(awardID)
+        let events = qualifyingEvents(for: base, inputs: inputs, ledger: ledger, now: now)
+        if awardID == base {
+            return pinned(events, to: ledger.unlocks[awardID], now: now, calendar: calendar)
+        }
+        if let range = awardID.range(of: ".km."), let tier = Int(awardID[range.upperBound...]) {
+            let hits = events.filter { ($0.distanceMeters ?? 0) >= tier * 1000 }
+            return pinned(hits, to: ledger.storedAwards[awardID]?.earnedAt, now: now, calendar: calendar)
+        }
+        if let range = awardID.range(of: ".count."), let tier = Int(awardID[range.upperBound...]), events.count >= tier {
+            return events[tier - 1]
+        }
+        if awardID.hasSuffix(".streak") {
+            let end = ledger.storedAwards[awardID]?.rangeEnd
+                ?? awardFacts(for: base, inputs: inputs, ledger: ledger, now: now, calendar: calendar).bestStreakEnd
+            return pinned(events, to: end, now: now, calendar: calendar)
+        }
+        if awardID.hasSuffix(".record") {
+            let measured = events.filter { ($0.actualDurationMinutes ?? 0) > 0 }
+            let date = ledger.storedAwards[awardID]?.rangeEnd ?? ledger.storedAwards[awardID]?.earnedAt
+            return pinned(measured, to: date, now: now, calendar: calendar)
+        }
+        return nil
+    }
+
+    /// Award plates to show on the activity that earned them. At most three, highest tier only.
+    static func plaques(
+        ledger: ActivityBadgeLedger,
+        inputs: [ActivityBadgeInput],
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> [String: [String]] {
+        var ids = Set(ledger.unlocks.keys)
+        ids.formUnion(ledger.storedAwards.keys)
+        var byRecord: [String: [String]] = [:]
+        for id in ids {
+            guard let art = ActivityBadgeArt.asset(for: id) else { continue }
+            let base = awardBaseID(id)
+            if id != base, ActivityBadgeArt.asset(for: base) == art { continue }
+            guard let input = earningInput(for: id, inputs: inputs, ledger: ledger, now: now, calendar: calendar) else { continue }
+            byRecord[input.recordID, default: []].append(id)
+        }
+        return byRecord.mapValues(headlinePlaques)
+    }
+
+    private static func headlinePlaques(_ ids: [String]) -> [String] {
+        func tier(_ id: String, marker: String) -> Int {
+            guard let range = id.range(of: marker), let value = Int(id[range.upperBound...]) else { return -1 }
+            return value
+        }
+        func maxID(_ marker: String) -> String? {
+            ids.filter { tier($0, marker: marker) >= 0 }.max { tier($0, marker: marker) < tier($1, marker: marker) }
+        }
+        var result: [String] = []
+        result.append(contentsOf: ids.filter { awardBaseID($0) == $0 && !$0.hasPrefix("energy.kcal.") }.sorted())
+        if let km = maxID(".km.") { result.append(km) }
+        if let kcal = maxID(".kcal.") { result.append(kcal) }
+        if let record = ids.first(where: { $0.hasSuffix(".record") }) { result.append(record) }
+        if let count = maxID(".count.") { result.append(count) }
+        if let streak = ids.first(where: { $0.hasSuffix(".streak") }) { result.append(streak) }
+        var seen = Set<String>()
+        return result.filter { seen.insert($0).inserted }.prefix(3).map { $0 }
+    }
+
+    private static func qualifyingEvents(
+        for id: String,
+        inputs: [ActivityBadgeInput],
+        ledger: ActivityBadgeLedger,
+        now: Date
+    ) -> [ActivityBadgeInput] {
+        let disqualified = Set(ledger.disqualifiedRecordIDs)
+        return inputs
+            .filter { qualifies($0, disqualified: disqualified, ledger: ledger) && badgeID(for: $0, ledger: ledger) == id }
+            .sorted { completionDate($0, justFinished: [], now: now) < completionDate($1, justFinished: [], now: now) }
+    }
+
+    private static func calorieEvents(
+        inputs: [ActivityBadgeInput],
+        ledger: ActivityBadgeLedger,
+        now: Date
+    ) -> [ActivityBadgeInput] {
+        let disqualified = Set(ledger.disqualifiedRecordIDs)
+        return inputs
+            .filter { qualifies($0, disqualified: disqualified, ledger: ledger) && ($0.activeKilocalories ?? 0) > 0 }
+            .sorted { completionDate($0, justFinished: [], now: now) < completionDate($1, justFinished: [], now: now) }
+    }
+
+    private static func pinned(
+        _ events: [ActivityBadgeInput],
+        to date: Date?,
+        now: Date,
+        calendar: Calendar
+    ) -> ActivityBadgeInput? {
+        guard !events.isEmpty else { return nil }
+        guard let date else { return events.first }
+        let stamped = events.map { ($0, completionDate($0, justFinished: [], now: now)) }
+        let sameDay = stamped.filter { calendar.isDate($0.1, inSameDayAs: date) }
+        if let match = sameDay.min(by: { abs($0.1.timeIntervalSince(date)) < abs($1.1.timeIntervalSince(date)) }) {
+            return match.0
+        }
+        guard let nearest = stamped.min(by: { abs($0.1.timeIntervalSince(date)) < abs($1.1.timeIntervalSince(date)) }),
+              abs(nearest.1.timeIntervalSince(date)) <= 36 * 3_600 else { return nil }
+        return nearest.0
     }
 
     static func awardFacts(
@@ -383,10 +547,33 @@ enum ActivityBadgeEngine {
         }
         let firstMeasured = events.first.flatMap { $0.actualDurationMinutes }.flatMap { $0 > 0 ? $0 : nil }
         var tiers: [Int: Date] = [:]
-        for tier in awardTiers where dates.count >= tier {
-            tiers[tier] = dates[tier - 1]
+        if !distanceAwardIDs.contains(id) {
+            for tier in awardTiers where dates.count >= tier {
+                tiers[tier] = dates[tier - 1]
+            }
+        }
+        var distanceTiers: [Int: Date] = [:]
+        var distanceCounts: [Int: Int] = [:]
+        if distanceAwardIDs.contains(id) {
+            for tier in distanceTiersKm {
+                let hits = events.filter { ($0.distanceMeters ?? 0) >= tier * 1000 }
+                distanceCounts[tier] = hits.count
+                if let first = hits.first {
+                    distanceTiers[tier] = completionDate(first, justFinished: [], now: now)
+                }
+            }
         }
         let unit = recordUnit(for: id, ledger: ledger)
+        let recordValue: Int?
+        let recordDate: Date?
+        switch unit {
+        case .minutes:
+            recordValue = best?.minutes
+            recordDate = best?.date
+        default:
+            recordValue = nil
+            recordDate = nil
+        }
         return ActivityAwardFacts(
             completions: dates.count,
             tierEarnedAt: tiers,
@@ -394,10 +581,12 @@ enum ActivityBadgeEngine {
             bestStreak: streak.best,
             bestStreakStart: streak.start,
             bestStreakEnd: streak.end,
-            recordValue: unit == nil ? nil : best?.minutes,
-            recordDate: unit == nil ? nil : best?.date,
+            recordValue: recordValue,
+            recordDate: recordDate,
             recordUnit: unit,
-            firstMeasured: firstMeasured
+            firstMeasured: firstMeasured,
+            distanceTiers: distanceTiers,
+            distanceCounts: distanceCounts
         )
     }
 
@@ -411,7 +600,23 @@ enum ActivityBadgeEngine {
         ids.formUnion(ledger.customNames.keys)
         for id in ids {
             let facts = awardFacts(for: id, inputs: inputs, ledger: ledger, now: now, calendar: calendar)
-            for tier in awardTiers {
+            if distanceAwardIDs.contains(id) {
+                for tier in distanceTiersKm {
+                    guard let reached = facts.distanceTiers[tier] else { continue }
+                    let key = "\(id).km.\(tier)"
+                    let count = facts.distanceCounts[tier] ?? 0
+                    if var existing = ledger.storedAwards[key] {
+                        if reached < existing.earnedAt {
+                            existing.earnedAt = reached
+                        }
+                        existing.value = max(existing.value, count)
+                        ledger.storedAwards[key] = existing
+                    } else {
+                        ledger.storedAwards[key] = ActivityStoredAward(earnedAt: reached, value: count)
+                    }
+                }
+            }
+            for tier in awardTiers where !distanceAwardIDs.contains(id) {
                 guard let reached = facts.tierEarnedAt[tier] else { continue }
                 let key = "\(id).count.\(tier)"
                 if var existing = ledger.storedAwards[key] {
@@ -441,20 +646,66 @@ enum ActivityBadgeEngine {
                     )
                 }
             }
-            if let unit = facts.recordUnit, let value = facts.recordValue, value > 0, let date = facts.recordDate {
-                _ = unit
-                let key = "\(id).record"
-                if var existing = ledger.storedAwards[key] {
-                    if value > existing.value {
-                        existing.value = value
-                        existing.rangeEnd = date
-                        ledger.storedAwards[key] = existing
+            if keepsPersonalRecord(id) {
+                if let unit = facts.recordUnit, let value = facts.recordValue, value > 0, let date = facts.recordDate {
+                    let key = "\(id).record"
+                    if var existing = ledger.storedAwards[key] {
+                        if value > existing.value {
+                            existing.value = value
+                            existing.rangeEnd = date
+                            ledger.storedAwards[key] = existing
+                        }
+                    } else {
+                        ledger.storedAwards[key] = ActivityStoredAward(earnedAt: date, value: value, rangeEnd: date)
                     }
-                } else {
-                    ledger.storedAwards[key] = ActivityStoredAward(earnedAt: date, value: value, rangeEnd: date)
                 }
+            } else {
+                ledger.storedAwards["\(id).record"] = nil
             }
         }
+        raiseCalorieAwards(inputs: inputs, now: now, calendar: calendar, into: &ledger)
+    }
+
+    static func calorieTierDates(
+        inputs: [ActivityBadgeInput],
+        ledger: ActivityBadgeLedger,
+        now: Date,
+        calendar: Calendar = .current
+    ) -> [Int: Date] {
+        let events = calorieEvents(inputs: inputs, ledger: ledger, now: now)
+        var earned: [Int: Date] = [:]
+        for tier in calorieTiers {
+            guard let first = events.first(where: { ($0.activeKilocalories ?? 0) >= tier }) else { continue }
+            earned[tier] = completionDate(first, justFinished: [], now: now)
+        }
+        return earned
+    }
+
+    private static func raiseCalorieAwards(
+        inputs: [ActivityBadgeInput],
+        now: Date,
+        calendar: Calendar,
+        into ledger: inout ActivityBadgeLedger
+    ) {
+        let earned = calorieTierDates(inputs: inputs, ledger: ledger, now: now, calendar: calendar)
+        for tier in calorieTiers {
+            let key = calorieAwardID(tier)
+            guard let date = earned[tier] else {
+                ledger.storedAwards[key] = nil
+                continue
+            }
+            if var existing = ledger.storedAwards[key] {
+                if date < existing.earnedAt { existing.earnedAt = date }
+                existing.value = tier
+                ledger.storedAwards[key] = existing
+            } else {
+                ledger.storedAwards[key] = ActivityStoredAward(earnedAt: date, value: tier)
+            }
+        }
+    }
+
+    private static func keepsPersonalRecord(_ id: String) -> Bool {
+        distanceAwardIDs.contains(id) || id == "habit.drink-water"
     }
 
     private static func recordUnit(for id: String, ledger: ActivityBadgeLedger) -> ActivityAwardUnit? {

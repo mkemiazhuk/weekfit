@@ -109,15 +109,12 @@ struct ExpertCoachView: View {
                 openPendingRecoveryChallengeIfNeeded()
             }
         }
-        .sheet(isPresented: $showRecoveryChallenge, onDismiss: {
+        .fullScreenCover(isPresented: $showRecoveryChallenge, onDismiss: {
             refreshRecoveryChallengeEntry()
         }) {
             RecoveryChallengeView(source: recoveryChallengeOpenSource) {
                 refreshRecoveryChallengeEntry()
             }
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
-            .interactiveDismissDisabled(false)
         }
         .fullScreenCover(isPresented: $showCoachAssistant, onDismiss: {
             coachAssistantLaunch = .fresh
@@ -239,12 +236,17 @@ struct ExpertCoachView: View {
                     .padding(.bottom, WeekFitScreenLayout.tabBarClearance + 10)
             }
         }
-        .sheet(isPresented: $showBeliefDebug) {
+        .fullScreenCover(isPresented: $showBeliefDebug) {
             NavigationStack {
                 CoachBeliefDebugView(coachState: coachCoordinator.state)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button(WeekFitLocalizedString("common.action.close")) {
+                                showBeliefDebug = false
+                            }
+                        }
+                    }
             }
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
         }
         #endif
         .onChange(of: coachUIPresentation?.scenario) { _, _ in

@@ -385,19 +385,20 @@ final class PlanRealtimeVoiceTests: XCTestCase {
         XCTAssertEqual(reply.saved, true)
     }
 
-    func testLiveKeepsTodayAndRejectsAPastOrAnotherDay() {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        let now = calendar.date(from: DateComponents(year: 2026, month: 11, day: 5, hour: 12))!
-        let later = calendar.date(byAdding: .hour, value: 2, to: now)!
-        let earlier = calendar.date(byAdding: .hour, value: -2, to: now)!
-        XCTAssertTrue(planRealtimeLiveChangeAllowed(day: "2026-11-05", today: "2026-11-05", start: later, now: now))
-        XCTAssertTrue(planRealtimeLiveChangeAllowed(day: "", today: "2026-11-05", start: later, now: now))
-        XCTAssertFalse(planRealtimeLiveChangeAllowed(day: "2026-11-06", today: "2026-11-05", start: later, now: now))
-        XCTAssertFalse(planRealtimeLiveChangeAllowed(day: "2026-11-05", today: "2026-11-05", start: earlier, now: now))
+    func testStoredLiveOpensTheNextCallOnRealtime() {
+        let key = PlanVoiceEngine.storageKey
+        let previous = UserDefaults.standard.string(forKey: key)
+        UserDefaults.standard.set("live", forKey: key)
+        XCTAssertEqual(PlanVoiceEngine.current, "realtime")
+        XCTAssertEqual(UserDefaults.standard.string(forKey: key), "realtime")
+        XCTAssertEqual(PlanVoiceEngine.current, "realtime")
+        if let previous {
+            UserDefaults.standard.set(previous, forKey: key)
+        } else {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
         XCTAssertEqual(planRealtimeCallLanguage("{\"language\":\"fr\"}"), "fr")
         XCTAssertNil(planRealtimeCallLanguage("{\"language\":\"xx\"}"))
-        XCTAssertEqual(PlanVoiceEngine.alternate == "live" || PlanVoiceEngine.alternate == "realtime", true)
     }
 
     func testLostReplyReplaysTheSavedConfirmationAndDoesNotExpireAnActivity() {

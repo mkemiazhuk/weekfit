@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 import WeekFitPlanner
 
 struct ActivityCollectionScreen: View {
@@ -10,6 +11,7 @@ struct ActivityCollectionScreen: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var nutritionViewModel: NutritionViewModel
+    @EnvironmentObject private var healthManager: HealthManager
     @Query(sort: \PlannedActivity.date, order: .forward)
     private var activities: [PlannedActivity]
     @ObservedObject private var store = ActivityBadgeStore.shared
@@ -37,8 +39,17 @@ struct ActivityCollectionScreen: View {
                     store.openWaterLog = true
                 }
                 onClose?() ?? dismiss()
-            }
+            },
+            healthManager: healthManager,
+            plannedActivities: activities
         )
+        .task {
+            await ActivityBadgeCenter.backfillDistances(
+                activities: activities,
+                modelContext: modelContext,
+                waterGoalLiters: goal
+            )
+        }
     }
 }
 
@@ -49,6 +60,8 @@ struct ActivityCollectionView: View {
     var scrolls = true
     let onClose: () -> Void
     let onStart: (ActivityBadgeDisplay) -> Void
+    var healthManager: HealthManager? = nil
+    var plannedActivities: [PlannedActivity] = []
 
     @Environment(\.weekFitPalette) private var palette
     @State private var selected: ActivityBadgeDisplay?
@@ -67,11 +80,20 @@ struct ActivityCollectionView: View {
                 }
             }
         }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+        .background { ActivityCollectionPopEnabler() }
         .fullScreenCover(item: $selected) { badge in
-            ActivityAwardDetailScreen(badge: badge, onClose: { selected = nil }, onStart: {
-                selected = nil
-                onStart(badge)
-            })
+            ActivityAwardDetailScreen(
+                badge: badge,
+                onClose: { selected = nil },
+                onStart: {
+                    selected = nil
+                    onStart(badge)
+                },
+                healthManager: healthManager,
+                plannedActivities: plannedActivities
+            )
         }
         .onAppear {
             guard let highlightedID else { return }
@@ -81,15 +103,16 @@ struct ActivityCollectionView: View {
 
     private var collectionStack: some View {
         VStack(alignment: .leading, spacing: 22) {
-            Button(action: onClose) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(palette.textPrimary)
-                    .frame(width: 44, height: 44)
-                    .background(Circle().fill(ActivityBadgePalette.cream.opacity(0.65)))
+            HStack {
+                if dismissStyle != .close {
+                    ProfilePremiumDismissButton(style: .back, action: onClose)
+                }
+                Spacer(minLength: 0)
+                if dismissStyle == .close {
+                    WeekFitCloseButton(size: .large, playsHaptic: false, action: onClose)
+                        .accessibilityLabel(Text(AppText.Common.Action.close))
+                }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(AppText.Common.Action.close))
 
             VStack(alignment: .leading, spacing: 10) {
                 Text(ActivityBadgeCopy.screenTitle)
@@ -127,37 +150,71 @@ struct ActivityCollectionView: View {
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(palette.textSecondary)
             }
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 18) {
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top), count: 3),
+                spacing: 16
+            ) {
                 ForEach(section.cells) { badge in
-                    Button {
-                        selected = badge
-                    } label: {
-                        VStack(spacing: 8) {
-                            ActivityBadgeRibbon(
-                                symbol: badge.symbol,
-                                category: badge.category,
-                                artworkID: badge.id,
-                                locked: !badge.isUnlocked,
-                                size: 138
-                            )
-                            Text(badge.caption)
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(palette.textPrimary)
-                                .multilineTextAlignment(.center)
-                                .lineLimit(2)
-                                .minimumScaleFactor(0.8)
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(accessibilityLabel(badge))
+                    badgeCell(badge)
                 }
             }
         }
     }
 
+    private func badgeCell(_ badge: ActivityBadgeDisplay) -> some View {
+        let content = VStack(spacing: 6) {
+            ActivityBadgeRibbon(
+                symbol: badge.symbol,
+                category: badge.category,
+                artworkID: badge.id,
+                locked: !badge.isUnlocked,
+                size: 96
+            )
+            Text(badge.caption)
+                .font(.system(size: badge.isUnlocked ? 13 : 11, weight: badge.isUnlocked ? .semibold : .regular))
+                .foregroundStyle(badge.isUnlocked ? palette.textPrimary : palette.textTertiary)
+                .multilineTextAlignment(.center)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(maxWidth: .infinity, minHeight: 16)
+            timesPill(badge.isUnlocked ? badge.times : 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .top)
+
+        return Button {
+            selected = badge
+        } label: {
+            content
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel(badge))
+        .accessibilityAddTraits(.isButton)
+    }
+
+    /// Small count under the name, the same place as the Activity app’s repeat total.
+    private func timesPill(_ times: Int) -> some View {
+        Text(times > 0 ? "\(times)" : " ")
+            .font(.system(size: 12, weight: .bold, design: .rounded))
+            .foregroundStyle(palette.textSecondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background {
+                if times > 0 {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(palette.textPrimary.opacity(0.08))
+                }
+            }
+            .opacity(times > 0 ? 1 : 0)
+            .accessibilityHidden(true)
+    }
+
     private func accessibilityLabel(_ badge: ActivityBadgeDisplay) -> String {
-        ActivityAwardCopy.accessibilityLabel(for: badge)
+        var label = ActivityAwardCopy.accessibilityLabel(for: badge)
+        if badge.isUnlocked, badge.times > 0 {
+            label += ", \(badge.times)"
+        }
+        return label
     }
 }
 
@@ -219,5 +276,24 @@ struct ActivityBadgeUnlockedSheet: View {
                 : "\(minutes) minute of \(badge.activityName.lowercased())"
         }
         return badge.activityName
+    }
+}
+
+/// Keeps the edge swipe after the navigation back button is hidden.
+private struct ActivityCollectionPopEnabler: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> Controller { Controller() }
+    func updateUIViewController(_ controller: Controller, context: Context) {}
+
+    final class Controller: UIViewController, UIGestureRecognizerDelegate {
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            guard let navigation = navigationController, navigation.viewControllers.count > 1 else { return }
+            navigation.interactivePopGestureRecognizer?.isEnabled = true
+            navigation.interactivePopGestureRecognizer?.delegate = self
+        }
+
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            (navigationController?.viewControllers.count ?? 0) > 1
+        }
     }
 }

@@ -19,7 +19,6 @@ struct WeekFitAIBalanceSheet: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .background(palette.appScreenBackground.ignoresSafeArea())
-        .weekFitSheetChrome()
     }
 }
 
@@ -114,7 +113,7 @@ struct WeekFitAIUsageView: View {
             }
         }
         .manageSubscriptionsSheet(isPresented: $showManage)
-        .sheet(isPresented: $showPaywall, onDismiss: { Task { await store.refresh() } }) {
+        .fullScreenCover(isPresented: $showPaywall, onDismiss: { Task { await store.refresh() } }) {
             WeekFitPaywallView(source: .settings, currentTab: "settings", paywallInstanceID: paywallID, allowsDismiss: true)
                 .environmentObject(subscriptionManager)
                 .environment(\.weekFitPalette, palette)

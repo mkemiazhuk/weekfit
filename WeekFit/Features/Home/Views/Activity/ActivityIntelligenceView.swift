@@ -3,6 +3,7 @@ import Charts
 import HealthKit
 import CoreLocation
 import MapKit
+import WeekFitPlanner
 import WeekFitWorkoutMetrics
 internal import Combine
 
@@ -258,15 +259,38 @@ struct ActivityIntelligenceView: View {
     let selectedDate: Date
     @ObservedObject var healthManager: HealthManager
     let plannedActivities: [PlannedActivity]
+    var focusActivityID: String? = nil
+    var focusWorkoutID: String? = nil
+    var focusStart: Date? = nil
 
     @StateObject private var viewModel = ActivityIntelligenceViewModel()
     @State private var selectedSession: ActivitySessionSnapshot?
+    @State private var didFocusSession = false
+    @ObservedObject private var activityBadges = ActivityBadgeStore.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.weekFitPalette) private var palette
     @EnvironmentObject private var languageManager: AppLanguageManager
 
     private var snapshot: ActivityDaySnapshot {
         viewModel.selectedSnapshot
+    }
+
+    private var awardPlaquesBySessionID: [UUID: [String]] {
+        let byRecord = ActivityBadgeEngine.plaques(
+            ledger: activityBadges.ledger,
+            inputs: plannedActivities.map(ActivityBadgeCenter.input(from:))
+        )
+        var mapped: [UUID: [String]] = [:]
+        for activity in plannedActivities {
+            guard let awards = byRecord[activity.id], !awards.isEmpty else { continue }
+            if let id = UUID(uuidString: activity.id) {
+                mapped[id] = awards
+            }
+            if let workoutID = activity.healthKitWorkoutUUID.flatMap(UUID.init(uuidString:)) {
+                mapped[workoutID] = awards
+            }
+        }
+        return mapped
     }
 
     var body: some View {
@@ -310,7 +334,10 @@ struct ActivityIntelligenceView: View {
                             selectedSnapshot: snapshot,
                             weekSnapshots: viewModel.weekSnapshots
                         )
-                        SessionsCard(sessions: snapshot.sessions) { session in
+                        SessionsCard(
+                            sessions: snapshot.sessions,
+                            awardPlaques: awardPlaquesBySessionID
+                        ) { session in
                             selectedSession = session
                         }
                     }
@@ -338,6 +365,10 @@ struct ActivityIntelligenceView: View {
                 healthManager: healthManager,
                 plannedActivities: plannedActivities
             )
+            openFocusedSessionIfNeeded()
+        }
+        .onChange(of: viewModel.selectedSnapshot.sessions.map(\.id)) { _, _ in
+            openFocusedSessionIfNeeded()
         }
         .onChange(of: languageManager.selectedLanguage) { _, _ in
             Task {
@@ -379,6 +410,30 @@ struct ActivityIntelligenceView: View {
 
     private var activityDetailsDateTitle: String {
         localizedDetailsDate(viewModel.selectedDate)
+    }
+
+    private func openFocusedSessionIfNeeded() {
+        guard !didFocusSession else { return }
+        guard focusActivityID != nil || focusWorkoutID != nil || focusStart != nil else { return }
+        let sessions = viewModel.selectedSnapshot.sessions
+        guard !sessions.isEmpty else { return }
+        let match = sessions.first { session in
+            if let focusActivityID,
+               session.plannedActivityId == focusActivityID || session.id.uuidString == focusActivityID {
+                return true
+            }
+            if let focusWorkoutID,
+               session.workoutID?.uuidString == focusWorkoutID || session.id.uuidString == focusWorkoutID {
+                return true
+            }
+            return false
+        } ?? sessions.first { session in
+            guard let focusStart else { return false }
+            return abs(session.startDate.timeIntervalSince(focusStart)) < 3 * 60
+        }
+        guard let match else { return }
+        didFocusSession = true
+        selectedSession = match
     }
 
     private func select(_ date: Date) {
@@ -1128,6 +1183,7 @@ private enum WeeklyComparisonProminence {
 
 private struct SessionsCard: View {
     let sessions: [ActivitySessionSnapshot]
+    var awardPlaques: [UUID: [String]] = [:]
     let onSelect: (ActivitySessionSnapshot) -> Void
 
     var body: some View {
@@ -1149,7 +1205,10 @@ private struct SessionsCard: View {
             } else {
                 VStack(spacing: 9) {
                     ForEach(sessions) { session in
-                        SessionRow(session: session) {
+                        SessionRow(
+                            session: session,
+                            awardIDs: awardPlaques[session.id] ?? session.workoutID.flatMap { awardPlaques[$0] } ?? []
+                        ) {
                             onSelect(session)
                         }
                     }
@@ -1164,6 +1223,7 @@ private struct SessionsCard: View {
 
 private struct SessionRow: View {
     let session: ActivitySessionSnapshot
+    var awardIDs: [String] = []
     let onTap: () -> Void
 
     var body: some View {
@@ -1216,6 +1276,10 @@ private struct SessionRow: View {
             }
 
             Spacer()
+
+            if !awardIDs.isEmpty {
+                ActivityAwardPlaques(awardIDs: awardIDs, size: 28)
+            }
 
             HStack(spacing: 6) {
                 Text(DurationFormatter.fullMinutes(session.durationMinutes))
@@ -1772,7 +1836,7 @@ struct ActivitySessionDetailView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 10)
-        .activityCard(glow: session.color)
+        .activityCard()
     }
 
     private var heartRateCard: some View {
@@ -1869,7 +1933,7 @@ struct ActivitySessionDetailView: View {
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 15)
-        .activityCard(glow: ActivityStyle.red)
+        .activityCard()
     }
 
     private var routeCard: some View {
@@ -1945,7 +2009,7 @@ struct ActivitySessionDetailView: View {
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 15)
-        .activityCard(glow: session.color)
+        .activityCard()
     }
 
     private var routeUnavailablePlaceholder: some View {
@@ -2026,7 +2090,7 @@ struct ActivitySessionDetailView: View {
         }
         .padding(.horizontal, 17)
         .padding(.vertical, 15)
-        .activityCard(glow: ActivityStyle.red)
+        .activityCard()
     }
 
     private var footer: some View {

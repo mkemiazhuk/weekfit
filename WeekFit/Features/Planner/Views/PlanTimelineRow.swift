@@ -89,6 +89,9 @@ struct PlanTimelineRow: View {
     var showsTimeLabel: Bool = true
     var completionControl: PlanAgendaCompletionControl = .none
     var onToggleCompletion: (() -> Void)? = nil
+    var awards: [ActivityBadgeDisplay] = []
+    var onOpen: (() -> Void)? = nil
+    var onAward: (ActivityBadgeDisplay) -> Void = { _ in }
 
     @State private var livePulse = false
     @Environment(\.weekFitPalette) private var palette
@@ -178,18 +181,31 @@ struct PlanTimelineRow: View {
                     if let coachKind = coachProvenanceKind {
                         CoachProvenanceBadge(kind: coachKind, showsLabel: false, compact: true)
                     }
+
+                    if hasAwards {
+                        Spacer(minLength: 8)
+                        trailingStatusControl
+                            .fixedSize()
+                    }
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(accessibilityLabelText)
+                .accessibilityHint(WeekFitLocalizedString("planner.timeline.accessibility.opensDetails"))
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { onOpen?() }
 
                 if isPending {
                     pendingStatusLine
-                } else if !metadata.isEmpty {
+                } else if !metadata.isEmpty || hasAwards {
                     metadataLine
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            trailingStatusControl
-                .padding(.leading, 2)
+            if !hasAwards {
+                trailingStatusControl
+                    .padding(.leading, 2)
+            }
         }
         .padding(.horizontal, PlanTimelineLayout.cardHorizontalPadding)
         .padding(.vertical, cardVerticalPadding)
@@ -211,10 +227,10 @@ struct PlanTimelineRow: View {
             radius: isLive && livePulse ? 6 : (isLive ? 3 : 0),
             y: isLive ? 1 : 0
         )
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityLabelText)
-        .accessibilityHint(WeekFitLocalizedString("planner.timeline.accessibility.opensDetails"))
-        .accessibilityAddTraits(.isButton)
+        .accessibilityElement(children: hasAwards ? .contain : .ignore)
+        .modifier(PlanTimelineCardSummary(enabled: !hasAwards, label: accessibilityLabelText))
+        .contentShape(Rectangle())
+        .gesture(TapGesture().onEnded { onOpen?() })
     }
 
     @ViewBuilder
@@ -266,8 +282,12 @@ struct PlanTimelineRow: View {
     private func completionOutcomeBadge(
         _ provenance: PlanActivityStatus.CompletionProvenance
     ) -> some View {
-        let ink = WeekFitPlanChromeTokens.loggedBadgeInk(isLight: palette.isLight)
-        let fill = WeekFitPlanChromeTokens.loggedBadgeFill(isLight: palette.isLight)
+        let ink = provenance == .synced
+            ? syncedBadgeInk
+            : WeekFitPlanChromeTokens.loggedBadgeInk(isLight: palette.isLight)
+        let fill = provenance == .synced
+            ? syncedBadgeInk.opacity(palette.isLight ? 0.12 : 0.16)
+            : WeekFitPlanChromeTokens.loggedBadgeFill(isLight: palette.isLight)
         return HStack(spacing: 4) {
             Image(systemName: "checkmark")
                 .font(.system(size: 9, weight: .bold))
@@ -284,6 +304,12 @@ struct PlanTimelineRow: View {
                 .fill(fill)
         }
         .accessibilityHidden(true)
+    }
+
+    private var syncedBadgeInk: Color {
+        palette.isLight
+            ? Color(red: 0.24, green: 0.46, blue: 0.76)
+            : Color(red: 0.64, green: 0.78, blue: 0.95)
     }
 
     private var displayedTime: String {
@@ -407,7 +433,93 @@ struct PlanTimelineRow: View {
             : PlanTimelineLayout.cardVerticalPadding
     }
 
+    private var hasAwards: Bool { !awards.isEmpty }
+
+    @ViewBuilder
     private var metadataLine: some View {
+        if hasAwards {
+            ViewThatFits(in: .horizontal) {
+                awardMetadata(wrapsBadges: false)
+                awardMetadata(wrapsBadges: true)
+            }
+        } else {
+            plainMetadata
+        }
+    }
+
+    private func awardMetadata(wrapsBadges: Bool) -> some View {
+        let duration = durationCluster
+        let badges = awardBadgeRow
+        return Group {
+            if wrapsBadges {
+                VStack(alignment: .leading, spacing: 4) {
+                    duration
+                    badges
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(alignment: .center, spacing: 8) {
+                    duration
+                    badges
+                }
+                .fixedSize(horizontal: true, vertical: false)
+            }
+        }
+    }
+
+    private var durationCluster: some View {
+        HStack(alignment: .center, spacing: 4) {
+            if let primary = metadata.primary, !primary.isEmpty {
+                Text(primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+
+            if let sourceLabel = metadata.sourceLabel, !sourceLabel.isEmpty {
+                if metadata.primary != nil {
+                    Text("·")
+                        .foregroundStyle(metadataColor.opacity(0.55))
+                }
+                Text(sourceLabel)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .foregroundStyle(WeekFitTheme.coachAccent.opacity(0.82))
+            }
+
+            if metadata.showsWatchIcon {
+                watchSourceBadge
+            }
+        }
+        .font(WeekFitType.secondary)
+        .foregroundStyle(metadataColor)
+        .lineLimit(1)
+        .accessibilityHidden(true)
+    }
+
+    private var awardBadgeRow: some View {
+        HStack(spacing: 6) {
+            ForEach(awards) { award in
+                Button {
+                    onAward(award)
+                } label: {
+                    ActivityBadgeRibbon(
+                        symbol: award.symbol,
+                        category: award.category,
+                        artworkID: award.id,
+                        locked: false,
+                        size: 24
+                    )
+                    .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(award.name)
+                .accessibilityHint(award.condition)
+            }
+        }
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var plainMetadata: some View {
         HStack(alignment: .center, spacing: 4) {
             if let primary = metadata.primary, !primary.isEmpty {
                 Text(primary)
@@ -783,6 +895,22 @@ enum PlanTimelineIconResolver {
     }
 }
 
+private struct PlanTimelineCardSummary: ViewModifier {
+    let enabled: Bool
+    let label: String
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .accessibilityLabel(label)
+                .accessibilityHint(WeekFitLocalizedString("planner.timeline.accessibility.opensDetails"))
+                .accessibilityAddTraits(.isButton)
+        } else {
+            content
+        }
+    }
+}
+
 // MARK: - Previews
 
 #if DEBUG
@@ -824,6 +952,45 @@ private enum PlanTimelinePreviewFactory {
             isFirst: false,
             isLast: false,
             connectorAbove: 0
+        )
+    }
+
+    static func awardRow(
+        title: String,
+        duration: String,
+        watch: Bool,
+        awards: [ActivityBadgeDisplay]
+    ) -> some View {
+        PlanTimelineRow(
+            activity: PlannedActivity(
+                healthKitWorkoutUUID: watch ? "preview-workout" : nil,
+                date: Date(),
+                type: "workout",
+                title: title,
+                durationMinutes: 56,
+                icon: "figure.core.training",
+                colorRed: 0.20,
+                colorGreen: 0.62,
+                colorBlue: 0.42,
+                isCompleted: true,
+                source: "healthkit"
+            ),
+            displayTitle: title,
+            metadata: PlanTimelineRowMetadata(
+                primary: duration,
+                sourceLabel: nil,
+                showsWatchIcon: watch
+            ),
+            customMeals: [],
+            time: "10:01",
+            category: .activity,
+            status: .logged,
+            emphasis: .past,
+            nextEmphasis: nil,
+            isFirst: false,
+            isLast: false,
+            connectorAbove: 0,
+            awards: awards
         )
     }
 }
@@ -870,6 +1037,81 @@ private enum PlanTimelinePreviewFactory {
             )
         }
         .padding(.horizontal, 12)
+    }
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Completed awards") {
+    let core = ActivityBadgeDisplay(
+        id: "activity.core",
+        name: "Сильный кор",
+        caption: "Сильный кор",
+        symbol: "figure.core.training",
+        category: .activity,
+        condition: "Первая завершённая тренировка кора",
+        activityName: "Кор",
+        isUnlocked: true,
+        unlockedAt: Date(),
+        canStart: false,
+        actionTitle: "Кор",
+        actionMinutes: 20
+    )
+    let calories = ActivityBadgeDisplay(
+        id: "energy.kcal.500",
+        name: "500 ккал",
+        caption: "500 ккал",
+        symbol: "flame.fill",
+        category: .energy,
+        condition: "Одна сессия от 500 ккал",
+        activityName: "",
+        isUnlocked: true,
+        unlockedAt: Date(),
+        canStart: false,
+        actionTitle: "",
+        actionMinutes: nil
+    )
+    ZStack {
+        Color.black.ignoresSafeArea()
+        VStack(spacing: 10) {
+            PlanTimelinePreviewFactory.awardRow(
+                title: "Тренировка кора",
+                duration: "56 мин",
+                watch: true,
+                awards: [core, calories]
+            )
+            PlanTimelinePreviewFactory.awardRow(
+                title: "Тренировка кора",
+                duration: "56 мин",
+                watch: true,
+                awards: [core]
+            )
+            PlanTimelinePreviewFactory.awardRow(
+                title: "Тренировка кора",
+                duration: "56 мин",
+                watch: true,
+                awards: []
+            )
+            PlanTimelinePreviewFactory.awardRow(
+                title: "Тренировка кора",
+                duration: "56 мин",
+                watch: false,
+                awards: [core, calories]
+            )
+            PlanTimelinePreviewFactory.awardRow(
+                title: "Очень длинная силовая тренировка кора после рабочего дня",
+                duration: "56 мин",
+                watch: true,
+                awards: [core, calories]
+            )
+            PlanTimelinePreviewFactory.awardRow(
+                title: "Тренировка кора",
+                duration: "56 мин",
+                watch: true,
+                awards: [core, calories]
+            )
+            .dynamicTypeSize(.accessibility2)
+        }
+        .padding(.horizontal, 16)
     }
     .preferredColorScheme(.dark)
 }

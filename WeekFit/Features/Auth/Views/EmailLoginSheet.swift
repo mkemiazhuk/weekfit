@@ -95,10 +95,13 @@ struct EmailLoginSheet: View {
 
     private var header: some View {
         VStack(spacing: 8) {
-            Capsule()
-                .fill(WeekFitTheme.whiteOpacity(0.18))
-                .frame(width: 42, height: 5)
-                .padding(.bottom, 12)
+            HStack {
+                Spacer(minLength: 0)
+                WeekFitCloseButton(size: .large, playsHaptic: false) {
+                    dismiss()
+                }
+                .accessibilityLabel(WeekFitLocalizedString("common.action.close"))
+            }
 
             Text(mode.title)
                 .font(.system(size: 27, weight: .bold))

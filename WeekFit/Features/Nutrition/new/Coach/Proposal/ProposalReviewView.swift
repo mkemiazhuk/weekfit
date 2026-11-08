@@ -45,7 +45,6 @@ struct ProposalReviewView: View {
                 stickyFooter(proposal)
             }
         }
-        .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
         .accessibilityIdentifier("morning.proposal.review")
         .onAppear {
             let loaded = MorningProposalStore.proposal(for: dayKey)
@@ -67,16 +66,6 @@ struct ProposalReviewView: View {
 
     private var sheetHeader: some View {
         VStack(spacing: 0) {
-            Capsule()
-                .fill(
-                    palette.isLight
-                        ? WeekFitLightTokens.shadowContact.opacity(0.18)
-                        : Color.white.opacity(0.14)
-                )
-                .frame(width: 42, height: 4)
-                .padding(.top, 12)
-                .padding(.bottom, 18)
-
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(WeekFitLocalizedString("coach.proposal.brief.eyebrow"))
@@ -104,6 +93,7 @@ struct ProposalReviewView: View {
                 .padding(.top, 2)
             }
             .padding(.horizontal, 20)
+            .padding(.top, 12)
             .padding(.bottom, 12)
         }
     }

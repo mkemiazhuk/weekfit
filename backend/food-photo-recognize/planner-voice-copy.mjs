@@ -33,15 +33,15 @@ const PHRASES = {
     englishName: 'Russian',
     assistantName: 'Майя',
     greeting: (_name, introduced) => (introduced
-      ? 'Привет! Рада тебя слышать. Что обсудим сегодня?'
-      : 'Привет! Я Мая. Помогу разобраться, как ты себя чувствуешь, что у тебя по питанию и как лучше спланировать день. Вместе подберём подходящие активности — я могу добавить их в план, перенести или убрать по твоей просьбе. С чего начнём?'),
+      ? 'Здравствуйте. Рада вас слышать. Что обсудим сегодня?'
+      : 'Здравствуйте. Я Майя. Помогу разобраться, как вы себя чувствуете, что у вас по питанию и как лучше спланировать день. Вместе подберём подходящие активности — я могу добавить их в план, перенести или убрать по вашей просьбе. С чего начнём?'),
     goodbye: 'До встречи.',
     anythingElse: 'Что-нибудь ещё?',
     closing: '«нет, всё», «нет, всё, спасибо», «больше ничего», «ничего», «это всё», «всё, спасибо», «до свидания», «до встречи», «увидимся», «пока»',
     askTime: 'Во сколько?',
     askActivity: 'Что добавить?',
-    conflict: 'Это время уже занято. Во сколько поставим?',
-    saveFailed: 'Не сохранилось. Скажи ещё раз, пожалуйста.',
+    conflict: 'Это время уже занято. Подойдёт другое свободное?',
+    saveFailed: 'Не сохранилось. Скажите ещё раз, пожалуйста.',
     today: 'сегодня',
     tomorrow: 'завтра',
     dayAfter: 'послезавтра',
@@ -53,7 +53,7 @@ const PHRASES = {
     greeting: (_name, introduced) => (introduced
       ? 'Hi! Good to hear you. What should we talk about today?'
       : 'Hi! I\'m Maya. I can help you see how you\'re feeling, where your food stands, and how to shape the day. I can add activities to the plan, move them, or remove them when you ask. Where should we start?'),
-    goodbye: 'Talk soon!',
+    goodbye: 'Talk soon.',
     anythingElse: 'Anything else?',
     closing: '"no, I\'m good", "no, that\'s all", "nothing else", "that\'s all", "that\'s it", "goodbye", "bye"',
     askTime: 'What time?',
@@ -69,9 +69,9 @@ const PHRASES = {
     englishName: 'Polish',
     assistantName: 'Maya',
     greeting: (_name, introduced) => (introduced
-      ? 'Cześć! Miło cię słyszeć. O czym dziś pogadamy?'
-      : 'Cześć! Jestem Maya. Pomogę zobaczyć, jak się czujesz, co z jedzeniem i jak ułożyć dzień. Mogę dodać aktywność do planu, przenieść ją albo usunąć, kiedy poprosisz. Od czego zaczynamy?'),
-    goodbye: 'Na razie!',
+      ? 'Dzień dobry. Miło pana lub panią słyszeć. O czym dziś porozmawiamy?'
+      : 'Dzień dobry. Jestem Maya. Pomogę zobaczyć, jak się pan lub pani czuje, co z jedzeniem i jak ułożyć dzień. Mogę dodać aktywność do planu, przenieść ją albo usunąć, kiedy pan lub pani poprosi. Od czego zaczynamy?'),
+    goodbye: 'Do usłyszenia.',
     anythingElse: 'Coś jeszcze?',
     closing: '«nie», «nic więcej», «to wszystko», «do widzenia», «pa»',
     askTime: 'O której?',
@@ -87,9 +87,9 @@ const PHRASES = {
     englishName: 'French',
     assistantName: 'Maya',
     greeting: (_name, introduced) => (introduced
-      ? "Salut ! Contente de t'entendre. On parle de quoi aujourd'hui ?"
-      : "Salut ! Je suis Maya. Je t'aide à voir comment tu te sens, où en est l'alimentation et comment organiser la journée. Je peux ajouter une activité au planning, la déplacer ou la retirer si tu me le demandes. On commence par quoi ?"),
-    goodbye: 'À plus !',
+      ? "Bonjour. Contente de vous entendre. De quoi parlons-nous aujourd'hui ?"
+      : "Bonjour. Je suis Maya. Je vous aide à voir comment vous vous sentez, où en est l'alimentation et comment organiser la journée. Je peux ajouter une activité au planning, la déplacer ou la retirer si vous me le demandez. Par quoi commençons-nous ?"),
+    goodbye: 'À bientôt.',
     anythingElse: 'Autre chose ?',
     closing: '«non», «rien d\'autre», «c\'est tout», «au revoir»',
     askTime: 'À quelle heure ?',
@@ -105,9 +105,9 @@ const PHRASES = {
     englishName: 'Spanish',
     assistantName: 'Maya',
     greeting: (_name, introduced) => (introduced
-      ? '¡Hola! Me alegra oírte. ¿De qué hablamos hoy?'
-      : '¡Hola! Soy Maya. Te ayudo a ver cómo te sientes, cómo va la comida y cómo organizar el día. Puedo añadir una actividad al plan, moverla o quitarla cuando me lo pidas. ¿Por dónde empezamos?'),
-    goodbye: '¡Hasta luego!',
+      ? 'Hola. Me alegra oírle. ¿De qué hablamos hoy?'
+      : 'Hola. Soy Maya. Le ayudo a ver cómo se siente, cómo va la comida y cómo organizar el día. Puedo añadir una actividad al plan, moverla o quitarla cuando me lo pida. ¿Por dónde empezamos?'),
+    goodbye: 'Hasta luego.',
     anythingElse: '¿Algo más?',
     closing: '«no», «nada más», «eso es todo», «adiós»',
     askTime: '¿A qué hora?',
@@ -123,9 +123,9 @@ const PHRASES = {
     englishName: 'German',
     assistantName: 'Maya',
     greeting: (_name, introduced) => (introduced
-      ? 'Hi! Schön, dich zu hören. Was besprechen wir heute?'
-      : 'Hi! Ich bin Maya. Ich helfe dir zu sehen, wie es dir geht, wie die Ernährung aussieht und wie du den Tag planst. Eine Aktivität kann ich auf deine Bitte in den Plan setzen, verschieben oder entfernen. Womit fangen wir an?'),
-    goodbye: 'Bis dann!',
+      ? 'Guten Tag. Schön, Sie zu hören. Was besprechen wir heute?'
+      : 'Guten Tag. Ich bin Maya. Ich helfe Ihnen zu sehen, wie es Ihnen geht, wie die Ernährung aussieht und wie Sie den Tag planen. Eine Aktivität kann ich auf Ihre Bitte in den Plan setzen, verschieben oder entfernen. Womit fangen wir an?'),
+    goodbye: 'Auf Wiederhören.',
     anythingElse: 'Noch etwas?',
     closing: '«nein», «nichts weiter», «das war\'s», «auf Wiedersehen»',
     askTime: 'Um wie viel Uhr?',
@@ -141,9 +141,9 @@ const PHRASES = {
     englishName: 'Chinese',
     assistantName: 'Maya',
     greeting: (_name, introduced) => (introduced
-      ? '你好！听到你的声音真好。今天想聊什么？'
-      : '你好！我是 Maya。我帮你看看状态、饮食，以及怎么安排今天。你要的话，我可以把活动加进计划、改时间或删掉。我们从哪开始？'),
-    goodbye: '回头见！',
+      ? '您好。听到您的声音真好。今天想聊什么？'
+      : '您好。我是 Maya。我帮您看看状态、饮食，以及怎么安排今天。您要的话，我可以把活动加进计划、改时间或删掉。我们从哪开始？'),
+    goodbye: '再见。',
     anythingElse: '还有别的吗？',
     closing: '「不用了」「没有了」「就这样」「再见」',
     askTime: '几点？',
@@ -159,9 +159,9 @@ const PHRASES = {
     englishName: 'Japanese',
     assistantName: 'Maya',
     greeting: (_name, introduced) => (introduced
-      ? 'こんにちは。声が聞けてうれしいです。今日は何を話しますか？'
+      ? 'こんにちは。お声が聞けてうれしいです。今日は何を話しますか？'
       : 'こんにちは。マヤです。調子、食事、今日の計画を一緒に整理します。頼まれたら、予定を追加したり、動かしたり、消したりできます。どこから始めますか？'),
-    goodbye: 'またね！',
+    goodbye: 'では、また。',
     anythingElse: 'ほかにある？',
     closing: '「いいえ」「ほかにはない」「以上です」「さようなら」',
     askTime: '何時にしますか？',
@@ -177,9 +177,9 @@ const PHRASES = {
     englishName: 'Italian',
     assistantName: 'Maya',
     greeting: (_name, introduced) => (introduced
-      ? 'Ciao! Che bello sentirti. Di che cosa parliamo oggi?'
-      : 'Ciao! Sono Maya. Ti aiuto a capire come ti senti, com\'è l\'alimentazione e come organizzare la giornata. Se me lo chiedi, posso aggiungere un\'attività al piano, spostarla o toglierla. Da dove partiamo?'),
-    goodbye: 'A dopo!',
+      ? 'Buongiorno. Che bello sentirla. Di che cosa parliamo oggi?'
+      : 'Buongiorno. Sono Maya. La aiuto a capire come si sente, com\'è l\'alimentazione e come organizzare la giornata. Se me lo chiede, posso aggiungere un\'attività al piano, spostarla o toglierla. Da dove partiamo?'),
+    goodbye: 'Arrivederci.',
     anythingElse: 'Altro?',
     closing: '«no», «nient\'altro», «è tutto», «arrivederci»',
     askTime: 'A che ora?',
@@ -195,9 +195,9 @@ const PHRASES = {
     englishName: 'Korean',
     assistantName: 'Maya',
     greeting: (_name, introduced) => (introduced
-      ? '안녕! 목소리 들려서 반가워. 오늘은 무엇을 이야기할까?'
-      : '안녕! 나는 마야야. 컨디션, 식사, 오늘 계획을 같이 정리해 줄게. 말하면 활동을 계획에 넣거나, 옮기거나, 지울 수 있어. 무엇부터 할까?'),
-    goodbye: '나중에 봐!',
+      ? '안녕하세요. 목소리 들려서 반가워요. 오늘은 무엇을 이야기할까요?'
+      : '안녕하세요. 저는 Maya예요. 컨디션, 식사, 오늘 계획을 같이 정리해 드릴게요. 말씀하시면 활동을 계획에 넣거나, 옮기거나, 지울 수 있어요. 무엇부터 할까요?'),
+    goodbye: '안녕히 계세요.',
     anythingElse: '또 있을까?',
     closing: '「아니요」, 「없어요」, 「그거예요」, 「안녕히 가세요」',
     askTime: '몇 시요?',

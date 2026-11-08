@@ -38,7 +38,7 @@ struct WeekFitSettingsSheetModifier: ViewModifier {
     @EnvironmentObject private var reviewManager: ReviewPromptManager
 
     func body(content: Content) -> some View {
-        content.sheet(isPresented: $isPresented) {
+        content.fullScreenCover(isPresented: $isPresented) {
             NavigationStack {
                 ProfileView()
             }
@@ -51,9 +51,6 @@ struct WeekFitSettingsSheetModifier: ViewModifier {
             .environmentObject(appearance)
             .environmentObject(authViewModel)
             .environmentObject(reviewManager)
-            .presentationDetents([.large])
-            .presentationDragIndicator(.hidden)
-            .weekFitSheetChrome(cornerRadius: 36)
             .onAppear {
                 ProductAnalytics.trackScreen(.settings)
             }

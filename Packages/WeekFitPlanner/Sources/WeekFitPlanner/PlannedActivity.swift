@@ -52,6 +52,10 @@ public final class PlannedActivity {
     public var source: String = "planner"
 
     public var actualDurationMinutes: Int?
+    /// Measured route length from a workout. Nil until Health has been checked.
+    public var distanceMeters: Int?
+    /// Active energy of the linked workout, in kilocalories.
+    public var activeKilocalories: Int?
 
     /// Optional JSON snapshot of photo/barcode diary components (immutable after log).
     public var nutritionSnapshotJSON: String?

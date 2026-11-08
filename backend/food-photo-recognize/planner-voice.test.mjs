@@ -12,11 +12,10 @@ import {
   createPlannerVoiceHandler,
   createPlannerVoiceStore,
   plannerSessionConfiguration,
-  plannerLiveConfiguration,
   plannerVoiceEngine,
   plannerVoiceSettings,
 } from './planner-voice.mjs';
-import { plannerVoicePreviewPhrases, spokenClock } from './planner-voice-copy.mjs';
+import { plannerVoicePreviewPhrases, spokenClock, PLANNER_VOICE_LANGUAGES } from './planner-voice-copy.mjs';
 
 const token = 'weekfit-dev-local-token';
 
@@ -121,8 +120,8 @@ test('a stronger model can serve chosen languages while the rest stay on the def
 test('every language is instructed in that language, with its own pronunciation', () => {
   const config = plannerVoiceSettings({});
   const marks = {
-    en: ['Call details:', /neutral American accent/],
-    ru: ['Данные звонка:', /без иностранного акцента/],
+    en: ['Call details:', /polite, steady voice/],
+    ru: ['Данные звонка:', /На какое время записать теннис/],
     pl: ['Szczegóły rozmowy:', /bez obcego akcentu/],
     fr: ["Détails de l'appel :", /sans accent étranger/],
     es: ['Datos de la llamada:', /sin acento extranjero/],
@@ -228,7 +227,7 @@ test('relative evening in Tokyo crosses midnight', () => {
   }));
   assert.equal(blocked.status, 409);
   assert.equal(blocked.body.saved, false);
-  assert.equal(blocked.body.speak, 'Это время уже занято. Во сколько поставим?');
+  assert.equal(blocked.body.speak, 'Это время уже занято. Подойдёт другое свободное?');
   assert.equal(store.size(), 1);
 });
 
@@ -296,12 +295,24 @@ test('marin and cedar share the russian preview and keep gpt-realtime-2.1', () =
   }
   const lines = plannerVoicePreviewPhrases('ru');
   assert.deepEqual(lines, plannerVoicePreviewPhrases('ru'));
-  assert.equal(lines.greeting, 'Привет! Я Мая. Помогу разобраться, как ты себя чувствуешь, что у тебя по питанию и как лучше спланировать день. Вместе подберём подходящие активности — я могу добавить их в план, перенести или убрать по твоей просьбе. С чего начнём?');
+  assert.equal(lines.greeting, 'Здравствуйте. Я Майя. Помогу разобраться, как вы себя чувствуете, что у вас по питанию и как лучше спланировать день. Вместе подберём подходящие активности — я могу добавить их в план, перенести или убрать по вашей просьбе. С чего начнём?');
   assert.equal(lines.askTime, 'Во сколько?');
   assert.equal(lines.confirmation, 'Записала теннис на завтра, с тринадцати до четырнадцати.');
-  assert.equal(lines.conflict, 'Это время уже занято. Во сколько поставим?');
+  assert.equal(lines.conflict, 'Это время уже занято. Подойдёт другое свободное?');
   assert.equal(plannerVoicePreviewPhrases('en', 'Max').greeting, 'Hi! I\'m Maya. I can help you see how you\'re feeling, where your food stands, and how to shape the day. I can add activities to the plan, move them, or remove them when you ask. Where should we start?');
-  assert.equal(plannerVoicePreviewPhrases('pl', 'Max').greeting, 'Cześć! Jestem Maya. Pomogę zobaczyć, jak się czujesz, co z jedzeniem i jak ułożyć dzień. Mogę dodać aktywność do planu, przenieść ją albo usunąć, kiedy poprosisz. Od czego zaczynamy?');
+  assert.equal(plannerVoicePreviewPhrases('pl', 'Max').greeting, 'Dzień dobry. Jestem Maya. Pomogę zobaczyć, jak się pan lub pani czuje, co z jedzeniem i jak ułożyć dzień. Mogę dodać aktywność do planu, przenieść ją albo usunąć, kiedy pan lub pani poprosi. Od czego zaczynamy?');
+  const facts = { timeZone: 'Europe/Warsaw', now: '2026-11-05T09:00:00+01:00' };
+  for (const language of ['en', 'ru', 'pl']) {
+    const marin = plannerSessionConfiguration(plannerVoiceSettings({ PLANNER_VOICE_VOICE: 'marin' }), { ...facts, language });
+    const cedar = plannerSessionConfiguration(plannerVoiceSettings({ PLANNER_VOICE_VOICE: 'cedar' }), { ...facts, language });
+    assert.equal(marin.type, 'realtime');
+    assert.equal(cedar.type, 'realtime');
+    assert.equal(marin.model, 'gpt-realtime-2.1');
+    assert.equal(cedar.model, 'gpt-realtime-2.1');
+    assert.equal(marin.audio.output.voice, 'marin');
+    assert.equal(cedar.audio.output.voice, 'cedar');
+    assert.equal(marin.instructions, cedar.instructions);
+  }
 });
 
 test('cedar uses the same russian greeting without a larger model', async () => {
@@ -333,7 +344,7 @@ test('cedar uses the same russian greeting without a larger model', async () => 
     const sent = JSON.parse(captured.init.body);
     assert.equal(sent.session.model, 'gpt-realtime-2.1');
     assert.equal(sent.session.audio.output.voice, 'cedar');
-    assert.match(sent.session.instructions, /Привет! Я Мая\./);
+    assert.match(sent.session.instructions, /Здравствуйте\. Я Майя\./);
     assert.equal(sent.session.audio.input.turn_detection.type, 'semantic_vad');
     assert.equal(sent.session.audio.input.turn_detection.eagerness, 'medium');
     assert.deepEqual(sent.session.audio.input.noise_reduction, { type: 'near_field' });
@@ -351,7 +362,7 @@ test('cedar uses the same russian greeting without a larger model', async () => 
     });
     assert.equal(polish.status, 200);
     const polishSession = JSON.parse(captured.init.body).session;
-    assert.match(polishSession.instructions, /Cześć! Jestem Maya\./);
+    assert.match(polishSession.instructions, /Dzień dobry\. Jestem Maya\./);
     assert.match(polishSession.instructions, /Mów po polsku/);
     assert.match(polishSession.instructions, /bez obcego akcentu/);
     assert.equal(polishSession.instructions.includes('Speak only in'), false);
@@ -473,7 +484,7 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     });
     assert.equal(returning.status, 200);
     const returningInstructions = JSON.parse(captured.init.body).session.instructions;
-    assert.match(returningInstructions, /Привет! Рада тебя слышать\. Что обсудим сегодня\?/);
+    assert.match(returningInstructions, /Здравствуйте\. Рада вас слышать\. Что обсудим сегодня\?/);
     assert.equal(returningInstructions.includes('С чего начнём?'), false);
     assert.equal(returningInstructions.includes('Я Майя, твой'), false);
     const reconnected = await request(server.url, 'POST', '/v1/planner-voice/session', {
@@ -873,7 +884,7 @@ test('a full line keeps later callers waiting and moves them forward', async () 
   }
 });
 
-test('realtime keeps one tool event and live uses the delegated item', async () => {
+test('realtime and an old live flag each keep one tool event', async () => {
   const script = consoleDocument().match(/<script>([\s\S]*?)<\/script>/)?.[1];
   const run = async (engine) => {
     const events = [];
@@ -916,7 +927,7 @@ test('realtime keeps one tool event and live uses the delegated item', async () 
   assert.equal((await run('live')).length, 1);
 });
 
-test('a live tool result returns the saved record and ignores a duplicate call', async () => {
+test('an old live flag still saves through the realtime tool path', async () => {
   const script = consoleDocument().match(/<script>([\s\S]*?)<\/script>/)?.[1];
   const events = [];
   const sent = [];
@@ -944,57 +955,83 @@ test('a live tool result returns the saved record and ignores a duplicate call',
   await window.weekfit.start({ ephemeralKey: 'ek_test', idleSeconds: 75, reconnected: true, engine: 'live' });
   channel.onopen();
   channel.onmessage({ data: JSON.stringify({
-    type: 'session.delegation.created',
-    delegation: { id: 'del_1', type: 'delegation', target: 'responses' },
+    type: 'response.function_call_arguments.done',
+    name: 'update_activity',
+    call_id: 'call_move',
+    arguments: '{"ref":"a1","date":"","startTime":"18:00","durationMinutes":30,"catalogTitle":""}',
   }) });
-  const call = {
-    type: 'response.event',
-    event: {
-      type: 'response.output_item.done',
-      item: { type: 'function_call', name: 'update_activity', call_id: 'call_move', arguments: '{"ref":"a1","date":"","startTime":"18:00","durationMinutes":30,"catalogTitle":""}' },
-    },
-  };
-  channel.onmessage({ data: JSON.stringify(call) });
-  channel.onmessage({ data: JSON.stringify(call) });
   const tools = events.filter(event => event.type === 'tool');
   assert.equal(tools.length, 1);
   assert.equal(tools[0].name, 'update_activity');
   assert.equal(tools[0].callId, 'call_move');
   window.weekfit.toolResult('call_move', { ok: true, saved: true, speak: 'Moved the walk to 18:00 for 30 minutes.', items: [{ ref: 'a1', title: 'Walk', startTime: '18:00', durationMinutes: 30, done: false }] });
-  const created = sent.find(item => item.type === 'response.item.create');
+  const created = sent.find(item => item.type === 'conversation.item.create');
   assert.equal(created.item.call_id, 'call_move');
   assert.match(created.item.output, /"saved":true/);
   assert.match(created.item.output, /"ref":"a1"/);
   assert.equal(sent.filter(item => item.type === 'response.create').length, 1);
-  assert.equal(sent.some(item => item.type === 'session.commentary.append' && item.delegation_id === 'del_1'), false);
+  assert.equal(sent.some(item => item.type === 'session.commentary.append'), false);
 });
 
-test('an omitted engine stays on realtime and live keeps the same plan tools', () => {
+test('an old live request opens the same realtime session', () => {
   assert.equal(plannerVoiceEngine({}), 'realtime');
   assert.equal(plannerVoiceEngine({ engine: 'realtime' }), 'realtime');
-  assert.equal(plannerVoiceEngine({ engine: 'live' }), 'live');
+  assert.equal(plannerVoiceEngine({ engine: 'live' }), 'realtime');
   assert.throws(() => plannerVoiceEngine({ engine: 'other' }));
   const settings = plannerVoiceSettings({});
-  const realtime = plannerSessionConfiguration(settings, { timeZone: 'Europe/Warsaw', language: 'ru' });
-  const live = plannerLiveConfiguration(settings, { timeZone: 'Europe/Warsaw', language: 'ru', now: '2026-11-05T09:00:00+01:00' });
-  assert.equal(realtime.model, 'gpt-realtime-2.1');
-  assert.equal(live.model, 'gpt-live-1');
-  assert.equal(live.delegation.type, 'responses');
-  assert.equal(live.delegation.responses.model, 'gpt-6.1-sol');
-  assert.equal(live.delegation.responses.parallel_tool_calls, false);
-  const names = live.delegation.responses.tools.map(tool => tool.name);
-  assert.deepEqual(names, ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'log_water', 'remind_water', 'end_call', 'set_call_language']);
-  assert.equal(names.includes('log_meal'), false);
-  assert.match(live.delegation.responses.instructions, /update_activity changes that same ref/);
-  assert.match(live.instructions, /SpawnThinking/);
-  assert.match(live.instructions, /say only the greeting and wait/);
-  assert.match(live.instructions, /Не выбирай «после» только потому/);
-  assert.match(live.instructions, /end_call/);
-  assert.equal(live.instructions.includes('Do not stop after hello'), false);
-  assert.equal(live.input[0].content[0].text.includes('pause and listen'), false);
-  assert.equal(JSON.stringify(live.delegation).includes('gpt-realtime'), false);
-  assert.match(live.instructions, /только сегодняшний план/);
-  assert.match(live.instructions, /До встречи/);
+  assert.equal(settings.plannerVoiceModel, 'gpt-realtime-2.1');
+  assert.equal(settings.plannerVoiceVoice, 'marin');
+  assert.equal(settings.plannerVoiceVadEagerness, 'medium');
+  const fromLive = plannerSessionConfiguration(settings, { timeZone: 'Europe/Warsaw', language: 'ru', now: '2026-11-05T09:00:00+01:00' });
+  assert.equal(fromLive.model, 'gpt-realtime-2.1');
+  assert.equal(fromLive.audio.output.voice, 'marin');
+  assert.equal(fromLive.audio.input.turn_detection.eagerness, 'medium');
+  assert.equal(fromLive.delegation, undefined);
+  assert.match(fromLive.instructions, /на «вы»/);
+  assert.match(fromLive.instructions, /До встречи\./);
+  assert.match(fromLive.instructions, /На какое время записать теннис/);
+  assert.equal(fromLive.instructions.includes('gpt-live'), false);
+  const high = plannerVoiceSettings({ PLANNER_VOICE_VAD_EAGERNESS: 'high' });
+  assert.equal(plannerSessionConfiguration(high, { timeZone: 'Europe/Warsaw', language: 'en' }).audio.input.turn_detection.eagerness, 'high');
+});
+
+test('every supported language is passed into the realtime session', () => {
+  const settings = plannerVoiceSettings({});
+  const expect = {
+    en: /Call details:/,
+    ru: /на «вы»/,
+    pl: /pan lub pani/,
+    fr: /vouvoie/,
+    es: /de usted/,
+    de: /Sie, über dich weiblich/,
+    it: /dia del Lei/,
+    ja: /丁寧語/,
+    ko: /해요체/,
+    'zh-Hans': /用您/,
+  };
+  for (const language of PLANNER_VOICE_LANGUAGES) {
+    const session = plannerSessionConfiguration(settings, {
+      timeZone: 'Europe/Warsaw',
+      language,
+      now: '2026-11-05T09:00:00+01:00',
+    });
+    assert.equal(session.type, 'realtime');
+    assert.equal(session.model, 'gpt-realtime-2.1');
+    assert.equal(session.audio.output.voice, 'marin');
+    assert.match(session.instructions, expect[language]);
+    assert.match(session.instructions, /end_call/);
+  }
+  const scenes = {
+    en: [/Use a correction in the next reply/, /offer one free time and wait/, /Ordinary thanks leaves the call open/, /Talk soon\./, /Do not recap/],
+    ru: [/Поправку человека учитывай в следующей реплике/, /На семь вечера у вас уже запланирована прогулка/, /Обычное «спасибо» оставляет звонок открытым/, /До встречи\./, /Перед прощанием не пересказывай/],
+    pl: [/Poprawkę uwzględnij w następnej wypowiedzi/, /zaproponuj jeden wolny czas i czekaj/, /Zwykłe podziękowanie zostawia rozmowę otwartą/, /Do usłyszenia\./, /nie streszczaj/],
+  };
+  for (const [language, patterns] of Object.entries(scenes)) {
+    const text = plannerSessionConfiguration(settings, {
+      timeZone: 'Europe/Warsaw', language, now: '2026-11-05T09:00:00+01:00',
+    }).instructions;
+    for (const pattern of patterns) assert.match(text, pattern, language);
+  }
 });
 
 test('77 percent is moderately ready and goodbye closes the call once', async () => {
@@ -1074,10 +1111,16 @@ test('77 percent is moderately ready and goodbye closes the call once', async ()
     type: 'response.output_item.done',
     item: { type: 'function_call', name: 'end_call', call_id: 'call_end', arguments: '{}' },
   };
-  const live = await run('live', [liveEnd, liveEnd]);
+  const ignored = await run('live', [liveEnd, liveEnd]);
+  assert.equal(ignored.events.some(item => item.value === 'ending'), false);
+  assert.equal(ignored.sent.filter(item => item.type === 'session.close').length, 0);
+  const live = await run('live', [
+    { type: 'response.function_call_arguments.done', name: 'end_call', call_id: 'call_end', arguments: '{}' },
+    { type: 'response.function_call_arguments.done', name: 'end_call', call_id: 'call_end_2', arguments: '{}' },
+  ]);
   assert.equal(live.events.some(item => item.value === 'ending'), true);
   assert.equal(live.events.filter(item => item.value === 'ended').length, 1);
-  assert.equal(live.sent.filter(item => item.type === 'session.close').length, 1);
+  assert.equal(live.sent.filter(item => item.type === 'session.close').length, 0);
   assert.equal(live.stopped, true);
 
   const realtime = await run('realtime', [
@@ -1100,7 +1143,7 @@ test('77 percent is moderately ready and goodbye closes the call once', async ()
     { type: 'input_audio_buffer.speech_stopped' },
   ]);
   assert.equal(bye.events.some(item => item.value === 'ended'), true);
-  assert.equal(bye.sent.filter(item => item.type === 'session.close').length, 1);
+  assert.equal(bye.sent.filter(item => item.type === 'session.close').length, 0);
 });
 
 test('plan context uses the spoken name and the same clock as a confirmation', () => {
@@ -1121,7 +1164,8 @@ test('plan context uses the spoken name and the same clock as a confirmation', (
     plan: [{ ref: 'a1', scope: 'today_planned', title: 'сауну', catalogTitle: 'Sauna', startTime: '18:00', durationMinutes: 20 }],
   });
   assert.match(russian.instructions, /сауну \[Sauna\] 18:00 20m \(говори шесть вечера\)/);
-  assert.match(russian.instructions, /без английского ритма на русских словах/);
+  assert.match(russian.instructions, /На какое время записать теннис/);
+  assert.match(russian.instructions, /На семь вечера у вас уже запланирована прогулка/);
   assert.match(russian.instructions, /Не выбирай последнюю запись только потому/);
   assert.equal(russian.instructions.includes('A plain greeting'), false);
   assert.equal(russian.audio.output.voice, 'marin');

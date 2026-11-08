@@ -38,6 +38,122 @@ final class ActivityBadgeRulesTests: XCTestCase {
         XCTAssertNil(ledger.pendingUnlockID)
     }
 
+    func testWalkAndCyclingUseKilometerTiersInsteadOfSessionCounts() {
+        var ledger = ActivityBadgeLedger()
+        let walks = [
+            input(id: "w1", title: "Walk", type: "recovery", source: "appleWorkout", completed: true, startedAt: day, distanceMeters: 1_200),
+            input(id: "w2", title: "Walk", type: "recovery", source: "appleWorkout", completed: true, startedAt: day.addingTimeInterval(86_400), distanceMeters: 2_400),
+            input(id: "w3", title: "Walk", type: "recovery", source: "appleWorkout", completed: true, startedAt: day.addingTimeInterval(2 * 86_400), distanceMeters: 800)
+        ]
+        ActivityBadgeEngine.ingest(walks, waterGoalMilliliters: 0, now: day.addingTimeInterval(3 * 86_400), into: &ledger)
+        XCTAssertNotNil(ledger.storedAwards["recovery.walk.km.1"])
+        XCTAssertNotNil(ledger.storedAwards["recovery.walk.km.2"])
+        XCTAssertNil(ledger.storedAwards["recovery.walk.km.3"])
+        XCTAssertNil(ledger.storedAwards["recovery.walk.km.5"])
+        XCTAssertNil(ledger.storedAwards["recovery.walk.count.5"])
+        XCTAssertEqual(ledger.storedAwards["recovery.walk.km.1"]?.value, 2)
+        XCTAssertEqual(ledger.storedAwards["recovery.walk.km.2"]?.value, 1)
+
+        let rides = [
+            input(id: "c1", title: "Cycling", type: "workout", source: "appleWorkout", completed: true, startedAt: day, distanceMeters: 5_100)
+        ]
+        ActivityBadgeEngine.ingest(rides, waterGoalMilliliters: 0, now: day.addingTimeInterval(3_600), into: &ledger)
+        XCTAssertNotNil(ledger.storedAwards["activity.cycling.km.5"])
+        XCTAssertNil(ledger.storedAwards["activity.cycling.count.5"])
+
+        XCTAssertEqual(
+            ActivityAwardCopy.caption(kind: .accumulation, goal: 1, unit: .kilometers, activity: "Прогулка", language: "ru"),
+            "1 км пешком"
+        )
+        XCTAssertEqual(
+            ActivityAwardCopy.caption(kind: .accumulation, goal: 5, unit: .kilometers, activity: "Cycling", language: "en"),
+            "5 km · Cycling"
+        )
+        XCTAssertNotEqual(
+            ActivityBadgeArt.asset(for: "recovery.walk.km.3"),
+            ActivityBadgeArt.asset(for: "recovery.walk")
+        )
+        XCTAssertNotEqual(
+            ActivityBadgeArt.asset(for: "activity.cycling.km.5"),
+            ActivityBadgeArt.asset(for: "activity.cycling")
+        )
+    }
+
+    func testSessionCaloriesUseSharedTiers() {
+        var ledger = ActivityBadgeLedger()
+        ActivityBadgeEngine.ingest([
+            input(id: "core", title: "Core", type: "workout", completed: true, activeKilocalories: 537),
+            input(id: "tennis", title: "Tennis", type: "workout", completed: true, startedAt: day.addingTimeInterval(86_400), activeKilocalories: 1_200)
+        ], waterGoalMilliliters: 0, now: day.addingTimeInterval(2 * 86_400), into: &ledger)
+        XCTAssertNotNil(ledger.storedAwards["energy.kcal.300"])
+        XCTAssertNotNil(ledger.storedAwards["energy.kcal.500"])
+        XCTAssertNotNil(ledger.storedAwards["energy.kcal.1000"])
+        XCTAssertNil(ledger.storedAwards["energy.kcal.2000"])
+        XCTAssertNil(ledger.storedAwards["energy.kcal.3000"])
+        XCTAssertNil(ledger.storedAwards["activity.core.record"])
+        XCTAssertNil(ledger.storedAwards["activity.tennis.record"])
+        XCTAssertEqual(
+            ActivityAwardCopy.caption(kind: .personalRecord, goal: 300, unit: .kilocalories, activity: "Core", language: "en"),
+            "300 kcal"
+        )
+        XCTAssertEqual(
+            ActivityAwardCopy.caption(kind: .personalRecord, goal: 1000, unit: .kilocalories, activity: "Теннис", language: "ru"),
+            "1\u{00A0}000 ккал"
+        )
+        XCTAssertNotEqual(
+            ActivityBadgeArt.asset(for: "energy.kcal.300"),
+            ActivityBadgeArt.asset(for: "energy.kcal.3000")
+        )
+        let now = day.addingTimeInterval(2 * 86_400)
+        let inputs = [
+            input(id: "core", title: "Core", type: "workout", completed: true, activeKilocalories: 537),
+            input(id: "tennis", title: "Tennis", type: "workout", completed: true, startedAt: day.addingTimeInterval(86_400), activeKilocalories: 1_200)
+        ]
+        let cells = ActivityBadgePresenter.sections(
+            ledger: ledger,
+            inputs: inputs,
+            now: now,
+            activityName: { $0 }
+        ).flatMap(\.cells)
+        XCTAssertEqual(cells.first { $0.id == "energy.kcal.500" }?.source?.recordID, "core")
+        XCTAssertEqual(cells.first { $0.id == "energy.kcal.500" }?.source?.kilocalories, 537)
+        XCTAssertEqual(cells.first { $0.id == "energy.kcal.1000" }?.source?.recordID, "tennis")
+        XCTAssertNil(cells.first { $0.id == "energy.kcal.2000" }?.source)
+        let plaques = ActivityBadgeEngine.plaques(ledger: ledger, inputs: inputs, now: now)
+        XCTAssertEqual(plaques["core"], ["activity.core", "energy.kcal.500"])
+        XCTAssertEqual(plaques["tennis"], ["activity.tennis", "energy.kcal.1000"])
+    }
+
+    func testLockedAwardExplainsHowToEarnInTheReadersLanguage() {
+        let calories = ActivityBadgeDisplay(
+            id: "energy.kcal.300",
+            name: "300 ккал",
+            caption: "300 ккал",
+            symbol: "flame.fill",
+            category: .energy,
+            condition: "",
+            activityName: "",
+            isUnlocked: false,
+            unlockedAt: nil,
+            canStart: false,
+            actionTitle: "",
+            actionMinutes: nil,
+            award: ActivityAwardState(kind: .personalRecord, current: 300, goal: 300, unit: .kilocalories)
+        )
+        XCTAssertEqual(
+            ActivityAwardCopy.story(calories, language: "ru"),
+            "Сожги 300 ккал за одну сессию, чтобы получить награду."
+        )
+        XCTAssertEqual(
+            ActivityAwardCopy.story(calories, language: "en"),
+            "Burn 300 kcal in a single session to earn this award."
+        )
+        XCTAssertEqual(
+            ActivityAwardCopy.story(calories, language: "ja"),
+            "1回のセッションで300 kcal消費すると獲得できます。"
+        )
+    }
+
     func testBreathingNeedsAFullMinuteAndHistoryDoesNotPop() {
         var ledger = ActivityBadgeLedger()
         ledger.disqualifiedRecordIDs = ["short"]
@@ -169,7 +285,7 @@ final class ActivityBadgeRulesTests: XCTestCase {
         XCTAssertEqual(ledger.storedAwards["activity.padel.count.5"]?.earnedAt, fifth)
         XCTAssertNil(ledger.storedAwards["activity.padel.count.10"])
         XCTAssertEqual(ledger.storedAwards["activity.padel.streak"]?.value, 7)
-        XCTAssertEqual(ledger.storedAwards["activity.padel.record"]?.value, 26)
+        XCTAssertNil(ledger.storedAwards["activity.padel.record"])
         let earnedAt = ledger.storedAwards["activity.padel.count.5"]?.earnedAt
 
         ActivityBadgeEngine.ingest(sessions, waterGoalMilliliters: 0, now: now, into: &ledger, calendar: calendar)
@@ -178,7 +294,7 @@ final class ActivityBadgeRulesTests: XCTestCase {
         let kept = [session(0, minutes: 10), session(2, minutes: 12)]
         ActivityBadgeEngine.ingest(kept, waterGoalMilliliters: 0, now: now, into: &ledger, calendar: calendar)
         XCTAssertEqual(ledger.storedAwards["activity.padel.streak"]?.value, 7)
-        XCTAssertEqual(ledger.storedAwards["activity.padel.record"]?.value, 26)
+        XCTAssertNil(ledger.storedAwards["activity.padel.record"])
         XCTAssertNotNil(ledger.unlocks["activity.padel"])
 
         let cells = ActivityBadgePresenter.sections(
@@ -188,15 +304,11 @@ final class ActivityBadgeRulesTests: XCTestCase {
             calendar: calendar,
             activityName: { $0 }
         ).flatMap(\.cells)
-        let ten = cells.first { $0.id == "activity.padel.count.10" }
-        XCTAssertEqual(ten?.isUnlocked, false)
-        XCTAssertEqual(ten?.award.current, 2)
-        XCTAssertEqual(ten?.award.goal, 10)
-        XCTAssertEqual(ActivityAwardCopy.progressFraction(ten!), 0.2)
+        XCTAssertNil(cells.first { $0.id == "activity.padel.count.10" })
+        XCTAssertNil(cells.first { $0.id == "activity.padel.streak" })
+        XCTAssertNil(cells.first { $0.id == "activity.padel.record" })
         XCTAssertEqual(ActivityAwardCopy.progress(7, 10, "en"), "7 of 10")
         XCTAssertEqual(ActivityAwardCopy.progress(7, 10, "ru"), "7 из 10")
-        XCTAssertEqual(cells.first { $0.id == "activity.padel.streak" }?.award.best, 7)
-        XCTAssertEqual(cells.first { $0.id == "activity.padel.record" }?.award.current, 26)
 
         let steps = ActivityBadgeLedger()
         var stepLedger = steps
@@ -429,7 +541,9 @@ final class ActivityBadgeRulesTests: XCTestCase {
         completed: Bool,
         startedAt: Date? = nil,
         actual: Int? = nil,
-        waterML: Int = 0
+        waterML: Int = 0,
+        distanceMeters: Int? = nil,
+        activeKilocalories: Int? = nil
     ) -> ActivityBadgeInput {
         ActivityBadgeInput(
             recordID: id,
@@ -442,7 +556,9 @@ final class ActivityBadgeRulesTests: XCTestCase {
             durationMinutes: 20,
             actualDurationMinutes: actual,
             source: source,
-            waterMilliliters: waterML
+            waterMilliliters: waterML,
+            distanceMeters: distanceMeters,
+            activeKilocalories: activeKilocalories
         )
     }
 }

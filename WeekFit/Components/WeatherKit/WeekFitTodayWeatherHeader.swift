@@ -102,16 +102,9 @@ struct WeekFitTodayWeatherHeader: View {
                 }
             }
         }
-        .sheet(isPresented: $showWeatherSheet) {
+        .fullScreenCover(isPresented: $showWeatherSheet) {
             if case .loaded(let summary) = badgeState {
-                let tokens = summary.resolvedTokens(appAppearanceDark: !palette.isLight)
                 WeekFitWeatherDetailSheet(summary: summary)
-                    .presentationDetents([.fraction(0.92), .large])
-                    .presentationDragIndicator(.visible)
-                    .weekFitSheetChrome(
-                        cornerRadius: 28,
-                        background: tokens.backgroundPrimary
-                    )
             }
         }
     }

@@ -64,10 +64,10 @@ enum ActivityBadgeCopy {
     static var russian: Bool { WeekFitCurrentLanguageCode() == "ru" }
     private static var code: String { WeekFitCurrentLanguageCode() }
 
-    static var screenTitle: String { text["screen", default: "Activity Collection"] }
+    static var screenTitle: String { text["screen", default: "Awards"] }
     static var unlockedTitle: String { text["unlocked", default: "Badge unlocked"] }
     static var done: String { text["done", default: "Done"] }
-    static var viewCollection: String { text["view", default: "View collection"] }
+    static var viewCollection: String { text["view", default: "View awards"] }
     static var suggestionsTitle: String { text["suggest", default: "Activity suggestions"] }
     static var suggestionsSubtitle: String { text["suggestBody", default: "One invitation after 14 days away from WeekFit"] }
     static var profileTitle: String { screenTitle }
@@ -80,10 +80,14 @@ enum ActivityBadgeCopy {
     static func sectionTitle(_ category: ActivityBadgeCategory) -> String {
         switch category {
         case .activity: return text["activities", default: "Activities"]
+        case .energy: return text["energy", default: "Calories"]
         case .recovery: return text["recovery", default: "Recovery"]
         case .habit: return text["habits", default: "Habits"]
         }
     }
+
+    static var sessionTitle: String { text["session", default: "Activity"] }
+    static var sessionToday: String { text["today", default: "Today"] }
 
     private static var text: [String: String] {
         let pack = chrome[code] ?? chrome["en"] ?? [:]
@@ -92,74 +96,200 @@ enum ActivityBadgeCopy {
 
     private static let chrome: [String: [String: String]] = [
         "en": [
-            "screen": "Activity Collection", "unlocked": "Badge unlocked", "done": "Done",
-            "view": "View collection", "suggest": "Activity suggestions",
+            "screen": "Awards", "unlocked": "Badge unlocked", "done": "Done",
+            "view": "View awards", "suggest": "Activity suggestions",
             "suggestBody": "One invitation after 14 days away from WeekFit",
             "profile": "What you have already tried", "progress": "%d of %d unlocked",
-            "activities": "Activities", "recovery": "Recovery", "habits": "Habits"
+            "activities": "Activities", "energy": "Calories", "recovery": "Recovery", "habits": "Habits",
+            "session": "Activity", "today": "Today"
         ],
         "ru": [
-            "screen": "Коллекция активностей", "unlocked": "Бейдж открыт", "done": "Готово",
-            "view": "Смотреть коллекцию", "suggest": "Подсказки активностей",
+            "screen": "Награды", "unlocked": "Бейдж открыт", "done": "Готово",
+            "view": "Смотреть награды", "suggest": "Подсказки активностей",
             "suggestBody": "Одно приглашение, если две недели не открывать WeekFit",
             "profile": "Что уже попробовано", "progress": "%d из %d открыто",
-            "activities": "Активности", "recovery": "Восстановление", "habits": "Привычки"
+            "activities": "Активности", "energy": "Калории", "recovery": "Восстановление", "habits": "Привычки",
+            "session": "Активность", "today": "Сегодня"
         ],
         "de": [
-            "screen": "Aktivitätensammlung", "unlocked": "Abzeichen offen", "done": "Fertig",
-            "view": "Sammlung ansehen", "suggest": "Aktivitätsvorschläge",
+            "screen": "Auszeichnungen", "unlocked": "Abzeichen offen", "done": "Fertig",
+            "view": "Auszeichnungen ansehen", "suggest": "Aktivitätsvorschläge",
             "suggestBody": "Eine Einladung nach 14 Tagen ohne WeekFit",
             "profile": "Was du schon probiert hast", "progress": "%d von %d offen",
-            "activities": "Aktivitäten", "recovery": "Erholung", "habits": "Gewohnheiten"
+            "activities": "Aktivitäten", "energy": "Kalorien", "recovery": "Erholung", "habits": "Gewohnheiten",
+            "session": "Aktivität", "today": "Heute"
         ],
         "es": [
-            "screen": "Colección de actividades", "unlocked": "Insignia desbloqueada", "done": "Listo",
-            "view": "Ver colección", "suggest": "Sugerencias de actividad",
+            "screen": "Premios", "unlocked": "Insignia desbloqueada", "done": "Listo",
+            "view": "Ver premios", "suggest": "Sugerencias de actividad",
             "suggestBody": "Una invitación tras 14 días sin abrir WeekFit",
             "profile": "Lo que ya probaste", "progress": "%d de %d desbloqueadas",
-            "activities": "Actividades", "recovery": "Recuperación", "habits": "Hábitos"
+            "activities": "Actividades", "energy": "Calorías", "recovery": "Recuperación", "habits": "Hábitos",
+            "session": "Actividad", "today": "Hoy"
         ],
         "fr": [
-            "screen": "Collection d’activités", "unlocked": "Badge débloqué", "done": "OK",
-            "view": "Voir la collection", "suggest": "Suggestions d’activité",
+            "screen": "Récompenses", "unlocked": "Badge débloqué", "done": "OK",
+            "view": "Voir les récompenses", "suggest": "Suggestions d’activité",
             "suggestBody": "Une invitation après 14 jours sans ouvrir WeekFit",
             "profile": "Ce que tu as déjà essayé", "progress": "%d sur %d débloqués",
-            "activities": "Activités", "recovery": "Récupération", "habits": "Habitudes"
+            "activities": "Activités", "energy": "Calories", "recovery": "Récupération", "habits": "Habitudes",
+            "session": "Activité", "today": "Aujourd’hui"
         ],
         "it": [
-            "screen": "Collezione attività", "unlocked": "Badge sbloccato", "done": "Fatto",
-            "view": "Vedi collezione", "suggest": "Suggerimenti attività",
+            "screen": "Premi", "unlocked": "Badge sbloccato", "done": "Fatto",
+            "view": "Vedi i premi", "suggest": "Suggerimenti attività",
             "suggestBody": "Un invito dopo 14 giorni senza aprire WeekFit",
             "profile": "Quello che hai già provato", "progress": "%d di %d sbloccati",
-            "activities": "Attività", "recovery": "Recupero", "habits": "Abitudini"
+            "activities": "Attività", "energy": "Calorie", "recovery": "Recupero", "habits": "Abitudini",
+            "session": "Attività", "today": "Oggi"
         ],
         "pl": [
-            "screen": "Kolekcja aktywności", "unlocked": "Odznaka otwarta", "done": "Gotowe",
-            "view": "Zobacz kolekcję", "suggest": "Propozycje aktywności",
+            "screen": "Nagrody", "unlocked": "Odznaka otwarta", "done": "Gotowe",
+            "view": "Zobacz nagrody", "suggest": "Propozycje aktywności",
             "suggestBody": "Jedno zaproszenie po 14 dniach bez WeekFit",
             "profile": "Co już sprawdzone", "progress": "%d z %d otwarte",
-            "activities": "Aktywności", "recovery": "Regeneracja", "habits": "Nawyki"
+            "activities": "Aktywności", "energy": "Kalorie", "recovery": "Regeneracja", "habits": "Nawyki",
+            "session": "Aktywność", "today": "Dziś"
         ],
         "ja": [
-            "screen": "アクティビティコレクション", "unlocked": "バッジを獲得", "done": "完了",
-            "view": "コレクションを見る", "suggest": "アクティビティの提案",
+            "screen": "表彰", "unlocked": "バッジを獲得", "done": "完了",
+            "view": "表彰を見る", "suggest": "アクティビティの提案",
             "suggestBody": "WeekFitを14日開かなかったら、一度だけお知らせします",
             "profile": "すでに試したこと", "progress": "%d / %d 獲得",
-            "activities": "アクティビティ", "recovery": "回復", "habits": "習慣"
+            "activities": "アクティビティ", "energy": "カロリー", "recovery": "回復", "habits": "習慣",
+            "session": "アクティビティ", "today": "今日"
         ],
         "ko": [
-            "screen": "활동 컬렉션", "unlocked": "배지 획득", "done": "완료",
-            "view": "컬렉션 보기", "suggest": "활동 제안",
+            "screen": "수상", "unlocked": "배지 획득", "done": "완료",
+            "view": "수상 보기", "suggest": "활동 제안",
             "suggestBody": "WeekFit을 14일 동안 열지 않으면 한 번 알림",
             "profile": "이미 해본 것", "progress": "%d / %d 열림",
-            "activities": "활동", "recovery": "회복", "habits": "습관"
+            "activities": "활동", "energy": "칼로리", "recovery": "회복", "habits": "습관",
+            "session": "활동", "today": "오늘"
         ],
         "zh-Hans": [
-            "screen": "活动收藏", "unlocked": "徽章已解锁", "done": "完成",
-            "view": "查看收藏", "suggest": "活动建议",
+            "screen": "奖项", "unlocked": "徽章已解锁", "done": "完成",
+            "view": "查看奖项", "suggest": "活动建议",
             "suggestBody": "连续 14 天未打开 WeekFit 时发一次邀请",
             "profile": "已经尝试过的", "progress": "已解锁 %d / %d",
-            "activities": "活动", "recovery": "恢复", "habits": "习惯"
+            "activities": "活动", "energy": "卡路里", "recovery": "恢复", "habits": "习惯",
+            "session": "活动", "today": "今天"
+        ]
+    ]
+
+    private static let customFirst: [String: String] = [
+        "en": "First Check-in",
+        "ru": "Первая отметка",
+        "de": "Erste Markierung",
+        "es": "Primera marca",
+        "fr": "Premier pointage",
+        "it": "Prima spunta",
+        "pl": "Pierwsze odhaczenie",
+        "ja": "初めてのチェック",
+        "ko": "첫 체크",
+        "zh-Hans": "第一次打卡"
+    ]
+
+    private static let awardNames: [String: [String: String]] = [
+        "en": [
+            "activity.cycling": "Two Wheels", "activity.running": "First Run", "activity.swimming": "First Length",
+            "activity.hiking": "First Trail", "activity.snowboarding": "First Ride", "activity.alpine-skiing": "First Descent",
+            "activity.upper-body": "Upper Start", "activity.core": "Core Start", "activity.lower-body": "Lower Start",
+            "activity.full-body": "Full Effort", "activity.tennis": "First Serve", "activity.padel": "First Rally",
+            "activity.squash": "First Point", "activity.hiit": "First Interval", "recovery.stretching": "Stretch Break",
+            "recovery.walk": "First Steps", "recovery.sauna": "Sauna Reset", "recovery.yoga": "On the Mat",
+            "recovery.breathing": "First Pause", "habit.drink-water": "First Glass", "habit.sleep-routine": "Lights Down",
+            "habit.no-screens": "Screen Break", "habit.morning-routine": "Morning Mark"
+        ],
+        "ru": [
+            "activity.cycling": "На двух колёсах", "activity.running": "Первая пробежка", "activity.swimming": "Первый заплыв",
+            "activity.hiking": "Первая тропа", "activity.snowboarding": "На сноуборде", "activity.alpine-skiing": "Первый спуск",
+            "activity.upper-body": "Сильный верх", "activity.core": "Сильный кор", "activity.lower-body": "Сильные ноги",
+            "activity.full-body": "Всё тело", "activity.tennis": "Первая подача", "activity.padel": "Дебют в паделе",
+            "activity.squash": "Дебют в сквоше", "activity.hiit": "Первые интервалы", "recovery.stretching": "Пауза на растяжку",
+            "recovery.walk": "Первая прогулка", "recovery.sauna": "Первый пар", "recovery.yoga": "На коврике",
+            "recovery.breathing": "Дыхательная пауза", "habit.drink-water": "Первый глоток", "habit.sleep-routine": "Вечерний ритуал",
+            "habit.no-screens": "Без экрана", "habit.morning-routine": "Утренний ритуал"
+        ],
+        "de": [
+            "activity.cycling": "Zwei Räder", "activity.running": "Erster Lauf", "activity.swimming": "Erste Bahn",
+            "activity.hiking": "Erster Pfad", "activity.snowboarding": "Erste Fahrt", "activity.alpine-skiing": "Erste Abfahrt",
+            "activity.upper-body": "Erster Oberkörper", "activity.core": "Erste Mitte", "activity.lower-body": "Erster Unterkörper",
+            "activity.full-body": "Ganzer Körper", "activity.tennis": "Erster Aufschlag", "activity.padel": "Erster Ballwechsel",
+            "activity.squash": "Erster Punkt", "activity.hiit": "Erstes Intervall", "recovery.stretching": "Dehnpause",
+            "recovery.walk": "Erste Schritte", "recovery.sauna": "Sauna-Pause", "recovery.yoga": "Auf der Matte",
+            "recovery.breathing": "Erste Pause", "habit.drink-water": "Erstes Glas", "habit.sleep-routine": "Licht aus",
+            "habit.no-screens": "Ohne Bildschirm", "habit.morning-routine": "Morgenzeichen"
+        ],
+        "es": [
+            "activity.cycling": "Dos ruedas", "activity.running": "Primera carrera", "activity.swimming": "Primer largo",
+            "activity.hiking": "Primer sendero", "activity.snowboarding": "Primera bajada", "activity.alpine-skiing": "Primer descenso",
+            "activity.upper-body": "Primer torso", "activity.core": "Primer abdomen", "activity.lower-body": "Primer tren inferior",
+            "activity.full-body": "Cuerpo entero", "activity.tennis": "Primer saque", "activity.padel": "Primer peloteo",
+            "activity.squash": "Primer punto", "activity.hiit": "Primer intervalo", "recovery.stretching": "Pausa de estiramiento",
+            "recovery.walk": "Primeros pasos", "recovery.sauna": "Pausa de sauna", "recovery.yoga": "En la esterilla",
+            "recovery.breathing": "Primera pausa", "habit.drink-water": "Primer vaso", "habit.sleep-routine": "Luces apagadas",
+            "habit.no-screens": "Sin pantalla", "habit.morning-routine": "Marca de mañana"
+        ],
+        "fr": [
+            "activity.cycling": "Deux roues", "activity.running": "Première course", "activity.swimming": "Première longueur",
+            "activity.hiking": "Premier sentier", "activity.snowboarding": "Première glisse", "activity.alpine-skiing": "Première descente",
+            "activity.upper-body": "Haut du corps", "activity.core": "Premiers abdos", "activity.lower-body": "Bas du corps",
+            "activity.full-body": "Corps entier", "activity.tennis": "Premier service", "activity.padel": "Premier échange",
+            "activity.squash": "Premier point", "activity.hiit": "Premier intervalle", "recovery.stretching": "Pause étirement",
+            "recovery.walk": "Premiers pas", "recovery.sauna": "Pause sauna", "recovery.yoga": "Sur le tapis",
+            "recovery.breathing": "Première pause", "habit.drink-water": "Premier verre", "habit.sleep-routine": "Lumières éteintes",
+            "habit.no-screens": "Sans écran", "habit.morning-routine": "Marque du matin"
+        ],
+        "it": [
+            "activity.cycling": "Due ruote", "activity.running": "Prima corsa", "activity.swimming": "Prima vasca",
+            "activity.hiking": "Primo sentiero", "activity.snowboarding": "Prima discesa", "activity.alpine-skiing": "Prima sciata",
+            "activity.upper-body": "Parte alta", "activity.core": "Primo addome", "activity.lower-body": "Parte bassa",
+            "activity.full-body": "Tutto il corpo", "activity.tennis": "Prima battuta", "activity.padel": "Primo scambio",
+            "activity.squash": "Primo punto", "activity.hiit": "Primo intervallo", "recovery.stretching": "Pausa stretching",
+            "recovery.walk": "Primi passi", "recovery.sauna": "Pausa sauna", "recovery.yoga": "Sul tappetino",
+            "recovery.breathing": "Prima pausa", "habit.drink-water": "Primo bicchiere", "habit.sleep-routine": "Luci spente",
+            "habit.no-screens": "Senza schermo", "habit.morning-routine": "Segno del mattino"
+        ],
+        "pl": [
+            "activity.cycling": "Dwa koła", "activity.running": "Pierwszy bieg", "activity.swimming": "Pierwsza długość",
+            "activity.hiking": "Pierwszy szlak", "activity.snowboarding": "Pierwszy zjazd", "activity.alpine-skiing": "Pierwsze narty",
+            "activity.upper-body": "Pierwsza góra", "activity.core": "Pierwszy brzuch", "activity.lower-body": "Pierwszy dół",
+            "activity.full-body": "Całe ciało", "activity.tennis": "Pierwszy serwis", "activity.padel": "Pierwsza wymiana",
+            "activity.squash": "Pierwszy punkt", "activity.hiit": "Pierwszy interwał", "recovery.stretching": "Przerwa na rozciąganie",
+            "recovery.walk": "Pierwsze kroki", "recovery.sauna": "Przerwa w saunie", "recovery.yoga": "Na macie",
+            "recovery.breathing": "Pierwsza pauza", "habit.drink-water": "Pierwsza szklanka", "habit.sleep-routine": "Zgaszone światło",
+            "habit.no-screens": "Bez ekranu", "habit.morning-routine": "Poranna odznaka"
+        ],
+        "ja": [
+            "activity.cycling": "初めての自転車", "activity.running": "初めてのラン", "activity.swimming": "初めての一泳",
+            "activity.hiking": "初めての道", "activity.snowboarding": "初めての滑走", "activity.alpine-skiing": "初めての滑降",
+            "activity.upper-body": "初めての上半身", "activity.core": "初めての体幹", "activity.lower-body": "初めての下半身",
+            "activity.full-body": "全身", "activity.tennis": "初めてのサーブ", "activity.padel": "初めてのラリー",
+            "activity.squash": "初めてのポイント", "activity.hiit": "初めての間隔", "recovery.stretching": "ストレッチ",
+            "recovery.walk": "初めての一歩", "recovery.sauna": "サウナ", "recovery.yoga": "マットの上",
+            "recovery.breathing": "初めての一呼吸", "habit.drink-water": "最初の一杯", "habit.sleep-routine": "消灯",
+            "habit.no-screens": "画面オフ", "habit.morning-routine": "朝の印"
+        ],
+        "ko": [
+            "activity.cycling": "첫 두 바퀴", "activity.running": "첫 달리기", "activity.swimming": "첫 수영",
+            "activity.hiking": "첫 길", "activity.snowboarding": "첫 라이딩", "activity.alpine-skiing": "첫 활강",
+            "activity.upper-body": "첫 상체", "activity.core": "첫 코어", "activity.lower-body": "첫 하체",
+            "activity.full-body": "전신", "activity.tennis": "첫 서브", "activity.padel": "첫 랠리",
+            "activity.squash": "첫 포인트", "activity.hiit": "첫 인터벌", "recovery.stretching": "스트레칭",
+            "recovery.walk": "첫걸음", "recovery.sauna": "사우나", "recovery.yoga": "매트 위",
+            "recovery.breathing": "첫 휴식", "habit.drink-water": "첫 잔", "habit.sleep-routine": "불 끄기",
+            "habit.no-screens": "화면 끄기", "habit.morning-routine": "아침 표시"
+        ],
+        "zh-Hans": [
+            "activity.cycling": "两轮", "activity.running": "第一次跑步", "activity.swimming": "第一次泳距",
+            "activity.hiking": "第一条小路", "activity.snowboarding": "第一次滑行", "activity.alpine-skiing": "第一次下滑",
+            "activity.upper-body": "第一次上肢", "activity.core": "第一次核心", "activity.lower-body": "第一次下肢",
+            "activity.full-body": "全身", "activity.tennis": "第一次发球", "activity.padel": "第一次对打",
+            "activity.squash": "第一分", "activity.hiit": "第一次间歇", "recovery.stretching": "拉伸一下",
+            "recovery.walk": "第一步", "recovery.sauna": "桑拿", "recovery.yoga": "在垫上",
+            "recovery.breathing": "第一次暂停", "habit.drink-water": "第一杯", "habit.sleep-routine": "关灯",
+            "habit.no-screens": "离开屏幕", "habit.morning-routine": "早晨标记"
         ]
     ]
 
@@ -173,10 +303,10 @@ enum ActivityBadgeCopy {
     }
 
     static func badgeName(id: String, ledger: ActivityBadgeLedger) -> String {
-        if let definition = ActivityBadgeCatalog.definition(id: id) {
-            return definition.name(russian: russian)
+        if ActivityBadgeCatalog.definition(id: id) != nil {
+            return awardNames[code]?[id] ?? awardNames["en"]?[id] ?? id
         }
-        return russian ? ActivityBadgeCatalog.customAchievementRU : ActivityBadgeCatalog.customAchievementEN
+        return ledger.customNames[id] ?? (customFirst[code] ?? customFirst["en"] ?? "First Check-in")
     }
 
     static func caption(id: String, ledger: ActivityBadgeLedger) -> String {
@@ -215,7 +345,10 @@ struct ActivityBadgeDisplay: Identifiable, Equatable {
     let canStart: Bool
     let actionTitle: String
     let actionMinutes: Int?
+    /// How many times this award itself was earned. One-time awards are 1.
+    var times: Int = 0
     var award: ActivityAwardState = ActivityAwardState()
+    var source: ActivityAwardSource? = nil
 }
 
 enum ActivityBadgePresenter {
@@ -256,6 +389,15 @@ enum ActivityBadgePresenter {
         activityName: (String) -> String
     ) -> [ActivityBadgeDisplay] {
         var ids = ActivityBadgeCatalog.definitions.filter { $0.category == category }.map(\.id)
+        if category == .energy {
+            return calorieCells(
+                ledger: ledger,
+                inputs: inputs,
+                now: now,
+                calendar: calendar,
+                activityName: activityName
+            )
+        }
         if category == .habit {
             let custom = ledger.customNames.keys.sorted()
             ids.append(contentsOf: custom)
@@ -289,6 +431,57 @@ enum ActivityBadgePresenter {
         }
         // Let people browse the distinct activities before their count and streak variants.
         return groups.compactMap(\.first) + groups.flatMap { $0.dropFirst() }
+    }
+
+    private static func calorieCells(
+        ledger: ActivityBadgeLedger,
+        inputs: [ActivityBadgeInput],
+        now: Date,
+        calendar: Calendar,
+        activityName: (String) -> String
+    ) -> [ActivityBadgeDisplay] {
+        let earned = ActivityBadgeEngine.calorieTierDates(
+            inputs: inputs,
+            ledger: ledger,
+            now: now,
+            calendar: calendar
+        )
+        return ActivityBadgeEngine.calorieTiers.map { tier in
+            let id = ActivityBadgeEngine.calorieAwardID(tier)
+            let date = earned[tier]
+            let unlocked = date != nil
+            return ActivityBadgeDisplay(
+                id: id,
+                name: ActivityAwardCopy.name(kind: .personalRecord, goal: tier, unit: .kilocalories, activity: ""),
+                caption: ActivityAwardCopy.caption(kind: .personalRecord, goal: tier, unit: .kilocalories, activity: ""),
+                symbol: "flame.fill",
+                category: .energy,
+                condition: ActivityAwardCopy.condition(kind: .personalRecord, goal: tier, unit: .kilocalories, activity: ""),
+                activityName: "",
+                isUnlocked: unlocked,
+                unlockedAt: unlocked ? date : nil,
+                canStart: false,
+                actionTitle: "",
+                actionMinutes: nil,
+                times: unlocked ? 1 : 0,
+                award: ActivityAwardState(
+                    kind: .personalRecord,
+                    current: tier,
+                    goal: tier,
+                    unit: .kilocalories,
+                    rangeEnd: date
+                ),
+                source: sessionSource(
+                    id: id,
+                    earned: unlocked,
+                    inputs: inputs,
+                    ledger: ledger,
+                    now: now,
+                    calendar: calendar,
+                    activityName: activityName
+                )
+            )
+        }
     }
 
     private static func cell(
@@ -338,6 +531,7 @@ enum ActivityBadgePresenter {
             canStart: canStart,
             actionTitle: ActivityBadgeCopy.actionTitle(id: id, ledger: ledger),
             actionMinutes: definition?.actionMinutes,
+            times: ledger.unlocks[id] == nil ? 0 : 1,
             award: ActivityAwardState(
                 kind: .first,
                 current: ledger.unlocks[id] == nil ? 0 : 1,
@@ -345,6 +539,15 @@ enum ActivityBadgePresenter {
                 best: resolvedFacts.firstMeasured,
                 unit: resolvedFacts.firstMeasured == nil ? .sessions : .minutes,
                 rangeEnd: ledger.unlocks[id]
+            ),
+            source: sessionSource(
+                id: id,
+                earned: ledger.unlocks[id] != nil,
+                inputs: inputs,
+                ledger: ledger,
+                now: now,
+                calendar: calendar,
+                activityName: activityName
             )
         )
     }
@@ -368,12 +571,25 @@ enum ActivityBadgePresenter {
             facts: facts
         ) else { return [] }
         var rows: [ActivityBadgeDisplay] = []
+        if ActivityBadgeEngine.distanceAwardIDs.contains(baseID) {
+            rows.append(contentsOf: distanceAwards(
+                base: base,
+                baseID: baseID,
+                facts: facts,
+                ledger: ledger,
+                inputs: inputs,
+                now: now,
+                calendar: calendar,
+                activityName: activityName
+            ))
+        }
         let tiers = ActivityBadgeEngine.awardTiers
+        if !ActivityBadgeEngine.distanceAwardIDs.contains(baseID) {
         for tier in tiers {
             let key = "\(baseID).count.\(tier)"
             let stored = ledger.storedAwards[key]
             let earned = stored != nil || facts.completions >= tier
-            guard earned else { continue }
+            guard earned, usesOwnArtwork(key, baseID: baseID) else { continue }
             let earnedAt = earliest(stored?.earnedAt, facts.tierEarnedAt[tier])
             rows.append(derived(
                 base: base,
@@ -392,7 +608,7 @@ enum ActivityBadgePresenter {
             ))
         }
         let hasCountProgress = facts.completions > 0 || tiers.contains { ledger.storedAwards["\(baseID).count.\($0)"] != nil }
-        if hasCountProgress, let next = tiers.first(where: { ledger.storedAwards["\(baseID).count.\($0)"] == nil && facts.completions < $0 }) {
+        if hasCountProgress, let next = tiers.first(where: { ledger.storedAwards["\(baseID).count.\($0)"] == nil && facts.completions < $0 && usesOwnArtwork("\(baseID).count.\($0)", baseID: baseID) }) {
             rows.append(derived(
                 base: base,
                 id: "\(baseID).count.\(next)",
@@ -409,10 +625,11 @@ enum ActivityBadgePresenter {
                 activityName: activityName
             ))
         }
+        }
         let streakKey = "\(baseID).streak"
         let storedStreak = ledger.storedAwards[streakKey]
         let best = max(storedStreak?.value ?? 0, facts.bestStreak)
-        if best >= 1 || storedStreak != nil {
+        if (best >= 1 || storedStreak != nil), usesOwnArtwork(streakKey, baseID: baseID) {
             let earned = best >= ActivityBadgeEngine.streakLengthGoal
             let useStoredRange = (storedStreak?.value ?? 0) >= facts.bestStreak
             rows.append(derived(
@@ -437,8 +654,10 @@ enum ActivityBadgePresenter {
         let recordKey = "\(baseID).record"
         let storedRecord = ledger.storedAwards[recordKey]
         let unit = facts.recordUnit
-        let value = max(storedRecord?.value ?? 0, facts.recordValue ?? 0)
-        if value > 0, unit != nil || storedRecord != nil {
+        let value = unit == .kilocalories
+            ? (facts.recordValue ?? 0)
+            : max(storedRecord?.value ?? 0, facts.recordValue ?? 0)
+        if value > 0, (unit != nil || storedRecord != nil), usesOwnArtwork(recordKey, baseID: baseID) {
             let storedWins = (storedRecord?.value ?? 0) >= (facts.recordValue ?? 0)
             rows.append(derived(
                 base: base,
@@ -447,9 +666,72 @@ enum ActivityBadgePresenter {
                 earned: true,
                 earnedAt: storedWins ? (storedRecord?.rangeEnd ?? storedRecord?.earnedAt) : facts.recordDate,
                 current: value,
-                goal: nil,
+                goal: unit == .kilocalories ? value : nil,
                 unit: unit ?? .minutes,
                 rangeEnd: storedWins ? storedRecord?.rangeEnd : facts.recordDate,
+                inputs: inputs,
+                now: now,
+                calendar: calendar,
+                ledger: ledger,
+                activityName: activityName
+            ))
+        }
+        return rows
+    }
+
+    /// A derived award stays in the grid only when it has a picture of its own.
+    private static func usesOwnArtwork(_ id: String, baseID: String) -> Bool {
+        guard let art = ActivityBadgeArt.asset(for: id),
+              let baseArt = ActivityBadgeArt.asset(for: baseID) else { return false }
+        return art != baseArt
+    }
+
+    private static func distanceAwards(
+        base: ActivityBadgeDisplay,
+        baseID: String,
+        facts: ActivityAwardFacts,
+        ledger: ActivityBadgeLedger,
+        inputs: [ActivityBadgeInput],
+        now: Date,
+        calendar: Calendar,
+        activityName: (String) -> String
+    ) -> [ActivityBadgeDisplay] {
+        var rows: [ActivityBadgeDisplay] = []
+        let tiers = ActivityBadgeEngine.distanceTiersKm
+        for tier in tiers {
+            let key = "\(baseID).km.\(tier)"
+            let stored = ledger.storedAwards[key]
+            let count = max(stored?.value ?? 0, facts.distanceCounts[tier] ?? 0)
+            guard (count > 0 || stored != nil), usesOwnArtwork(key, baseID: baseID) else { continue }
+            rows.append(derived(
+                base: base,
+                id: key,
+                kind: .accumulation,
+                earned: true,
+                earnedAt: stored?.earnedAt ?? facts.distanceTiers[tier],
+                current: count,
+                goal: tier,
+                unit: .kilometers,
+                times: 1,
+                inputs: inputs,
+                now: now,
+                calendar: calendar,
+                ledger: ledger,
+                activityName: activityName
+            ))
+        }
+        let measured = facts.distanceCounts.values.contains { $0 > 0 } || facts.completions > 0
+        if measured, let next = tiers.first(where: { (facts.distanceCounts[$0] ?? 0) == 0 && ledger.storedAwards["\(baseID).km.\($0)"] == nil && usesOwnArtwork("\(baseID).km.\($0)", baseID: baseID) }) {
+            rows.append(derived(
+                base: base,
+                id: "\(baseID).km.\(next)",
+                kind: .accumulation,
+                earned: false,
+                earnedAt: nil,
+                current: 0,
+                goal: next,
+                unit: .kilometers,
+                times: 0,
                 inputs: inputs,
                 now: now,
                 calendar: calendar,
@@ -472,6 +754,7 @@ enum ActivityBadgePresenter {
         unit: ActivityAwardUnit,
         rangeStart: Date? = nil,
         rangeEnd: Date? = nil,
+        times: Int? = nil,
         inputs: [ActivityBadgeInput],
         now: Date,
         calendar: Calendar,
@@ -509,7 +792,18 @@ enum ActivityBadgePresenter {
             ),
             actionTitle: base.actionTitle,
             actionMinutes: base.actionMinutes,
-            award: state
+            times: times ?? (earned ? 1 : 0),
+            award: state,
+            source: sessionSource(
+                id: id,
+                earned: earned,
+                inputs: inputs,
+                ledger: ledger,
+                now: now,
+                calendar: calendar,
+                activityName: activityName,
+                waterTotal: unit == .milliliters ? current : nil
+            )
         )
     }
 
@@ -531,6 +825,41 @@ enum ActivityBadgePresenter {
             }
         }
         return definition != nil
+    }
+
+    private static func sessionSource(
+        id: String,
+        earned: Bool,
+        inputs: [ActivityBadgeInput],
+        ledger: ActivityBadgeLedger,
+        now: Date,
+        calendar: Calendar,
+        activityName: (String) -> String,
+        waterTotal: Int? = nil
+    ) -> ActivityAwardSource? {
+        guard earned,
+              let input = ActivityBadgeEngine.earningInput(
+                for: id,
+                inputs: inputs,
+                ledger: ledger,
+                now: now,
+                calendar: calendar
+              ) else { return nil }
+        let symbol = ActivityBadgeCatalog.definition(catalogTitle: input.title)?.symbol
+            ?? ActivityBadgeCatalog.definition(id: ActivityBadgeEngine.awardBaseID(id))?.symbol
+            ?? "figure.mixed.cardio"
+        let calories = input.activeKilocalories ?? 0
+        let distance = input.distanceMeters ?? 0
+        return ActivityAwardSource(
+            recordID: input.recordID,
+            title: activityName(input.title),
+            icon: input.icon.isEmpty ? symbol : input.icon,
+            startedAt: input.startedAt,
+            durationMinutes: input.actualDurationMinutes ?? input.durationMinutes,
+            kilocalories: calories > 0 ? calories : nil,
+            distanceMeters: distance > 0 ? distance : nil,
+            waterMilliliters: waterTotal ?? input.waterMilliliters
+        )
     }
 
     private static func earliest(_ lhs: Date?, _ rhs: Date?) -> Date? {

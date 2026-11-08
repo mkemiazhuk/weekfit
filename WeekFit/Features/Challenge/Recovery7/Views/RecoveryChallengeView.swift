@@ -74,7 +74,6 @@ struct RecoveryChallengeView: View {
         .safeAreaInset(edge: .bottom) {
             footer
         }
-        .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
         .accessibilityIdentifier("recovery.challenge.sheet")
         .onAppear {
             reload()
@@ -122,9 +121,6 @@ struct RecoveryChallengeView: View {
 
     private var sheetChromeHeader: some View {
         VStack(spacing: 0) {
-            // Native `.presentationDragIndicator(.visible)` is provided by the presenting
-            // sheet — do not draw a second custom grabber here.
-
             if phase != .overview {
                 HStack(alignment: .center, spacing: 12) {
                     VStack(alignment: .leading, spacing: 2) {

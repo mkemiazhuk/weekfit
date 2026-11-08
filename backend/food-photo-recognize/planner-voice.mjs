@@ -15,8 +15,6 @@ import {
 import { voiceGuide } from './planner-voice-guides.mjs';
 
 const DEFAULT_MODEL = 'gpt-realtime-2.1';
-const LIVE_MODEL = 'gpt-live-1';
-const DEFAULT_LIVE_BACKEND = 'gpt-6.1-sol';
 const VOICES = new Set(['marin', 'cedar', 'alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse']);
 
 /** Names, defaults, and spoken forms match the on-device planner catalog. Meals stay out. */
@@ -70,6 +68,8 @@ export function plannerVoiceSettings(env = {}) {
   }
   const noiseReduction = (env.PLANNER_VOICE_NOISE_REDUCTION ?? 'near_field').trim();
   if (!['near_field', 'far_field', 'off'].includes(noiseReduction)) throw Error('Invalid PLANNER_VOICE_NOISE_REDUCTION');
+  const eagerness = (env.PLANNER_VOICE_VAD_EAGERNESS ?? 'medium').trim();
+  if (!['medium', 'high'].includes(eagerness)) throw Error('Invalid PLANNER_VOICE_VAD_EAGERNESS');
   const integer = (key, fallback, min, max) => {
     if (env[key] == null || env[key] === '') return fallback;
     const n = Number(env[key]);
@@ -86,13 +86,12 @@ export function plannerVoiceSettings(env = {}) {
     plannerVoiceEnabled: env.PLANNER_VOICE_ENABLED === '1',
     plannerVoiceAllowedUids: allowed,
     plannerVoiceModel: model,
-    plannerVoiceLiveModel: LIVE_MODEL,
-    plannerVoiceLiveBackendModel: (env.PLANNER_VOICE_LIVE_BACKEND_MODEL ?? DEFAULT_LIVE_BACKEND).trim() || DEFAULT_LIVE_BACKEND,
     // Optional stronger model for the listed app languages, e.g. ru,fr.
     plannerVoiceLanguageModel: languageModel && modelLanguages.length ? languageModel : null,
     plannerVoiceLanguageModelLanguages: modelLanguages,
     plannerVoiceVoice: voice,
     plannerVoiceNoiseReduction: noiseReduction,
+    plannerVoiceVadEagerness: eagerness,
     plannerVoiceIdleSeconds: integer('PLANNER_VOICE_IDLE_SECONDS', 75, 20, 180),
     plannerVoiceSecretSeconds: integer('PLANNER_VOICE_SECRET_SECONDS', 60, 10, 600),
     plannerVoiceMaxCalls: integer('PLANNER_VOICE_MAX_CALLS', 5, 1, 100),
@@ -542,25 +541,20 @@ export function consoleDocument() {
   let toolFollowUp = false;
   let sessionLanguage = 'ru';
   let sessionName = '';
-  let liveEngine = false;
-  let liveGreet = false;
-  const liveCalls = new Set();
   let sdpResolve = null;
   const pending = new Map();
   const CHECK = {
-    ru: { there: (n) => (n ? n + ', ты ещё здесь?' : 'Ты ещё здесь?'), bye: 'До встречи.' },
-    en: { there: (n) => (n ? 'Still there, ' + n + '?' : 'Still there?'), bye: "I'll end the call now. Bye!" },
-    pl: { there: (n) => (n ? n + ', jesteś tam?' : 'Jesteś tam?'), bye: 'Kończę rozmowę. Na razie!' },
-    fr: { there: (n) => (n ? n + ', tu es là ?' : 'Tu es là ?'), bye: "Je termine l'appel. À plus !" },
-    es: { there: (n) => (n ? n + ', ¿sigues ahí?' : '¿Sigues ahí?'), bye: 'Termino la llamada. Hasta luego!' },
-    de: { there: (n) => (n ? n + ', bist du noch da?' : 'Bist du noch da?'), bye: 'Ich beende das Gespräch. Tschüss!' },
-    it: { there: (n) => (n ? n + ', ci sei?' : 'Ci sei?'), bye: 'Chiudo la chiamata. A presto!' },
-    ja: { there: (n) => (n ? n + '、まだいる？' : 'まだいる？'), bye: '通話を終えるね。またね！' },
-    ko: { there: (n) => (n ? n + ', 아직 있어?' : '아직 있어?'), bye: '통화를 마칠게. 안녕!' },
-    'zh-Hans': { there: (n) => (n ? n + '，你还在吗？' : '你还在吗？'), bye: '我先挂了。再见！' },
+    ru: { there: (n) => (n ? n + ', вы ещё здесь?' : 'Вы ещё здесь?'), bye: 'До встречи.' },
+    en: { there: (n) => (n ? 'Still there, ' + n + '?' : 'Still there?'), bye: 'Talk soon.' },
+    pl: { there: (n) => (n ? n + ', jest pan lub pani?' : 'Jest pan lub pani?'), bye: 'Do usłyszenia.' },
+    fr: { there: (n) => (n ? n + ', vous êtes là ?' : 'Vous êtes là ?'), bye: 'À bientôt.' },
+    es: { there: (n) => (n ? n + ', ¿sigue ahí?' : '¿Sigue ahí?'), bye: 'Hasta luego.' },
+    de: { there: (n) => (n ? n + ', sind Sie noch da?' : 'Sind Sie noch da?'), bye: 'Auf Wiederhören.' },
+    it: { there: (n) => (n ? n + ', è ancora lì?' : 'È ancora lì?'), bye: 'Arrivederci.' },
+    ja: { there: (n) => (n ? n + '、まだいらっしゃいますか？' : 'まだいらっしゃいますか？'), bye: 'では、また。' },
+    ko: { there: (n) => (n ? n + ', 아직 계세요?' : '아직 계세요?'), bye: '안녕히 계세요.' },
+    'zh-Hans': { there: (n) => (n ? n + '，您还在吗？' : '您还在吗？'), bye: '再见。' },
   };
-  const FIRST_GREET = ${JSON.stringify(Object.fromEntries(PLANNER_VOICE_LANGUAGES.map((code) => [code, greetingLine(code, '', false)])))};
-  const AGAIN_GREET = ${JSON.stringify(Object.fromEntries(PLANNER_VOICE_LANGUAGES.map((code) => [code, greetingLine(code, '', true)])))};
   const NUDGE = {
     ru: 'Человек уже договорил и слышит тишину. Сразу ответь на его последнюю фразу, одной короткой фразой. Не говори, что думаешь, и не отвечай только «я здесь».',
     en: 'They just finished speaking and heard silence. Answer their last sentence now, in one short sentence. Do not say you are thinking, and do not only say that you are here.',
@@ -682,15 +676,6 @@ export function consoleDocument() {
       hangup = true;
       hangupConfirmed = false;
     }
-    if (liveEngine) {
-      channel.send(JSON.stringify({
-        type: 'session.commentary.append',
-        event_id: 'line_' + Date.now(),
-        delegation_id: null,
-        content: text,
-      }));
-      return;
-    }
     channel.send(JSON.stringify({
       type: 'response.create',
       response: { instructions: 'Say exactly this and nothing else: ' + text },
@@ -805,11 +790,6 @@ export function consoleDocument() {
     if (goodbyeFallback) clearTimeout(goodbyeFallback);
     goodbyeFallback = null;
     goodbyeTail = setTimeout(() => {
-      try {
-        if (liveEngine && channel && channel.readyState === 'open') {
-          channel.send(JSON.stringify({ type: 'session.close' }));
-        }
-      } catch (e) {}
       stop('goodbye');
     }, 20);
   }
@@ -818,15 +798,6 @@ export function consoleDocument() {
     if (!channel || channel.readyState !== 'open') return;
     toolFollowUp = true;
     mark('tool_result', 'tool_started');
-    if (liveEngine) {
-      const payload = typeof output === 'string' ? output : JSON.stringify(output ?? { ok: false, saved: false });
-      channel.send(JSON.stringify({
-        type: 'response.item.create',
-        item: { type: 'function_call_output', call_id: callId, output: payload },
-      }));
-      channel.send(JSON.stringify({ type: 'response.create' }));
-      return;
-    }
     channel.send(JSON.stringify({
       type: 'conversation.item.create',
       item: { type: 'function_call_output', call_id: callId, output: JSON.stringify(output) },
@@ -895,13 +866,10 @@ export function consoleDocument() {
         channel.onmessage = (event) => onEvent(event.data);
         sessionLanguage = String((options && options.language) || 'ru');
         sessionName = String((options && options.givenName) || '').replace(/[\\r\\n"]/g, '').slice(0, 40);
-        liveEngine = options && options.engine === 'live';
         sessionIntroduced = Boolean(options && options.introduced);
         userSpokeBeforeGreeting = false;
         introductionNoted = false;
         const reopen = Boolean(options && options.reconnected);
-        liveGreet = liveEngine && !reopen;
-        liveCalls.clear();
         channel.onopen = () => {
           if (thisCall !== callNumber || !local || !channel) return;
           post({ type: 'state', value: 'connected' });
@@ -920,7 +888,7 @@ export function consoleDocument() {
               greetingPending = false;
               return;
             }
-            if (!liveEngine) channel.send(JSON.stringify({ type: 'response.create' }));
+            channel.send(JSON.stringify({ type: 'response.create' }));
           }, 400);
           setTimeout(() => {
             if (thisCall !== callNumber || !greetingPending) return;
@@ -972,52 +940,12 @@ export function consoleDocument() {
       const text = event.transcript || event.delta || (event.item && (event.item.transcript || event.item.text)) || '';
       if (text) userSaid = (userSaid + ' ' + text).slice(-500);
     }
-    if (liveEngine && type === 'response.function_call_arguments.done') return;
     if (type === 'session.started') {
       post({ type: 'state', value: 'voice' });
-      if (liveGreet && channel && channel.readyState === 'open') {
-        liveGreet = false;
-        if (userSpokeBeforeGreeting) return;
-        const greet = (sessionIntroduced ? AGAIN_GREET : FIRST_GREET)[sessionLanguage] || FIRST_GREET.ru;
-        channel.send(JSON.stringify({
-          type: 'session.commentary.append',
-          event_id: 'greeting_1',
-          delegation_id: null,
-          content: greet,
-        }));
-      }
       return;
     }
     if (type === 'session.closed') {
       stop('provider');
-      return;
-    }
-    if (liveEngine && type === 'response.output_item.done' && event.item && event.item.type === 'function_call') {
-      const name = event.item.name;
-      const callId = event.item.call_id;
-      if (!callId || liveCalls.has(callId)) return;
-      liveCalls.add(callId);
-      const args = typeof event.item.arguments === 'string'
-        ? event.item.arguments
-        : JSON.stringify(event.item.arguments || {});
-      if (name === 'set_call_language') {
-        try {
-          const requested = JSON.parse(args).language;
-          if (requested) sessionLanguage = String(requested);
-        } catch (e) {}
-      }
-      if (name === 'end_call') {
-        beginHangup();
-        return;
-      }
-      if (['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'log_water', 'remind_water', 'set_call_language'].includes(name)) {
-        toolBusy = true;
-        clearReplyWatch();
-        clearPresence();
-        post({ type: 'state', value: 'acting' });
-        mark('tool_started', 'speech_stopped');
-        post({ type: 'tool', callId, name, arguments: args });
-      }
       return;
     }
     if (type === 'input_audio_buffer.speech_started') {
@@ -1260,12 +1188,9 @@ function localStamp(date, timeZone) {
 
 export function plannerVoiceEngine(body) {
   const engine = typeof body?.engine === 'string' ? body.engine.trim() : '';
-  if (engine === '') return 'realtime';
-  if (engine === 'live' || engine === 'realtime') return engine;
+  if (engine === '' || engine === 'realtime' || engine === 'live') return 'realtime';
   throw new ServiceError('invalid_voice_engine', 422);
 }
-
-const LIVE_OPEN = 'On a plain greeting, say only the greeting and wait. Do not mention the sauna or any other activity. If they already asked a question, answer that question.';
 
 const RECOVERY_BAND = {
   ru: { good: 'хорошо', ok: 'умеренная готовность', need_rest: 'низкое восстановление' },
@@ -1364,7 +1289,23 @@ function answerRules(language) {
       '单独的「谢谢」或「知道了」不结束通话。「再见」「回头见」「就这些」才结束。说一句短告别，并在同一轮调用 end_call。',
     ],
   };
-  return (rules[code] || rules.en).concat([deliveryRules(code)]).join('\n');
+  return (rules[code] || rules.en).concat([turnRule(code), deliveryRules(code)]).join('\n');
+}
+
+function turnRule(language) {
+  const lines = {
+    ru: 'Начинай с прямого ответа. Обычно хватает одной или двух фраз. Если для действия не хватает одного факта, задай один конкретный вопрос, например «На какое время записать теннис?». Поправку человека учитывай в следующей реплике. Если данные WeekFit расходятся с его словами и это меняет ответ, коротко уточни. Записи меняй только по его просьбе. После успешной записи или переноса подтверди, что сделала. Если время занято, предложи одно свободное и жди согласия, например «На семь вечера у вас уже запланирована прогулка». Обычное «спасибо» оставляет звонок открытым. При явном прощании скажи только «До встречи.» и в том же ответе вызови end_call. Перед прощанием не пересказывай, что записала или обсудили.',
+    en: 'Start with the direct answer. One or two sentences are usually enough. If one fact is missing for the action, ask one specific question. Use a correction in the next reply. If the WeekFit data disagrees with what they said and that changes the answer, clarify it briefly. Change a record only when they ask. After a successful save or move, confirm it. If the time is taken, offer one free time and wait. Ordinary thanks leaves the call open. On a clear goodbye, say only "Talk soon." and call end_call in that same response. Do not recap what was saved or discussed before the farewell.',
+    pl: 'Zacznij od odpowiedzi. Zwykle wystarczy jedno albo dwa zdania. Gdy do działania brakuje jednej informacji, zadaj jedno konkretne pytanie. Poprawkę uwzględnij w następnej wypowiedzi. Gdy dane WeekFit rozmijają się ze słowami osoby i to zmienia odpowiedź, krótko to doprecyzuj. Zapisy zmieniasz tylko na prośbę. Po udanym zapisie albo przeniesieniu potwierdź to. Gdy godzina jest zajęta, zaproponuj jeden wolny czas i czekaj na zgodę. Zwykłe podziękowanie zostawia rozmowę otwartą. Przy wyraźnym pożegnaniu powiedz tylko „Do usłyszenia.” i w tej samej odpowiedzi wywołaj end_call. Przed pożegnaniem nie streszczaj, co zostało zapisane albo omówione.',
+    fr: 'Commence par la réponse. Une ou deux phrases suffisent d\'ordinaire. S\'il manque une information pour agir, pose une seule question précise. Tiens compte de la correction dans la réponse suivante. Si les données WeekFit contredisent ses mots et que cela change la réponse, précise-le brièvement. Ne change un enregistrement que sur demande. Après un enregistrement ou un déplacement réussi, confirme-le. Si l\'heure est prise, propose un seul créneau libre et attends. Un simple merci laisse l\'appel ouvert. Pour un au revoir clair, dis seulement « À bientôt. » et appelle end_call dans la même réponse. Ne résume pas ce qui a été enregistré ou discuté avant l\'au revoir.',
+    es: 'Empieza por la respuesta. Normalmente bastan una o dos frases. Si falta un dato para actuar, haz una sola pregunta concreta. Ten en cuenta la corrección en la siguiente réplica. Si los datos de WeekFit no coinciden con lo que dice y eso cambia la respuesta, acláralo en breve. Cambia un registro solo si te lo pide. Tras guardar o mover con éxito, confírmalo. Si la hora está ocupada, ofrece una hora libre y espera. Un gracias normal deja la llamada abierta. En una despedida clara, di solo «Hasta luego.» y llama a end_call en esa misma respuesta. No resumas lo guardado o lo hablado antes de despedirte.',
+    de: 'Fang mit der Antwort an. Meist reichen ein oder zwei Sätze. Fehlt eine Angabe für die Aktion, stell eine konkrete Frage. Eine Korrektur gilt schon in der nächsten Antwort. Wenn die WeekFit-Daten den Worten widersprechen und das die Antwort ändert, klär es kurz. Eine Eintragung änderst du nur auf Bitte. Nach einem gelungenen Speichern oder Verschieben bestätige es. Ist die Zeit belegt, biete eine freie Zeit an und warte. Ein gewöhnliches Danke lässt den Anruf offen. Bei einem klaren Abschied sag nur „Auf Wiederhören.“ und rufe end_call in derselben Antwort auf. Fasse vor dem Abschied nicht zusammen, was gespeichert oder besprochen wurde.',
+    it: 'Inizia dalla risposta. Di solito bastano una o due frasi. Se manca un dato per agire, fai una sola domanda concreta. Tieni conto della correzione nella risposta successiva. Se i dati di WeekFit non coincidono con le sue parole e questo cambia la risposta, chiariscilo in breve. Cambia una registrazione solo se te lo chiede. Dopo un salvataggio o uno spostamento riuscito, confermalo. Se l\'orario è occupato, proponi un solo orario libero e aspetta. Un grazie normale lascia la chiamata aperta. A un commiato chiaro, di\' solo «Arrivederci.» e chiama end_call nella stessa risposta. Non riassumere ciò che è stato salvato o discusso prima del commiato.',
+    ja: 'まず答えから入る。たいていは一文か二文で足りる。行動に一つ情報が足りなければ、具体的な質問を一つだけする。訂正は次の返事に反映する。WeekFitのデータと相手の言葉が食い違い、答えが変わるなら短く確認する。記録を変えるのは頼まれたときだけ。保存や移動ができたら、それを確認する。時間が埋まっていたら空いている時間を一つ提案して待つ。普通の「ありがとう」では通話を開いたままにする。はっきりした別れでは「では、また。」だけを言い、同じ応答で end_call を呼ぶ。別れの前に、保存したことや話したことをまとめ直さない。',
+    ko: '답부터 말한다. 보통 한두 문장이면 된다. 행동에 정보가 하나 없으면 구체적인 질문 하나만 한다. 수정은 다음 말에 반영한다. WeekFit 데이터와 상대의 말이 다르고 그게 답을 바꾸면 짧게 확인한다. 기록은 부탁할 때만 바꾼다. 저장이나 옮기기가 되면 그것을 확인한다. 시간이 차 있으면 빈 시간 하나를 제안하고 기다린다. 평범한 고맙다는 통화는 열어 둔다. 분명한 작별에는 「안녕히 계세요.」만 말하고 같은 응답에서 end_call을 호출한다. 작별 전에 저장하거나 이야기한 것을 다시 요약하지 않는다.',
+    'zh-Hans': '先直接回答。通常一两句就够。如果行动还缺一项信息，就问一个具体问题。对方的更正用在下一句里。如果 WeekFit 的数据和对方说的不一致，而且这会影响回答，就简短确认。只有对方要求时才改记录。保存或改时间成功后，确认这件事。时间已经被占用时，提出一个空闲时间并等待同意。普通的谢谢不结束通话。明确告别时只说「再见。」，并在同一轮调用 end_call。告别前不要复述刚记下或刚谈过的内容。',
+  };
+  return lines[language] || lines.en;
 }
 
 function deliveryRules(language) {
@@ -1398,7 +1339,7 @@ function addressRule(language, addressee) {
     'zh-Hans': { female: '女', male: '男', unknown: '未知' },
   }[language] || { female: 'female', male: 'male', unknown: 'unknown' };
   const lines = {
-    ru: `О себе говори в женском роде. Поле профиля сейчас: ${label[sex]}. Род человека бери только из этого поля, не из голоса и не из имени. Если поле неизвестно, не согласуй прилагательные с человеком. Нагрузку за день называй только если она есть в данных звонка. Подпись шкалы в данных — для тебя, не готовая фраза.`,
+    ru: `О себе говори в женском роде. К человеку всегда на «вы», даже если он говорит на «ты». Поле профиля сейчас: ${label[sex]}. Род человека бери только из этого поля, не из голоса и не из имени. Если поле неизвестно, не согласуй прилагательные с человеком. Нагрузку за день называй только если она есть в данных звонка. Подпись шкалы в данных — для тебя, не готовая фраза.`,
     en: `Speak about yourself in the feminine where the language marks it. The profile field is ${label[sex]}. Use that field only. Do not infer it from the voice or the name. If it is unknown, do not attach a gendered adjective to the person. Mention today's load only when that load is in the call data. The scale label in the data is for you, not a line to recite.`,
     pl: `O sobie mów w rodzaju żeńskim, jeśli język to zaznacza. Pole profilu: ${label[sex]}. Bierz je tylko stamtąd. Nie wnioskuj z głosu ani z imienia. Gdy jest nieznane, nie odmieniaj przymiotnika przy osobie. Obciążenie dnia nazywaj tylko wtedy, gdy jest w danych rozmowy. Klasę regeneracji nazywaj według skali.`,
     fr: `Parle de toi au féminin quand la langue le marque. Champ du profil : ${label[sex]}. Ne le prends que là. Ne le déduis pas de la voix ni du prénom. S'il est inconnu, n'accorde pas un adjectif avec la personne. Ne parle de la charge du jour que si elle est dans les données de l'appel. Nomme la classe selon l'échelle.`,
@@ -1410,61 +1351,6 @@ function addressRule(language, addressee) {
     'zh-Hans': `说到自己用女性。档案字段现在是${label[sex]}。只使用这个字段。不要根据声音或名字判断。如果未知，不要把带性别的形容词安到对方身上。今天的负荷只在通话数据里有的时候才说。恢复等级用量表上的名称。`,
   };
   return lines[language] || lines.en;
-}
-
-const LIVE_LIMIT = {
-  ru: 'Этот звонок меняет только сегодняшний план. Еду, здоровье, цели и завершённые записи не меняй. Другой день не планируй. Если просят сменить язык, говори на нём до конца звонка и не меняй язык приложения. Обычное «спасибо» звонок не завершает.',
-  en: 'This call changes only today\'s plan. Do not change food, health, goals, or completed items, and do not plan another day. If they ask to switch language, speak it for the rest of this call and do not change the app language. A bare thanks does not end the call.',
-  pl: 'Ta rozmowa zmienia tylko dzisiejszy plan. Nie zmieniaj jedzenia, zdrowia, celów ani ukończonych pozycji i nie planuj innego dnia. Jeśli poproszą o zmianę języka, mów w nim do końca rozmowy i nie zmieniaj języka aplikacji. Samo „dziękuję” nie kończy rozmowy.',
-  fr: 'Cet appel ne change que le plan d\'aujourd\'hui. Ne change pas la nourriture, la santé, les objectifs ni les activités terminées, et ne planifie pas un autre jour. S\'ils demandent une autre langue, parle-la jusqu\'à la fin de l\'appel sans changer la langue de l\'app. Un simple merci ne raccroche pas.',
-  es: 'Esta llamada solo cambia el plan de hoy. No cambies comida, salud, objetivos ni actividades terminadas, y no planifiques otro día. Si piden otro idioma, háblalo el resto de la llamada sin cambiar el idioma de la app. Un simple gracias no cuelga.',
-  de: 'Dieser Anruf ändert nur den Plan von heute. Ändere nicht Essen, Gesundheit, Ziele oder erledigte Einträge und plane keinen anderen Tag. Wenn sie die Sprache wechseln wollen, sprich sie bis zum Ende und ändere nicht die App-Sprache. Ein bloßes Danke beendet den Anruf nicht.',
-  it: 'Questa chiamata cambia solo il piano di oggi. Non cambiare cibo, salute, obiettivi o attività completate e non pianificare un altro giorno. Se chiedono un\'altra lingua, parlala fino alla fine senza cambiare la lingua dell\'app. Un semplice grazie non chiude.',
-  ja: 'この通話で変えるのは今日の予定だけ。食事、健康、目標、完了した記録は変えない。別の日は計画しない。言語を変えてほしいと言われたら、この通話の終わりまでその言語で話し、アプリの言語は変えない。ただの「ありがとう」では切らない。',
-  ko: '이 통화는 오늘 계획만 바꾼다. 음식, 건강, 목표, 완료된 기록은 바꾸지 않고 다른 날은 계획하지 않는다. 언어를 바꾸자고 하면 이 통화가 끝날 때까지 그 언어로 말하고 앱 언어는 바꾸지 않는다. 단순한 고마워는 통화를 끝내지 않는다.',
-  'zh-Hans': '这通电话只改今天的计划。不要改饮食、健康、目标或已完成的记录，也不要安排别的日子。如果对方要求换语言，就用那种语言说到通话结束，不要改应用语言。单独一句谢谢不会结束通话。',
-};
-
-export function plannerLiveConfiguration(config, payload) {
-  const session = plannerSessionConfiguration(config, payload);
-  const language = plannerVoiceLanguage(payload?.language);
-  const backend = config.plannerVoiceLiveBackendModel || DEFAULT_LIVE_BACKEND;
-  if (!/^gpt-[a-z0-9._-]+$/i.test(backend)) throw new ServiceError('planner_voice_live_unavailable', 503);
-  return {
-    model: LIVE_MODEL,
-    instructions: `${session.instructions}\n${LIVE_LIMIT[language] || LIVE_LIMIT.en}\n${LIVE_OPEN}\nDelegation policy:\nBackend tools:\n- Today's plan, and ending the call.\nGenerate <|SpawnThinking|> when:\n- They ask to add, move, change, or remove a planned activity, or a short follow-up such as "move it" continues that change.\n- They clearly end the call: bye, goodbye, «пока», «до свидания», «до встречи», or «это всё, заканчиваем». The backend must call end_call.\nDo not generate <|SpawnThinking|> for a bare thanks, «спасибо», or «понятно», or when one short clarification is still required.\nGenerate <|SpawnThinking|> before saying that a change was saved. Say the saved activity, time, and duration only from the backend result.`,
-    audio: { output: { voice: session.audio.output.voice } },
-    input: [{
-      type: 'message',
-      role: 'developer',
-      content: [{ type: 'input_text', text: LIVE_OPEN }],
-    }],
-    delegation: {
-      type: 'responses',
-      responses: {
-        model: backend,
-        instructions: [
-          'You choose plan tools for this live call. The application checks ownership and saves. Record ids and tool arguments stay language-independent.',
-          'Use the plan, meals, and recovery in the context below. Missing meals do not mean the person did not eat. Do not invent numbers or give a medical diagnosis.',
-          'A recommendation, or agreement to keep choosing, does not call a tool. If the time or duration is still open, offer one free slot and wait. Save without another confirmation when they named the time, told you to pick any free time, or agreed to the slot you just offered.',
-          'Resolve "it" or "this one" to the activity just discussed. If several activities match, ask which one and do not call a tool.',
-          'create_activity adds one catalog activity. update_activity changes that same ref: time, duration, or both. delete_activity removes that ref. Never create a second activity to move or resize one.',
-          'Before and after another activity uses place and anchorRef. If the exact time conflicts, the tool offers one alternative and saves nothing until the caller accepts it.',
-          'Say a change happened only when saved is true. Speak the returned speak text: it is the saved activity, time, and duration. If saved is false or the result is unknown, say what failed and call list_plan before trying again.',
-          'After a saved change, the returned items are the current plan. Use those refs for the next request.',
-          'Change only today, and do not schedule a time that has already passed. Do not change food, health, goals, or completed activities.',
-          'Call end_call in the same response as the farewell when they clearly end the call. The only spoken words in that response are the farewell. Do not call it for thanks, «хорошо, спасибо», or «понятно».',
-          session.instructions,
-        ].join('\n'),
-        tools: [
-          createActivityTool(), listPlanTool(), updateActivityTool(), deleteActivityTool(),
-          logWaterTool(), remindWaterTool(), endCallTool(), setCallLanguageTool(),
-        ],
-        tool_choice: 'auto',
-        parallel_tool_calls: false,
-      },
-    },
-  };
 }
 
 export function plannerSessionConfiguration(config, payload) {
@@ -1499,7 +1385,7 @@ export function plannerSessionConfiguration(config, payload) {
       input: {
         turn_detection: {
           type: 'semantic_vad',
-          eagerness: 'medium',
+          eagerness: config.plannerVoiceVadEagerness || 'medium',
           create_response: true,
           interrupt_response: true,
         },
@@ -1920,22 +1806,6 @@ function remindWaterTool() {
         anchorRef: { type: 'string', description: 'Plan ref such as a1. Empty unless place is before or after.' },
       },
       required: ['date', 'startTime', 'place', 'anchorRef'],
-    },
-  };
-}
-
-function setCallLanguageTool() {
-  return {
-    type: 'function',
-    name: 'set_call_language',
-    description: 'Switch the spoken language for the rest of this call only. Does not change the app language setting.',
-    parameters: {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        language: { type: 'string', enum: ['ru', 'en', 'zh-Hans', 'ko', 'ja', 'de', 'it', 'pl', 'fr', 'es'] },
-      },
-      required: ['language'],
     },
   };
 }

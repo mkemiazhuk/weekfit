@@ -1,6 +1,8 @@
 import Foundation
+import HealthKit
 import SwiftData
 import SwiftUI
+import WeekFitHealthKit
 import WeekFitPlanner
 
 enum ActivityBadgeRoute: Equatable {
@@ -127,7 +129,57 @@ enum ActivityBadgeCenter {
             durationMinutes: activity.durationMinutes,
             actualDurationMinutes: activity.actualDurationMinutes,
             source: activity.source,
-            waterMilliliters: QuickLogActivityPortions.waterMilliliters(for: activity)
+            waterMilliliters: QuickLogActivityPortions.waterMilliliters(for: activity),
+            distanceMeters: activity.distanceMeters,
+            activeKilocalories: activity.activeKilocalories,
+            icon: activity.icon
         )
+    }
+
+    /// Fills missing walk and cycling distances from the Health workouts already linked to those rows.
+    static func backfillDistances(
+        activities: [PlannedActivity],
+        modelContext: ModelContext,
+        waterGoalLiters: Double
+    ) async {
+        let targets = activities.filter { activity in
+            activity.healthKitWorkoutUUID != nil
+                && (activity.distanceMeters == nil || activity.activeKilocalories == nil)
+        }
+        let identifiers = Set(targets.compactMap { $0.healthKitWorkoutUUID.flatMap(UUID.init(uuidString:)) })
+        guard !identifiers.isEmpty else { return }
+        let workouts = await HealthWorkoutLookup.workouts(ids: identifiers)
+        guard !workouts.isEmpty else { return }
+        let byID = Dictionary(uniqueKeysWithValues: workouts.map { ($0.uuid.uuidString, $0) })
+        var changed = false
+        for activity in targets {
+            guard let uuid = activity.healthKitWorkoutUUID, let workout = byID[uuid] else { continue }
+            if activity.distanceMeters == nil {
+                activity.distanceMeters = ActivityReconciler.distanceMeters(of: workout) ?? 0
+            }
+            if activity.activeKilocalories == nil {
+                activity.activeKilocalories = ActivityReconciler.kilocalories(of: workout) ?? 0
+            }
+            changed = true
+        }
+        guard changed else { return }
+        try? modelContext.save()
+        refresh(activities: activities, waterGoalLiters: waterGoalLiters)
+    }
+}
+
+private enum HealthWorkoutLookup {
+    static func workouts(ids: Set<UUID>) async -> [HKWorkout] {
+        await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: HKObjectType.workoutType(),
+                predicate: HKQuery.predicateForObjects(with: ids),
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: nil
+            ) { _, samples, _ in
+                continuation.resume(returning: samples as? [HKWorkout] ?? [])
+            }
+            HKHealthStore().execute(query)
+        }
     }
 }

@@ -489,8 +489,8 @@ struct TodayView: View {
         let presented = root
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.today")
-        .sheet(isPresented: $showAIUsage) { WeekFitAIBalanceSheet() }
-        .sheet(item: $aiTopUpPack) { pack in WeekFitAIBalanceSheet(pack: pack) }
+        .fullScreenCover(isPresented: $showAIUsage) { WeekFitAIBalanceSheet() }
+        .fullScreenCover(item: $aiTopUpPack) { pack in WeekFitAIBalanceSheet(pack: pack) }
         .fullScreenCover(isPresented: $showMayaPaywall, onDismiss: resumeMayaAfterPaywall) {
             WeekFitPaywallView(
                 source: .mayaCall,
@@ -789,7 +789,7 @@ struct TodayView: View {
                 .presentationDragIndicator(.visible)
                 .weekFitSheetChrome(cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius)
         }
-        .sheet(isPresented: $showProposalReview) {
+        .fullScreenCover(isPresented: $showProposalReview) {
             ProposalReviewView(
                 dayKey: ProposalInputFingerprintBuilder.dayKey(for: Date()),
                 onApplied: { _ in
@@ -802,8 +802,6 @@ struct TodayView: View {
                     refreshMorningProposal()
                 }
             )
-            .presentationDetents([.large])
-            .presentationDragIndicator(.hidden)
         }
         .onChange(of: coachCoordinator.state.id) { _, _ in
             scheduleMorningProposalRefresh()
@@ -834,7 +832,7 @@ struct TodayView: View {
             activityBadges.openWaterLog = false
             showDirectDrinkLogSheet = true
         }
-        .sheet(
+        .fullScreenCover(
             isPresented: $showDirectWorkoutLogSheet,
             onDismiss: {
                 refreshTodayLiveState(refreshHealth: true)
@@ -852,15 +850,8 @@ struct TodayView: View {
             .environmentObject(nutritionViewModel)
             .environmentObject(coachInputProvider)
             .environmentObject(activityCoordinator)
-            .presentationDetents([.large])
-            .presentationDragIndicator(.hidden)
-            .presentationContentInteraction(.scrolls)
-            .weekFitSheetChrome(
-                cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
-                background: QuickActionSheetDesign.Color.sheetBackground(for: .activity)
-            )
         }
-        .sheet(isPresented: $showDirectMealLogSheet) {
+        .fullScreenCover(isPresented: $showDirectMealLogSheet) {
             ZStack {
                 QuickActionSheetDesign.Color.sheetBackground(for: .food)
                     .ignoresSafeArea()
@@ -911,14 +902,6 @@ struct TodayView: View {
                     }
                 )
             }
-            // Food opens full-height so AI + frequent cards aren't clipped by the mid detent.
-            .presentationDetents([.large])
-            .presentationDragIndicator(.hidden)
-            .presentationContentInteraction(.scrolls)
-            .weekFitSheetChrome(
-                cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
-                background: QuickActionSheetDesign.Color.sheetBackground(for: .food)
-            )
             .onAppear {
                 configureQuickLogSheetDismiss(closeMealSheet: true)
             }
@@ -941,7 +924,7 @@ struct TodayView: View {
             refreshQuickLogLocalizedRows()
         }
         return AnyView(actionSheets)
-        .sheet(isPresented: $showDirectDrinkLogSheet) {
+        .fullScreenCover(isPresented: $showDirectDrinkLogSheet) {
             ZStack {
                 QuickActionSheetDesign.Color.sheetBackground(for: .drinks)
                     .ignoresSafeArea()
@@ -966,13 +949,6 @@ struct TodayView: View {
                     }
                 )
             }
-            .presentationDetents([.large])
-            .presentationDragIndicator(.hidden)
-            .presentationContentInteraction(.scrolls)
-            .weekFitSheetChrome(
-                cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
-                background: QuickActionSheetDesign.Color.sheetBackground(for: .drinks)
-            )
             .onAppear {
                 configureQuickLogSheetDismiss(closeMealSheet: false)
             }
@@ -3972,7 +3948,7 @@ struct TodayView: View {
                             quickActionButtons(activeSession: activeSession, now: now)
                         }
                     } else {
-                        HStack(spacing: 0) {
+                        HStack(alignment: .top, spacing: 0) {
                             quickActionButtons(activeSession: activeSession, now: now)
                         }
                     }
@@ -4044,7 +4020,7 @@ struct TodayView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .multilineTextAlignment(.center)
             }
-            .frame(maxWidth: .infinity, minHeight: 52)
+            .frame(maxWidth: .infinity, alignment: .top)
             .contentShape(Rectangle())
             .padding(.vertical, 4)
         }

@@ -111,6 +111,8 @@ public enum ActivityReconciler {
             source: "appleWorkout"
         )
         imported.actualDurationMinutes = workoutMinutes
+        imported.distanceMeters = distanceMeters(of: workout)
+        imported.activeKilocalories = kilocalories(of: workout)
         imported.id = workout.uuid.uuidString
         return imported
     }
@@ -126,6 +128,8 @@ public enum ActivityReconciler {
         let elapsedMinutes = max(1, Int((workout.endDate.timeIntervalSince(workout.startDate) / 60).rounded()))
         activity.date = workout.startDate
         activity.actualDurationMinutes = elapsedMinutes
+        activity.distanceMeters = distanceMeters(of: workout) ?? activity.distanceMeters
+        activity.activeKilocalories = kilocalories(of: workout) ?? activity.activeKilocalories
         activity.isCompleted = false
         activity.isSkipped = false
         activity.healthKitWorkoutUUID = workout.uuid.uuidString
@@ -138,6 +142,8 @@ public enum ActivityReconciler {
         activity.date = workout.startDate
         activity.durationMinutes = workoutMinutes
         activity.actualDurationMinutes = workoutMinutes
+        activity.distanceMeters = distanceMeters(of: workout) ?? activity.distanceMeters
+        activity.activeKilocalories = kilocalories(of: workout) ?? activity.activeKilocalories
         activity.isCompleted = true
         activity.isSkipped = false
         activity.healthKitWorkoutUUID = workout.uuid.uuidString
@@ -145,6 +151,20 @@ public enum ActivityReconciler {
         activity.type = "workout"
         activity.title = title(for: workout.workoutActivityType)
         activity.icon = icon(for: workout.workoutActivityType)
+    }
+
+    public static func kilocalories(of workout: HKWorkout) -> Int? {
+        guard let energy = workout.totalEnergyBurned else { return nil }
+        let kcal = energy.doubleValue(for: .kilocalorie())
+        guard kcal > 0 else { return nil }
+        return Int(kcal.rounded())
+    }
+
+    public static func distanceMeters(of workout: HKWorkout) -> Int? {
+        guard let distance = workout.totalDistance else { return nil }
+        let meters = distance.doubleValue(for: .meter())
+        guard meters > 0 else { return nil }
+        return Int(meters.rounded())
     }
 
     public static func title(for type: HKWorkoutActivityType) -> String {

@@ -2,6 +2,7 @@ import Foundation
 
 enum ActivityBadgeCategory: String, Codable, CaseIterable {
     case activity
+    case energy
     case recovery
     case habit
 }
@@ -41,30 +42,30 @@ struct ActivityBadgeDefinition: Equatable, Identifiable {
 enum ActivityBadgeCatalog {
     static let definitions: [ActivityBadgeDefinition] = [
         def("activity.cycling", .activity, "Cycling", "figure.outdoor.cycle", "Two Wheels", "На двух колёсах", "First completed ride", "Первая завершённая поездка", "Ride", "Поехать", 45, .completedSession, false),
-        def("activity.running", .activity, "Running", "figure.run", "First Run", "Первый забег", "First completed run", "Первый завершённый забег", "Run", "Побежать", 45, .completedSession, false),
-        def("activity.swimming", .activity, "Swimming", "figure.pool.swim", "First Length", "Первая длина", "First completed swim", "Первое завершённое плавание", "Swim", "Поплавать", 45, .completedSession, false),
+        def("activity.running", .activity, "Running", "figure.run", "First Run", "Первая пробежка", "First completed run", "Первый завершённый забег", "Run", "Побежать", 45, .completedSession, false),
+        def("activity.swimming", .activity, "Swimming", "figure.pool.swim", "First Length", "Первый заплыв", "First completed swim", "Первое завершённое плавание", "Swim", "Поплавать", 45, .completedSession, false),
         def("activity.hiking", .activity, "Hiking", "figure.hiking", "First Trail", "Первая тропа", "First completed hike", "Первый завершённый поход", "Hike", "Пойти в поход", 45, .completedSession, false),
-        def("activity.snowboarding", .activity, "Snowboarding", "figure.snowboarding", "First Ride", "Первый проезд", "First completed snowboard session", "Первый завершённый спуск на сноуборде", "Snowboard", "Встать на сноуборд", 45, .completedSession, false),
+        def("activity.snowboarding", .activity, "Snowboarding", "figure.snowboarding", "First Ride", "На сноуборде", "First completed snowboard session", "Первый завершённый спуск на сноуборде", "Snowboard", "Встать на сноуборд", 45, .completedSession, false),
         def("activity.alpine-skiing", .activity, "Alpine Skiing", "figure.skiing.downhill", "First Descent", "Первый спуск", "First completed ski session", "Первый завершённый спуск на лыжах", "Ski", "Встать на лыжи", 45, .completedSession, false),
-        def("activity.upper-body", .activity, "Upper Body", "dumbbell.fill", "Upper Start", "Первый верх", "First completed upper-body session", "Первая завершённая тренировка верха", "Train upper body", "Тренировать верх", 45, .completedSession, false),
-        def("activity.core", .activity, "Core", "figure.core.training", "Core Start", "Первый пресс", "First completed core session", "Первая завершённая тренировка пресса", "Train core", "Тренировать пресс", 45, .completedSession, false),
-        def("activity.lower-body", .activity, "Lower Body", "figure.strengthtraining.traditional", "Lower Start", "Первый низ", "First completed lower-body session", "Первая завершённая тренировка низа", "Train lower body", "Тренировать низ", 45, .completedSession, false),
+        def("activity.upper-body", .activity, "Upper Body", "dumbbell.fill", "Upper Start", "Сильный верх", "First completed upper-body session", "Первая завершённая тренировка верха", "Train upper body", "Тренировать верх", 45, .completedSession, false),
+        def("activity.core", .activity, "Core", "figure.core.training", "Core Start", "Сильный кор", "First completed core session", "Первая завершённая тренировка пресса", "Train core", "Тренировать пресс", 45, .completedSession, false),
+        def("activity.lower-body", .activity, "Lower Body", "figure.strengthtraining.traditional", "Lower Start", "Сильные ноги", "First completed lower-body session", "Первая завершённая тренировка низа", "Train lower body", "Тренировать низ", 45, .completedSession, false),
         def("activity.full-body", .activity, "Full Body", "figure.strengthtraining.functional", "Full Effort", "Всё тело", "First completed full-body session", "Первая завершённая тренировка всего тела", "Train full body", "Тренировать всё тело", 45, .completedSession, false),
         def("activity.tennis", .activity, "Tennis", "figure.tennis", "First Serve", "Первая подача", "First completed tennis session", "Первый завершённый теннис", "Play tennis", "Сыграть в теннис", 45, .completedSession, false),
-        def("activity.padel", .activity, "Padel", "figure.tennis", "First Rally", "Первый розыгрыш", "First completed padel session", "Первый завершённый падел", "Play padel", "Сыграть в падел", 45, .completedSession, false),
-        def("activity.squash", .activity, "Squash", "figure.squash", "First Point", "Первое очко", "First completed squash session", "Первый завершённый сквош", "Play squash", "Сыграть в сквош", 45, .completedSession, false),
-        def("activity.hiit", .activity, "High Intensity Interval Training", "figure.highintensity.intervaltraining", "First Interval", "Первый интервал", "First completed interval session", "Первая завершённая интервальная тренировка", "Start intervals", "Начать интервалы", 45, .completedSession, false),
+        def("activity.padel", .activity, "Padel", "figure.tennis", "First Rally", "Дебют в паделе", "First completed padel session", "Первый завершённый падел", "Play padel", "Сыграть в падел", 45, .completedSession, false),
+        def("activity.squash", .activity, "Squash", "figure.squash", "First Point", "Дебют в сквоше", "First completed squash session", "Первый завершённый сквош", "Play squash", "Сыграть в сквош", 45, .completedSession, false),
+        def("activity.hiit", .activity, "High Intensity Interval Training", "figure.highintensity.intervaltraining", "First Interval", "Первые интервалы", "First completed interval session", "Первая завершённая интервальная тренировка", "Start intervals", "Начать интервалы", 45, .completedSession, false),
 
         def("recovery.stretching", .recovery, "Stretching", "figure.cooldown", "Stretch Break", "Пауза на растяжку", "First completed stretch", "Первая завершённая растяжка", "Stretch", "Потянуться", 20, .completedSession, false),
-        def("recovery.walk", .recovery, "Walk", "figure.walk", "First Steps", "Первые шаги", "First completed walk. Steps alone do not count", "Первая завершённая прогулка. Шаги сами по себе не считаются", "Take a short walk", "Короткая прогулка", 20, .completedSession, true),
-        def("recovery.sauna", .recovery, "Sauna", "flame.fill", "Sauna Reset", "Время согреться", "First completed sauna", "Первая завершённая сауна", "Sauna", "Сауна", 20, .completedSession, false),
+        def("recovery.walk", .recovery, "Walk", "figure.walk", "First Steps", "Первая прогулка", "First completed walk. Steps alone do not count", "Первая завершённая прогулка. Шаги сами по себе не считаются", "Take a short walk", "Короткая прогулка", 20, .completedSession, true),
+        def("recovery.sauna", .recovery, "Sauna", "flame.fill", "Sauna Reset", "Первый пар", "First completed sauna", "Первая завершённая сауна", "Sauna", "Сауна", 20, .completedSession, false),
         def("recovery.yoga", .recovery, "Yoga", "figure.yoga", "On the Mat", "На коврике", "First completed yoga session", "Первая завершённая йога", "Yoga", "Йога", 20, .completedSession, false),
-        def("recovery.breathing", .recovery, "Breathing", "wind", "First Pause", "Первая пауза", "A full minute of breathing", "Полная минута дыхания", "Take a minute to breathe", "Минута дыхания", 1, .breathingMinute, true),
+        def("recovery.breathing", .recovery, "Breathing", "wind", "First Pause", "Дыхательная пауза", "A full minute of breathing", "Полная минута дыхания", "Take a minute to breathe", "Минута дыхания", 1, .breathingMinute, true),
 
-        def("habit.drink-water", .habit, "Drink Water", "drop.fill", "First Glass", "Первый стакан", "Reach the daily water goal once", "Один раз закрыть дневную цель по воде", "Log a glass of water", "Записать стакан воды", nil, .waterGoal, true),
-        def("habit.sleep-routine", .habit, "Sleep Routine", "moon.stars.fill", "Lights Down", "Пора гасить", "First check-in of the sleep routine", "Первая отметка вечернего ритуала", "Check in", "Отметить", nil, .habitCheckIn, false),
+        def("habit.drink-water", .habit, "Drink Water", "drop.fill", "First Glass", "Первый глоток", "Reach the daily water goal once", "Один раз закрыть дневную цель по воде", "Log a glass of water", "Записать стакан воды", nil, .waterGoal, true),
+        def("habit.sleep-routine", .habit, "Sleep Routine", "moon.stars.fill", "Lights Down", "Вечерний ритуал", "First check-in of the sleep routine", "Первая отметка вечернего ритуала", "Check in", "Отметить", nil, .habitCheckIn, false),
         def("habit.no-screens", .habit, "No Screens", "iphone.slash", "Screen Break", "Без экрана", "First check-in without screens", "Первая отметка без экрана", "Check in", "Отметить", nil, .habitCheckIn, false),
-        def("habit.morning-routine", .habit, "Morning Routine", "sun.max.fill", "Morning Mark", "Утренняя отметка", "First check-in of the morning routine", "Первая отметка утренних дел", "Check in", "Отметить", nil, .habitCheckIn, false)
+        def("habit.morning-routine", .habit, "Morning Routine", "sun.max.fill", "Morning Mark", "Утренний ритуал", "First check-in of the morning routine", "Первая отметка утренних дел", "Check in", "Отметить", nil, .habitCheckIn, false)
     ]
 
     static let customAchievementEN = "First Check-in"

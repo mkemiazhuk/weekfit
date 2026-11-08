@@ -4,7 +4,7 @@ import WebSocket from 'ws';
 import { BillingStore, TOPUPS, hash } from './billing-store.mjs';
 import { createAppleBilling } from './billing-apple.mjs';
 import { recognize, validateInput, ServiceError } from './recognition.mjs';
-import { plannerLiveConfiguration, plannerSessionConfiguration, plannerVoiceEngine } from './planner-voice.mjs';
+import { plannerSessionConfiguration, plannerVoiceEngine } from './planner-voice.mjs';
 import { plannerVoiceLanguage } from './planner-voice-copy.mjs';
 import { createConcurrencyGate } from './concurrency.mjs';
 
@@ -263,7 +263,7 @@ export function createBillingService(config, { authenticate, apple, store, fetch
         store.noteSeen(wallet.id, key, now());
         if (op.state !== 'reserved' || sessions.has(`${wallet.id}:${key}`) || op.callId) error('voice_already_active', 409);
         const engine = plannerVoiceEngine(body);
-        const session = engine === 'live' ? plannerLiveConfiguration(config, body) : plannerSessionConfiguration(config, body);
+        const session = plannerSessionConfiguration(config, body);
         sessions.set(`${wallet.id}:${key}`, { session, engine, uid: ctx.uid, ticket: admission?.ticket, language: plannerVoiceLanguage(body.language),
           interruptions: 0, responding: false });
         if (admission?.ticket) line.activate(ctx.uid, admission.ticket);
@@ -277,47 +277,6 @@ export function createBillingService(config, { authenticate, apple, store, fetch
         if (!live || !op || op.state !== 'reserved' || live.connecting || op.callId) error('call_not_active', 409);
         if (typeof body.sdp !== 'string' || body.sdp.length > 100000) error('invalid_sdp', 400);
         live.connecting = true;
-        if (live.engine === 'live') {
-          try {
-            const response = await fetcher('https://api.openai.com/v1/live/sessions', {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ session: live.session, transport: { type: 'webrtc', sdp: body.sdp } }),
-              signal: AbortSignal.timeout(15000),
-            });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) error('voice_connect_failed', 502);
-            const sessionId = data?.session?.id;
-            const sdp = data?.transport?.sdp;
-            if (typeof sessionId !== 'string' || !sessionId || typeof sdp !== 'string' || !sdp) error('voice_call_id_missing', 502);
-            store.attachCall(wallet.id, key, `live:${sessionId}`);
-            const observe = (event) => {
-              const inner = event?.type === 'response.event' && event.event ? event.event : event;
-              if (inner?.type === 'session.started' || inner?.type === 'response.created') store.startCall(wallet.id, key);
-              if (inner?.type === 'response.created') live.responding = true;
-              if (inner?.type === 'response.done') live.responding = false;
-              if (inner?.type === 'session.started' || inner?.type === 'response.created' || inner?.type === 'response.done' || inner?.type === 'session.closed') {
-                store.noteSeen(wallet.id, key, now());
-              }
-            };
-            live.socket = new WebSocket(`wss://api.openai.com/v1/live/sessions/${encodeURIComponent(sessionId)}/attach`,
-              { headers: { Authorization: `Bearer ${config.apiKey}` }, handshakeTimeout: 5000 });
-            live.socket.on('message', data => { try { observe(JSON.parse(String(data))); } catch { /* ignore a bad frame */ } });
-            live.socket.on('error', () => log({ event: 'billing_voice_observer_closed', operation: key }));
-            live.socket.on('close', () => log({ event: 'billing_voice_observer_closed', operation: key }));
-            if (live.socket.readyState === WebSocket.CONNECTING) {
-              await new Promise((resolve, reject) => {
-                live.socket.once('open', resolve);
-                live.socket.once('error', reject);
-                live.socket.once('close', () => reject(new Error('voice_observer_closed')));
-              });
-            }
-            send(res, 200, { sdp }); return true;
-          } catch (e) {
-            await stop(wallet.id, key, 'connect_failed').catch(() => {});
-            throw e;
-          }
-        }
         const form = new FormData(); form.set('sdp', body.sdp); form.set('session', JSON.stringify(live.session));
         try {
           const response = await fetcher('https://api.openai.com/v1/realtime/calls', {

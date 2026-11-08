@@ -291,7 +291,7 @@ struct MealsView: View {
         .safeAreaInset(edge: .bottom) {
             bottomFixedActionArea
         }
-        .sheet(item: $selectedMeal) { meal in
+        .fullScreenCover(item: $selectedMeal) { meal in
             MealDetailsView(
                 meal: meal,
                 isQuickLogMode: self.isQuickLogMode,
@@ -306,12 +306,8 @@ struct MealsView: View {
                     selectedMeal = nil
                 }
             )
-            .weekFitSheetChrome(
-                cornerRadius: 36,
-                background: QuickActionSheetDesign.Color.sheetBackground(for: .food)
-            )
         }
-        .sheet(item: $selectedFood) { food in
+        .fullScreenCover(item: $selectedFood) { food in
             CustomFoodDetailsView(
                 food: food,
                 existingMeals: mealsViewModel.customMeals,
@@ -326,28 +322,29 @@ struct MealsView: View {
                 }
             )
             .id("\(food.id)-\(food.title)")
-            .weekFitSheetChrome(
-                cornerRadius: 36,
-                background: QuickActionSheetDesign.Color.sheetBackground(for: .food)
-            )
         }
         .weekFitSettingsSheet(isPresented: $showProfile)
-        .sheet(item: $expandedLibraryKind) { kind in
+        .fullScreenCover(item: $expandedLibraryKind) { kind in
             MealLibraryExpandSheet(
                 kind: kind,
                 items: kind == .meal ? displayedMealItems : sortedFoodItems,
                 highlightedMealID: highlightedMealID,
                 onSelect: { meal in
                     expandedLibraryKind = nil
-                    if meal.isFoodProduct {
-                        selectedFood = meal
-                    } else {
-                        selectedMeal = meal
+                    // The library cover has to finish before the detail cover can open.
+                    DispatchQueue.main.async {
+                        if meal.isFoodProduct {
+                            selectedFood = meal
+                        } else {
+                            selectedMeal = meal
+                        }
                     }
                 },
                 onEdit: { meal in
                     expandedLibraryKind = nil
-                    beginEditingLibraryMeal(meal)
+                    DispatchQueue.main.async {
+                        beginEditingLibraryMeal(meal)
+                    }
                 },
                 onLog: { meal in
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -359,13 +356,8 @@ struct MealsView: View {
                     deleteCustomMeal(meal)
                 }
             )
-            .weekFitSheetChrome(
-                cornerRadius: 36,
-                background: QuickActionSheetDesign.Color.sheetBackground(for: .food)
-            )
         }
-        .sheet(isPresented: $showCreationSheet) {
-            // One sheet only — SwiftUI cannot present a second sheet on top of this one.
+        .fullScreenCover(isPresented: $showCreationSheet) {
             MealCreationSheetHost(
                 step: $creationStep,
                 existingMeals: mealsViewModel.customMeals,
@@ -1293,12 +1285,6 @@ private struct MealCreationSheetHost: View {
                 CustomMealBuilderView(existingMeals: existingMeals, onSave: onSaved)
             }
         }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
-        .weekFitSheetChrome(
-            cornerRadius: 36,
-            background: QuickActionSheetDesign.Color.sheetBackground(for: .food)
-        )
     }
 }
 

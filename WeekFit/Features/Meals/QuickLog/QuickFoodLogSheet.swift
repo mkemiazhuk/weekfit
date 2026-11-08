@@ -104,6 +104,7 @@ struct QuickFoodLogSheet: View {
     @State private var showCameraAnalyzing = false
     @State private var photoPickerItem: PhotosPickerItem?
     @State private var showPhotoFlow = false
+    @State private var showNestedPhotoPaywall = false
     @State private var isPhotoLogging = false
     @State private var photoLogError: String?
     @State private var photoPreviewSeed: UIImage?
@@ -212,7 +213,7 @@ struct QuickFoodLogSheet: View {
         .task(id: showPhotoFlow || showAIUsage) {
             if WeekFitAIBilling.enabled { aiUsage = try? await WeekFitAIClient().usage() }
         }
-        .sheet(isPresented: $showAIUsage) {
+        .fullScreenCover(isPresented: $showAIUsage) {
             WeekFitAIBalanceSheet(pack: aiUsage.map { $0.active && !$0.grandfatheredPhotos } == true ? .photos : nil)
         }
         .onAppear {
@@ -276,70 +277,38 @@ struct QuickFoodLogSheet: View {
                 }
             }
             .animation(.easeInOut(duration: 0.18), value: showCameraAnalyzing)
-        }
-        .sheet(isPresented: $showPhotoFlow) {
-            if let coordinator = photoCoordinator {
-                PhotoFoodFlowHost(
-                    coordinator: coordinator,
-                    previewImage: photoPreviewSeed ?? coordinator.lastImage,
-                    isLogging: isPhotoLogging,
-                    errorMessage: photoLogError,
-                    onDismiss: { dismissPhotoFlow(fromCamera: false) },
-                    onLog: { draft in commitPhotoLog(draft: draft) },
-                    onRequestPaidSubscription: { presentPhotoPaidPaywall() }
-                )
-                .presentationDetents([.large])
-                .presentationDragIndicator(.hidden)
-                .weekFitSheetChrome(
-                    cornerRadius: QuickActionSheetDesign.Layout.sheetCornerRadius,
-                    background: QuickActionSheetDesign.Color.sheetBackground(for: .food)
-                )
-            } else {
-                QuickActionSheetDesign.Color.sheetBackground(for: .food)
-                    .ignoresSafeArea()
+            .fullScreenCover(isPresented: $showNestedPhotoPaywall, onDismiss: handlePhotoPaywallDismissed) {
+                photoPaidPaywall
             }
         }
-        .fullScreenCover(isPresented: $showPhotoPaidPaywall) {
-            WeekFitPaywallView(
-                source: .photoFood,
-                currentTab: "meals",
-                paywallInstanceID: photoPaywallInstanceID,
-                allowsDismiss: true,
-                requiresPaidSubscription: true,
-                heroTitleKey: "today.photoLog.paywall.title",
-                heroSubtitleKey: "today.photoLog.paywall.subtitle"
-            )
-            .environmentObject(subscriptionManager)
-            .environment(\.weekFitPalette, palette)
+        .fullScreenCover(isPresented: $showPhotoFlow) {
+            Group {
+                if let coordinator = photoCoordinator {
+                    PhotoFoodFlowHost(
+                        coordinator: coordinator,
+                        previewImage: photoPreviewSeed ?? coordinator.lastImage,
+                        isLogging: isPhotoLogging,
+                        errorMessage: photoLogError,
+                        onDismiss: { dismissPhotoFlow(fromCamera: false) },
+                        onLog: { draft in commitPhotoLog(draft: draft) },
+                        onRequestPaidSubscription: { presentPhotoPaidPaywall() }
+                    )
+                } else {
+                    QuickActionSheetDesign.Color.sheetBackground(for: .food)
+                        .ignoresSafeArea()
+                }
+            }
+            .fullScreenCover(isPresented: $showNestedPhotoPaywall, onDismiss: handlePhotoPaywallDismissed) {
+                photoPaidPaywall
+            }
+        }
+        .fullScreenCover(isPresented: $showPhotoPaidPaywall, onDismiss: handlePhotoPaywallDismissed) {
+            photoPaidPaywall
         }
         .onChange(of: subscriptionManager.accessState) { _, _ in
             guard subscriptionManager.canUseCloudPhotoNutritionAnalysis else { return }
             showPhotoPaidPaywall = false
-            if pendingPaidPhotoResume {
-                pendingPaidPhotoResume = false
-                pendingPhotoEntryIntent = nil
-                resumePendingPhotoAnalysis()
-            } else if pendingPhotoEntryIntent != nil {
-                resumePendingPhotoEntryIntent()
-            }
-        }
-        .onChange(of: showPhotoPaidPaywall) { _, isPresented in
-            guard isPresented == false else { return }
-            guard subscriptionManager.canUseCloudPhotoNutritionAnalysis else {
-                // Dismissed without unlock — drop entry intent; keep photo resume only if flow still open.
-                if photoCoordinator?.lastImage == nil {
-                    pendingPhotoEntryIntent = nil
-                    pendingPaidPhotoResume = false
-                }
-                return
-            }
-            if pendingPaidPhotoResume {
-                pendingPaidPhotoResume = false
-                pendingPhotoEntryIntent = nil
-                resumePendingPhotoAnalysis()
-            } else if pendingPhotoEntryIntent != nil {
-                resumePendingPhotoEntryIntent()
-            }
+            showNestedPhotoPaywall = false
         }
     }
 
@@ -597,13 +566,49 @@ struct QuickFoodLogSheet: View {
         }
     }
 
+    private var photoPaidPaywall: some View {
+        WeekFitPaywallView(
+            source: .photoFood,
+            currentTab: "meals",
+            paywallInstanceID: photoPaywallInstanceID,
+            allowsDismiss: true,
+            requiresPaidSubscription: true,
+            heroTitleKey: "today.photoLog.paywall.title",
+            heroSubtitleKey: "today.photoLog.paywall.subtitle"
+        )
+        .environmentObject(subscriptionManager)
+        .environment(\.weekFitPalette, palette)
+    }
+
+    private func handlePhotoPaywallDismissed() {
+        guard subscriptionManager.canUseCloudPhotoNutritionAnalysis else {
+            // Dismissed without unlock — drop entry intent; keep photo resume only if flow still open.
+            if photoCoordinator?.lastImage == nil {
+                pendingPhotoEntryIntent = nil
+                pendingPaidPhotoResume = false
+            }
+            return
+        }
+        if pendingPaidPhotoResume {
+            pendingPaidPhotoResume = false
+            pendingPhotoEntryIntent = nil
+            resumePendingPhotoAnalysis()
+        } else if pendingPhotoEntryIntent != nil {
+            resumePendingPhotoEntryIntent()
+        }
+    }
+
     private func presentPhotoPaidPaywall() {
         if photoCoordinator?.lastImage != nil {
             pendingPaidPhotoResume = true
             pendingPhotoEntryIntent = nil
         }
         photoPaywallInstanceID = UUID().uuidString
-        showPhotoPaidPaywall = true
+        if showPhotoCamera || showPhotoFlow {
+            showNestedPhotoPaywall = true
+        } else {
+            showPhotoPaidPaywall = true
+        }
     }
 
     private func resumePendingPhotoAnalysis() {
@@ -630,7 +635,7 @@ struct QuickFoodLogSheet: View {
             showPhotoCamera = false
         }
         // Dropping the flow abandons resume unless paywall is still open with a pending photo.
-        if showPhotoPaidPaywall == false {
+        if showPhotoPaidPaywall == false && showNestedPhotoPaywall == false {
             pendingPaidPhotoResume = false
             photoPreviewSeed = nil
             photoCoordinator?.reset()

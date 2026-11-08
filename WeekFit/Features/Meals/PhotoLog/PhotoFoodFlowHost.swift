@@ -44,7 +44,7 @@ struct PhotoFoodFlowHost: View {
             }
         }
         .background(QuickActionSheetDesign.Color.sheetBackground(for: .food).ignoresSafeArea())
-        .sheet(isPresented: $showAIUsage, onDismiss: retryAfterTopUp) {
+        .fullScreenCover(isPresented: $showAIUsage, onDismiss: retryAfterTopUp) {
             WeekFitAIBalanceSheet(pack: .photos)
         }
         .onChange(of: coordinator.phase) { _, newPhase in
