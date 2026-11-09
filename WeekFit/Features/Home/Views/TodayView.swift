@@ -144,10 +144,6 @@ struct TodayView: View {
         dynamicTypeSize.isAccessibilitySize
     }
 
-    private var shouldStackQuickActions: Bool {
-        dynamicTypeSize >= .xxLarge
-    }
-
     private var shouldRelocateUpNextTime: Bool {
         dynamicTypeSize >= .xLarge
     }
@@ -168,11 +164,6 @@ struct TodayView: View {
         // Allow wrap so +10–12% type doesn't collide across the three columns.
         if shouldStackRings { return 3 }
         return dynamicTypeSize >= .xLarge ? 3 : 2
-    }
-
-    private var quickActionCaptionLineLimit: Int {
-        // Allow wrap so ×1.10 labels fit DE/PL/RU without shrinking.
-        shouldStackQuickActions ? 3 : 2
     }
 
     private var healthRefreshBinding: Binding<UUID> {
@@ -3799,16 +3790,6 @@ struct TodayView: View {
         activityToConfirm = queued
     }
     
-    private struct QuickActionPressStyle: ButtonStyle {
-        func makeBody(configuration: Configuration) -> some View {
-            configuration.label
-                .scaleEffect(configuration.isPressed ? 0.955 : 1)
-                .opacity(configuration.isPressed ? 0.90 : 1)
-                .animation(.spring(response: 0.20, dampingFraction: 0.78), value: configuration.isPressed)
-        }
-    }
-
-
     private enum QuickActionKind {
         case food
         case activity
@@ -3865,76 +3846,88 @@ struct TodayView: View {
         return loggedMeals.isEmpty
     }
 
-    @ViewBuilder
-    private func quickActionButtons(activeSession: PlannedActivity?, now: Date) -> some View {
+    private func quickActionItems(activeSession: PlannedActivity?, now: Date) -> [TodayQuickActionItem] {
         let priority = quickActionDynamicPriority(now: now)
         let activityIcon = activeSession.map { upNextIcon(for: $0, isLive: true) } ?? "play.fill"
+        let drinkLabel = WeekFitLocalizedString("today.quickActions.logDrink")
+        let mealLabel = WeekFitLocalizedString("today.quickActions.logMeal")
         let activityLabel = activeSession == nil
+            ? WeekFitLocalizedString("today.quickActions.startCaption")
+            : WeekFitLocalizedString("today.quickActions.viewSessionCaption")
+        let activityAccessibilityLabel = activeSession == nil
             ? WeekFitLocalizedString("today.quickActions.startActivity")
             : WeekFitLocalizedString("today.quickActions.viewSession")
 
-        quickActionItem(
-            icon: "cup.and.saucer.fill",
-            label: WeekFitLocalizedString("today.quickActions.logDrink"),
-            color: QuickDrinkAccent.hydration,
-            isEmphasized: false,
-            toastMessage: drinksQuickLogToast,
-            accessibilityIdentifier: "today.quickAction.drinks"
-        ) {
-            preloadQuickDrinkLogDataIfNeeded()
-            ProductAnalytics.todayPrimaryActionTapped(.hydration)
-            ProductAnalytics.quickLogOpened(category: .hydration)
-            presentExclusiveTodayActionSheet {
-                ProductAnalytics.hydrationLoggingStarted(method: .quickLog, source: .today)
-                showDirectDrinkLogSheet = true
-            }
-        }
-
-        quickActionItem(
-            icon: "fork.knife",
-            label: WeekFitLocalizedString("today.quickActions.logMeal"),
-            color: todayNutritionColor,
-            isEmphasized: priority == .food,
-            toastMessage: foodQuickLogToast,
-            accessibilityIdentifier: "today.quickAction.food"
-        ) {
-            selectedLogTab = .meals
-            preloadQuickFoodLogDataIfNeeded()
-            ProductAnalytics.todayPrimaryActionTapped(.food)
-            ProductAnalytics.quickLogOpened(category: .food)
-            presentExclusiveTodayActionSheet {
-                ProductAnalytics.foodLoggingStarted(method: .quickLog, source: .today, operation: .diary)
-                showDirectMealLogSheet = true
-            }
-        }
-
-        quickActionItem(
-            icon: activityIcon,
-            label: activityLabel,
-            color: todayActivityColor,
-            isEmphasized: priority == .activity,
-            liveIndicatorColor: activeSession == nil ? nil : todayActivityColor,
-            accessibilityIdentifier: "today.quickAction.activity"
-        ) {
-            if let activeSession {
-                openActiveSession(activeSession)
-            } else {
-                ProductAnalytics.todayPrimaryActionTapped(.activity)
+        return [
+            TodayQuickActionItem(
+                id: "drinks",
+                icon: "cup.and.saucer.fill",
+                label: drinkLabel,
+                accessibilityLabel: drinkLabel,
+                color: QuickDrinkAccent.hydration,
+                isEmphasized: false,
+                liveIndicatorColor: nil,
+                toastMessage: drinksQuickLogToast,
+                accessibilityIdentifier: "today.quickAction.drinks"
+            ) {
+                preloadQuickDrinkLogDataIfNeeded()
+                ProductAnalytics.todayPrimaryActionTapped(.hydration)
+                ProductAnalytics.quickLogOpened(category: .hydration)
                 presentExclusiveTodayActionSheet {
-                    ProductAnalytics.activityLoggingStarted(source: .today)
-                    showDirectWorkoutLogSheet = true
+                    ProductAnalytics.hydrationLoggingStarted(method: .quickLog, source: .today)
+                    showDirectDrinkLogSheet = true
+                }
+            },
+            TodayQuickActionItem(
+                id: "food",
+                icon: "fork.knife",
+                label: mealLabel,
+                accessibilityLabel: mealLabel,
+                color: todayNutritionColor,
+                isEmphasized: priority == .food,
+                liveIndicatorColor: nil,
+                toastMessage: foodQuickLogToast,
+                accessibilityIdentifier: "today.quickAction.food"
+            ) {
+                selectedLogTab = .meals
+                preloadQuickFoodLogDataIfNeeded()
+                ProductAnalytics.todayPrimaryActionTapped(.food)
+                ProductAnalytics.quickLogOpened(category: .food)
+                presentExclusiveTodayActionSheet {
+                    ProductAnalytics.foodLoggingStarted(method: .quickLog, source: .today, operation: .diary)
+                    showDirectMealLogSheet = true
+                }
+            },
+            TodayQuickActionItem(
+                id: "activity",
+                icon: activityIcon,
+                label: activityLabel,
+                accessibilityLabel: activityAccessibilityLabel,
+                color: todayActivityColor,
+                isEmphasized: priority == .activity,
+                liveIndicatorColor: activeSession == nil ? nil : todayActivityColor,
+                toastMessage: nil,
+                accessibilityIdentifier: "today.quickAction.activity"
+            ) {
+                if let activeSession {
+                    openActiveSession(activeSession)
+                } else {
+                    ProductAnalytics.todayPrimaryActionTapped(.activity)
+                    presentExclusiveTodayActionSheet {
+                        ProductAnalytics.activityLoggingStarted(source: .today)
+                        showDirectWorkoutLogSheet = true
+                    }
                 }
             }
-        }
+        ]
     }
 
-    @ViewBuilder
     private var quickActionsSection: some View {
         let now = todayViewModel.now
         let activeSession = currentActiveSession(now: now)
         let accent = todayQuickActionsAccent
 
-        todayActionSurfaceCard(accent: accent) {
+        return todayActionSurfaceCard(accent: accent) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(WeekFitLocalizedString("today.quickActions.title"))
                     .font(TodayCardTypography.quickActionSectionTitle)
@@ -3942,102 +3935,13 @@ struct TodayView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.bottom, 10)
 
-                Group {
-                    if shouldStackQuickActions {
-                        VStack(spacing: 8) {
-                            quickActionButtons(activeSession: activeSession, now: now)
-                        }
-                    } else {
-                        HStack(alignment: .top, spacing: 0) {
-                            quickActionButtons(activeSession: activeSession, now: now)
-                        }
-                    }
-                }
+                TodayQuickActionsBar(
+                    actions: quickActionItems(activeSession: activeSession, now: now),
+                    isLight: palette.isLight,
+                    textPrimary: textPrimary
+                )
             }
         }
-    }
-
-    private func quickActionItem(
-        icon: String,
-        label: String,
-        color: Color,
-        isEmphasized: Bool = false,
-        liveIndicatorColor: Color? = nil,
-        toastMessage: String? = nil,
-        accessibilityIdentifier: String? = nil,
-        action: @escaping () -> Void
-    ) -> some View {
-        let iconForeground = palette.isLight
-            ? color
-            : color.opacity(isEmphasized ? 0.94 : 0.88)
-
-        return Button {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            action()
-        } label: {
-            VStack(spacing: 8) {
-                ZStack(alignment: .top) {
-                    quickActionLens(color: color, isEmphasized: isEmphasized)
-                        .frame(width: 52, height: 52)
-
-                    Image(systemName: icon)
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(iconForeground)
-                        .offset(y: quickActionIconOpticalYOffset(icon))
-                        .frame(width: 52, height: 52)
-
-                    if let liveIndicatorColor {
-                        Circle()
-                            .fill(liveIndicatorColor)
-                            .frame(width: 7, height: 7)
-                            .overlay(Circle().stroke(Color.black.opacity(0.28), lineWidth: 1))
-                            .offset(x: 14, y: -12)
-                    }
-
-                    if let toastMessage {
-                        Text(toastMessage)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                            .background(color.opacity(0.92))
-                            .clipShape(Capsule())
-                            .offset(y: -32)
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                    }
-                }
-
-                Text(verbatim: label)
-                    .font(TodayCardTypography.quickActionLabel)
-                    .foregroundStyle(
-                        palette.isLight
-                            ? textPrimary
-                            : textPrimary.opacity(isEmphasized ? 0.94 : 0.88)
-                    )
-                    .lineLimit(quickActionCaptionLineLimit)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity, alignment: .top)
-            .contentShape(Rectangle())
-            .padding(.vertical, 4)
-        }
-        .buttonStyle(QuickActionPressStyle())
-        .accessibilityLabel(label)
-        .accessibilityIdentifier(accessibilityIdentifier ?? label)
-    }
-
-    private func quickActionLens(color: Color, isEmphasized: Bool) -> some View {
-        let fillOpacity = isEmphasized ? (palette.isLight ? 0.24 : 0.17) : (palette.isLight ? 0.18 : 0.11)
-        let strokeOpacity = isEmphasized ? (palette.isLight ? 0.40 : 0.22) : (palette.isLight ? 0.30 : 0.15)
-        return Circle()
-            .fill(color.opacity(fillOpacity))
-            .overlay(
-                Circle()
-                    .stroke(color.opacity(strokeOpacity), lineWidth: isEmphasized ? 1.1 : 1)
-            )
     }
 
     private func coachIconOpticalYOffset(_ systemName: String) -> CGFloat {
@@ -4048,17 +3952,6 @@ struct TodayView: View {
             return 0.5
         }
         return 0
-    }
-
-    private func quickActionIconOpticalYOffset(_ systemName: String) -> CGFloat {
-        switch systemName {
-        case "fork.knife", "takeoutbag.and.cup.and.straw.fill":
-            return 0.5
-        case "play.circle.fill", "stop.circle.fill":
-            return 0
-        default:
-            return 0
-        }
     }
 
     private func updateNutrition(withExtraWater extra: Double = 0) {

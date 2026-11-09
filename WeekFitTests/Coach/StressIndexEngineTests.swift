@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 @testable import WeekFit
 
 final class StressIndexEngineTests: XCTestCase {
@@ -381,7 +382,9 @@ final class StressIndexEngineTests: XCTestCase {
 
         let summary = StressIndexCopy.summarySentence(for: result).lowercased()
         XCTAssertTrue(summary.contains("hrv"))
-        XCTAssertTrue(summary.contains("lower") || summary.contains("ниже"))
+        XCTAssertTrue(
+            summary.contains("lower") || summary.contains("below") || summary.contains("ниже")
+        )
         XCTAssertFalse(summary.contains("hrv is higher"))
         XCTAssertFalse(summary.contains("hrv appear elevated"))
         XCTAssertFalse(summary.contains("hrv and sleep appear elevated"))
@@ -429,6 +432,187 @@ final class StressIndexEngineTests: XCTestCase {
         XCTAssertFalse(chips.contains(WeekFitLocalizedString("recovery.stressIndex.chip.sleep.late")))
         if result.contributors.contains(where: { $0.kind == .sleep && $0.tone == .elevating }) {
             XCTAssertTrue(chips.contains(WeekFitLocalizedString("recovery.stressIndex.chip.sleep.short")))
+        }
+    }
+
+    func testScreenshotModerateLoadUsesMedianSleepGoalAndMeasuredDays() {
+        let result = StressIndexEngine.calculate(
+            makeInput(
+                sleepMinutes: 450,
+                timeInBedMinutes: 520,
+                hrvSDNN: 45,
+                restingHeartRate: 49,
+                baseline: makeBaseline(hrv: 50, rhr: 52, samples: 21),
+                priorDayLoad: RecoveryPriorDayLoad(exerciseMinutes: 20, activeCalories: 180, workoutCount: 0)
+            ),
+            at: fixedDate
+        )
+
+        XCTAssertEqual(result.score, 32)
+        XCTAssertEqual(result.level, .moderate)
+        XCTAssertEqual(result.confidence, .high)
+        XCTAssertEqual(result.baselineSampleDays, 21)
+        XCTAssertEqual(result.contributors.first { $0.kind == .hrv }?.tone, .elevating)
+        XCTAssertEqual(result.contributors.first { $0.kind == .sleep }?.tone, .neutral)
+
+        let hrv = result.contributors.first { $0.kind == .hrv }!
+        let sleep = result.contributors.first { $0.kind == .sleep }!
+        XCTAssertEqual(
+            StressIndexCopy.summarySentence(for: result),
+            StressIndexCopy.directionClause(for: hrv)
+        )
+        XCTAssertEqual(
+            StressIndexCopy.meaning(for: result),
+            WeekFitLocalizedString("recovery.stressIndex.means.level.moderate")
+        )
+        XCTAssertEqual(
+            StressIndexCopy.todayAdvice(for: result),
+            WeekFitLocalizedString("recovery.stressIndex.today.restIfTired")
+        )
+        XCTAssertEqual(
+            StressIndexCopy.factorCount(result.contributors.count),
+            WeekFitLocalizedQuantityFormat("recovery.stressIndex.factorCount", count: result.contributors.count)
+        )
+        XCTAssertEqual(
+            StressIndexCopy.contributionTitle(hrv.tone),
+            WeekFitLocalizedString("recovery.stressIndex.contribution.raised")
+        )
+        XCTAssertEqual(
+            StressIndexCopy.contributionTitle(sleep.tone),
+            WeekFitLocalizedString("recovery.stressIndex.contribution.neutral")
+        )
+        XCTAssertEqual(
+            StressIndexCopy.levelPhrase(.moderate),
+            WeekFitLocalizedString("recovery.stressIndex.levelPhrase.moderate")
+        )
+        XCTAssertEqual(
+            StressIndexCopy.scoreOutOf(32),
+            String(format: WeekFitLocalizedString("recovery.stressIndex.scoreOutOf"), 32)
+        )
+        XCTAssertNotEqual(
+            StressIndexCopy.summarySentence(for: result),
+            WeekFitLocalizedString("recovery.stressIndex.meaning.moderate")
+        )
+        XCTAssertEqual(
+            StressIndexCopy.confidenceExplanation(.high, baselineSampleDays: 21),
+            String(
+                format: WeekFitLocalizedString("recovery.stressIndex.confidence.measurementsFormat"),
+                WeekFitCountPluralization.phrase(count: 21, category: .day)
+            )
+        )
+
+        let met = StressIndexEngine.calculate(makeInput(sleepMinutes: 480, timeInBedMinutes: 520), at: fixedDate)
+        XCTAssertEqual(met.contributors.first { $0.kind == .sleep }?.tone, .stabilizing)
+        let short = StressIndexEngine.calculate(makeInput(sleepMinutes: 300, timeInBedMinutes: 340), at: fixedDate)
+        XCTAssertEqual(short.contributors.first { $0.kind == .sleep }?.tone, .elevating)
+        let noSleep = StressIndexEngine.calculate(makeInput(sleepMinutes: 0, timeInBedMinutes: 0), at: fixedDate)
+        XCTAssertNil(noSleep.contributors.first { $0.kind == .sleep })
+        let noHRV = StressIndexEngine.calculate(
+            makeInput(hrvSDNN: nil, baseline: makeBaseline(hrv: nil, samples: 0)),
+            at: fixedDate
+        )
+        XCTAssertNil(noHRV.contributors.first { $0.kind == .hrv })
+
+        let limited = StressIndexEngine.calculate(
+            makeInput(
+                hrvSDNN: nil,
+                restingHeartRate: nil,
+                baseline: makeBaseline(hrv: nil, rhr: nil, samples: 0),
+                priorDayLoad: .empty
+            ),
+            at: fixedDate
+        )
+        XCTAssertEqual(limited.confidence, .low)
+        XCTAssertNil(limited.score)
+        XCTAssertEqual(
+            StressIndexCopy.meaning(for: limited),
+            WeekFitLocalizedString("recovery.stressIndex.means.lowConfidence")
+        )
+        XCTAssertEqual(
+            StressIndexCopy.meaning(for: .unavailable(at: fixedDate)),
+            WeekFitLocalizedString("recovery.stressIndex.means.unavailable")
+        )
+        XCTAssertEqual(
+            StressIndexCopy.todayAdvice(for: limited),
+            WeekFitLocalizedString("recovery.stressIndex.today.limited")
+        )
+        XCTAssertEqual(
+            StressIndexCopy.todayAdvice(for: .unavailable(at: fixedDate)),
+            WeekFitLocalizedString("recovery.stressIndex.today.limited")
+        )
+
+        let shortLead = StressIndexEngine.calculate(
+            makeInput(sleepMinutes: 300, timeInBedMinutes: 340, hrvSDNN: 48, restingHeartRate: 52),
+            at: fixedDate
+        )
+        XCTAssertEqual(shortLead.contributors.first?.kind, .sleep)
+        let calm = StressIndexEngine.calculate(
+            makeInput(hrvSDNN: 50, restingHeartRate: 52, baseline: makeBaseline(hrv: 50, rhr: 52)),
+            at: fixedDate
+        )
+        XCTAssertEqual(calm.level, .low)
+        XCTAssertEqual(
+            StressIndexCopy.meaning(for: calm),
+            WeekFitLocalizedString("recovery.stressIndex.means.level.low")
+        )
+        XCTAssertNotEqual(
+            StressIndexCopy.meaning(for: calm),
+            StressIndexCopy.meaning(for: result)
+        )
+        XCTAssertEqual(
+            StressIndexCopy.todayAdvice(for: shortLead),
+            WeekFitLocalizedString("recovery.stressIndex.today.restIfShortSleep")
+        )
+    }
+
+    func testStressSheetRendersFactorsOpen() {
+        let result = StressIndexEngine.calculate(
+            makeInput(
+                sleepMinutes: 450,
+                timeInBedMinutes: 520,
+                hrvSDNN: 45,
+                restingHeartRate: 49,
+                baseline: makeBaseline(hrv: 50, rhr: 52, samples: 21),
+                priorDayLoad: RecoveryPriorDayLoad(exerciseMinutes: 20, activeCalories: 180, workoutCount: 0)
+            ),
+            at: fixedDate
+        )
+        let previousLanguage = WeekFitCurrentAppLanguage()
+        WeekFitSetCurrentLanguage(.russian)
+        defer { WeekFitSetCurrentLanguage(previousLanguage) }
+
+        let image = renderSheet(result: result, typeSize: .large)
+        let attachment = XCTAttachment(image: image)
+        attachment.name = "stress-index-factors-open"
+        attachment.lifetime = XCTAttachment.Lifetime.keepAlways
+        add(attachment)
+        XCTAssertGreaterThan(image.size.width, 300)
+        XCTAssertGreaterThan(image.size.height, 700)
+
+        let largeType = renderSheet(result: result, typeSize: .accessibility3)
+        let largeAttachment = XCTAttachment(image: largeType)
+        largeAttachment.name = "stress-index-factors-open-large-type"
+        largeAttachment.lifetime = XCTAttachment.Lifetime.keepAlways
+        add(largeAttachment)
+        XCTAssertGreaterThan(largeType.size.height, 700)
+    }
+
+    private func renderSheet(result: StressIndexResult, typeSize: DynamicTypeSize) -> UIImage {
+        let sheet = StressIndexDetailSheet(result: result, morningHint: nil)
+            .environment(\.dynamicTypeSize, typeSize)
+            .environment(\.weekFitPalette, .light)
+        let size = CGSize(width: 390, height: 844)
+        let host = UIHostingController(rootView: sheet)
+        host.view.bounds = CGRect(origin: .zero, size: size)
+        host.view.frame = CGRect(origin: .zero, size: size)
+        let window = UIWindow(frame: host.view.frame)
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        host.view.setNeedsLayout()
+        host.view.layoutIfNeeded()
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { _ in
+            host.view.drawHierarchy(in: host.view.bounds, afterScreenUpdates: true)
         }
     }
 }

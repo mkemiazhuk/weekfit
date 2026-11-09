@@ -451,6 +451,115 @@ final class ActivityReconcilerXCTests: XCTestCase {
         XCTAssertEqual(match?.id, planned.id)
     }
 
+    func testOtherWorkoutOverlappingPlannedPadelKeepsPlannedName() {
+        let planned = PlannedActivityBuilder.workout(
+            title: "Padel",
+            at: time(hour: 18, minute: 0),
+            durationMinutes: 90
+        )
+        planned.icon = "figure.tennis"
+        let synced = HKWorkout(
+            activityType: .other,
+            start: time(hour: 18, minute: 5),
+            end: time(hour: 19, minute: 10),
+            duration: 65 * 60,
+            totalEnergyBurned: HKQuantity(unit: .kilocalorie(), doubleValue: 420),
+            totalDistance: nil,
+            metadata: nil
+        )
+
+        let match = ActivityReconciler.bestMatch(for: synced, in: [planned], calendar: calendar)
+        XCTAssertEqual(match?.id, planned.id)
+
+        ActivityReconciler.applySyncedWorkout(synced, to: planned)
+        XCTAssertEqual(planned.title, "Padel")
+        XCTAssertEqual(planned.icon, "figure.tennis")
+        XCTAssertTrue(planned.isCompleted)
+        XCTAssertEqual(planned.durationMinutes, 65)
+        XCTAssertEqual(planned.activeKilocalories, 420)
+        XCTAssertEqual(planned.healthKitWorkoutUUID, synced.uuid.uuidString)
+    }
+
+    func testShortOtherWorkoutStillAttachesWhenItOverlapsPlannedPadel() {
+        let planned = PlannedActivityBuilder.workout(
+            title: "Padel",
+            at: time(hour: 18, minute: 0),
+            durationMinutes: 90
+        )
+        let synced = workout(from: time(hour: 18, minute: 10), to: time(hour: 18, minute: 40), type: .other)
+
+        XCTAssertEqual(
+            ActivityReconciler.bestMatch(for: synced, in: [planned], calendar: calendar)?.id,
+            planned.id
+        )
+    }
+
+    func testOtherWorkoutDoesNotAttachToDistantPlannedPadel() {
+        let planned = PlannedActivityBuilder.workout(
+            title: "Padel",
+            at: time(hour: 18, minute: 0),
+            durationMinutes: 90
+        )
+        let synced = workout(from: time(hour: 9, minute: 0), to: time(hour: 10, minute: 0), type: .other)
+
+        XCTAssertNil(ActivityReconciler.bestMatch(for: synced, in: [planned], calendar: calendar))
+        XCTAssertEqual(ActivityReconciler.importedActivity(for: synced).title, "Workout")
+    }
+
+    func testOtherWorkoutPrefersOverlappingPadelOverLaterWalk() {
+        let padel = PlannedActivityBuilder.workout(
+            title: "Padel",
+            at: time(hour: 18, minute: 0),
+            durationMinutes: 90
+        )
+        let walk = walk(at: time(hour: 20, minute: 30), durationMinutes: 30)
+        let synced = workout(from: time(hour: 18, minute: 10), to: time(hour: 19, minute: 20), type: .other)
+
+        let match = ActivityReconciler.bestMatch(for: synced, in: [walk, padel], calendar: calendar)
+
+        XCTAssertEqual(match?.id, padel.id)
+    }
+
+    func testOtherWorkoutDoesNotCompleteMealAtTheSameTime() {
+        let meal = PlannedActivityBuilder.meal(title: "Dinner", at: time(hour: 18, minute: 0))
+        let synced = workout(from: time(hour: 18, minute: 0), to: time(hour: 19, minute: 0), type: .other)
+
+        XCTAssertNil(ActivityReconciler.bestMatch(for: synced, in: [meal], calendar: calendar))
+        XCTAssertNil(meal.healthKitWorkoutUUID)
+    }
+
+    func testOtherWorkoutDetailUsesLinkedPadelName() {
+        let planned = PlannedActivityBuilder.workout(
+            title: "Padel",
+            at: time(hour: 9, minute: 3),
+            durationMinutes: 59
+        )
+        planned.icon = "figure.tennis"
+        let synced = workout(from: time(hour: 9, minute: 3), to: time(hour: 10, minute: 2), type: .other)
+        planned.healthKitWorkoutUUID = synced.uuid.uuidString
+
+        let snapshot = ActivityIntelligenceSnapshotProvider().makeSnapshot(
+            from: synced,
+            linkedPlan: planned
+        )
+
+        XCTAssertEqual(snapshot.title, "Padel")
+        XCTAssertEqual(snapshot.detail?.title, "Padel")
+        XCTAssertEqual(snapshot.icon, "figure.tennis")
+        XCTAssertEqual(snapshot.plannedActivityId, planned.id)
+    }
+
+    func testRunningWorkoutDoesNotAttachToPlannedPadel() {
+        let planned = PlannedActivityBuilder.workout(
+            title: "Padel",
+            at: time(hour: 18, minute: 0),
+            durationMinutes: 90
+        )
+        let synced = workout(from: time(hour: 18, minute: 5), to: time(hour: 19, minute: 10), type: .running)
+
+        XCTAssertNil(ActivityReconciler.bestMatch(for: synced, in: [planned], calendar: calendar))
+    }
+
     func testFutureUnrelatedPlannedActivityIsNotAutoCompleted() {
         let plannedYoga = PlannedActivityBuilder.workout(
             title: "Yoga",

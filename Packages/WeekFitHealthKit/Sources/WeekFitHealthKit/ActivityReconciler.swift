@@ -49,22 +49,30 @@ public enum ActivityReconciler {
         let plannedBeforeEnd = allPlanned.filter { $0.date <= workoutEnd }
         let plannedAfterEnd = allPlanned.filter { $0.date > workoutEnd }
 
+        let isGenericOther = workout.workoutActivityType == .other
         let eligible = allPlanned.compactMap { activity -> MatchCandidate? in
-            guard matches(activity: activity, workoutType: workout.workoutActivityType) else {
-                return nil
-            }
-
-            guard durationIsCompatible(
-                activity: activity,
-                workout: workout,
-                now: now,
-                liveSessionActive: liveSessionActive
-            ) else {
+            if isGenericOther {
+                guard activity.type.lowercased() == "workout" else { return nil }
+            } else if !matches(activity: activity, workoutType: workout.workoutActivityType) {
                 return nil
             }
 
             guard let timing = timingMatch(activity: activity, workout: workout) else {
                 return nil
+            }
+
+            // Other has no Apple sport. Overlap with a planned workout is the match.
+            // A gap with no overlap still has to pass the usual duration gate.
+            let overlapsPlannedSlot = timing.overlapSeconds > 0
+            if !isGenericOther || !overlapsPlannedSlot {
+                guard durationIsCompatible(
+                    activity: activity,
+                    workout: workout,
+                    now: now,
+                    liveSessionActive: liveSessionActive
+                ) else {
+                    return nil
+                }
             }
 
             return MatchCandidate(
@@ -149,6 +157,9 @@ public enum ActivityReconciler {
         activity.healthKitWorkoutUUID = workout.uuid.uuidString
         activity.source = "appleWorkout"
         activity.type = "workout"
+        // Watch and iPhone "Other" is how sports missing from Activity get recorded.
+        // Keep the planned name and icon; only the measured data moves across.
+        guard workout.workoutActivityType != .other else { return }
         activity.title = title(for: workout.workoutActivityType)
         activity.icon = icon(for: workout.workoutActivityType)
     }

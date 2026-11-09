@@ -77,7 +77,9 @@ final class ActivityIntelligenceSnapshotProvider {
             // HK workouts stay canonical. Local Quick Start rows are additive only when
             // still unlinked (healthKitWorkoutUUID == nil) so existing reconciler ownership
             // is preserved — no sync/pipeline changes.
-            let healthKitSessions = workoutSamples.map { makeSnapshot(from: $0) }
+            let healthKitSessions = workoutSamples.map {
+                makeSnapshot(from: $0, linkedPlan: linkedPlan(for: $0, in: plannedActivities))
+            }
             let localQuickStartSessions = localQuickStartSessions(
                 for: date,
                 plannedActivities: plannedActivities,
@@ -147,7 +149,9 @@ final class ActivityIntelligenceSnapshotProvider {
                 plannedActivities: plannedActivities
             )
         } else {
-            let healthKitSessions = workoutSamples.map { makeSnapshot(from: $0) }
+            let healthKitSessions = workoutSamples.map {
+                makeSnapshot(from: $0, linkedPlan: linkedPlan(for: $0, in: plannedActivities))
+            }
             let localQuickStartSessions = localQuickStartSessions(
                 for: date,
                 plannedActivities: plannedActivities,
@@ -255,12 +259,17 @@ final class ActivityIntelligenceSnapshotProvider {
             || activity.imageName.lowercased().hasPrefix("recovery-")
     }
 
-    func makeSnapshot(from workout: HKWorkout, plannedActivityId: String? = nil) -> ActivitySessionSnapshot {
-        let title = workoutTitle(for: workout.workoutActivityType)
+    func makeSnapshot(
+        from workout: HKWorkout,
+        plannedActivityId: String? = nil,
+        linkedPlan: PlannedActivity? = nil
+    ) -> ActivitySessionSnapshot {
+        let presentation = sessionPresentation(for: workout, linkedPlan: linkedPlan)
+        let title = presentation.title
         let durations = WorkoutFitnessMetrics.durations(from: workout)
         let durationMinutes = max(1, Int((durations.workout / 60.0).rounded()))
-        let icon = ActivityReconciler.icon(for: workout.workoutActivityType)
-        let color = workoutColor(for: workout.workoutActivityType)
+        let icon = presentation.icon
+        let color = presentation.color
         let heartRate = WorkoutFitnessMetrics.heartRateAverageAndMax(from: workout)
         let activeCalories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie())
         let distanceKm = workout.totalDistance.map { $0.doubleValue(for: .meter()) / 1000.0 }
@@ -294,8 +303,39 @@ final class ActivityIntelligenceSnapshotProvider {
                 cadence: nil,
                 activeHeartRateIntervals: WorkoutFitnessMetrics.activeIntervals(from: workout)
             ),
-            plannedActivityId: plannedActivityId
+            plannedActivityId: linkedPlan?.id ?? plannedActivityId
         )
+    }
+
+    /// Other on Watch or iPhone has no sport name. The linked plan keeps Padel, not "Workout".
+    private func sessionPresentation(
+        for workout: HKWorkout,
+        linkedPlan: PlannedActivity?
+    ) -> (title: String, icon: String, color: Color) {
+        let fallbackTitle = workoutTitle(for: workout.workoutActivityType)
+        let fallbackIcon = ActivityReconciler.icon(for: workout.workoutActivityType)
+        let fallbackColor = workoutColor(for: workout.workoutActivityType)
+        guard workout.workoutActivityType == .other,
+              let linkedPlan,
+              linkedPlan.type.lowercased() == "workout" else {
+            return (fallbackTitle, fallbackIcon, fallbackColor)
+        }
+
+        let title = linkedPlan.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else {
+            return (fallbackTitle, fallbackIcon, fallbackColor)
+        }
+
+        let icon = linkedPlan.icon.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (title, icon.isEmpty ? fallbackIcon : icon, linkedPlan.color)
+    }
+
+    private func linkedPlan(
+        for workout: HKWorkout,
+        in activities: [PlannedActivity]
+    ) -> PlannedActivity? {
+        let uuid = workout.uuid.uuidString
+        return activities.first { $0.healthKitWorkoutUUID == uuid }
     }
 
     func makePlannedActivitySnapshot(_ activity: PlannedActivity) -> ActivitySessionSnapshot {

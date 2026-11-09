@@ -432,6 +432,40 @@ enum StressIndexCopy {
         }
     }
 
+    /// Full name for the detail screen, such as «Умеренная нагрузка».
+    static func levelPhrase(_ level: StressIndexLevel) -> String {
+        switch level {
+        case .low:
+            return WeekFitLocalizedString("recovery.stressIndex.levelPhrase.low")
+        case .moderate:
+            return WeekFitLocalizedString("recovery.stressIndex.levelPhrase.moderate")
+        case .elevated:
+            return WeekFitLocalizedString("recovery.stressIndex.levelPhrase.elevated")
+        case .high:
+            return WeekFitLocalizedString("recovery.stressIndex.levelPhrase.high")
+        }
+    }
+
+    static func scoreScale() -> String {
+        WeekFitLocalizedString("recovery.stressIndex.scoreScale")
+    }
+
+    static func scoreOutOf(_ score: Int) -> String {
+        String(format: WeekFitLocalizedString("recovery.stressIndex.scoreOutOf"), score)
+    }
+
+    /// Same words as the factor icon: the direction of the contribution, not its size.
+    static func contributionTitle(_ tone: StressIndexContributorTone) -> String {
+        switch tone {
+        case .elevating:
+            return WeekFitLocalizedString("recovery.stressIndex.contribution.raised")
+        case .stabilizing:
+            return WeekFitLocalizedString("recovery.stressIndex.contribution.lowered")
+        case .neutral:
+            return WeekFitLocalizedString("recovery.stressIndex.contribution.neutral")
+        }
+    }
+
     static func confidenceTitle(_ confidence: StressIndexConfidence) -> String {
         switch confidence {
         case .high:
@@ -467,147 +501,177 @@ enum StressIndexCopy {
         }
     }
 
-    /// Direction-aware hero explanation. Never says HRV is “elevated” when HRV is low.
+    /// The single observation that moved the index most. Contributors are already sorted by strain.
     static func summarySentence(for result: StressIndexResult) -> String {
-        let top = Array(result.contributors.prefix(2))
-        guard !top.isEmpty else {
+        guard let lead = result.contributors.first else {
             return WeekFitLocalizedString("recovery.stressIndex.summary.generic")
         }
-
-        if top.count == 1 {
-            let clause = directionClause(for: top[0], capitalize: true)
-            if top[0].tone == .elevating {
-                return String(
-                    format: WeekFitLocalizedString("recovery.stressIndex.summary.oneElevatingFormat"),
-                    clause
-                )
-            }
-            return clause
-        }
-
-        let first = top[0]
-        let second = top[1]
-        let firstClause = directionClause(for: first, capitalize: true)
-        let secondClause = directionClause(for: second, capitalize: false)
-
-        if first.tone == .elevating && second.tone == .elevating {
-            return String(
-                format: WeekFitLocalizedString("recovery.stressIndex.summary.twoElevatingFormat"),
-                firstClause,
-                secondClause
-            )
-        }
-
-        if first.tone == .elevating && second.tone != .elevating {
-            return String(
-                format: WeekFitLocalizedString("recovery.stressIndex.summary.elevatingWhileStableFormat"),
-                firstClause,
-                secondClause
-            )
-        }
-
-        if first.tone != .elevating && second.tone == .elevating {
-            return String(
-                format: WeekFitLocalizedString("recovery.stressIndex.summary.elevatingWhileStableFormat"),
-                directionClause(for: second, capitalize: true),
-                directionClause(for: first, capitalize: false)
-            )
-        }
-
-        return WeekFitLocalizedString("recovery.stressIndex.summary.signalsStable")
+        return directionClause(for: lead, capitalize: true)
     }
 
-    /// Full-sentence direction clause for use in summaries (capitalized start for first clause).
-    static func directionClause(for contributor: StressIndexContributor, capitalize: Bool = true) -> String {
-        let key: String
-        switch (contributor.kind, contributor.tone) {
-        case (.hrv, .elevating):
-            key = "recovery.stressIndex.clause.hrv.below"
-        case (.hrv, .stabilizing), (.hrv, .neutral):
-            key = "recovery.stressIndex.clause.hrv.stable"
-        case (.restingHeartRate, .elevating):
-            key = "recovery.stressIndex.clause.rhr.above"
-        case (.restingHeartRate, .stabilizing), (.restingHeartRate, .neutral):
-            key = "recovery.stressIndex.clause.rhr.stable"
-        case (.sleep, .elevating):
-            key = "recovery.stressIndex.clause.sleep.short"
-        case (.sleep, .stabilizing), (.sleep, .neutral):
-            key = "recovery.stressIndex.clause.sleep.stable"
-        case (.trainingLoad, .elevating):
-            key = "recovery.stressIndex.clause.training.heavy"
-        case (.trainingLoad, .stabilizing), (.trainingLoad, .neutral):
-            key = "recovery.stressIndex.clause.training.light"
+    /// Plain reading of the level and what to do with the day. Factor details stay in the list above.
+    static func meaning(for result: StressIndexResult) -> String {
+        switch result.confidence {
+        case .unavailable:
+            return WeekFitLocalizedString("recovery.stressIndex.means.unavailable")
+        case .low:
+            return WeekFitLocalizedString("recovery.stressIndex.means.lowConfidence")
+        case .medium, .high:
+            break
         }
 
+        guard let level = result.level else {
+            return WeekFitLocalizedString("recovery.stressIndex.means.unavailable")
+        }
+        return WeekFitLocalizedString(levelKey(level))
+    }
+
+    private static func levelKey(_ level: StressIndexLevel) -> String {
+        switch level {
+        case .low: return "recovery.stressIndex.means.level.low"
+        case .moderate: return "recovery.stressIndex.means.level.moderate"
+        case .elevated: return "recovery.stressIndex.means.level.elevated"
+        case .high: return "recovery.stressIndex.means.level.high"
+        }
+    }
+
+    /// Short plan for today. The lead signal chooses the wording; the score does not set a training pace.
+    static func todayAdvice(for result: StressIndexResult) -> String {
+        switch result.confidence {
+        case .unavailable, .low:
+            return WeekFitLocalizedString("recovery.stressIndex.today.limited")
+        case .medium, .high:
+            break
+        }
+
+        guard let lead = result.contributors.first else {
+            return WeekFitLocalizedString("recovery.stressIndex.today.limited")
+        }
+
+        switch lead.tone {
+        case .elevating:
+            switch lead.kind {
+            case .hrv, .restingHeartRate:
+                return WeekFitLocalizedString("recovery.stressIndex.today.restIfTired")
+            case .sleep:
+                return WeekFitLocalizedString("recovery.stressIndex.today.restIfShortSleep")
+            case .trainingLoad:
+                return WeekFitLocalizedString("recovery.stressIndex.today.restIfYesterday")
+            }
+        case .neutral:
+            return WeekFitLocalizedString("recovery.stressIndex.today.keepIfUsual")
+        case .stabilizing:
+            return WeekFitLocalizedString("recovery.stressIndex.today.keepIfWell")
+        }
+    }
+
+    static func factorCount(_ count: Int) -> String {
+        WeekFitLocalizedQuantityFormat("recovery.stressIndex.factorCount", count: count)
+    }
+
+    /// One observation sentence. Capitalization is already in the localized sentence.
+    static func directionClause(for contributor: StressIndexContributor, capitalize: Bool = true) -> String {
+        let key = observationKey(for: contributor, style: .sentence)
         let text = WeekFitLocalizedString(key)
         guard capitalize, let first = text.first else { return text }
         return String(first).uppercased() + text.dropFirst()
     }
 
     static func contributorHeadline(for contributor: StressIndexContributor) -> String {
-        switch (contributor.kind, contributor.tone) {
-        case (.hrv, .elevating):
-            return WeekFitLocalizedString("recovery.stressIndex.row.hrv.below")
-        case (.hrv, .stabilizing), (.hrv, .neutral):
-            return WeekFitLocalizedString("recovery.stressIndex.row.hrv.stable")
-        case (.restingHeartRate, .elevating):
-            return WeekFitLocalizedString("recovery.stressIndex.row.rhr.above")
-        case (.restingHeartRate, .stabilizing), (.restingHeartRate, .neutral):
-            return WeekFitLocalizedString("recovery.stressIndex.row.rhr.stable")
-        case (.sleep, .elevating):
-            return WeekFitLocalizedString("recovery.stressIndex.row.sleep.short")
-        case (.sleep, .stabilizing), (.sleep, .neutral):
-            return WeekFitLocalizedString("recovery.stressIndex.row.sleep.stable")
-        case (.trainingLoad, .elevating):
-            return WeekFitLocalizedString("recovery.stressIndex.row.training.heavy")
-        case (.trainingLoad, .stabilizing), (.trainingLoad, .neutral):
-            return WeekFitLocalizedString("recovery.stressIndex.row.training.light")
-        }
+        WeekFitLocalizedString(observationKey(for: contributor, style: .headline))
     }
 
     static func contributorDetail(for contributor: StressIndexContributor) -> String {
-        switch (contributor.kind, contributor.tone) {
-        case (.hrv, .elevating):
-            return WeekFitLocalizedString("recovery.stressIndex.rowDetail.hrv.below")
-        case (.hrv, .stabilizing), (.hrv, .neutral):
-            return WeekFitLocalizedString("recovery.stressIndex.rowDetail.hrv.stable")
-        case (.restingHeartRate, .elevating):
-            return WeekFitLocalizedString("recovery.stressIndex.rowDetail.rhr.above")
-        case (.restingHeartRate, .stabilizing), (.restingHeartRate, .neutral):
-            return WeekFitLocalizedString("recovery.stressIndex.rowDetail.rhr.stable")
-        case (.sleep, .elevating):
-            return WeekFitLocalizedString("recovery.stressIndex.rowDetail.sleep.short")
-        case (.sleep, .stabilizing), (.sleep, .neutral):
-            return WeekFitLocalizedString("recovery.stressIndex.rowDetail.sleep.stable")
-        case (.trainingLoad, .elevating):
-            return WeekFitLocalizedString("recovery.stressIndex.rowDetail.training.heavy")
-        case (.trainingLoad, .stabilizing), (.trainingLoad, .neutral):
-            return WeekFitLocalizedString("recovery.stressIndex.rowDetail.training.light")
+        WeekFitLocalizedString(observationKey(for: contributor, style: .detail))
+    }
+
+    private enum ObservationStyle {
+        case sentence
+        case headline
+        case detail
+    }
+
+    /// HRV and resting heart rate use the personal median. Sleep uses an 8-hour goal.
+    /// Neutral is a small gap that barely moves the index; missing data has no row.
+    private static func observationKey(
+        for contributor: StressIndexContributor,
+        style: ObservationStyle
+    ) -> String {
+        switch contributor.kind {
+        case .hrv:
+            switch contributor.tone {
+            case .elevating:
+                return style == .sentence ? "recovery.stressIndex.clause.hrv.below"
+                    : style == .headline ? "recovery.stressIndex.row.hrv.below"
+                    : "recovery.stressIndex.rowDetail.hrv.below"
+            case .neutral:
+                return style == .sentence ? "recovery.stressIndex.clause.hrv.near"
+                    : style == .headline ? "recovery.stressIndex.row.hrv.near"
+                    : "recovery.stressIndex.rowDetail.hrv.near"
+            case .stabilizing:
+                return style == .sentence ? "recovery.stressIndex.clause.hrv.stable"
+                    : style == .headline ? "recovery.stressIndex.row.hrv.stable"
+                    : "recovery.stressIndex.rowDetail.hrv.stable"
+            }
+        case .restingHeartRate:
+            switch contributor.tone {
+            case .elevating:
+                return style == .sentence ? "recovery.stressIndex.clause.rhr.above"
+                    : style == .headline ? "recovery.stressIndex.row.rhr.above"
+                    : "recovery.stressIndex.rowDetail.rhr.above"
+            case .neutral:
+                return style == .sentence ? "recovery.stressIndex.clause.rhr.near"
+                    : style == .headline ? "recovery.stressIndex.row.rhr.near"
+                    : "recovery.stressIndex.rowDetail.rhr.near"
+            case .stabilizing:
+                return style == .sentence ? "recovery.stressIndex.clause.rhr.stable"
+                    : style == .headline ? "recovery.stressIndex.row.rhr.stable"
+                    : "recovery.stressIndex.rowDetail.rhr.stable"
+            }
+        case .sleep:
+            switch contributor.tone {
+            case .elevating:
+                return style == .sentence ? "recovery.stressIndex.clause.sleep.short"
+                    : style == .headline ? "recovery.stressIndex.row.sleep.short"
+                    : "recovery.stressIndex.rowDetail.sleep.short"
+            case .neutral:
+                return style == .sentence ? "recovery.stressIndex.clause.sleep.close"
+                    : style == .headline ? "recovery.stressIndex.row.sleep.close"
+                    : "recovery.stressIndex.rowDetail.sleep.close"
+            case .stabilizing:
+                return style == .sentence ? "recovery.stressIndex.clause.sleep.stable"
+                    : style == .headline ? "recovery.stressIndex.row.sleep.stable"
+                    : "recovery.stressIndex.rowDetail.sleep.stable"
+            }
+        case .trainingLoad:
+            let band: String
+            switch contributor.baselineNote {
+            case .training(.heavy):
+                band = "heavy"
+            case .training(.moderate):
+                band = "moderate"
+            case .training(.light), .none:
+                band = "light"
+            default:
+                band = contributor.tone == .elevating ? "heavy" : "light"
+            }
+            switch style {
+            case .sentence:
+                return "recovery.stressIndex.clause.training.\(band)"
+            case .headline:
+                return "recovery.stressIndex.row.training.\(band)"
+            case .detail:
+                return "recovery.stressIndex.rowDetail.training.\(band)"
+            }
         }
     }
 
     static func contributorAccessibilityLabel(for contributor: StressIndexContributor) -> String {
-        let impactPhrase: String
-        switch contributor.tone {
-        case .elevating:
-            impactPhrase = WeekFitLocalizedString("recovery.stressIndex.a11y.increasedStress")
-        case .stabilizing:
-            impactPhrase = WeekFitLocalizedString("recovery.stressIndex.a11y.stabilizingStress")
-        case .neutral:
-            impactPhrase = WeekFitLocalizedString("recovery.stressIndex.a11y.neutralStress")
-        }
-        return "\(contributorHeadline(for: contributor)). \(impactPhrase)"
+        "\(contributorHeadline(for: contributor)). \(contributionTitle(contributor.tone))"
     }
 
     static func iconAccessibilityLabel(for tone: StressIndexContributorTone) -> String {
-        switch tone {
-        case .elevating:
-            return WeekFitLocalizedString("recovery.stressIndex.a11y.icon.elevating")
-        case .stabilizing:
-            return WeekFitLocalizedString("recovery.stressIndex.a11y.icon.stabilizing")
-        case .neutral:
-            return WeekFitLocalizedString("recovery.stressIndex.a11y.icon.neutral")
-        }
+        contributionTitle(tone)
     }
 
     static func confidenceExplanation(
@@ -617,9 +681,10 @@ enum StressIndexCopy {
         switch confidence {
         case .high:
             if let days = baselineSampleDays, days > 0 {
+                let measured = WeekFitCountPluralization.phrase(count: days, category: .day)
                 return String(
-                    format: WeekFitLocalizedString("recovery.stressIndex.confidence.high.daysFormat"),
-                    days
+                    format: WeekFitLocalizedString("recovery.stressIndex.confidence.measurementsFormat"),
+                    measured
                 )
             }
             return WeekFitLocalizedString("recovery.stressIndex.confidence.high")
@@ -705,12 +770,12 @@ enum StressIndexCopy {
         case .unavailable:
             return "\(title). \(WeekFitLocalizedString("recovery.stressIndex.empty.title"))"
         case .low:
-            let level = result.level.map(levelTitle) ?? ""
+            let level = result.level.map(levelPhrase) ?? ""
             return "\(title), \(level)."
         case .medium, .high:
-            let score = result.score.map(String.init) ?? ""
-            let level = result.level.map { levelTitle($0).lowercased() } ?? ""
-            return "\(title) \(score), \(level)."
+            let score = result.score.map(scoreOutOf) ?? ""
+            let level = result.level.map(levelPhrase) ?? ""
+            return "\(title). \(score). \(level)."
         }
     }
 
@@ -763,12 +828,19 @@ enum StressIndexCopy {
             return WeekFitLocalizedString("recovery.stressIndex.chip.rhr.stable")
         case (.sleep, .elevating):
             return WeekFitLocalizedString("recovery.stressIndex.chip.sleep.short")
-        case (.sleep, _):
+        case (.sleep, .neutral):
+            return WeekFitLocalizedString("recovery.stressIndex.chip.sleep.close")
+        case (.sleep, .stabilizing):
             return WeekFitLocalizedString("recovery.stressIndex.chip.sleep.stable")
-        case (.trainingLoad, .elevating):
-            return WeekFitLocalizedString("recovery.stressIndex.chip.training.heavy")
         case (.trainingLoad, _):
-            return WeekFitLocalizedString("recovery.stressIndex.chip.training.light")
+            switch contributor.baselineNote {
+            case .training(.heavy):
+                return WeekFitLocalizedString("recovery.stressIndex.chip.training.heavy")
+            case .training(.moderate):
+                return WeekFitLocalizedString("recovery.stressIndex.chip.training.moderate")
+            default:
+                return WeekFitLocalizedString("recovery.stressIndex.chip.training.light")
+            }
         }
     }
 

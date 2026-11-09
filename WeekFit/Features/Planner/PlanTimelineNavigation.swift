@@ -90,7 +90,7 @@ struct PlannedActivitySessionResolver {
     ) async -> ActivitySessionSnapshot {
         if let workoutID = activity.healthKitWorkoutUUID.flatMap(UUID.init(uuidString:)),
            let workout = await healthManager.loadWorkout(id: workoutID, near: activity.date) {
-            return snapshotProvider.makeSnapshot(from: workout, plannedActivityId: activity.id)
+            return snapshotProvider.makeSnapshot(from: workout, linkedPlan: activity)
         }
 
         return snapshotProvider.makePlannedActivitySnapshot(activity)
