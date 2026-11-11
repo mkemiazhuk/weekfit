@@ -144,9 +144,15 @@ enum ProductAnalytics {
         operation: FoodLoggingOperation
     ) {
         ProductAnalyticsFlowTracker.shared.noteFoodTerminal()
+        let actionID = operation == .diary ? ReturnReminderPlanner.mealID : nil
         analytics.track(
             .foodLoggingCompleted,
-            parameters: foodLoggingParameters(method: method, source: source, operation: operation)
+            parameters: foodLoggingParameters(
+                method: method,
+                source: source,
+                operation: operation,
+                actionID: actionID
+            )
         )
     }
 
@@ -183,13 +189,18 @@ enum ProductAnalytics {
     private static func foodLoggingParameters(
         method: FoodLoggingMethod,
         source: AnalyticsSource,
-        operation: FoodLoggingOperation
+        operation: FoodLoggingOperation,
+        actionID: String? = nil
     ) -> [String: String] {
-        [
+        var parameters = [
             AnalyticsParameterKey.method: method.rawValue,
             AnalyticsParameterKey.source: source.rawValue,
             AnalyticsParameterKey.operation: operation.rawValue
         ]
+        if let actionID, !actionID.isEmpty {
+            parameters[AnalyticsParameterKey.actionID] = actionID
+        }
+        return parameters
     }
 
     static func hydrationLoggingStarted(method: HydrationLoggingMethod, source: AnalyticsSource) {
@@ -203,15 +214,20 @@ enum ProductAnalytics {
         )
     }
 
-    static func hydrationLoggingCompleted(method: HydrationLoggingMethod, source: AnalyticsSource) {
+    static func hydrationLoggingCompleted(
+        method: HydrationLoggingMethod,
+        source: AnalyticsSource,
+        actionID: String? = nil
+    ) {
         ProductAnalyticsFlowTracker.shared.noteHydrationTerminal()
-        analytics.track(
-            .hydrationLoggingCompleted,
-            parameters: [
-                AnalyticsParameterKey.method: method.rawValue,
-                AnalyticsParameterKey.source: source.rawValue
-            ]
-        )
+        var parameters = [
+            AnalyticsParameterKey.method: method.rawValue,
+            AnalyticsParameterKey.source: source.rawValue
+        ]
+        if let actionID, !actionID.isEmpty {
+            parameters[AnalyticsParameterKey.actionID] = actionID
+        }
+        analytics.track(.hydrationLoggingCompleted, parameters: parameters)
     }
 
     static func hydrationLoggingCancelled(method: HydrationLoggingMethod, source: AnalyticsSource) {
@@ -332,14 +348,20 @@ enum ProductAnalytics {
         )
     }
 
-    static func activityCompleted(source: AnalyticsSource) {
+    static func activityCompleted(
+        source: AnalyticsSource,
+        itemType: PlanItemAnalyticsType,
+        actionID: String? = nil
+    ) {
         ProductAnalyticsFlowTracker.shared.noteActivityLoggingTerminal()
-        analytics.track(
-            .activityCompleted,
-            parameters: [
-                AnalyticsParameterKey.source: source.rawValue
-            ]
-        )
+        var parameters = [
+            AnalyticsParameterKey.source: source.rawValue,
+            AnalyticsParameterKey.itemType: itemType.rawValue
+        ]
+        if let actionID, !actionID.isEmpty {
+            parameters[AnalyticsParameterKey.actionID] = actionID
+        }
+        analytics.track(.activityCompleted, parameters: parameters)
     }
 
     static func activityCancelled(source: AnalyticsSource) {
@@ -408,11 +430,92 @@ enum ProductAnalytics {
         )
     }
 
-    static func notificationOpened(category: NotificationOpenCategory) {
+    static func notificationOpened(
+        category: NotificationOpenCategory,
+        horizon: String? = nil,
+        offer: String? = nil,
+        actionID: String? = nil
+    ) {
         analytics.track(
             .notificationOpened,
-            parameters: [AnalyticsParameterKey.category: category.rawValue]
+            parameters: notificationReminderParameters(
+                category: category,
+                horizon: horizon,
+                offer: offer,
+                actionID: actionID
+            )
         )
+    }
+
+    static func notificationScheduled(
+        category: NotificationOpenCategory,
+        horizon: String,
+        offer: String,
+        actionID: String
+    ) {
+        analytics.track(
+            .notificationScheduled,
+            parameters: notificationReminderParameters(
+                category: category,
+                horizon: horizon,
+                offer: offer,
+                actionID: actionID
+            )
+        )
+    }
+
+    static func notificationDelivered(
+        category: NotificationOpenCategory,
+        horizon: String,
+        offer: String,
+        actionID: String
+    ) {
+        analytics.track(
+            .notificationDelivered,
+            parameters: notificationReminderParameters(
+                category: category,
+                horizon: horizon,
+                offer: offer,
+                actionID: actionID
+            )
+        )
+    }
+
+    /// The reminder was opened, but the saved target could no longer be presented.
+    static func notificationNavigationFailed(
+        category: NotificationOpenCategory,
+        horizon: String,
+        offer: String,
+        actionID: String,
+        reason: String
+    ) {
+        var parameters = notificationReminderParameters(
+            category: category,
+            horizon: horizon,
+            offer: offer,
+            actionID: actionID
+        )
+        parameters[AnalyticsParameterKey.reason] = reason
+        analytics.track(.notificationNavigationFailed, parameters: parameters)
+    }
+
+    private static func notificationReminderParameters(
+        category: NotificationOpenCategory,
+        horizon: String?,
+        offer: String?,
+        actionID: String?
+    ) -> [String: String] {
+        var parameters = [AnalyticsParameterKey.category: category.rawValue]
+        if let horizon, !horizon.isEmpty {
+            parameters[AnalyticsParameterKey.horizon] = horizon
+        }
+        if let offer, !offer.isEmpty {
+            parameters[AnalyticsParameterKey.offer] = offer
+        }
+        if let actionID, !actionID.isEmpty {
+            parameters[AnalyticsParameterKey.actionID] = actionID
+        }
+        return parameters
     }
 
     static func healthSettingsOpened() {

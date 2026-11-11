@@ -49,10 +49,10 @@ public enum ActivityReconciler {
         let plannedBeforeEnd = allPlanned.filter { $0.date <= workoutEnd }
         let plannedAfterEnd = allPlanned.filter { $0.date > workoutEnd }
 
-        let isGenericOther = workout.workoutActivityType == .other
+        let isGenericRecording = isUnmappedActivityType(workout.workoutActivityType)
         let eligible = allPlanned.compactMap { activity -> MatchCandidate? in
-            if isGenericOther {
-                guard activity.type.lowercased() == "workout" else { return nil }
+            if isGenericRecording {
+                guard plannedActivityAcceptsGenericOther(activity) else { return nil }
             } else if !matches(activity: activity, workoutType: workout.workoutActivityType) {
                 return nil
             }
@@ -64,7 +64,7 @@ public enum ActivityReconciler {
             // Other has no Apple sport. Overlap with a planned workout is the match.
             // A gap with no overlap still has to pass the usual duration gate.
             let overlapsPlannedSlot = timing.overlapSeconds > 0
-            if !isGenericOther || !overlapsPlannedSlot {
+            if !isGenericRecording || !overlapsPlannedSlot {
                 guard durationIsCompatible(
                     activity: activity,
                     workout: workout,
@@ -156,19 +156,53 @@ public enum ActivityReconciler {
         activity.isSkipped = false
         activity.healthKitWorkoutUUID = workout.uuid.uuidString
         activity.source = "appleWorkout"
+        // Other, and any Apple type with no WeekFit counterpart, keeps the planned activity.
+        guard !isUnmappedActivityType(workout.workoutActivityType) else { return }
         activity.type = "workout"
-        // Watch and iPhone "Other" is how sports missing from Activity get recorded.
-        // Keep the planned name and icon; only the measured data moves across.
-        guard workout.workoutActivityType != .other else { return }
         activity.title = title(for: workout.workoutActivityType)
         activity.icon = icon(for: workout.workoutActivityType)
     }
 
+    /// A watch or phone recording that is not a named Activity sport.
+    public static func isUnmappedActivityType(_ type: HKWorkoutActivityType) -> Bool {
+        type == .other || normalizedFamily(for: type) == nil
+    }
+
+    /// Planned sessions that can absorb that recording. Meals and habits stay separate.
+    public static func plannedActivityAcceptsGenericOther(_ activity: PlannedActivity) -> Bool {
+        switch activity.type.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "workout", "recovery", "sauna":
+            return true
+        default:
+            return false
+        }
+    }
+
     public static func kilocalories(of workout: HKWorkout) -> Int? {
-        guard let energy = workout.totalEnergyBurned else { return nil }
-        let kcal = energy.doubleValue(for: .kilocalorie())
-        guard kcal > 0 else { return nil }
-        return Int(kcal.rounded())
+        let total = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie())
+        return kilocalories(totalEnergyBurned: total, activeEnergySum: activeEnergySum(of: workout))
+    }
+
+    /// Prefer the workout total. When Apple leaves that empty, use the active-energy sum.
+    public static func kilocalories(totalEnergyBurned: Double?, activeEnergySum: Double?) -> Int? {
+        for candidate in [totalEnergyBurned, activeEnergySum] {
+            if let candidate, candidate > 0 {
+                return Int(candidate.rounded())
+            }
+        }
+        return nil
+    }
+
+    private static func activeEnergySum(of workout: HKWorkout) -> Double? {
+        guard let type = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else { return nil }
+        if let sum = workout.statistics(for: type)?.sumQuantity()?.doubleValue(for: .kilocalorie()), sum > 0 {
+            return sum
+        }
+        let segments = workout.workoutActivities.compactMap {
+            $0.statistics(for: type)?.sumQuantity()?.doubleValue(for: .kilocalorie())
+        }
+        let total = segments.reduce(0, +)
+        return total > 0 ? total : nil
     }
 
     public static func distanceMeters(of workout: HKWorkout) -> Int? {

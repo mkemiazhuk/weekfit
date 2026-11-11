@@ -43,7 +43,7 @@ enum ActivityBadgeCatalog {
     static let definitions: [ActivityBadgeDefinition] = [
         def("activity.cycling", .activity, "Cycling", "figure.outdoor.cycle", "Two Wheels", "На двух колёсах", "First completed ride", "Первая завершённая поездка", "Ride", "Поехать", 45, .completedSession, false),
         def("activity.running", .activity, "Running", "figure.run", "First Run", "Первая пробежка", "First completed run", "Первый завершённый забег", "Run", "Побежать", 45, .completedSession, false),
-        def("activity.swimming", .activity, "Swimming", "figure.pool.swim", "First Length", "Первый заплыв", "First completed swim", "Первое завершённое плавание", "Swim", "Поплавать", 45, .completedSession, false),
+        def("activity.swimming", .activity, "Swimming", "figure.pool.swim", "First Wave", "Первая волна", "First completed swim", "Первое завершённое плавание", "Swim", "Поплавать", 45, .completedSession, false),
         def("activity.hiking", .activity, "Hiking", "figure.hiking", "First Trail", "Первая тропа", "First completed hike", "Первый завершённый поход", "Hike", "Пойти в поход", 45, .completedSession, false),
         def("activity.snowboarding", .activity, "Snowboarding", "figure.snowboarding", "First Ride", "На сноуборде", "First completed snowboard session", "Первый завершённый спуск на сноуборде", "Snowboard", "Встать на сноуборд", 45, .completedSession, false),
         def("activity.alpine-skiing", .activity, "Alpine Skiing", "figure.skiing.downhill", "First Descent", "Первый спуск", "First completed ski session", "Первый завершённый спуск на лыжах", "Ski", "Встать на лыжи", 45, .completedSession, false),
@@ -98,6 +98,11 @@ enum ActivityBadgeCatalog {
         }
         let folded = normalize(trimmed)
         return healthTitleAliases.first { normalize($0.key) == folded }?.value
+    }
+
+    static func actionID(forTitle title: String) -> String? {
+        guard let canonical = canonicalCatalogTitle(title) else { return nil }
+        return definition(catalogTitle: canonical)?.id
     }
 
     static func normalize(_ title: String) -> String {

@@ -15,7 +15,7 @@ struct PhotoFoodFlowHost: View {
     @Environment(\.weekFitPalette) private var palette
     @State private var showAIUsage = false
 
-    private var foodAccent: Color { QuickFoodAccent.actionOrange }
+    private var foodAccent: Color { QuickSheetChrome.action(isLight: palette.isLight) }
 
     private var displayPreview: UIImage? {
         previewImage ?? coordinator.lastImage

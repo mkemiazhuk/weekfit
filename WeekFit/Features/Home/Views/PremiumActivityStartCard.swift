@@ -18,7 +18,7 @@ struct PremiumActivityStartCard: View {
     @State private var pressed = false
 
     private var actionButtonSize: CGFloat { 44 }
-    private var listImageSize: CGFloat { 76 }
+    private var listImageSize: CGFloat { 96 }
 
     private var titleColor: Color {
         hasConflict ? WeekFitTheme.secondaryText : WeekFitTheme.primaryText

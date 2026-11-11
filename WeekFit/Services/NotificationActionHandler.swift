@@ -27,6 +27,31 @@ final class NotificationActionHandler: NSObject, UNUserNotificationCenterDelegat
             return
         }
 
+        if notificationType == ReturnReminderNotificationKey.type,
+           let actionID = userInfo[ReturnReminderNotificationKey.actionID] as? String,
+           let horizonRaw = userInfo[ReturnReminderNotificationKey.horizon] as? String,
+           let horizon = ReturnReminderHorizon(rawValue: horizonRaw),
+           let offerRaw = userInfo[ReturnReminderNotificationKey.offer] as? String,
+           let offer = ReturnReminderOfferKind(rawValue: offerRaw) {
+            let route = ReturnReminderRoute(
+                actionID: actionID,
+                horizon: horizon,
+                offerKind: offer,
+                showsAward: offer == .newActivityAward,
+                openedAt: Date()
+            )
+            await MainActor.run {
+                ReturnReminderNotificationService.shared.storeRoute(route)
+                ProductAnalytics.notificationOpened(
+                    category: ReturnReminderCopy.openCategory(for: actionID),
+                    horizon: horizon.rawValue,
+                    offer: offer.rawValue,
+                    actionID: actionID
+                )
+            }
+            return
+        }
+
         if notificationType == MorningProposalNotificationType.ready
             || response.notification.request.identifier.hasPrefix("morning-proposal-") {
             let dayKey = userInfo[MorningProposalNotificationKey.dayKey] as? String
@@ -96,6 +121,13 @@ final class NotificationActionHandler: NSObject, UNUserNotificationCenterDelegat
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        [.banner, .sound, .badge]
+        let type = notification.request.content.userInfo["notificationType"] as? String
+        if type == ReturnReminderNotificationKey.type {
+            await MainActor.run {
+                ReturnReminderNotificationService.shared.holdWhileForeground()
+            }
+            return []
+        }
+        return [.banner, .sound, .badge]
     }
 }

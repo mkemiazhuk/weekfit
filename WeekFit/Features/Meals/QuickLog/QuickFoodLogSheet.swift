@@ -8,30 +8,28 @@ import WeekFitPlanner
 
 enum QuickFoodAccent {
     static let orange = Color(red: 0.92, green: 0.55, blue: 0.32)
-    /// Former drinks CTA gold — now used on Food + circles and kcal chips.
-    static let actionOrange = Color(red: 0.78, green: 0.58, blue: 0.28)
     static let green = Color(red: 0.38, green: 0.70, blue: 0.48)
     /// Soft frequent washes — matched intensity, warm vs leaf.
     static let warmWash = Color(red: 0.90, green: 0.80, blue: 0.68)
     static let leafWash = Color(red: 0.74, green: 0.82, blue: 0.72)
 
-    /// Food + circles — always the former drinks gold/orange.
-    static func action(isLight _: Bool) -> Color {
-        actionOrange
+    /// Same champagne gold as the Meals recommended card.
+    static func action(isLight: Bool) -> Color {
+        QuickSheetChrome.action(isLight: isLight)
     }
 
-    /// Card wash only — CTA circles and kcal chips use `actionOrange`, not this.
+    /// Card wash only — actions use the recommended gold, not this.
     static func frequentColor(at index: Int, isLight _: Bool) -> Color {
         index == 0 ? warmWash : leafWash
     }
 
-    /// kcal + flame chip — same gold as Food + / «add one», no per-item rainbow.
+    /// kcal stays quiet, like the recommended meal card.
     static func meta(for _: String, isLight _: Bool) -> Color {
-        actionOrange
+        WeekFitTheme.secondaryText
     }
 
     static func frequentMeta(at _: Int, isLight _: Bool) -> Color {
-        actionOrange
+        WeekFitTheme.secondaryText
     }
 
     static func cardTop(for accent: Color, isLight: Bool) -> Color {
@@ -116,7 +114,7 @@ struct QuickFoodLogSheet: View {
     @State private var pendingPhotoEntryIntent: PhotoEntryIntent?
     @State private var showLibraryPicker = false
 
-    private var foodAccent: Color { QuickFoodAccent.actionOrange }
+    private var foodAccent: Color { QuickSheetChrome.action(isLight: palette.isLight) }
 
     private enum PhotoEntryIntent: Equatable {
         case camera
@@ -340,15 +338,19 @@ struct QuickFoodLogSheet: View {
 
                 Text(WeekFitLocalizedString("today.photoLog.aiAssistant.badge"))
                     .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .tracking(0.35)
+                    .tracking(0.6)
                     .textCase(.uppercase)
                     .foregroundStyle(foodAccent)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(
                         Capsule(style: .continuous)
-                            .fill(foodAccent.opacity(palette.isLight ? 0.14 : 0.22))
+                            .fill(foodAccent.opacity(palette.isLight ? 0.14 : 0.16))
                     )
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .strokeBorder(foodAccent.opacity(palette.isLight ? 0.28 : 0.22), lineWidth: 0.8)
+                    }
                     .accessibilityLabel(WeekFitLocalizedString("today.photoLog.aiAssistant.badge"))
             }
 
@@ -369,11 +371,14 @@ struct QuickFoodLogSheet: View {
                         Image(systemName: "camera.fill")
                     }
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(foodAccent)
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 44)
                     .padding(.horizontal, 10)
-                    .background(Capsule(style: .continuous).fill(foodAccent))
+                    .background(
+                        Capsule(style: .continuous)
+                            .strokeBorder(foodAccent.opacity(palette.isLight ? 0.45 : 0.55), lineWidth: 1)
+                    )
                     .contentShape(Capsule(style: .continuous))
                 }
                 .buttonStyle(.plain)
@@ -432,7 +437,29 @@ struct QuickFoodLogSheet: View {
         .padding(.top, 15)
         .padding(.bottom, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .weekFitPremiumCard(emphasis: .standard, accent: foodAccent, cornerRadius: 20)
+        .background { foodAssistantPlate }
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(foodAccent.opacity(palette.isLight ? 0.18 : 0.22), lineWidth: 0.85)
+        }
+    }
+
+    /// Same plate as the Meals recommended card: dark surface, a short gold wash, no solid fill.
+    private var foodAssistantPlate: some View {
+        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+        return shape
+            .fill(MealLibraryCardMetrics.Chrome.surface(isLight: palette.isLight))
+            .overlay {
+                shape.fill(
+                    LinearGradient(
+                        colors: palette.isLight
+                            ? [foodAccent.opacity(0.10), foodAccent.opacity(0.03), Color.clear]
+                            : [foodAccent.opacity(0.14), foodAccent.opacity(0.05), Color.clear],
+                        startPoint: .topLeading,
+                        endPoint: UnitPoint(x: 0.92, y: 0.88)
+                    )
+                )
+            }
     }
 
     private var aiAccessCaptionKey: String? {
@@ -834,7 +861,7 @@ struct QuickFoodLogSheet: View {
                 quantity: selection.effectivePortions(for: profile),
                 isExpanded: selection.isExpanded,
                 isSelected: selection.isSelected,
-                accentColor: QuickFoodAccent.actionOrange,
+                accentColor: foodAccent,
                 chrome: .softOutline,
                 onPlusTap: { onMealPlus(row.meal) },
                 onIncrement: { onMealIncrement(row.meal) },
@@ -881,7 +908,7 @@ struct QuickFoodLogSheet: View {
                 quantity: selection.effectivePortions(for: profile),
                 isExpanded: selection.isExpanded,
                 isSelected: selection.isSelected,
-                accentColor: QuickFoodAccent.actionOrange,
+                accentColor: foodAccent,
                 chrome: .softOutline,
                 onPlusTap: { onSnackPlus(row.item) },
                 onIncrement: { onSnackIncrement(row.item) },
@@ -954,10 +981,12 @@ struct QuickFoodLogSheet: View {
                 } label: {
                     Text(WeekFitLocalizedString("today.photoLog.aiAssistant.takePhoto"))
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(foodAccent)
                         .padding(.horizontal, 16)
                         .frame(minHeight: 44)
-                        .background(Capsule().fill(foodAccent))
+                        .background(
+                            Capsule().strokeBorder(foodAccent.opacity(palette.isLight ? 0.45 : 0.55), lineWidth: 1)
+                        )
                 }
                 .buttonStyle(.plain)
 
@@ -1077,7 +1106,7 @@ private struct QuickFoodFrequentCard<Thumb: View>: View {
                     quantity: displayQuantity,
                     isExpanded: selection.isExpanded,
                     isSelected: selection.isSelected,
-                    accentColor: QuickFoodAccent.actionOrange,
+                    accentColor: QuickSheetChrome.action(isLight: palette.isLight),
                     chrome: .solidFilled,
                     density: .compact,
                     collapsedVisualSize: QuickActionSheetDesign.RecommendedCard.actionVisualSize,

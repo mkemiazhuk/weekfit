@@ -198267,7 +198267,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Beenden Sie die aktuelle Sitzung, bevor Sie eine andere beginnen"
+            "value" : "Beende zuerst die laufende Einheit."
           }
         },
         "en" : {
@@ -198291,19 +198291,19 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Termina la sessione corrente prima di iniziare un altro"
+            "value" : "Finisci questa, poi inizia la prossima."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "別の開始する前に現在のセッションを終了します"
+            "value" : "次を始める前に、今のセッションを終えてください"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "다른 시작 전에 끝 현재 회의"
+            "value" : "다른 운동을 시작하기 전에 지금 것을 끝내세요"
           }
         },
         "pl" : {
@@ -198332,7 +198332,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aktive Session"
+            "value" : "Laufendes Training"
           }
         },
         "en" : {
@@ -198356,19 +198356,19 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Phiên hoạt động"
+            "value" : "Sessione in corso"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アクティブセッション"
+            "value" : "進行中"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "활성 세션"
+            "value" : "진행 중인 운동"
           }
         },
         "pl" : {
@@ -198397,7 +198397,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "KARDE"
+            "value" : "CARDIO"
           }
         },
         "en" : {
@@ -198492,13 +198492,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "簡単な一日"
+            "value" : "ゆるい日"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "쉬운 날"
+            "value" : "가벼운 하루"
           }
         },
         "pl" : {
@@ -198527,7 +198527,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ANBAU"
+            "value" : "ABEND"
           }
         },
         "en" : {
@@ -198551,19 +198551,19 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "EVENZIONE"
+            "value" : "SERA"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "イービング"
+            "value" : "夕方"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "회사 소개"
+            "value" : "저녁"
           }
         },
         "pl" : {
@@ -198622,13 +198622,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "これから"
+            "value" : "いま"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "현재 위치"
+            "value" : "지금"
           }
         },
         "pl" : {
@@ -198657,7 +198657,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "KLEINE AUSWIRKUNGEN"
+            "value" : "SANFT"
           }
         },
         "en" : {
@@ -198669,37 +198669,37 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "BAJO IMPACTO"
+            "value" : "SUAVE"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FAIBLE IMPACT"
+            "value" : "DOUX"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "IMPATTO"
+            "value" : "DOLCE"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "低い影響"
+            "value" : "低負荷"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "낮은 IMPACT"
+            "value" : "저강도"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "NISKI WPŁYW"
+            "value" : "ŁAGODNIE"
           }
         },
         "ru" : {
@@ -198787,7 +198787,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "RESET"
+            "value" : "NEUSTART"
           }
         },
         "en" : {
@@ -198811,7 +198811,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "RISPOSTE"
+            "value" : "RICARICA"
           }
         },
         "ja" : {
@@ -198823,7 +198823,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "구매하기"
+            "value" : "재정비"
           }
         },
         "pl" : {
@@ -198852,7 +198852,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FESTIGKEIT"
+            "value" : "KRAFT"
           }
         },
         "en" : {
@@ -198882,7 +198882,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ストレッチ"
+            "value" : "筋力"
           }
         },
         "ko" : {
@@ -198941,7 +198941,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Calmati."
+            "value" : "Calma"
           }
         },
         "ja" : {
@@ -199018,7 +199018,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "카디오"
+            "value" : "유산소"
           }
         },
         "pl" : {
@@ -199160,7 +199160,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Высокая интенсивность"
+            "value" : "На максимуме"
           }
         },
         "zh-Hans" : {
@@ -199177,7 +199177,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lichtrückgewinnung"
+            "value" : "Leichte Erholung"
           }
         },
         "en" : {
@@ -199201,7 +199201,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recupero della luce"
+            "value" : "Recupero leggero"
           }
         },
         "ja" : {
@@ -199213,7 +199213,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "빛 복구"
+            "value" : "가벼운 회복"
           }
         },
         "pl" : {
@@ -199242,7 +199242,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mobilität"
+            "value" : "Beweglichkeit"
           }
         },
         "en" : {
@@ -199272,31 +199272,31 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "モビリティ"
+            "value" : "可動性"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "제품 설명"
+            "value" : "가동성"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mobilność"
+            "value" : "Ruchomość"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Мобильность"
+            "value" : "Подвижность"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "灵活性"
+            "value" : "活动度"
           }
         }
       }
@@ -199343,7 +199343,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "기타 시설"
+            "value" : "휴식"
           }
         },
         "pl" : {
@@ -199461,19 +199461,19 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Facile ritmo"
+            "value" : "Ritmo facile"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "簡単なペース"
+            "value" : "ゆったり"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "쉬운 속도"
+            "value" : "편한 속도"
           }
         },
         "pl" : {
@@ -199597,13 +199597,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "フルボディ"
+            "value" : "全身"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "몸 전체"
+            "value" : "전신"
           }
         },
         "pl" : {
@@ -199674,7 +199674,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Upał"
+            "value" : "Ciepło"
           }
         },
         "ru" : {
@@ -199727,13 +199727,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "120～140 夜"
+            "value" : "120–140 bpm"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "120-140 오후"
+            "value" : "120–140 bpm"
           }
         },
         "pl" : {
@@ -199762,7 +199762,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mobilität"
+            "value" : "Beweglichkeit"
           }
         },
         "en" : {
@@ -199792,31 +199792,31 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "モビリティ"
+            "value" : "可動性"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "제품 설명"
+            "value" : "가동성"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mobilność"
+            "value" : "Ruchomość"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Мобильность"
+            "value" : "Подвижность"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "灵活性"
+            "value" : "活动度"
           }
         }
       }
@@ -199827,7 +199827,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Muskelfokus"
+            "value" : "Muskeln"
           }
         },
         "en" : {
@@ -199839,49 +199839,49 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enfoque muscular"
+            "value" : "Músculos"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Focus musculaire"
+            "value" : "Muscles"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Concentrazione muscolare"
+            "value" : "Muscoli"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "筋肉焦点"
+            "value" : "筋肉"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "근육 초점"
+            "value" : "근육"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nacisk na mięśnie"
+            "value" : "Mięśnie"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Фокус на мышцы"
+            "value" : "На мышцы"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "肌肉侧重"
+            "value" : "练肌肉"
           }
         }
       }
@@ -199892,7 +199892,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Freiland"
+            "value" : "Draußen"
           }
         },
         "en" : {
@@ -199928,7 +199928,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "항문핥기"
+            "value" : "야외"
           }
         },
         "pl" : {
@@ -200022,7 +200022,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zurücksetzen"
+            "value" : "Aufladen"
           }
         },
         "en" : {
@@ -200064,13 +200064,13 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Resetuj"
+            "value" : "Odnowa"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сброс"
+            "value" : "Разгрузка"
           }
         },
         "zh-Hans" : {
@@ -200087,7 +200087,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Optionen für reibungsarme Rückgewinnung"
+            "value" : "Leichte Erholung"
           }
         },
         "en" : {
@@ -200111,19 +200111,19 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opzioni di recupero a bassa frizione"
+            "value" : "Recupero semplice"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "低摩擦回復オプション"
+            "value" : "負担の少ない回復"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Low-friction 복구 옵션"
+            "value" : "부담 없는 회복"
           }
         },
         "pl" : {
@@ -200152,7 +200152,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quick Start Trainings"
+            "value" : "Schnell starten"
           }
         },
         "en" : {
@@ -200164,37 +200164,37 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sesiones de entrenamiento de inicio rápido"
+            "value" : "Entrenos para empezar ya"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Séances d’entraînement au démarrage rapide"
+            "value" : "À lancer tout de suite"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sessioni di allenamento di avvio rapido"
+            "value" : "Da iniziare subito"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "クイックスタートトレーニングセッション"
+            "value" : "すぐ始める"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "빠른 시작 훈련 세션"
+            "value" : "바로 시작"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Szybki start sesji treningowych"
+            "value" : "Treningi na już"
           }
         },
         "ru" : {
@@ -200217,7 +200217,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld min elapsed"
+            "value" : "seit %lld Min."
           }
         },
         "en" : {
@@ -200241,19 +200241,19 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld min elapsed"
+            "value" : "%lld min già fatte"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld min elapsed"
+            "value" : "経過 %lld 分"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld min elapsed"
+            "value" : "진행 %lld분"
           }
         },
         "pl" : {
@@ -200306,19 +200306,19 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Facile ritmo"
+            "value" : "Ritmo facile"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "簡単なペース"
+            "value" : "ゆったり"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "쉬운 속도"
+            "value" : "편한 속도"
           }
         },
         "pl" : {
@@ -200395,7 +200395,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Высокая интенсивность"
+            "value" : "На максимуме"
           }
         },
         "zh-Hans" : {
@@ -200436,13 +200436,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Moderatore"
+            "value" : "Moderato"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "モデレート"
+            "value" : "ふつう"
           }
         },
         "ko" : {
@@ -200460,7 +200460,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Умеренная"
+            "value" : "Средний темп"
           }
         },
         "zh-Hans" : {
@@ -200477,7 +200477,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Stärkefokus"
+            "value" : "Kraft"
           }
         },
         "en" : {
@@ -200489,49 +200489,49 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enfoque en fuerza"
+            "value" : "Fuerza"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Focus force"
+            "value" : "Force"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Focus sulla resistenza"
+            "value" : "Sulla forza"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "強さの焦点"
+            "value" : "筋力"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "힘 초점"
+            "value" : "근력"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nacisk na siłę"
+            "value" : "Siła"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Силовой акцент"
+            "value" : "На силу"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "力量侧重"
+            "value" : "力量"
           }
         }
       }
@@ -200672,7 +200672,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle Rückforderungen"
+            "value" : "Alles zur Erholung"
           }
         },
         "en" : {
@@ -200696,7 +200696,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tutti i Recupero"
+            "value" : "Tutto il recupero"
           }
         },
         "ja" : {
@@ -200737,7 +200737,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle Workouts"
+            "value" : "Alle Trainings"
           }
         },
         "en" : {
@@ -200802,7 +200802,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Workout oder Recovery"
+            "value" : "Training oder Erholung"
           }
         },
         "en" : {
@@ -200832,7 +200832,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ワークアウトまたは回復"
+            "value" : "トレーニングか回復"
           }
         },
         "ko" : {
@@ -200932,7 +200932,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ausbildung"
+            "value" : "Training"
           }
         },
         "en" : {
@@ -200956,7 +200956,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Formazione"
+            "value" : "Allenamento"
           }
         },
         "ja" : {
@@ -200968,7 +200968,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "교육과정"
+            "value" : "운동"
           }
         },
         "pl" : {
@@ -334367,7 +334367,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Respiro"
+            "value" : "Respirazione"
           }
         },
         "ja" : {
@@ -334408,7 +334408,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Core"
+            "value" : "Rumpf"
           }
         },
         "en" : {
@@ -334450,13 +334450,13 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Core"
+            "value" : "Brzuch"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Кор"
+            "value" : "Корпус"
           }
         },
         "zh-Hans" : {
@@ -334580,13 +334580,13 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wypij wodę"
+            "value" : "Woda"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Выпить воды"
+            "value" : "Вода"
           }
         },
         "zh-Hans" : {
@@ -334781,7 +334781,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Треккинг"
+            "value" : "Поход"
           }
         },
         "zh-Hans" : {
@@ -334798,7 +334798,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unterkörper"
+            "value" : "Beine"
           }
         },
         "en" : {
@@ -334810,7 +334810,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tren inferior"
+            "value" : "Piernas"
           }
         },
         "fr" : {
@@ -334840,19 +334840,19 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dół ciała"
+            "value" : "Nogi"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Низ тела"
+            "value" : "Ноги"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "下肢"
+            "value" : "下半身"
           }
         }
       }
@@ -334863,7 +334863,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Morgenroutine"
+            "value" : "Morgenritual"
           }
         },
         "en" : {
@@ -334875,43 +334875,43 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rutina matutina"
+            "value" : "Ritual de mañana"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Routine matinale"
+            "value" : "Rituel du matin"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Routine mattutina"
+            "value" : "Rituale del mattino"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "朝のルーティン"
+            "value" : "朝の習慣"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "아침 루틴"
+            "value" : "아침 습관"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Poranna rutyna"
+            "value" : "Poranny rytuał"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Утренняя рутина"
+            "value" : "Утренний ритуал"
           }
         },
         "zh-Hans" : {
@@ -334958,13 +334958,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "スクリーンなし"
+            "value" : "画面オフ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "스크린 없이"
+            "value" : "화면 끄기"
           }
         },
         "pl" : {
@@ -335047,7 +335047,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "板式网球"
+            "value" : "帕德尔"
           }
         }
       }
@@ -335188,7 +335188,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schlafroutine"
+            "value" : "Abendritual"
           }
         },
         "en" : {
@@ -335200,43 +335200,43 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rutina de sueño"
+            "value" : "Ritual de noche"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Routine de sommeil"
+            "value" : "Rituel du soir"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Routine del sonno"
+            "value" : "Rituale della sera"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "睡眠ルーティン"
+            "value" : "夜の習慣"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "수면 루틴"
+            "value" : "저녁 습관"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rutyna snu"
+            "value" : "Wieczorny rytuał"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вечерняя рутина"
+            "value" : "Вечерний ритуал"
           }
         },
         "zh-Hans" : {
@@ -335756,7 +335756,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Высокая интенсивность"
+            "value" : "На максимуме"
           }
         },
         "zh-Hans" : {
@@ -335773,7 +335773,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hydration"
+            "value" : "Wasser"
           }
         },
         "en" : {
@@ -335785,19 +335785,19 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hidratación"
+            "value" : "Agua"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hydratation"
+            "value" : "Eau"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Idratazione"
+            "value" : "Acqua"
           }
         },
         "ja" : {
@@ -335815,13 +335815,13 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nawodnienie"
+            "value" : "Woda"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Гидратация"
+            "value" : "Вода"
           }
         },
         "zh-Hans" : {
@@ -335903,7 +335903,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mobilität"
+            "value" : "Beweglichkeit"
           }
         },
         "en" : {
@@ -335933,7 +335933,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "モビリティ"
+            "value" : "可動性"
           }
         },
         "ko" : {
@@ -335945,19 +335945,19 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mobilność"
+            "value" : "Ruchomość"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Мобильность"
+            "value" : "Подвижность"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "灵活性"
+            "value" : "活动度"
           }
         }
       }
@@ -336211,7 +336211,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Замедление"
+            "value" : "Спокойно"
           }
         },
         "zh-Hans" : {
@@ -336400,19 +336400,19 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Góra ciała"
+            "value" : "Góra"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Верх тела"
+            "value" : "Верх"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "上肢"
+            "value" : "上半身"
           }
         }
       }
@@ -336423,7 +336423,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gehen"
+            "value" : "Spaziergang"
           }
         },
         "en" : {
@@ -377369,6 +377369,186 @@
             "value" : "如今，您可以进行常规训练负荷。"
           }
         }
+      }
+    },
+    "returnReminder.day14.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Das ist für Sie noch neu, und fürs erste Mal gibt es eine Auszeichnung." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "It's still new for you, and the first time comes with an award." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Todavía es nuevo para usted, y la primera vez trae una medalla." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "C’est encore nouveau pour vous, et la première fois vient avec une récompense." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "È ancora nuovo per te, e la prima volta arriva con un riconoscimento." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "まだ初めてのアクティビティです。最初の一回には報酬があります。" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "아직 해보지 않은 활동입니다. 처음 완료하면 보상이 있습니다." } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "To jeszcze nowość, a za pierwszy raz jest odznaka." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Это ещё новое для вас, а за первый раз есть награда." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这对你还是新的，第一次完成会有奖励。" } }
+      }
+    },
+    "returnReminder.day14.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ öffnen?" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open %@?" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Abre %@?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Ouvrir %@ ?" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Apri %@?" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "%@を開いてみますか？" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@을(를) 열어 볼까요?" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Otworzysz %@?" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Откроете %@?" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开%@吗？" } }
+      }
+    },
+    "returnReminder.day7.breathing.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Eine kurze Pause wartet schon. Einfach atmen, ganz ohne Eile." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "A short pause is already waiting. Just breathe, no rush." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Una pausa breve ya le espera. Solo respire, sin prisa." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Une courte pause vous attend déjà. Respirez, sans vous presser." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Una breve pausa ti aspetta già. Respira, senza fretta." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "短い休憩がすでに待っています。急がずに、ただ呼吸してみてください。" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "짧은 쉼이 이미 기다리고 있습니다. 서두르지 말고 숨만 골라 보세요." } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Krótka przerwa już czeka. Po prostu odetchnij, bez pośpiechu." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Короткая пауза уже ждёт вас. Можно просто подышать, без спешки." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "一次短暂的停顿已经在等你。不必着急，只是呼吸一下。" } }
+      }
+    },
+    "returnReminder.day7.breathing.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Zwei Minuten zum Atmen?" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Two minutes to breathe?" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Dos minutos para respirar?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Deux minutes pour respirer ?" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Due minuti per respirare?" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "呼吸に2分ありますか？" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "숨 고를 2분 있으세요?" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Masz dwie minuty na oddech?" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Есть две минуты на дыхание?" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "有两分钟呼吸一下吗？" } }
+      }
+    },
+    "returnReminder.day7.generic.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Eine kurze Einheit reicht. Ganz ohne Eile." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "One short session is enough. No rush at all." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Basta una sesión corta. Sin ninguna prisa." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Une courte séance suffit. Sans aucune hâte." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Basta una sessione breve. Senza alcuna fretta." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "短いセッションひとつで十分です。急がなくて大丈夫です。" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "짧은 세션 하나면 충분합니다. 전혀 서두르지 않아도 됩니다." } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Wystarczy jedna krótka sesja. Bez pośpiechu." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Можно начать с одной короткой сессии, без спешки." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "一次短练习就够了。完全不必着急。" } }
+      }
+    },
+    "returnReminder.day7.generic.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wieder zu %@?" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Come back to %@?" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Volvemos a %@?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "On revient à %@ ?" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Torniamo a %@?" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "%@に戻ってみますか？" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "%@으로 다시 와 볼까요?" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Wracamy do %@?" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Вернёмся к %@?" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "回到%@吗？" } }
+      }
+    },
+    "returnReminder.day7.meal.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Das Formular ist bereit. Ein Eintrag, und der Tag liegt wieder vor Ihnen." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The form is ready. One entry, and the day is in front of you again." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El formulario está listo. Una nota, y el día vuelve a estar delante." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le formulaire est prêt. Une note, et la journée est de nouveau devant vous." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Il modulo è pronto. Una nota, e la giornata è di nuovo davanti a te." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "入力画面の準備はできています。1件記録するだけで、一日がまた見えてきます。" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "입력 화면이 준비되어 있습니다. 한 끼만 기록하면 하루가 다시 눈에 들어옵니다." } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Formularz jest gotowy. Jeden wpis i dzień znowu jest przed Tobą." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Форма уже готова. Одна запись — и день снова перед вами." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "记录表已经准备好了。记下一餐，这一天就又在眼前了。" } }
+      }
+    },
+    "returnReminder.day7.meal.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Eine Mahlzeit eintragen?" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Log one meal?" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Anota una comida?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Noter un repas ?" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Segni un pasto?" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "食事を1回記録しますか？" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "식사 한 끼를 기록해 볼까요?" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Zapiszesz jeden posiłek?" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Запишете один приём пищи?" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "记录一餐吗？" } }
+      }
+    },
+    "returnReminder.day7.walk.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nur ein kleines Stück. Wenn Sie sich lockern möchten, beginnen Sie mit einem kurzen Spaziergang." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Just a little one. If you feel like moving, start with a short walk." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Solo un momento. Si le apetece moverse, empiece con una caminata corta." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Juste un petit moment. Si vous voulez vous dégourdir, commencez par une courte marche." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Solo un momento. Se vuoi sgranchirti, inizia con una breve passeggiata." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ほんの少しで大丈夫です。体を動かしたくなったら、短い散歩から始めてみませんか。" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "잠깐이면 충분합니다. 몸을 풀고 싶다면 짧은 산책부터 시작해 보세요." } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Tylko na chwilę. Jeśli chcesz się rozruszać, zacznij od krótkiego spaceru." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Совсем ненадолго. Если захочется размяться, начните с короткой прогулки." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "只要一小会儿。如果想活动一下，就从一次短途散步开始。" } }
+      }
+    },
+    "returnReminder.day7.walk.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ein kurzer Spaziergang?" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "A short walk?" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Un paseo cortito?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Une petite marche ?" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Una breve passeggiata?" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "少し散歩しませんか？" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "잠깐 산책하실래요?" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Krótki spacer?" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Прогуляемся немного?" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "去散一小会儿步？" } }
+      }
+    },
+    "returnReminder.day7.water.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Tragen Sie es ein, wenn es Ihnen passt. Ein kleiner Schritt, und der Tag wirkt lebendiger." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Log it whenever you like. A small step, and the day feels a little more alive." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Anótelo cuando le venga bien. Un paso pequeño, y el día se siente más vivo." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Notez-le quand vous voulez. Un petit pas, et la journée semble déjà plus vivante." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Segnalo quando vuoi. Un piccolo passo, e la giornata sembra più viva." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "準備ができたら記録してみてください。小さな一歩で、一日が少し生き生きします。" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "편할 때 기록해 보세요. 작은 한 걸음인데, 하루가 조금 더 살아납니다." } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Zapisz, kiedy będzie Ci wygodnie. Mały krok, a dzień od razu żywszy." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Запишите его, когда будет удобно. Маленький шаг, а день сразу живее." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "方便时记下一杯就好。一小步，这一天会立刻鲜活一点。" } }
+      }
+    },
+    "returnReminder.day7.water.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ein Glas Wasser?" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "A glass of water?" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Un vaso de agua?" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Un verre d’eau ?" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Un bicchiere d’acqua?" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "一杯の水はいかがですか？" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "물 한 잔 어떠세요?" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Szklanka wody?" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Стакан воды?" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "来一杯水？" } }
       }
     },
     "review.feedback.category.activity" : {
@@ -421372,7 +421552,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Гидратация"
+            "value" : "Пейте воду"
           }
         },
         "zh-Hans" : {
@@ -422412,7 +422592,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Часто используемые"
+            "value" : "Часто выбираете"
           }
         },
         "zh-Hans" : {

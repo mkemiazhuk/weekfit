@@ -22,6 +22,9 @@ enum ActivityAwardCopy {
             if unit == .kilocalories {
                 return "\(goal ?? 0) \(language == "ru" ? "ккал" : "kcal")"
             }
+            if unit == .kilometers {
+                return longestDistanceName(catalogTitle: activity, language: language)
+            }
             return unit == .milliliters ? pack(language).water : pack(language).longest
         }
     }
@@ -43,6 +46,9 @@ enum ActivityAwardCopy {
         if unit == .milliliters {
             return title
         }
+        if kind == .personalRecord, unit == .kilometers {
+            return title
+        }
         if language == "ru", unit == .kilometers, activity == "Прогулка" {
             return "\(title) пешком"
         }
@@ -51,18 +57,18 @@ enum ActivityAwardCopy {
 
     static func sessionMetric(
         _ source: ActivityAwardSource,
+        preferring unit: ActivityAwardUnit? = nil,
         language: String = WeekFitCurrentLanguageCode()
     ) -> String? {
+        if unit == .kilometers, let distance = distanceMetric(source, language) {
+            return distance
+        }
         if let kcal = source.kilocalories, kcal > 0 {
             let number = language == "ru" ? groupedThousands(kcal) : "\(kcal)"
             return "\(number) \(WeekFitLocalizedString("common.unit.kcal"))"
         }
-        if let meters = source.distanceMeters, meters >= 100 {
-            let kilometers = Double(meters) / 1000
-            let number = kilometers >= 10
-                ? "\(Int(kilometers.rounded()))"
-                : String(format: "%g", (kilometers * 10).rounded() / 10)
-            return "\(number) \(WeekFitLocalizedString("common.unit.kilometer"))"
+        if let meters = source.distanceMeters, meters >= 100, let distance = distanceMetric(source, language) {
+            return distance
         }
         if source.waterMilliliters > 0 {
             return String(format: WeekFitLocalizedString("common.unit.millilitersFormat"), source.waterMilliliters)
@@ -71,6 +77,15 @@ enum ActivityAwardCopy {
             return String(format: WeekFitLocalizedString("common.duration.minutesShortFormat"), source.durationMinutes)
         }
         return nil
+    }
+
+    private static func distanceMetric(_ source: ActivityAwardSource, _ language: String) -> String? {
+        guard let meters = source.distanceMeters, meters >= 100 else { return nil }
+        let kilometers = Double(meters) / 1000
+        let number = kilometers >= 10
+            ? "\(Int(kilometers.rounded()))"
+            : String(format: "%g", (kilometers * 10).rounded() / 10)
+        return "\(number) \(WeekFitLocalizedString("common.unit.kilometer"))"
     }
 
     static func sessionWhen(
@@ -135,6 +150,9 @@ enum ActivityAwardCopy {
                 if badge.award.unit == .kilocalories {
                     return "\(badge.award.current) \(language == "ru" ? "ккал" : "kcal")"
                 }
+                if badge.award.unit == .kilometers {
+                    return distanceText(meters: badge.award.current, language: language)
+                }
                 if badge.award.unit == .milliliters {
                     return volume(badge.award.current, language)
                 }
@@ -195,6 +213,10 @@ enum ActivityAwardCopy {
                     lead = badge.isUnlocked
                         ? fill(sentence("earnedWater", language), volume(badge.award.current, language))
                         : sentence("earnWater", language)
+                } else if badge.award.unit == .kilometers {
+                    lead = badge.isUnlocked
+                        ? fill(sentence("earnedLongest", language), named, distanceText(meters: badge.award.current, language: language))
+                        : fill(sentence("earnLongest", language), named)
                 } else {
                     lead = badge.isUnlocked
                         ? fill(sentence("earnedLongest", language), named, minutesText(badge.award.current, language))
@@ -204,6 +226,33 @@ enum ActivityAwardCopy {
         }
         guard badge.isUnlocked, let date = dateLine(badge, language: language) else { return lead }
         return lead + "\n" + fill(sentence("earnedOn", language), date)
+    }
+
+    static func longestDistanceName(catalogTitle: String, language: String = WeekFitCurrentLanguageCode()) -> String {
+        let titles: [String: [String: String]] = [
+            "walk": [
+                "en": "Longest walk", "ru": "Рекорд пешком", "de": "Längster Spaziergang",
+                "es": "Caminata más larga", "fr": "Plus longue marche", "it": "Camminata più lunga",
+                "pl": "Najdłuższy spacer", "ja": "最長の散歩", "ko": "가장 긴 걷기", "zh-Hans": "最长步行"
+            ],
+            "running": [
+                "en": "Longest run", "ru": "Рекорд бега", "de": "Längster Lauf",
+                "es": "Carrera más larga", "fr": "Plus longue course", "it": "Corsa più lunga",
+                "pl": "Najdłuższy bieg", "ja": "最長のラン", "ko": "가장 긴 달리기", "zh-Hans": "最长跑步"
+            ],
+            "cycling": [
+                "en": "Longest cycling", "ru": "Рекорд вело", "de": "Längste Radtour",
+                "es": "Ruta en bici más larga", "fr": "Plus longue sortie vélo", "it": "Uscita in bici più lunga",
+                "pl": "Najdłuższa jazda", "ja": "最長のライド", "ko": "가장 긴 라이딩", "zh-Hans": "最长骑行"
+            ]
+        ]
+        let key = ActivityBadgeCatalog.normalize(catalogTitle)
+        let pack = titles[key] ?? titles["walk"]
+        return pack?[language] ?? pack?["en"] ?? "Longest walk"
+    }
+
+    static func earnedOnLine(_ date: String, language: String = WeekFitCurrentLanguageCode()) -> String {
+        fill(sentence("earnedOn", language), date)
     }
 
     private static func fill(_ template: String, _ values: String...) -> String {
@@ -459,6 +508,15 @@ enum ActivityAwardCopy {
         return "\(value) \(unit)"
     }
 
+    private static func distanceText(meters: Int, language: String) -> String {
+        let kilometers = Double(meters) / 1000
+        let number = kilometers >= 10
+            ? "\(Int(kilometers.rounded()))"
+            : String(format: "%g", (kilometers * 10).rounded() / 10)
+        let unit = language == "ru" ? "км" : "km"
+        return "\(number) \(unit)"
+    }
+
     private static func times(_ count: Int, _ language: String) -> String {
         let text = pack(language)
         if language == "ru" || language == "pl" {
@@ -545,7 +603,7 @@ enum ActivityAwardCopy {
                 countCondition: "Выполнить «%@» %@", waterDays: "Закрыть цель по воде %@",
                 streakCondition: "«%@» несколько дней подряд",
                 longestCondition: "Самая длинная «%@» с измеренной длительностью",
-                waterCondition: "Закрой дневную цель по воде",
+                waterCondition: "Закройте дневную цель по воде",
                 currentStreak: "Сейчас: %@", minute: "мин", milliliter: "мл", liter: "л",
                 timeOne: "раз", timeFew: "раза", timeMany: "раз",
                 dayOne: "день", dayFew: "дня", dayMany: "дней"

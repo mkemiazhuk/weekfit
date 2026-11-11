@@ -136,8 +136,21 @@ struct NotificationSettingsView: View {
         .onChange(of: activitySuggestionsEnabled) { _, enabled in
             if enabled {
                 ActivitySuggestionNotificationService.shared.noteOpenedAndReschedule()
+                ReturnReminderNotificationService.shared.schedule(
+                    activities: plannedActivities.map {
+                        ($0.title, $0.isCompleted, $0.isSkipped, $0.date)
+                    },
+                    unlocks: ActivityBadgeStore.shared.ledger.unlocks,
+                    goal: ReturnReminderGoal(nutritionGoal: ProfileService().loadManualNutritionGoal()),
+                    foodLogAvailable: ReturnReminderFoodLog.canOpenDirectly(
+                        onboardingComplete: OnboardingStore.hasCompletedOnboarding,
+                        blockingCoverVisible: ReturnReminderFoodLog.rootCoverVisible
+                    ),
+                    enabled: true
+                )
             } else {
                 ActivitySuggestionNotificationService.shared.cancel()
+                ReturnReminderNotificationService.shared.cancelPending()
             }
         }
         .onAppear {

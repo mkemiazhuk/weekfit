@@ -123,7 +123,8 @@ enum QuickLogActivitySync {
             ReviewEngagement.record(.drinkLogged)
             ProductAnalytics.hydrationLoggingCompleted(
                 method: method == .quickLog ? .quickLog : .other,
-                source: source
+                source: source,
+                actionID: ReturnReminderPlanner.waterID
             )
         case .meal, .snack:
             ReviewEngagement.record(.foodLogged)

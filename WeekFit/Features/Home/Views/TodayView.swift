@@ -40,7 +40,16 @@ struct TodayView: View {
     
     @State private var showProfile = false
     @ObservedObject private var activityBadges = ActivityBadgeStore.shared
+    @ObservedObject private var returnReminder = PendingReturnReminderOpen.shared
+    @State private var returnFocusActionID: String?
+    @State private var returnFocusShowsAward = false
     @State private var plannerVoiceEnabled = false
+    /// Today stays off-screen until the first layout-determining pass finishes.
+    @State private var healthFirstPassDone = false
+    @State private var mayaAccessResolved = false
+    @State private var proposalDebounceSettled = false
+    @State private var layoutGateTimedOut = false
+    @State private var revealTodaySections = false
     @State private var showPlannerVoice = false
     @State private var showAIUsage = false
     @State private var aiTopUpPack: WeekFitAIBalancePack?
@@ -400,6 +409,25 @@ struct TodayView: View {
         refreshMealPartitions(meals: quickLogMeals, usage: nextUsage)
     }
 
+    private var todayFirstPaintBypass: Bool {
+        #if DEBUG
+        if WeekFitUITestSupport.isActive { return true }
+        if MorningProposalScreenshotFixtures.shouldSeed { return true }
+        if TodayHierarchyScreenshotFixtures.shouldSeedAny { return true }
+        #endif
+        return false
+    }
+
+    private var todaySectionsReady: Bool {
+        TodayFirstPaintGate(
+            healthFirstPassDone: healthFirstPassDone,
+            mayaAccessResolved: mayaAccessResolved,
+            proposalDebounceSettled: proposalDebounceSettled,
+            timedOut: layoutGateTimedOut,
+            bypass: todayFirstPaintBypass
+        ).shouldReveal
+    }
+
     @ViewBuilder
     private var todayActiveBody: some View {
         let _ = TodayStartupDiagnostics.child("todayActiveBody begin")
@@ -408,9 +436,35 @@ struct TodayView: View {
         // Match Coach / Meals / Plan: header chrome stays in safe area; root paints
         // the shared canvas. Atmosphere is a background, not a layout sibling.
         ZStack(alignment: .top) {
-            todayScreen
-                .background { todayBackground }
-                .onAppear {
+            if revealTodaySections || todayFirstPaintBypass {
+                todayScreen
+                    .background { todayBackground }
+                    .transition(.identity)
+            }
+        }
+        .onChange(of: todaySectionsReady) { _, ready in
+            guard ready, !revealTodaySections else { return }
+            var transaction = Transaction(animation: nil)
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                revealTodaySections = true
+            }
+        }
+        .task(id: healthFirstPassDone) {
+            guard healthFirstPassDone, !todayFirstPaintBypass, !proposalDebounceSettled else { return }
+            // Morning proposal refreshes again 350ms after metrics settle.
+            // Let that pass finish while the screen is still hidden.
+            try? await Task.sleep(nanoseconds: 450_000_000)
+            guard !Task.isCancelled else { return }
+            proposalDebounceSettled = true
+        }
+        .task {
+            guard !todayFirstPaintBypass, !revealTodaySections else { return }
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard !Task.isCancelled, !revealTodaySections else { return }
+            layoutGateTimedOut = true
+        }
+        .onAppear {
                    TodayStartupDiagnostics.step(
                        8,
                        "onAppear",
@@ -418,6 +472,13 @@ struct TodayView: View {
                    )
                    todayViewModel.now = Date()
                    reconcileTodayDayBoundary()
+                   if !healthFirstPassDone,
+                      !healthManager.isLoadingDisplayDayMetrics,
+                      healthManager.hasCompletedHealthAccessCheck,
+                      !healthManager.isHealthAccessGranted
+                        || healthManager.hasSettledMetrics(for: selectedDate) {
+                       healthFirstPassDone = true
+                   }
                    #if DEBUG
                    TodayHierarchyScreenshotFixtures.prepareIfNeeded(modelContext: modelContext)
                    #endif
@@ -448,7 +509,6 @@ struct TodayView: View {
                    StartupDiagnostics.markFirstScreenStableIfNeeded(
                        detail: "TodayView.onAppear before health task"
                    )
-                }
         }
     }
 
@@ -602,6 +662,15 @@ struct TodayView: View {
                 recoveryBreakdown: healthManager.recoveryBreakdown
             )
         }
+        .onChange(of: showActivityIntelligence) { _, isPresented in
+            registerTodayAfterDetailDismiss(isPresented)
+        }
+        .onChange(of: showNutritionDetails) { _, isPresented in
+            registerTodayAfterDetailDismiss(isPresented)
+        }
+        .onChange(of: showRecoveryDetails) { _, isPresented in
+            registerTodayAfterDetailDismiss(isPresented)
+        }
         let healthObserved = AnyView(presented)
         .task(id: todayViewModel.healthRefreshID) {
             guard tabIsActive else { return }
@@ -616,6 +685,9 @@ struct TodayView: View {
                 detail: "refreshID=\(todayViewModel.healthRefreshID) requested=\(healthManager.isHealthAccessRequested)"
             )
             await refreshHealthAndNutritionAsync()
+            if !Task.isCancelled {
+                healthFirstPassDone = true
+            }
             if Task.isCancelled {
                 TodayStartupDiagnostics.taskCancelled(taskName)
                 StartupDiagnostics.taskCancelled(taskName)
@@ -814,6 +886,14 @@ struct TodayView: View {
         .weekFitSettingsSheet(isPresented: $showProfile)
         .onAppear {
             ActivityBadgeCenter.refresh(activities: plannedActivities, waterGoalLiters: waterGoal)
+            presentReturnReminderIfNeeded()
+        }
+        .onChange(of: returnReminder.route) { _, _ in
+            presentReturnReminderIfNeeded()
+        }
+        .onChange(of: tabIsActive) { _, isActive in
+            guard isActive else { return }
+            presentReturnReminderIfNeeded()
         }
         .onChange(of: plannedActivities.filter(\.isCompleted).count) { _, _ in
             ActivityBadgeCenter.refresh(activities: plannedActivities, waterGoalLiters: waterGoal)
@@ -826,6 +906,8 @@ struct TodayView: View {
         .fullScreenCover(
             isPresented: $showDirectWorkoutLogSheet,
             onDismiss: {
+                returnFocusActionID = nil
+                returnFocusShowsAward = false
                 refreshTodayLiveState(refreshHealth: true)
             }
         ) {
@@ -834,7 +916,9 @@ struct TodayView: View {
                 cardBackground: WeekFitTheme.cardBackground,
                 textSecondary: WeekFitTheme.secondaryText,
                 isPresented: $showDirectWorkoutLogSheet,
-                refreshID: healthRefreshBinding
+                refreshID: healthRefreshBinding,
+                focusActionID: returnFocusActionID,
+                showsAward: returnFocusShowsAward
             )
             .environmentObject(appSession)
             .environmentObject(coachCoordinator)
@@ -965,6 +1049,54 @@ struct TodayView: View {
         }
     }
     
+    /// Detail covers replace the active screen. Closing one returns here.
+    /// `ProductScreenTracker` drops the event when Today is already current.
+    private func registerTodayAfterDetailDismiss(_ isPresented: Bool) {
+        guard !isPresented, tabIsActive else { return }
+        ProductAnalytics.trackScreen(.today)
+    }
+
+    private func presentReturnReminderIfNeeded() {
+        guard tabIsActive, PendingReturnReminderOpen.shared.route != nil else { return }
+        guard let route = ReturnReminderNotificationService.shared.consumeRoute() else { return }
+        if route.actionID == ReturnReminderPlanner.waterID {
+            showDirectDrinkLogSheet = true
+            return
+        }
+        if route.actionID == ReturnReminderPlanner.mealID {
+            presentReturnMealLog(route)
+            return
+        }
+        returnFocusActionID = route.actionID
+        returnFocusShowsAward = route.showsAward
+        showDirectWorkoutLogSheet = true
+    }
+
+    private func presentReturnMealLog(_ route: ReturnReminderRoute) {
+        let available = ReturnReminderFoodLog.canOpenDirectly(
+            onboardingComplete: OnboardingStore.hasCompletedOnboarding,
+            blockingCoverVisible: appSession.isPresentingOnboarding
+                || appSession.isPresentingHealthAccess
+                || ReturnReminderFoodLog.rootCoverVisible
+        )
+        guard available else {
+            ProductAnalytics.notificationNavigationFailed(
+                category: .meal,
+                horizon: route.horizon.rawValue,
+                offer: route.offerKind.rawValue,
+                actionID: route.actionID,
+                reason: "form_unavailable"
+            )
+            return
+        }
+        selectedLogTab = .meals
+        preloadQuickFoodLogDataIfNeeded()
+        presentExclusiveTodayActionSheet {
+            ProductAnalytics.foodLoggingStarted(method: .quickLog, source: .today, operation: .diary)
+            showDirectMealLogSheet = true
+        }
+    }
+
     private func openActivityIntelligence() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         ProductAnalytics.todaySectionOpened(.activity)
@@ -2505,30 +2637,46 @@ struct TodayView: View {
             }
 
             VStack(spacing: 3) {
-                Text(title)
-                    .font(TodayCardTypography.ringCategory)
-                    .foregroundStyle(textSecondary)
-                    .lineLimit(ringCaptionLineLimit)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Text(valueText)
-                    .font(TodayCardTypography.ringPrimaryValue)
-                    .foregroundStyle(captionColor)
-                    .lineLimit(ringCaptionLineLimit)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if !infoText.isEmpty {
-                    Text(infoText)
-                        .font(TodayCardTypography.ringMeta)
-                        .foregroundStyle(todayMetaReadable)
-                        .lineLimit(ringCaptionLineLimit)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                ringCaptionLine(
+                    title,
+                    font: TodayCardTypography.ringCategory,
+                    color: textSecondary
+                )
+                ringCaptionLine(
+                    valueText,
+                    font: TodayCardTypography.ringPrimaryValue,
+                    color: captionColor
+                )
+                ringCaptionLine(
+                    infoText.isEmpty ? " " : infoText,
+                    font: TodayCardTypography.ringMeta,
+                    color: todayMetaReadable
+                )
+                .opacity(infoText.isEmpty ? 0 : 1)
             }
             .frame(maxWidth: .infinity, alignment: .top)
-            .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, alignment: .top)
+    }
+
+    /// One line per caption, and the sleep row stays reserved when empty.
+    /// Wrapping used to grow this card on the layout pass after it appeared.
+    private func ringCaptionLine(_ text: String, font: Font, color: Color) -> some View {
+        Text(text)
+            .font(font)
+            .foregroundStyle(color)
+            .lineLimit(shouldStackRings ? ringCaptionLineLimit : 1)
+            .minimumScaleFactor(shouldStackRings ? 1 : 0.72)
+            .multilineTextAlignment(.center)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: shouldStackRings ? 0 : ringCaptionLineHeight,
+                alignment: .center
+            )
+    }
+
+    private var ringCaptionLineHeight: CGFloat {
+        UIFont.preferredFont(forTextStyle: .caption1).lineHeight
     }
 
     // MARK: - Session / plan cards
@@ -2872,6 +3020,7 @@ struct TodayView: View {
     }
 
     private func refreshMayaAccess() async {
+        defer { mayaAccessResolved = true }
         #if DEBUG
         if WeekFitUITestSupport.isActive,
            ProcessInfo.processInfo.arguments.contains("-weekfit-show-maya-card")
@@ -2964,7 +3113,11 @@ struct TodayView: View {
         )
 
         ReviewEngagement.record(.activityLoggedOrCompleted)
-        ProductAnalytics.activityCompleted(source: .today)
+        ProductAnalytics.activityCompleted(
+            source: .today,
+            itemType: PlanItemAnalyticsType(plannedActivityType: activity.type),
+            actionID: ActivityBadgeCatalog.actionID(forTitle: activity.title)
+        )
         ActivityBadgeCenter.refresh(activities: plannedActivities, waterGoalLiters: waterGoal)
 
         CoachSnapshotInvalidator.invalidate(

@@ -45,6 +45,7 @@ enum QuickActivityFrequentComposer {
         recoveryBand: CoachRecoveryBand? = nil,
         now: Date = Date(),
         calendar: Calendar = .current,
+        allowsCycling: Bool = true,
         limit: Int = 2
     ) -> [Pick] {
         guard !options.isEmpty else { return [] }
@@ -52,6 +53,7 @@ enum QuickActivityFrequentComposer {
         var picks: [Pick] = []
         var used = Set<String>()
 
+        let hour = calendar.component(.hour, from: now)
         let ranked = usage
             .filter { $0.value.count >= 1 && byImage[$0.key] != nil }
             .sorted { lhs, rhs in
@@ -61,18 +63,20 @@ enum QuickActivityFrequentComposer {
                 return lhs.value.count > rhs.value.count
             }
 
-        if let most = ranked.first, let option = byImage[most.key] {
+        if let most = ranked.first(where: {
+            fits($0.key, hour: hour) && (allowsCycling || $0.key != "workout-cycling")
+        }), let option = byImage[most.key] {
             picks.append(Pick(option: option, badge: .mostUsed))
             used.insert(option.imageName)
         }
 
-        let hour = calendar.component(.hour, from: now)
         let isRecoveryCatalog = options.contains { $0.imageName.hasPrefix("recovery-") }
         let preferred = preferredKeys(
             hour: hour,
             weatherRisk: weatherRisk,
             recoveryBand: recoveryBand,
-            isRecoveryCatalog: isRecoveryCatalog
+            isRecoveryCatalog: isRecoveryCatalog,
+            allowsCycling: allowsCycling
         )
 
         if let key = preferred.first(where: { !used.contains($0) && byImage[$0] != nil }),
@@ -90,7 +94,9 @@ enum QuickActivityFrequentComposer {
                 )
             )
             used.insert(option.imageName)
-        } else if let fallback = options.first(where: { !used.contains($0.imageName) }) {
+        } else if let fallback = options.first(where: {
+            !used.contains($0.imageName) && fits($0.imageName, hour: hour)
+        }) {
             picks.append(
                 Pick(
                     option: fallback,
@@ -113,7 +119,9 @@ enum QuickActivityFrequentComposer {
         }
 
         while picks.count < min(limit, options.count),
-              let next = options.first(where: { !used.contains($0.imageName) }) {
+              let next = options.first(where: {
+                  !used.contains($0.imageName) && fits($0.imageName, hour: hour)
+              }) {
             picks.append(Pick(option: next, badge: .forNow))
             used.insert(next.imageName)
         }
@@ -150,44 +158,54 @@ enum QuickActivityFrequentComposer {
         hour: Int,
         weatherRisk: ProposalWeatherRiskToken,
         recoveryBand: CoachRecoveryBand?,
-        isRecoveryCatalog: Bool
+        isRecoveryCatalog: Bool,
+        allowsCycling: Bool
     ) -> [String] {
+        let keys: [String]
         if isRecoveryCatalog {
-            if recoveryBand == .low || hour >= 18 {
-                return ["recovery-walk", "recovery-stretch", "recovery-yoga", "recovery-breathing", "recovery-sauna"]
+            if recoveryBand == .low || hour >= 21 {
+                keys = ["recovery-breathing", "recovery-stretch", "recovery-yoga", "recovery-sauna", "recovery-walk"]
+            } else if hour >= 18 {
+                keys = ["recovery-walk", "recovery-stretch", "recovery-yoga", "recovery-sauna", "recovery-breathing"]
+            } else if weatherRisk == .heat {
+                keys = ["recovery-stretch", "recovery-yoga", "recovery-walk", "recovery-breathing"]
+            } else if hour < 10 {
+                keys = ["recovery-walk", "recovery-yoga", "recovery-stretch", "recovery-breathing"]
+            } else {
+                keys = ["recovery-walk", "recovery-yoga", "recovery-stretch", "recovery-sauna", "recovery-breathing"]
             }
-            if weatherRisk == .heat {
-                return ["recovery-stretch", "recovery-yoga", "recovery-walk", "recovery-breathing"]
+        } else if recoveryBand == .low {
+            keys = ["workout-swimming", "workout-strength", "workout-fullbody", "workout-cycling", "workout-hiking"]
+        } else {
+            switch weatherRisk {
+            case .heat:
+                keys = ["workout-swimming", "workout-strength", "workout-fullbody", "workout-core", "workout-squash"]
+            case .precip, .storm, .cold, .wind:
+                keys = ["workout-strength", "workout-fullbody", "workout-core", "workout-swimming", "workout-lowerbody"]
+            case .calm, .unavailable:
+                switch hour {
+                case 6..<10:
+                    keys = ["workout-running", "workout-cycling", "workout-swimming", "workout-strength", "workout-fullbody"]
+                case 10..<14:
+                    keys = ["workout-strength", "workout-swimming", "workout-running", "workout-fullbody", "workout-hiking", "workout-cycling"]
+                case 14..<18:
+                    keys = ["workout-strength", "workout-swimming", "workout-hiit", "workout-squash", "workout-tennis", "workout-running", "workout-cycling"]
+                case 18..<21:
+                    keys = ["workout-swimming", "workout-fullbody", "workout-strength", "workout-core", "workout-lowerbody", "workout-squash", "workout-padel"]
+                case 21..<22:
+                    keys = ["workout-swimming"]
+                default:
+                    keys = []
+                }
             }
-            return ["recovery-walk", "recovery-yoga", "recovery-stretch", "recovery-sauna", "recovery-breathing"]
         }
+        let timed = keys.filter { fits($0, hour: hour) }
+        guard allowsCycling else { return timed.filter { $0 != "workout-cycling" } }
+        return timed
+    }
 
-        if recoveryBand == .low {
-            return ["workout-swimming", "workout-cycling", "workout-hiking", "workout-running", "workout-strength"]
-        }
-
-        switch weatherRisk {
-        case .heat:
-            return ["workout-swimming", "workout-strength", "workout-hiit", "workout-fullbody", "workout-cycling"]
-        case .precip, .storm, .cold, .wind:
-            return ["workout-strength", "workout-fullbody", "workout-hiit", "workout-core", "workout-swimming"]
-        case .calm, .unavailable:
-            break
-        }
-
-        switch hour {
-        case 5..<10:
-            return ["workout-running", "workout-cycling", "workout-strength", "workout-swimming", "workout-hiit"]
-        case 10..<14:
-            return ["workout-strength", "workout-running", "workout-cycling", "workout-hiit", "workout-fullbody"]
-        case 14..<18:
-            return ["workout-hiit", "workout-fullbody", "workout-tennis", "workout-running", "workout-cycling"]
-        case 18..<22:
-            // Evening: prefer lighter sessions — Core/strength are not “wind down”.
-            return ["workout-swimming", "workout-hiking", "workout-cycling", "workout-running"]
-        default:
-            return ["workout-swimming", "workout-hiking", "workout-cycling", "workout-running"]
-        }
+    private static func fits(_ imageName: String, hour: Int) -> Bool {
+        ActivityInviteTime.allows(imageName: imageName, hour: hour)
     }
 }
 

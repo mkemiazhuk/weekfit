@@ -29,6 +29,27 @@ struct ActivityAwardDetailScreen: View {
         }
     }
 
+    private var awardExplanation: some View {
+        VStack(spacing: 8) {
+            if badge.award.kind == .personalRecord, badge.award.unit == .kilometers, badge.isUnlocked {
+                Text(ActivityAwardCopy.result(badge))
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(palette.textPrimary)
+                if let date = ActivityAwardCopy.dateLine(badge) {
+                    Text(ActivityAwardCopy.earnedOnLine(date))
+                        .font(.body)
+                        .foregroundStyle(palette.textSecondary)
+                }
+            } else {
+                Text(ActivityAwardCopy.story(badge))
+                    .font(.body)
+                    .foregroundStyle(palette.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .multilineTextAlignment(.center)
+    }
+
     private func openActivity(_ source: ActivityAwardSource) {
         guard let healthManager,
               let activity = plannedActivities.first(where: { $0.id == source.recordID }) else { return }
@@ -59,11 +80,7 @@ struct ActivityAwardDetailScreen: View {
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
                 .minimumScaleFactor(0.7)
-            Text(ActivityAwardCopy.story(badge))
-                .font(.body)
-                .foregroundStyle(palette.textSecondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
+            awardExplanation
                 .padding(.top, 12)
                 .padding(.horizontal, 8)
             if !badge.isUnlocked, badge.canStart {
@@ -82,6 +99,7 @@ struct ActivityAwardDetailScreen: View {
             if badge.isUnlocked, let source = badge.source {
                 ActivityAwardSessionCard(
                     source: source,
+                    emphasis: badge.award.unit == .kilometers ? .kilometers : nil,
                     onOpen: healthManager == nil ? nil : { openActivity(source) }
                 )
             }
@@ -95,6 +113,7 @@ struct ActivityAwardDetailScreen: View {
 
 struct ActivityAwardSessionCard: View {
     let source: ActivityAwardSource
+    var emphasis: ActivityAwardUnit? = nil
     var onOpen: (() -> Void)? = nil
 
     @Environment(\.weekFitPalette) private var palette
@@ -120,7 +139,7 @@ struct ActivityAwardSessionCard: View {
                             .foregroundStyle(palette.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
-                        if let metric = ActivityAwardCopy.sessionMetric(source) {
+                        if let metric = ActivityAwardCopy.sessionMetric(source, preferring: emphasis) {
                             Text(metric)
                                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                                 .foregroundStyle(ActivityBadgePalette.leaf)

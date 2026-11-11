@@ -165,20 +165,36 @@ final class AnalyticsPrivacyHardeningTests: XCTestCase {
 
     func testActivityEventsOmitWorkoutCategory() {
         ProductAnalytics.activityStarted(source: .today)
-        ProductAnalytics.activityCompleted(source: .today)
+        ProductAnalytics.activityCompleted(source: .today, itemType: .activity)
+        ProductAnalytics.activityCompleted(source: .today, itemType: .recovery)
         for name in [AnalyticsEvent.activityStarted, .activityCompleted] {
             let event = try! XCTUnwrap(recording.events(named: name).last)
             assertNoSensitiveTelemetry(event.parameters)
             XCTAssertNil(event.parameters[AnalyticsParameterKey.category])
             XCTAssertEqual(event.parameters[AnalyticsParameterKey.source], "today")
         }
+        XCTAssertEqual(
+            recording.events(named: .activityCompleted).last?.parameters[AnalyticsParameterKey.itemType],
+            PlanItemAnalyticsType.recovery.rawValue
+        )
     }
 
     func testFoodLoggingOmitsNutritionValues() {
         ProductAnalytics.foodLoggingCompleted(method: .manual, source: .today, operation: .diary)
         let event = try! XCTUnwrap(recording.events(named: .foodLoggingCompleted).first)
         assertNoSensitiveTelemetry(event.parameters)
-        XCTAssertEqual(Set(event.parameters.keys), Set(["method", "source"]))
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.source], "today")
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.actionID], ReturnReminderPlanner.mealID)
+        XCTAssertEqual(
+            Set(event.parameters.keys),
+            Set(["method", "source", "operation", "action_id"])
+        )
+
+        ProductAnalytics.foodLoggingCompleted(method: .manual, source: .meals, operation: .library)
+        let library = try! XCTUnwrap(recording.events(named: .foodLoggingCompleted).last)
+        XCTAssertEqual(library.parameters[AnalyticsParameterKey.source], "meals")
+        XCTAssertEqual(library.parameters[AnalyticsParameterKey.operation], "library")
+        XCTAssertNil(library.parameters[AnalyticsParameterKey.actionID])
     }
 
     // MARK: - Contract sanitizer

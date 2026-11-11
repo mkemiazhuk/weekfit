@@ -27,7 +27,7 @@ struct TodayMiddleCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(header)
                     .font(.system(size: headerSize, weight: .medium))
-                    .foregroundStyle(accent)
+                    .foregroundStyle(headerColor)
                     .fixedSize(horizontal: false, vertical: true)
                     .multilineTextAlignment(.leading)
                 Text(title)
@@ -57,7 +57,7 @@ struct TodayMiddleCard: View {
                     if showsChevron {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(accent.opacity(0.85))
+                            .foregroundStyle(headerColor)
                     }
                 }
                 .accessibilityHidden(true)
@@ -80,13 +80,22 @@ struct TodayMiddleCard: View {
         .accessibilityHidden(true)
     }
 
-    /// Focus gets a whisper of lavender. Up next stays clear porcelain in Light.
+    /// Same plate as Your day, Maya, and Quick actions. Color stays on the icon.
     private var glassTint: Color? {
         switch tone {
         case .lavender:
             return WeekFitSemanticMetricTokens.recovery
         case .sage:
-            return palette.isLight ? nil : WeekFitSemanticMetricTokens.activity
+            return nil
+        }
+    }
+
+    private var headerColor: Color {
+        switch tone {
+        case .sage:
+            return messageColor
+        case .lavender:
+            return accent
         }
     }
 

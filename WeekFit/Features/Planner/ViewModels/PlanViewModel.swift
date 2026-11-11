@@ -850,7 +850,8 @@ final class PlanViewModel: ObservableObject {
             profile: profile,
             selection: selection,
             plannedActivities: [],
-            modelContext: modelContext
+            modelContext: modelContext,
+            analyticsSource: .plan
         ) else {
             throw VoiceSaveError.persistence
         }

@@ -10,6 +10,8 @@ struct PremiumActivityStartSheet: View {
 
     @Binding var isPresented: Bool
     @Binding var refreshID: UUID
+    var focusActionID: String? = nil
+    var showsAward: Bool = false
 
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var languageManager: AppLanguageManager
@@ -25,6 +27,11 @@ struct PremiumActivityStartSheet: View {
     @State private var currentSubTab: String = "Workout"
     @State private var usageEntries: [String: QuickActivityUsageStore.Entry] = QuickActivityUsageStore.load()
     @State private var weatherRisk: ProposalWeatherRiskToken = .unavailable
+    @State private var allowsCyclingInvite = CyclingInvitePolicy.allows(
+        now: Date(),
+        temperatureCelsius: nil,
+        feelsLikeCelsius: nil
+    )
     @State private var sortAscending = true
     @State private var revealContent = false
     @Environment(\.weekFitPalette) private var palette
@@ -115,6 +122,10 @@ struct PremiumActivityStartSheet: View {
         .accessibilityIdentifier("sheet.activityStart")
         .onAppear {
             usageEntries = QuickActivityUsageStore.load()
+            if let focusActionID,
+               let definition = ActivityBadgeCatalog.definition(id: focusActionID) {
+                currentSubTab = definition.category == .activity ? "Workout" : "Recovery"
+            }
             revealContent = false
             withAnimation(.spring(response: 0.42, dampingFraction: 0.86).delay(0.04)) {
                 revealContent = true
@@ -122,6 +133,12 @@ struct PremiumActivityStartSheet: View {
             Task {
                 let (summary, _) = await WeekFitWeatherProvider.shared.cachedSummaryAndFreshness()
                 weatherRisk = ProposalWeatherRisk.resolve(from: summary)
+                allowsCyclingInvite = CyclingInvitePolicy.allows(
+                    now: Date(),
+                    temperatureCelsius: summary?.temperature.value,
+                    feelsLikeCelsius: summary?.feelsLike.value,
+                    isStorm: summary?.condition == .storm || (summary?.precipitationChance ?? 0) >= 70
+                )
                 if summary != nil {
                     WeekFitWeatherAttributionStore.shared.ensureLoaded()
                 }
@@ -141,15 +158,21 @@ struct PremiumActivityStartSheet: View {
             options: options,
             usage: usageEntries,
             weatherRisk: weatherRisk,
-            recoveryBand: recoveryBand
+            recoveryBand: recoveryBand,
+            allowsCycling: allowsCyclingInvite
         )
         let frequentKeys = Set(frequent.map(\.option.imageName))
+            .union(focusedOption.map { [$0.imageName] } ?? [])
         // Keep Frequent cards unique — don't list the same option again under All.
         let sorted = sortedOptions(options).filter { !frequentKeys.contains($0.imageName) }
         let isBlocked = liveActivity != nil
 
         return ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 18) {
+                if let focus = focusedOption {
+                    focusedActionCard(option: focus, isBlocked: isBlocked)
+                }
+
                 if !frequent.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
                         sectionHeader(WeekFitLocalizedString("today.quickLog.section.frequentlyUsed"))
@@ -216,6 +239,61 @@ struct PremiumActivityStartSheet: View {
         }
     }
 
+    private var focusedOption: PlannerOption? {
+        guard let focusActionID,
+              let definition = ActivityBadgeCatalog.definition(id: focusActionID) else { return nil }
+        let matchesTab = (definition.category == .activity && selectedPlannerType == .workout)
+            || (definition.category == .recovery && selectedPlannerType == .recovery)
+        guard matchesTab else { return nil }
+        return selectedPlannerType.options.first { $0.title == definition.catalogTitle }
+    }
+
+    private func focusedActionCard(option: PlannerOption, isBlocked: Bool) -> some View {
+        let duration = defaultDuration(for: option, type: selectedPlannerType)
+        return VStack(alignment: .leading, spacing: 12) {
+            if showsAward, let focusActionID,
+               let definition = ActivityBadgeCatalog.definition(id: focusActionID) {
+                HStack(spacing: 12) {
+                    ActivityBadgeRibbon(
+                        symbol: definition.symbol,
+                        category: definition.category,
+                        artworkID: focusActionID,
+                        locked: false,
+                        size: 72
+                    )
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(ActivityBadgeCopy.badgeName(id: focusActionID, ledger: ActivityBadgeStore.shared.ledger))
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundStyle(WeekFitTheme.primaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(WeekFitLocalizedString("returnReminder.day14.body"))
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundStyle(WeekFitTheme.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            PremiumActivityStartCard(
+                title: localizedOptionTitle(option.title),
+                category: ActivityOptionPresentation.category(for: option),
+                categoryLabel: WeekFitLocalizedString(
+                    ActivityOptionPresentation.category(for: option).localizationKey
+                ),
+                detailLine: formattedDurationLabel(duration),
+                chip: ActivityOptionPresentation.detailChip(for: option),
+                chipLabel: WeekFitLocalizedString(
+                    ActivityOptionPresentation.detailChip(for: option).localizationKey
+                ),
+                imageName: option.imageName,
+                systemIcon: selectedPlannerType.icon,
+                accentColor: activityAccent,
+                hasConflict: isBlocked
+            ) {
+                start(option: option, duration: duration)
+            }
+        }
+    }
+
     private func sortedOptions(_ options: [PlannerOption]) -> [PlannerOption] {
         options.sorted {
             let left = localizedOptionTitle($0.title)
@@ -272,7 +350,7 @@ struct PremiumActivityStartSheet: View {
         let intensityKey = ActivityOptionPresentation.intensityLabelKey(for: option)
         let cardWidth = QuickActionSheetDesign.RecommendedCard.width
         let cardRadius = QuickActionSheetDesign.RecommendedCard.cornerRadius
-        let mediaSize = QuickActionSheetDesign.RecommendedCard.mediaHeight
+        let mediaSize = activityFrequentPhotoSize
         let sectionAccent = activityAccent
         let wash = QuickActivityAccent.frequentWash(
             for: option.imageName,
@@ -299,7 +377,7 @@ struct PremiumActivityStartSheet: View {
 
                 activityThumb(option.imageName, size: mediaSize, cornerRadius: 18, wash: wash)
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .frame(height: QuickActionSheetDesign.RecommendedCard.mediaHeight)
+                    .frame(height: mediaSize)
                     .padding(.top, QuickActionSheetDesign.RecommendedCard.badgeToMedia)
 
                 Text(localizedOptionTitle(option.title))
@@ -342,7 +420,7 @@ struct PremiumActivityStartSheet: View {
             .padding(QuickActionSheetDesign.RecommendedCard.padding)
             .frame(
                 width: cardWidth,
-                height: QuickActionSheetDesign.RecommendedCard.minHeight,
+                height: activityFrequentCardHeight,
                 alignment: .topLeading
             )
             .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
@@ -358,6 +436,14 @@ struct PremiumActivityStartSheet: View {
         .buttonStyle(.plain)
         .disabled(isBlocked)
         .accessibilityLabel(localizedOptionTitle(option.title))
+    }
+
+    /// Larger than the shared food tiles. Workout and Recovery use the same cards.
+    private var activityFrequentPhotoSize: CGFloat { 132 }
+
+    private var activityFrequentCardHeight: CGFloat {
+        QuickActionSheetDesign.RecommendedCard.minHeight
+            + (activityFrequentPhotoSize - QuickActionSheetDesign.RecommendedCard.mediaHeight)
     }
 
     @ViewBuilder
@@ -601,16 +687,27 @@ struct PremiumActivityStartSheet: View {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
         let passedMinutes = max(1, Int(Date().timeIntervalSince(activity.date) / 60))
+        let previousDuration = activity.actualDurationMinutes
+        let wasCompleted = activity.isCompleted
+
+        activity.actualDurationMinutes = passedMinutes
+        activity.isCompleted = true
+        do {
+            try modelContext.save()
+        } catch {
+            activity.actualDurationMinutes = previousDuration
+            activity.isCompleted = wasCompleted
+            return
+        }
+
+        ReviewEngagement.record(.activityLoggedOrCompleted)
+        ProductAnalytics.activityCompleted(
+            source: .today,
+            itemType: PlanItemAnalyticsType(plannedActivityType: activity.type),
+            actionID: ActivityBadgeCatalog.actionID(forTitle: activity.title)
+        )
 
         withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-            activity.actualDurationMinutes = passedMinutes
-            activity.isCompleted = true
-
-            try? modelContext.save()
-
-            ReviewEngagement.record(.activityLoggedOrCompleted)
-            ProductAnalytics.activityCompleted(source: .today)
-
             refreshID = UUID()
             isPresented = false
         }

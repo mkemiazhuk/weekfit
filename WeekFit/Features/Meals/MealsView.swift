@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 import WeekFitPlanner
 
 private enum MealCreationStep: Equatable {
@@ -1379,13 +1380,20 @@ struct CustomFoodDetailsView: View {
 
     private var foodPreviewCard: some View {
         VStack(spacing: 12) {
-            FoodMediaView(
-                meal: food,
-                presentation: .hero(size: 168),
-                forceCircleForLocalPhoto: true
-            )
-            .frame(maxWidth: .infinity)
-            .frame(height: 188)
+            if food.hasCustomPhoto {
+                photoHero
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 220)
+                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            } else {
+                FoodMediaView(
+                    meal: food,
+                    presentation: .hero(size: 168),
+                    forceCircleForLocalPhoto: true
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: 188)
+            }
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(food.title)
@@ -1418,6 +1426,38 @@ struct CustomFoodDetailsView: View {
         .padding(.top, 12)
         .padding(.bottom, 12)
         .weekFitPremiumCard(emphasis: .elevated, accent: accent, cornerRadius: 26)
+    }
+
+    private var photoFilename: String? {
+        [food.localPhotoFilename, food.localPhotoThumbnailFilename]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty }
+    }
+
+    @ViewBuilder
+    private var photoHero: some View {
+        if let filename = photoFilename {
+            AsyncMealPhotoView(filename: filename, targetPixelSize: 720) { image in
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    photoPlaceholder
+                }
+            }
+        } else {
+            photoPlaceholder
+        }
+    }
+
+    private var photoPlaceholder: some View {
+        ZStack {
+            accent.opacity(0.16)
+            Image(systemName: "fork.knife")
+                .font(.system(size: 36, weight: .semibold))
+                .foregroundStyle(textSecondary.opacity(0.7))
+        }
     }
 
     private var ingredientLines: [MealIngredientBreakdown] {

@@ -14,6 +14,7 @@ enum LocalUserDataDeletionInventory {
         ActivityNotificationService.shared.cancelAllNotifications()
         WellnessNotificationService.shared.cancelAll()
         MorningProposalNotificationService.shared.cancelAll()
+        ReturnReminderNotificationService.shared.cancelPending()
     }
 
     /// Clears durable identity / cache artifacts that survive UserDefaults domain wipes.

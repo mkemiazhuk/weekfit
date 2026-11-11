@@ -184,7 +184,11 @@ enum RecoveryMovementProvider {
         if strategy == .maintain,
            context.recoveryBand == .good,
            !context.yesterdayHeavy,
-           outdoorOK {
+           outdoorOK,
+           ActivityInviteTime.allows(
+               imageName: "workout-running",
+               hour: Calendar.current.component(.hour, from: context.now)
+           ) {
             options.append(.easyRun)
         }
         return options

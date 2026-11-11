@@ -54,6 +54,12 @@ enum AnalyticsParameterKey {
     static let storeEnvironment = "store_environment"
     /// Food action: `diary` (consumed meal saved) or `library` (food definition saved).
     static let operation = "operation"
+    /// Return reminder horizon: `day_7` or `day_14`.
+    static let horizon = "horizon"
+    /// Return reminder offer: `repeat`, `first_action`, or `new_activity_award`.
+    static let offer = "offer"
+    /// Catalog action chosen for a return reminder, such as `recovery.walk`.
+    static let actionID = "action_id"
 }
 
 /// Stable onboarding step identifiers matching `FirstRunOnboardingView.Step`.

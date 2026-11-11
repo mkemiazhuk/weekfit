@@ -18,8 +18,10 @@ enum PlannedActivityNotificationConfirmationService {
         try modelContext.save()
         ActivityNotificationService.shared.cancelNotifications(for: activity)
         ReviewEngagement.record(.activityLoggedOrCompleted)
-        ProductAnalytics.activityCompleted(source: .plan)
-        ProductAnalytics.planItemCompleted(itemType: PlanItemAnalyticsType(plannedActivityType: activity.type))
+        let itemType = PlanItemAnalyticsType(plannedActivityType: activity.type)
+        let actionID = ActivityBadgeCatalog.actionID(forTitle: activity.title)
+        ProductAnalytics.activityCompleted(source: .plan, itemType: itemType, actionID: actionID)
+        ProductAnalytics.planItemCompleted(itemType: itemType)
         
         if let adjustment = CoachAdjustmentProvenanceStore.adjustment(forActivityId: activity.id) {
             CoachAdjustmentProvenanceStore.markTerminalOutcome(activityId: activity.id, outcome: "completed")

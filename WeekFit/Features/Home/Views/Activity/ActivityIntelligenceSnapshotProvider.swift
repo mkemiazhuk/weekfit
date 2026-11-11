@@ -315,9 +315,9 @@ final class ActivityIntelligenceSnapshotProvider {
         let fallbackTitle = workoutTitle(for: workout.workoutActivityType)
         let fallbackIcon = ActivityReconciler.icon(for: workout.workoutActivityType)
         let fallbackColor = workoutColor(for: workout.workoutActivityType)
-        guard workout.workoutActivityType == .other,
+        guard ActivityReconciler.isUnmappedActivityType(workout.workoutActivityType),
               let linkedPlan,
-              linkedPlan.type.lowercased() == "workout" else {
+              ActivityReconciler.plannedActivityAcceptsGenericOther(linkedPlan) else {
             return (fallbackTitle, fallbackIcon, fallbackColor)
         }
 

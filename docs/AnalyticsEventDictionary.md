@@ -186,7 +186,7 @@ Helper: `MorningProposalAnalytics` / `ProductAnalytics` wrappers.
 | Event | Trigger | Parameters |
 |-------|---------|------------|
 | `food_logging_started` | Quick log open / manual create path | `method`, `source` |
-| `food_logging_completed` | After successful `modelContext.save()` | `method`, `source` |
+| `food_logging_completed` | After successful `modelContext.save()` | `method`, `source`, `operation`. Diary saves also send `action_id=food.log-meal`. A library-only save keeps `operation=library` and has no `action_id` |
 | `food_logging_cancelled` | User exits started flow before save | `method`, `source` |
 | `food_logging_failed` | Invalid input / save failure | `method`, `source`, `reason` |
 
@@ -265,11 +265,11 @@ Never send photos, meal names, ingredient text, or macros.
 |-------|---------|---------|
 | `activity_logging_started` | Today Start Activity **sheet** opens | Sheet / chooser funnel start — not a live session |
 | `activity_started` | Live session **persisted** | User actually began a trackable session |
-| `activity_completed` | Live stop or plan/notification complete | Session finished |
+| `activity_completed` | After a successful save on live stop or plan/notification complete | Session finished |
 | `activity_cancelled` | Start Activity sheet dismissed before start/complete/fail | Sheet abandon |
 | `activity_logging_failed` | Save failure on start | Persistence error |
 
-Parameters: `source` (+ `reason` on failure). **No** activity type/category, duration, intensity, or titles.
+Parameters: `source`, and `item_type` on `activity_completed` (`activity`, `recovery`, `meal`, `hydration`, `habit`, `other`). **No** duration, intensity, titles, or HealthKit values. `category` stays unused.
 
 **Cancel (wired):** Today workout sheet dismiss before `activity_started` / `activity_completed` / `activity_logging_failed`.
 
@@ -311,9 +311,12 @@ Data reset clears onboarding analytics keys (via `LocalDataResetService`) and re
 
 | Event | Trigger | Parameters |
 |-------|---------|------------|
-| `notification_opened` | User taps / acts on activity notification | `category` (currently `activity`) |
+| `notification_opened` | User taps a notification | `category`. Return reminders also send `horizon` (`day_7`, `day_14`), `offer` (`repeat`, `first_action`, `new_activity_award`), and `action_id` |
+| `notification_scheduled` | A return reminder is queued for a new absence | `category`, `horizon`, `offer`, `action_id` |
+| `notification_delivered` | The system still has that reminder when the user next opens WeekFit | `category`, `horizon`, `offer`, `action_id` |
+| `notification_navigation_failed` | The opened reminder’s screen could no longer be presented | `category`, `horizon`, `offer`, `action_id`, `reason=form_unavailable` |
 
-Delivery is not counted. Titles/bodies are never sent.
+Titles and bodies are never sent. A completed suggestion stays on the existing completion event (`activity_completed`, `hydration_logging_completed`, or `food_logging_completed`) with its current `source`. Activity and water events add `action_id` when the session matches a catalog activity. A diary meal save adds `action_id=food.log-meal`, the same value as the meal reminder’s `notification_opened`. Closing the form, a failed save, and a library-only save do not emit that completion. Completion within 24 hours and a repeat on another calendar day within 7 days are measured from the timestamps; the client does not emit a second completion event. `notification_delivered` counts only a reminder still sitting in Notification Center at the next open. It is not a delivery rate.
 
 ---
 

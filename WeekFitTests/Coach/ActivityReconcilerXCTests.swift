@@ -494,6 +494,50 @@ final class ActivityReconcilerXCTests: XCTestCase {
         )
     }
 
+    func testOtherWorkoutOverlappingPlannedSaunaKeepsSauna() {
+        let planned = PlannedActivityBuilder.workout(
+            title: "Sauna",
+            at: time(hour: 11, minute: 0),
+            durationMinutes: 65
+        )
+        planned.type = "recovery"
+        planned.icon = "flame.fill"
+        let synced = workout(from: time(hour: 11, minute: 9), to: time(hour: 11, minute: 59), type: .other)
+
+        let match = ActivityReconciler.bestMatch(for: synced, in: [planned], calendar: calendar)
+        XCTAssertEqual(match?.id, planned.id)
+
+        ActivityReconciler.applySyncedWorkout(synced, to: planned)
+        XCTAssertEqual(planned.title, "Sauna")
+        XCTAssertEqual(planned.type, "recovery")
+        XCTAssertEqual(planned.icon, "flame.fill")
+        XCTAssertTrue(planned.isCompleted)
+        XCTAssertEqual(planned.healthKitWorkoutUUID, synced.uuid.uuidString)
+
+        let detail = ActivityIntelligenceSnapshotProvider().makeSnapshot(from: synced, linkedPlan: planned)
+        XCTAssertEqual(detail.title, "Sauna")
+        XCTAssertEqual(detail.icon, "flame.fill")
+    }
+
+    func testUnmappedWatchWorkoutOverlappingPlannedBreathingKeepsBreathing() {
+        let planned = PlannedActivityBuilder.workout(
+            title: "Breathing",
+            at: time(hour: 21, minute: 0),
+            durationMinutes: 15
+        )
+        planned.type = "recovery"
+        planned.icon = "wind"
+        let synced = workout(from: time(hour: 21, minute: 2), to: time(hour: 21, minute: 16), type: .mindAndBody)
+
+        let match = ActivityReconciler.bestMatch(for: synced, in: [planned], calendar: calendar)
+        XCTAssertEqual(match?.id, planned.id)
+
+        ActivityReconciler.applySyncedWorkout(synced, to: planned)
+        XCTAssertEqual(planned.title, "Breathing")
+        XCTAssertEqual(planned.type, "recovery")
+        XCTAssertEqual(planned.icon, "wind")
+    }
+
     func testOtherWorkoutDoesNotAttachToDistantPlannedPadel() {
         let planned = PlannedActivityBuilder.workout(
             title: "Padel",

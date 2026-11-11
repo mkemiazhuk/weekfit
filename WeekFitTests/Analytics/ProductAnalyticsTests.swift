@@ -43,6 +43,21 @@ final class ProductAnalyticsTests: XCTestCase {
         XCTAssertEqual(recording.recordedScreens.count, 2)
     }
 
+    func testReturnFromDetailRegistersTodayOnce() {
+        ProductAnalytics.trackScreen(.today)
+        ProductAnalytics.trackScreen(.activityDetails)
+        ProductAnalytics.trackScreen(.nutritionDetails)
+        ProductAnalytics.trackScreen(.today)
+        ProductAnalytics.trackScreen(.recoveryDetails)
+        ProductAnalytics.trackScreen(.today)
+        ProductAnalytics.trackScreen(.today)
+
+        XCTAssertEqual(
+            recording.recordedScreens.map(\.screen),
+            [.today, .activityDetails, .nutritionDetails, .today, .recoveryDetails, .today]
+        )
+    }
+
     func testManualScreenCatalogStillTracksExpectedDestinations() {
         let screens: [AnalyticsScreen] = [
             .today, .coach, .meals, .mealBuilder, .plan, .settings,
@@ -99,6 +114,43 @@ final class ProductAnalyticsTests: XCTestCase {
             recording.parameterValues(for: .foodLoggingCompleted, key: AnalyticsParameterKey.method),
             ["quick_log"]
         )
+        XCTAssertEqual(
+            recording.parameterValues(for: .foodLoggingCompleted, key: AnalyticsParameterKey.source),
+            ["today"]
+        )
+        XCTAssertEqual(
+            recording.parameterValues(for: .foodLoggingCompleted, key: AnalyticsParameterKey.actionID),
+            [ReturnReminderPlanner.mealID]
+        )
+    }
+
+    func testClosingOrFailingFoodLogDoesNotCompleteTheReminder() {
+        ProductAnalytics.foodLoggingStarted(method: .quickLog, source: .today, operation: .diary)
+        XCTAssertTrue(ProductAnalytics.foodLoggingCancelIfNeeded())
+        ProductAnalytics.foodLoggingFailed(
+            method: .quickLog,
+            source: .today,
+            operation: .diary,
+            reason: .saveFailed
+        )
+        XCTAssertTrue(recording.events(named: .foodLoggingCompleted).isEmpty)
+        XCTAssertEqual(recording.events(named: .foodLoggingCancelled).count, 1)
+        XCTAssertEqual(recording.events(named: .foodLoggingFailed).count, 1)
+    }
+
+    func testMealReminderNavigationFailureIsRecorded() {
+        ProductAnalytics.notificationNavigationFailed(
+            category: .meal,
+            horizon: ReturnReminderHorizon.day7.rawValue,
+            offer: ReturnReminderOfferKind.firstAction.rawValue,
+            actionID: ReturnReminderPlanner.mealID,
+            reason: "form_unavailable"
+        )
+        let event = try! XCTUnwrap(recording.events(named: .notificationNavigationFailed).first)
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.actionID], ReturnReminderPlanner.mealID)
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.horizon], "day_7")
+        XCTAssertEqual(event.parameters[AnalyticsParameterKey.reason], "form_unavailable")
+        XCTAssertNil(event.parameters["title"])
     }
 
     func testFoodLoggingCancelledDoesNotEmitCompletionOrFailure() {
@@ -176,11 +228,16 @@ final class ProductAnalyticsTests: XCTestCase {
 
     func testActivityEventsContainNoHealthKitValues() {
         ProductAnalytics.activityStarted(source: .today)
-        ProductAnalytics.activityCompleted(source: .today)
+        ProductAnalytics.activityCompleted(source: .today, itemType: .activity)
+        ProductAnalytics.activityCompleted(source: .plan, itemType: .recovery)
 
-        let banned = ["hrv", "heart", "calorie", "distance", "pace", "route", "hkworkout", "bpm", "recovery", "sleep"]
+        let banned = ["hrv", "heart", "calorie", "distance", "pace", "route", "hkworkout", "bpm", "sleep"]
         for event in recording.recordedEvents {
             for (key, value) in event.parameters {
+                if key == AnalyticsParameterKey.itemType {
+                    XCTAssertNotNil(PlanItemAnalyticsType(rawValue: value))
+                    continue
+                }
                 let haystack = "\(key)=\(value)".lowercased()
                 for token in banned {
                     XCTAssertFalse(haystack.contains(token), "Found \(token) in \(haystack)")
@@ -188,6 +245,10 @@ final class ProductAnalyticsTests: XCTestCase {
             }
             XCTAssertNil(event.parameters[AnalyticsParameterKey.category])
         }
+        XCTAssertEqual(
+            recording.parameterValues(for: .activityCompleted, key: AnalyticsParameterKey.itemType),
+            ["activity", "recovery"]
+        )
     }
 
     func testPlanItemEventsContainNoTitleNotesOrExactTime() {

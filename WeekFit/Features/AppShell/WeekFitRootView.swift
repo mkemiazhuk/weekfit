@@ -350,11 +350,16 @@ struct WeekFitRootView: View {
                 selectTab(destination)
             }
             .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .background {
+                    ReturnReminderNotificationService.shared.noteBackgrounded()
+                }
                 guard newPhase == .active else { return }
+                ReturnReminderNotificationService.shared.noteReturned()
                 reconcileAppCalendarDay(source: "root.sceneActive", returnToToday: false)
                 syncNotifications(source: "root.sceneActive")
                 evaluateMorningProposalFromRoot(source: "root.sceneActive")
                 refreshActivityBadges(now: Date())
+                openReturnReminderIfNeeded()
             }
             .onChange(of: plannedActivities.filter(\.isCompleted).count) { _, _ in
                 refreshActivityBadges(now: Date())
@@ -448,6 +453,7 @@ struct WeekFitRootView: View {
                 } else {
                     forcePaywall.dismissManualPaywall()
                 }
+                syncReturnReminderFoodLogGate()
             }
         )
     }
@@ -502,6 +508,7 @@ struct WeekFitRootView: View {
             // Do not remount: pulling the cover down mid-presentation hangs SwiftUI.
             beginFeaturePaywallTransitionCooldown(flushWhenSettled: true)
             isPresentingFeaturePaywall = false
+            syncReturnReminderFoodLogGate()
         }
     }
 
@@ -527,6 +534,7 @@ struct WeekFitRootView: View {
         featurePaywallInstanceID = UUID().uuidString
         beginFeaturePaywallTransitionCooldown(flushWhenSettled: false)
         isPresentingFeaturePaywall = true
+        syncReturnReminderFoodLogGate()
     }
 
     private func dismissFeaturePaywall(clearPending: Bool) {
@@ -537,6 +545,7 @@ struct WeekFitRootView: View {
         guard isPresentingFeaturePaywall else { return }
         beginFeaturePaywallTransitionCooldown(flushWhenSettled: true)
         isPresentingFeaturePaywall = false
+        syncReturnReminderFoodLogGate()
     }
 
     private func beginFeaturePaywallTransitionCooldown(flushWhenSettled: Bool) {
@@ -582,6 +591,9 @@ struct WeekFitRootView: View {
 
     private func handleRootAppear() {
         StartupHangDetector.armForColdLaunch()
+        ReturnReminderNotificationService.shared.noteReturned()
+        openReturnReminderIfNeeded()
+        refreshActivityBadges(now: Date())
         #if DEBUG
         if WeekFitUITestSupport.shouldForcePaywall,
            !WeekFitForcePaywallStore.shared.isManualPaywallPresented {
@@ -889,6 +901,7 @@ struct WeekFitRootView: View {
                 dismissFeaturePaywall(clearPending: clearPending)
             } else if !desiredPaywall {
                 isPresentingFeaturePaywall = false
+                syncReturnReminderFoodLogGate()
             }
         }
 
@@ -1118,6 +1131,43 @@ struct WeekFitRootView: View {
             now: now
         )
         ActivitySuggestionNotificationService.shared.noteOpenedAndReschedule(now: now)
+        scheduleReturnReminders(now: now)
+    }
+
+    private func scheduleReturnReminders(now: Date) {
+        syncReturnReminderFoodLogGate()
+        let goal = ReturnReminderGoal(
+            nutritionGoal: ProfileService().loadManualNutritionGoal()
+        )
+        ReturnReminderNotificationService.shared.schedule(
+            activities: plannedActivities.map {
+                ($0.title, $0.isCompleted, $0.isSkipped, $0.date)
+            },
+            unlocks: ActivityBadgeStore.shared.ledger.unlocks,
+            goal: goal,
+            foodLogAvailable: ReturnReminderFoodLog.canOpenDirectly(
+                onboardingComplete: OnboardingStore.hasCompletedOnboarding,
+                blockingCoverVisible: appSession.isPresentingOnboarding
+                    || appSession.isPresentingHealthAccess
+                    || ReturnReminderFoodLog.rootCoverVisible
+            ),
+            enabled: NotificationPreferencesReader.activitySuggestionsEnabled,
+            now: now
+        )
+    }
+
+    private func syncReturnReminderFoodLogGate() {
+        let forcedPaywall = AppDistribution.current.allowsTemporaryForcePaywall
+            && forcePaywall.isForcePaywallActive
+            && forcePaywall.isManualPaywallPresented
+        ReturnReminderFoodLog.rootCoverVisible = isPresentingFeaturePaywall || forcedPaywall
+    }
+
+    private func openReturnReminderIfNeeded() {
+        syncReturnReminderFoodLogGate()
+        ReturnReminderNotificationService.shared.restoreRouteIfNeeded()
+        guard PendingReturnReminderOpen.shared.route != nil else { return }
+        returnToToday()
     }
 
     private func handleActivityBadgeRoute(_ note: Notification) {

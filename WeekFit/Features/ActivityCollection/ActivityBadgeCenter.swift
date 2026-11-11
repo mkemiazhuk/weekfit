@@ -144,7 +144,7 @@ enum ActivityBadgeCenter {
     ) async {
         let targets = activities.filter { activity in
             activity.healthKitWorkoutUUID != nil
-                && (activity.distanceMeters == nil || activity.activeKilocalories == nil)
+                && (activity.distanceMeters == nil || (activity.activeKilocalories ?? 0) == 0)
         }
         let identifiers = Set(targets.compactMap { $0.healthKitWorkoutUUID.flatMap(UUID.init(uuidString:)) })
         guard !identifiers.isEmpty else { return }
@@ -156,16 +156,40 @@ enum ActivityBadgeCenter {
             guard let uuid = activity.healthKitWorkoutUUID, let workout = byID[uuid] else { continue }
             if activity.distanceMeters == nil {
                 activity.distanceMeters = ActivityReconciler.distanceMeters(of: workout) ?? 0
+                changed = true
             }
-            if activity.activeKilocalories == nil {
-                activity.activeKilocalories = ActivityReconciler.kilocalories(of: workout) ?? 0
+            if (activity.activeKilocalories ?? 0) == 0 {
+                var kcal = ActivityReconciler.kilocalories(of: workout)
+                if kcal == nil, workout.endDate.timeIntervalSinceNow > -14 * 86_400 {
+                    kcal = await summedActiveKilocalories(for: workout)
+                }
+                if let kcal, kcal > 0 {
+                    activity.activeKilocalories = kcal
+                    changed = true
+                }
             }
-            changed = true
         }
         guard changed else { return }
         try? modelContext.save()
         refresh(activities: activities, waterGoalLiters: waterGoalLiters)
     }
+}
+
+private func summedActiveKilocalories(for workout: HKWorkout) async -> Int? {
+    guard let type = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else { return nil }
+    let predicate = HKQuery.predicateForSamples(
+        withStart: workout.startDate,
+        end: workout.endDate,
+        options: .strictStartDate
+    )
+    let kcal: Double = await withCheckedContinuation { continuation in
+        let query = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, statistics, _ in
+            continuation.resume(returning: statistics?.sumQuantity()?.doubleValue(for: .kilocalorie()) ?? 0)
+        }
+        HKHealthStore().execute(query)
+    }
+    guard kcal > 0 else { return nil }
+    return Int(kcal.rounded())
 }
 
 private enum HealthWorkoutLookup {

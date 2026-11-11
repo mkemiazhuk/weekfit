@@ -18,7 +18,7 @@ struct LoggedMealDetailView: View {
     @State private var didSaveToLibrary = false
     @State private var saveError: String?
 
-    private var accent: Color { QuickFoodAccent.actionOrange }
+    private var accent: Color { QuickSheetChrome.action(isLight: palette.isLight) }
     private var snapshot: PhotoFoodDiarySnapshot? {
         PhotoFoodNutritionCalculator.decodeSnapshot(activity.nutritionSnapshotJSON)
     }
@@ -295,6 +295,7 @@ struct LoggedMealDetailView: View {
             saveError = nil
             onSavedToLibrary?(meal)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
+            dismiss()
         } catch {
             saveError = WeekFitLocalizedString("planner.loggedMeal.detail.saveFailed")
         }

@@ -66,6 +66,22 @@ enum HistoricalActivityProvider {
             }
 
             let activityType = CoachActivityClassifier.type(for: rawSnapshot)
+            if activityType == .cycling,
+               !CyclingInvitePolicy.allows(
+                   now: context.now,
+                   temperatureCelsius: nil,
+                   feelsLikeCelsius: nil
+               ) {
+                continue
+            }
+            let inviteHour = calendar.component(.hour, from: context.now)
+            let inviteImage = aggregate.imageName.isEmpty
+                ? ActivityInviteTime.imageName(forActivityType: activityType.rawValue)
+                : aggregate.imageName
+            if !inviteImage.isEmpty,
+               !ActivityInviteTime.allows(imageName: inviteImage, hour: inviteHour) {
+                continue
+            }
             let isLightRecoveryHabit = HabitualLightRecoveryDetector.isLightRecoveryHabit(
                 aggregate,
                 on: context.now
