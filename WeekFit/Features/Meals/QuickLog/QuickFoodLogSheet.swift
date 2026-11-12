@@ -360,53 +360,23 @@ struct QuickFoodLogSheet: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 10) {
-                Button {
+                aiPhotoActionButton(
+                    titleKey: "today.photoLog.aiAssistant.takePhoto",
+                    systemImage: "camera.fill",
+                    identifier: "quickFood.ai.takePhoto",
+                    primary: true
+                ) {
                     requestAIPhotoCapture(intent: .camera)
-                } label: {
-                    Label {
-                        Text(WeekFitLocalizedString("today.photoLog.aiAssistant.takePhoto"))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                    } icon: {
-                        Image(systemName: "camera.fill")
-                    }
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(foodAccent)
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: 44)
-                    .padding(.horizontal, 10)
-                    .background(
-                        Capsule(style: .continuous)
-                            .strokeBorder(foodAccent.opacity(palette.isLight ? 0.45 : 0.55), lineWidth: 1)
-                    )
-                    .contentShape(Capsule(style: .continuous))
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("quickFood.ai.takePhoto")
 
-                Button {
+                aiPhotoActionButton(
+                    titleKey: "today.photoLog.aiAssistant.choosePhoto",
+                    systemImage: "photo.on.rectangle",
+                    identifier: "quickFood.ai.choosePhoto",
+                    primary: false
+                ) {
                     requestAIPhotoCapture(intent: .library)
-                } label: {
-                    Label {
-                        Text(WeekFitLocalizedString("today.photoLog.aiAssistant.choosePhoto"))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                    } icon: {
-                        Image(systemName: "photo.on.rectangle")
-                    }
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(foodAccent)
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: 44)
-                    .padding(.horizontal, 10)
-                    .background(
-                        Capsule(style: .continuous)
-                            .strokeBorder(foodAccent.opacity(0.45), lineWidth: 1)
-                    )
-                    .contentShape(Capsule(style: .continuous))
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("quickFood.ai.choosePhoto")
             }
 
             if WeekFitAIBilling.enabled {
@@ -440,26 +410,76 @@ struct QuickFoodLogSheet: View {
         .background { foodAssistantPlate }
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(foodAccent.opacity(palette.isLight ? 0.18 : 0.22), lineWidth: 0.85)
+                .strokeBorder(foodAccent.opacity(palette.isLight ? 0.42 : 0.48), lineWidth: 1)
         }
     }
 
-    /// Same plate as the Meals recommended card: dark surface, a short gold wash, no solid fill.
+    /// Lifted off the sheet: white plate, a gold wash, and a short shadow.
+    /// The photo buttons sit on top of that plate instead of sharing its color.
     private var foodAssistantPlate: some View {
         let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
         return shape
-            .fill(MealLibraryCardMetrics.Chrome.surface(isLight: palette.isLight))
+            .fill(palette.isLight ? Color.white : MealLibraryCardMetrics.Chrome.surface(isLight: false))
             .overlay {
                 shape.fill(
                     LinearGradient(
                         colors: palette.isLight
-                            ? [foodAccent.opacity(0.10), foodAccent.opacity(0.03), Color.clear]
-                            : [foodAccent.opacity(0.14), foodAccent.opacity(0.05), Color.clear],
-                        startPoint: .topLeading,
-                        endPoint: UnitPoint(x: 0.92, y: 0.88)
+                            ? [foodAccent.opacity(0.18), foodAccent.opacity(0.07), foodAccent.opacity(0.02)]
+                            : [foodAccent.opacity(0.22), foodAccent.opacity(0.09), Color.clear],
+                        startPoint: .top,
+                        endPoint: .bottom
                     )
                 )
             }
+            .shadow(
+                color: Color.black.opacity(palette.isLight ? 0.08 : 0.34),
+                radius: palette.isLight ? 12 : 14,
+                y: palette.isLight ? 5 : 6
+            )
+    }
+
+    private func aiPhotoActionButton(
+        titleKey: String,
+        systemImage: String,
+        identifier: String,
+        primary: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        let ink = primary
+            ? QuickSheetChrome.actionForeground(isLight: palette.isLight)
+            : foodAccent
+        return Button(action: action) {
+            Label {
+                Text(WeekFitLocalizedString(titleKey))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            } icon: {
+                Image(systemName: systemImage)
+            }
+            .font(.system(size: 14, weight: .semibold, design: .rounded))
+            .foregroundStyle(ink)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 44)
+            .padding(.horizontal, 10)
+            .background {
+                Capsule(style: .continuous)
+                    .fill(
+                        primary
+                            ? foodAccent
+                            : foodAccent.opacity(palette.isLight ? 0.16 : 0.22)
+                    )
+            }
+            .overlay {
+                Capsule(style: .continuous)
+                    .strokeBorder(
+                        foodAccent.opacity(primary ? 0 : (palette.isLight ? 0.55 : 0.62)),
+                        lineWidth: primary ? 0 : 1
+                    )
+            }
+            .contentShape(Capsule(style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
     }
 
     private var aiAccessCaptionKey: String? {

@@ -5,6 +5,7 @@ struct TodayMiddleCard: View {
     enum Tone {
         case sage
         case lavender
+        case water
     }
 
     let header: String
@@ -85,14 +86,14 @@ struct TodayMiddleCard: View {
         switch tone {
         case .lavender:
             return WeekFitSemanticMetricTokens.recovery
-        case .sage:
+        case .sage, .water:
             return nil
         }
     }
 
     private var headerColor: Color {
         switch tone {
-        case .sage:
+        case .sage, .water:
             return messageColor
         case .lavender:
             return accent
@@ -109,6 +110,8 @@ struct TodayMiddleCard: View {
             return palette.isLight
                 ? WeekFitSemanticMetricTokens.recoveryInk
                 : WeekFitSemanticMetricTokens.recovery
+        case .water:
+            return QuickDrinkAccent.hydration
         }
     }
 

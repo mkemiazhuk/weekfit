@@ -2,20 +2,26 @@ import Foundation
 
 /// Central configuration for the App Store In-App Event “7-Day Recovery Challenge”.
 ///
-/// Production stays disabled until real event timestamps are set and
-/// `isProductionEnabled` is flipped to `true`.
+/// Production is on from 12 Nov 2026 00:00 UTC until 12 Nov 2027 00:00 UTC.
+/// Someone can still join while a full 7 days fit before the end.
 enum RecoveryChallengeConfig {
     static let eventID = "recovery7.v1"
     static let dayCount = 7
 
-    /// Flip to `true` only after `eventStart` / `eventEnd` are real production instants.
-    static let isProductionEnabled = false
+    static let isProductionEnabled = true
 
-    /// Inclusive event window start (UTC instant). Keep `nil` until configured.
-    static let eventStart: Date? = nil
+    /// Inclusive event window start (UTC instant).
+    static let eventStart: Date? = utcDate(year: 2026, month: 11, day: 12)
 
-    /// Exclusive event window end (UTC instant). Keep `nil` until configured.
-    static let eventEnd: Date? = nil
+    /// Exclusive event window end (UTC instant).
+    static let eventEnd: Date? = utcDate(year: 2027, month: 11, day: 12)
+
+    private static func utcDate(year: Int, month: Int, day: Int) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        return calendar.date(from: DateComponents(year: year, month: month, day: day))
+            ?? Date(timeIntervalSince1970: 0)
+    }
 
     static let debugPreviewLaunchArgument = "-recovery-challenge-preview"
     static let debugOpenLaunchArgument = "-open-recovery-challenge"

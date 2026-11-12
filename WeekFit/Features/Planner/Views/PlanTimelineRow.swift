@@ -99,9 +99,14 @@ struct PlanTimelineRow: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
+    private var isWaterRow: Bool {
+        PlanTimelineNutritionVisualResolver.isWaterActivity(activity)
+    }
+
     private var accent: Color {
-        // Soft category wells: movement blue, recovery lavender, nutrition token.
-        category.color
+        // Water keeps the drink blue. Other rows use movement, recovery, or nutrition.
+        if isWaterRow { return QuickDrinkAccent.hydration }
+        return category.color
     }
 
     private var pendingAttentionColor: Color {
@@ -663,8 +668,12 @@ struct PlanTimelineRow: View {
                 shape: .roundedRect,
                 backgroundOpacity: iconBackgroundOpacity,
                 foregroundOpacity: iconForegroundOpacity,
-                fillColor: category.iconWell(isLight: palette.isLight),
-                iconColor: category.iconColor(isLight: palette.isLight)
+                fillColor: isWaterRow
+                    ? (palette.isLight ? WeekFitLightTokens.waterSoft : nil)
+                    : category.iconWell(isLight: palette.isLight),
+                iconColor: (isWaterRow
+                    ? QuickDrinkAccent.hydration
+                    : category.iconColor(isLight: palette.isLight))
                     .opacity(iconForegroundOpacity)
             )
             .frame(width: PlanAgendaLayout.iconSize, height: PlanAgendaLayout.iconSize)

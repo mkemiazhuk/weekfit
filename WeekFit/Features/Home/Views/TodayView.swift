@@ -43,13 +43,9 @@ struct TodayView: View {
     @ObservedObject private var returnReminder = PendingReturnReminderOpen.shared
     @State private var returnFocusActionID: String?
     @State private var returnFocusShowsAward = false
-    @State private var plannerVoiceEnabled = false
-    /// Today stays off-screen until the first layout-determining pass finishes.
-    @State private var healthFirstPassDone = false
-    @State private var mayaAccessResolved = false
-    @State private var proposalDebounceSettled = false
-    @State private var layoutGateTimedOut = false
-    @State private var revealTodaySections = false
+    /// Last known Maya availability. Kept across launches so the card is in the
+    /// first frame after sleep instead of popping in when the network answers.
+    @AppStorage("weekfit.today.plannerVoiceEnabled") private var plannerVoiceEnabled = false
     @State private var showPlannerVoice = false
     @State private var showAIUsage = false
     @State private var aiTopUpPack: WeekFitAIBalancePack?
@@ -409,25 +405,6 @@ struct TodayView: View {
         refreshMealPartitions(meals: quickLogMeals, usage: nextUsage)
     }
 
-    private var todayFirstPaintBypass: Bool {
-        #if DEBUG
-        if WeekFitUITestSupport.isActive { return true }
-        if MorningProposalScreenshotFixtures.shouldSeed { return true }
-        if TodayHierarchyScreenshotFixtures.shouldSeedAny { return true }
-        #endif
-        return false
-    }
-
-    private var todaySectionsReady: Bool {
-        TodayFirstPaintGate(
-            healthFirstPassDone: healthFirstPassDone,
-            mayaAccessResolved: mayaAccessResolved,
-            proposalDebounceSettled: proposalDebounceSettled,
-            timedOut: layoutGateTimedOut,
-            bypass: todayFirstPaintBypass
-        ).shouldReveal
-    }
-
     @ViewBuilder
     private var todayActiveBody: some View {
         let _ = TodayStartupDiagnostics.child("todayActiveBody begin")
@@ -435,34 +412,11 @@ struct TodayView: View {
 
         // Match Coach / Meals / Plan: header chrome stays in safe area; root paints
         // the shared canvas. Atmosphere is a background, not a layout sibling.
+        // Sections paint on the first frame. Holding them for Health and the
+        // network left a blank Today after the app woke from sleep.
         ZStack(alignment: .top) {
-            if revealTodaySections || todayFirstPaintBypass {
-                todayScreen
-                    .background { todayBackground }
-                    .transition(.identity)
-            }
-        }
-        .onChange(of: todaySectionsReady) { _, ready in
-            guard ready, !revealTodaySections else { return }
-            var transaction = Transaction(animation: nil)
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                revealTodaySections = true
-            }
-        }
-        .task(id: healthFirstPassDone) {
-            guard healthFirstPassDone, !todayFirstPaintBypass, !proposalDebounceSettled else { return }
-            // Morning proposal refreshes again 350ms after metrics settle.
-            // Let that pass finish while the screen is still hidden.
-            try? await Task.sleep(nanoseconds: 450_000_000)
-            guard !Task.isCancelled else { return }
-            proposalDebounceSettled = true
-        }
-        .task {
-            guard !todayFirstPaintBypass, !revealTodaySections else { return }
-            try? await Task.sleep(nanoseconds: 4_000_000_000)
-            guard !Task.isCancelled, !revealTodaySections else { return }
-            layoutGateTimedOut = true
+            todayScreen
+                .background { todayBackground }
         }
         .onAppear {
                    TodayStartupDiagnostics.step(
@@ -472,13 +426,6 @@ struct TodayView: View {
                    )
                    todayViewModel.now = Date()
                    reconcileTodayDayBoundary()
-                   if !healthFirstPassDone,
-                      !healthManager.isLoadingDisplayDayMetrics,
-                      healthManager.hasCompletedHealthAccessCheck,
-                      !healthManager.isHealthAccessGranted
-                        || healthManager.hasSettledMetrics(for: selectedDate) {
-                       healthFirstPassDone = true
-                   }
                    #if DEBUG
                    TodayHierarchyScreenshotFixtures.prepareIfNeeded(modelContext: modelContext)
                    #endif
@@ -685,9 +632,6 @@ struct TodayView: View {
                 detail: "refreshID=\(todayViewModel.healthRefreshID) requested=\(healthManager.isHealthAccessRequested)"
             )
             await refreshHealthAndNutritionAsync()
-            if !Task.isCancelled {
-                healthFirstPassDone = true
-            }
             if Task.isCancelled {
                 TodayStartupDiagnostics.taskCancelled(taskName)
                 StartupDiagnostics.taskCancelled(taskName)
@@ -3020,7 +2964,6 @@ struct TodayView: View {
     }
 
     private func refreshMayaAccess() async {
-        defer { mayaAccessResolved = true }
         #if DEBUG
         if WeekFitUITestSupport.isActive,
            ProcessInfo.processInfo.arguments.contains("-weekfit-show-maya-card")
@@ -3040,7 +2983,8 @@ struct TodayView: View {
             ).access()
             plannerVoiceEnabled = access.enabled
         } catch {
-            plannerVoiceEnabled = false
+            // Leave the last known card in place. A failed token after sleep
+            // must not remove Maya and shift the sections under it.
         }
     }
 
@@ -4222,7 +4166,11 @@ struct TodayView: View {
     }
 
     /// Activity stays green with the move ring. Recovery, including stretching, uses the recovery ring.
+    /// Water uses the same blue as Log drink.
     private func upNextTone(for activity: PlannedActivity) -> TodayMiddleCard.Tone {
+        if PlanTimelineNutritionVisualResolver.isWaterActivity(activity) {
+            return .water
+        }
         switch activity.timelineEventKind {
         case .recovery, .sauna, .sleep:
             return .lavender
