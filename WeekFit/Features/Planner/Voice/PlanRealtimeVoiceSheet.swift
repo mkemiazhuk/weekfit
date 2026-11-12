@@ -242,6 +242,9 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         webView = view
         var request = URLRequest(url: client.baseURL.appending(path: "v1/planner-voice/console"))
         request.setValue("Bearer \(client.token)", forHTTPHeaderField: "Authorization")
+        if WeekFitAIBilling.enabled {
+            request.setValue(WeekFitAIBilling.environment, forHTTPHeaderField: "X-WeekFit-Billing-Environment")
+        }
         view.load(request)
     }
 
@@ -457,8 +460,17 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        pageReady = true
-        startConsoleIfReady()
+        webView.evaluateJavaScript("typeof window.weekfit") { result, _ in
+            Task { @MainActor in
+                guard !self.ended else { return }
+                guard (result as? String) == "object" else {
+                    self.failConnecting(WeekFitLocalizedString("planner.voice.connectionLost"))
+                    return
+                }
+                self.pageReady = true
+                self.startConsoleIfReady()
+            }
+        }
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {

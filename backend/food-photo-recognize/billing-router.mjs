@@ -89,7 +89,9 @@ export function createBillingRouter(config, dependencies = {}) {
         if (notification) req.url = '/v2/billing/notifications';
         if (await services[environment].handle(req, res)) return true;
         if (route.startsWith('/v1/planner-voice/')) {
-          if (['/v1/planner-voice/session', '/v1/planner-voice/console'].includes(route)) {
+          // Old clients must not open an unmetered session. The call page stays:
+          // the current app loads it, then connects through /v2/ai/voice.
+          if (route === '/v1/planner-voice/session') {
             return reply(res, 426, 'app_update_required');
           }
           return voices[environment](req, res);

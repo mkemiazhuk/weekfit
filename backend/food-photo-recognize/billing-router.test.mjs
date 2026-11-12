@@ -50,7 +50,7 @@ async function fixture(t, overrides = {}) {
     signedTransaction: signed(environment, { environment, transactionId, appAccountToken: token, type: 'Consumable', productId }),
   });
   t.after(async () => { await router.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); rmSync(dir, { recursive: true, force: true }); });
-  return { send, buy, config, get router() { return router; }, async restart() { await router.close(); router = createBillingRouter(config, deps); } };
+  return { send, buy, config, port: server.address().port, get router() { return router; }, async restart() { await router.close(); router = createBillingRouter(config, deps); } };
 }
 test('one database has distinct prod/sandbox tables, independent purchases, quotas, idempotency and restart recovery', async t => {
   const f = await fixture(t);
@@ -102,6 +102,12 @@ test('Sandbox-only enable leaves production legacy routes untouched and rejects 
   assert.equal(f.router.stores.Production.db.prepare('SELECT count(*) AS n FROM prod_wallets').get().n, 0);
   assert.equal((await f.send('Production', '/v1/planner-voice/session', {})).body.legacy, true);
   assert.equal((await f.send('Sandbox', '/v1/planner-voice/session', {})).status, 426);
+  const page = await fetch(`http://127.0.0.1:${f.port}/v1/planner-voice/console`, {
+    headers: { Authorization: 'Bearer test', 'X-WeekFit-Billing-Environment': 'Sandbox' },
+  });
+  assert.equal(page.status, 200);
+  assert.match(page.headers.get('content-type') ?? '', /text\/html/);
+  assert.match(await page.text(), /window\.weekfit/);
   assert.equal((await f.send('Sandbox', '/v1/food/photo-recognize', {})).status, 426);
   assert.equal((await f.send('sandbox')).status, 400);
 });
