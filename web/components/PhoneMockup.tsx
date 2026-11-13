@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import clsx from "clsx";
 import { DeviceMockup, iPhone16Pro } from "@mockifydev/react";
 import { MOCKIFY_BASE_PATH } from "@/lib/device-frames";
-import ScreenShotImage from "./ScreenShotImage";
+import AppScreen, { appScreenForKey } from "./AppScreen";
 import type { ScreenImageKey } from "@/lib/screen-images";
 
 interface PhoneMockupProps {
@@ -21,32 +21,23 @@ interface PhoneMockupProps {
 }
 
 export default function PhoneMockup({
-  src,
   screenKey = "today",
   alt = "",
   children,
   className,
-  priority,
   width = 300,
   depth = false,
 }: PhoneMockupProps) {
   const screen = children ?? (
-    src || screenKey ? (
-      <ScreenShotImage
-        name={screenKey}
-        alt={alt}
-        phoneWidthPx={width}
-        priority={priority}
-        sizes={`${width}px`}
-        className="h-full w-full object-cover object-top"
-      />
-    ) : null
+    <div className="h-full w-full" role="img" aria-label={alt}>
+      <AppScreen variant={appScreenForKey(screenKey)} />
+    </div>
   );
 
   const mockup = (
     <DeviceMockup
       device={iPhone16Pro}
-      color="Black Titanium"
+      color="Natural Titanium"
       basePath={MOCKIFY_BASE_PATH}
       showStatusBar={false}
       width={width}

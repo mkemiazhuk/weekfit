@@ -1,22 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import clsx from "clsx";
-import { motion, useReducedMotion } from "framer-motion";
 import { DeviceMockup, iPhone16Pro } from "@mockifydev/react";
 import { MOCKIFY_BASE_PATH } from "@/lib/device-frames";
-import { springSoft } from "@/lib/motion";
-import {
-  screenKeyFromPath,
-  screenVariantForPhoneWidth,
-  screenVariantPath,
-} from "@/lib/responsive-images";
-import {
-  journeyPanelSpotlights,
-  spotlightImagePosition,
-  type SpotlightRegion,
-} from "@/lib/journeySpotlights";
+import AppScreen, { appScreenForJourney } from "../AppScreen";
 
 interface PanelScreen {
   key: string;
@@ -43,23 +31,10 @@ export default function JourneySpotlightPhone({
   className,
   sizes = "320px",
 }: JourneySpotlightPhoneProps) {
-  const reduce = useReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
   const panel = panels[activeIndex];
-  const region: SpotlightRegion = journeyPanelSpotlights[panel.key] ?? journeyPanelSpotlights.morning;
-  const imgPos = spotlightImagePosition(region);
-  const transition = reduce ? { duration: 0 } : springSoft;
   const width = parseWidth(sizes);
-  const screenVariant = screenVariantForPhoneWidth(width);
-
-  const resolveScreen = (path: string) => {
-    const key = screenKeyFromPath(path);
-    if (!key) return path;
-    return screenVariantPath(key, screenVariant);
-  };
-
-  const activeScreen = resolveScreen(panel.screen);
 
   useEffect(() => {
     const el = rootRef.current;
@@ -88,65 +63,25 @@ export default function JourneySpotlightPhone({
         <div className="device-scene-3d__phone">
           <DeviceMockup
             device={iPhone16Pro}
-            color="Black Titanium"
+            color="Natural Titanium"
             basePath={MOCKIFY_BASE_PATH}
             showStatusBar={false}
             width={width}
             className="device-mockup-frame device-mockup-frame--depth"
           >
-            <div className="relative h-full w-full journey-spotlight-phone__screen">
+            <div className="relative h-full w-full" role="img" aria-label={panel.screenAlt}>
               {inView &&
                 panels.map((p, i) => (
-                  <Image
-                    key={p.key}
-                    src={resolveScreen(p.screen)}
-                    alt={i === activeIndex ? p.screenAlt : ""}
-                    fill
-                    sizes={sizes}
-                    loading={i === activeIndex ? "eager" : "lazy"}
-                    className={clsx(
-                      "object-cover object-top transition-opacity duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                      i === activeIndex ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                ))}
-
-              {inView && (
-                <motion.div
-                  aria-hidden
-                  className="journey-spotlight-phone__lift"
-                  animate={{
-                    top: `${region.top}%`,
-                    left: `${region.left}%`,
-                    width: `${region.width}%`,
-                    height: `${region.height}%`,
-                    borderRadius: region.radius ?? 14,
-                  }}
-                  transition={transition}
-                >
                   <div
-                    className="absolute bg-cover bg-top"
-                    style={{
-                      ...imgPos,
-                      backgroundImage: `url(${activeScreen})`,
-                    }}
-                  />
-                </motion.div>
-              )}
-
-              <motion.div
-                aria-hidden
-                className="journey-spotlight-phone__cutout"
-                animate={{
-                  top: `${region.top}%`,
-                  left: `${region.left}%`,
-                  width: `${region.width}%`,
-                  height: `${region.height}%`,
-                  borderRadius: region.radius ?? 14,
-                }}
-                transition={transition}
-                style={{ "--spotlight-accent": panel.accent } as React.CSSProperties}
-              />
+                    key={p.key}
+                    className={clsx(
+                      "absolute inset-0 transition-opacity duration-500",
+                      i === activeIndex ? "opacity-100" : "pointer-events-none opacity-0"
+                    )}
+                  >
+                    <AppScreen variant={appScreenForJourney(p.key)} />
+                  </div>
+                ))}
             </div>
           </DeviceMockup>
         </div>

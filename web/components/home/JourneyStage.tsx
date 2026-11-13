@@ -138,7 +138,7 @@ export default function JourneyStage() {
 
         <div className="journey-stage-scroll md:grid md:grid-cols-2 md:gap-14 lg:gap-16">
           <div className="hidden md:block">
-            <div className="sticky top-0 flex h-screen items-center justify-center">
+            <div className="sticky top-24 flex items-center justify-center">
               <JourneySpotlightPhone
                 panels={panels}
                 activeIndex={active}
@@ -160,17 +160,12 @@ export default function JourneyStage() {
                   }}
                   data-idx={i}
                   className={clsx(
-                    "journey-stage-panel relative flex min-h-[68vh] flex-col justify-center py-12 md:min-h-[86vh] md:py-[4.5rem]",
-                    p.layout === "statement" && "md:min-h-[72vh]"
+                    "journey-stage-panel relative flex min-h-0 flex-col justify-center py-8 md:py-12",
+                    p.layout === "statement" && "md:py-14"
                   )}
                 >
-                  <div
-                    className={clsx(
-                      "journey-stage-copy text-center transition-opacity duration-500 md:text-left",
-                      isActive ? "opacity-100" : "opacity-36"
-                    )}
-                  >
-                    <span className="kicker" style={{ color: p.accent }}>
+                  <div className="journey-stage-copy text-center md:text-left">
+                    <span className="kicker" style={{ color: p.accent, opacity: isActive ? 1 : 0.72 }}>
                       {p.kicker}
                     </span>
                     <h2

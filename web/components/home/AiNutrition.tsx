@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { SITE } from "@/lib/site";
@@ -10,6 +9,7 @@ import Button from "../Button";
 import Reveal from "../Reveal";
 import SectionAmbient from "../SectionAmbient";
 import PhoneMockup from "../PhoneMockup";
+import AppScreen from "../AppScreen";
 
 export default function AiNutrition() {
   const { t } = useI18n();
@@ -89,14 +89,7 @@ export default function AiNutrition() {
               }}
             />
             <PhoneMockup width={280} depth alt={a.imageAlt} className="relative mx-auto">
-              <Image
-                src="/img/ai-nutrition-assistant.webp"
-                alt={a.imageAlt}
-                width={553}
-                height={1200}
-                sizes="280px"
-                className="h-full w-full object-cover object-top"
-              />
+              <AppScreen variant="food" />
             </PhoneMockup>
           </div>
         </Reveal>

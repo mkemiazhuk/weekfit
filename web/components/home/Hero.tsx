@@ -21,7 +21,7 @@ export default function Hero() {
 
   return (
     <section
-      className="hero-polish relative z-0 isolate mx-auto flex max-w-6xl flex-col items-center section-x pt-[6.25rem] pb-12 max-md:min-h-0 md:grid md:min-h-[88vh] md:grid-cols-[0.9fr_1.1fr] md:items-center md:gap-10 md:pb-16 md:pt-[6.5rem] lg:gap-12 lg:pb-[4.5rem]"
+      className="hero-polish relative z-0 isolate mx-auto flex max-w-6xl flex-col items-center section-x pb-6 pt-[5.75rem] max-md:min-h-0 md:grid md:grid-cols-[0.95fr_1.05fr] md:items-center md:gap-8 md:pb-8 md:pt-28"
     >
       <SectionAmbient tone="morning" />
 
@@ -41,7 +41,7 @@ export default function Hero() {
 
         <motion.div
           {...fade(0.38)}
-          className="mt-7 flex flex-wrap items-center justify-center gap-3 md:mt-8 md:justify-start"
+          className="mt-6 flex flex-wrap items-center justify-center gap-3 md:justify-start"
         >
           <Button href={SITE.appInstallUrl} external className="btn-hero-primary min-h-[44px]">
             {t.cta.button}
@@ -50,22 +50,21 @@ export default function Hero() {
             {t.hero.ctaSecondary}
           </Button>
         </motion.div>
+
+        <motion.ul {...fade(0.48)} className="mx-auto mt-6 grid max-w-md gap-2 text-left md:mx-0">
+          {t.hero.points.map((point) => (
+            <li key={point.label} className="flex items-baseline gap-3 text-[15px] leading-snug text-[#292b28]">
+              <span className="w-[5.5rem] shrink-0 font-semibold text-[#386b4d]">{point.label}</span>
+              <span className="text-[#3a3d3a]">{point.text}</span>
+            </li>
+          ))}
+        </motion.ul>
       </div>
 
       <div className="hero-phone relative mt-6 w-full self-center justify-self-center md:mt-0 md:justify-self-end">
         <HeroDeviceShowcase priority />
       </div>
 
-      <motion.a
-        href="#reasoning"
-        {...fade(1.1)}
-        className="scroll-hint group absolute bottom-5 left-1/2 -translate-x-1/2 md:bottom-8"
-      >
-        <span className="caption block tracking-[0.18em] text-white/28 transition-colors group-hover:text-white/45">
-          {t.hero.scroll}
-        </span>
-        <span aria-hidden className="scroll-hint-line mx-auto mt-3" />
-      </motion.a>
     </section>
   );
 }
