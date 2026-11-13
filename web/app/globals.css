@@ -485,21 +485,11 @@ input:focus-visible,
 
 /* Hero — product photography treatment */
 .hero-phone {
-  --hero-phone-max: min(100%, 340px);
-}
-@media (min-width: 640px) {
-  .hero-phone {
-    --hero-phone-max: min(100%, 360px);
-  }
+  --hero-phone-max: 268px;
 }
 @media (min-width: 768px) {
   .hero-phone {
-    --hero-phone-max: min(100%, 540px);
-  }
-}
-@media (min-width: 1024px) {
-  .hero-phone {
-    --hero-phone-max: min(100%, 580px);
+    --hero-phone-max: 300px;
   }
 }
 
@@ -536,8 +526,12 @@ input:focus-visible,
   width: fit-content;
   max-width: 100%;
   margin-inline: auto;
-  padding-right: clamp(2.5rem, 18vw, 5rem);
-  min-height: clamp(21rem, 50vw, 34rem);
+  padding-right: 0;
+  min-height: 0;
+}
+.hero-device-scene--solo {
+  width: fit-content;
+  max-width: var(--hero-phone-max);
 }
 @media (min-width: 768px) {
   .hero-phone {
@@ -641,8 +635,8 @@ input:focus-visible,
     max-width: min(100%, calc(var(--hero-phone-max) + 2rem));
   }
   .hero-device-scene__inner {
-    min-height: clamp(19rem, 64vw, 24rem);
-    padding-right: clamp(2.25rem, 22vw, 3.5rem);
+    min-height: 0;
+    padding-right: 0;
   }
   .hero-device-scene__watch,
   .hero-device-scene__watch-slot-mask {
@@ -791,17 +785,16 @@ input:focus-visible,
 
 /* Navigation */
 .nav-link {
-  font-size: 0.875rem;
-  font-weight: 400;
-  letter-spacing: -0.012em;
+  font-size: 1.0625rem;
+  font-weight: 550;
+  letter-spacing: -0.02em;
   line-height: 1.2;
-  color: #5d5f5c;
+  color: #292b28;
   transition: color var(--duration-ui) var(--ease-calm);
 }
 @media (min-width: 1024px) {
   .nav-link {
-    font-size: 0.9375rem;
-    color: #747673;
+    font-size: 1.125rem;
   }
 }
 

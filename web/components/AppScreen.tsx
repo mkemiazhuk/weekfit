@@ -6,7 +6,7 @@ type Variant = "today" | "food" | "meals" | "activity" | "recovery" | "coach";
 
 const SCREENS: Record<Variant, { src: string; alt: string }> = {
   today: { src: "/img/app/today.png", alt: "WeekFit Today" },
-  activity: { src: "/img/app/today.png", alt: "WeekFit Today" },
+  activity: { src: "/img/app/activity.png", alt: "WeekFit Activity" },
   food: { src: "/img/app/food.png", alt: "WeekFit food recognition" },
   meals: { src: "/img/app/food.png", alt: "WeekFit food recognition" },
   recovery: { src: "/img/app/recovery.png", alt: "WeekFit Recovery" },
@@ -41,6 +41,9 @@ export function appScreenForKey(key: string): Variant {
     case "nutrition":
     case "food":
       return "food";
+    case "activity":
+    case "workout":
+      return "activity";
     case "recovery":
       return "recovery";
     case "coach":
@@ -55,6 +58,8 @@ export function appScreenForJourney(key: string): Variant {
   switch (key) {
     case "prep":
       return "food";
+    case "workout":
+      return "activity";
     case "recovery":
       return "recovery";
     case "night":

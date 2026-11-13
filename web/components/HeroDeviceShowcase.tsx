@@ -1,85 +1,42 @@
 "use client";
 
-import Image from "next/image";
-import { useLayoutEffect, useState, type CSSProperties } from "react";
+import { useLayoutEffect, useState } from "react";
 import { DeviceMockup, iPhone16Pro } from "@mockifydev/react";
 import { MOCKIFY_BASE_PATH } from "@/lib/device-frames";
-import {
-  WATCH_OVERLAY_VERSION,
-  watchOverlayDimensions,
-  watchOverlayPath,
-  watchVariantForWidth,
-} from "@/lib/responsive-images";
 import AppScreen from "@/components/AppScreen";
 
 interface HeroDeviceShowcaseProps {
   priority?: boolean;
 }
 
-function readDeviceWidths() {
-  const phone = window.matchMedia("(max-width: 767px)").matches ? 280 : 380;
-  return { phone, watch: Math.round(phone * 0.485) };
+function readPhoneWidth() {
+  return window.matchMedia("(max-width: 767px)").matches ? 248 : 292;
 }
 
-export default function HeroDeviceShowcase({
-  priority,
-}: HeroDeviceShowcaseProps) {
-  const [widths, setWidths] = useState({ phone: 280, watch: 136 });
+export default function HeroDeviceShowcase({ priority }: HeroDeviceShowcaseProps) {
+  const [phone, setPhone] = useState(248);
 
   useLayoutEffect(() => {
-    const update = () => setWidths(readDeviceWidths());
+    const update = () => setPhone(readPhoneWidth());
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  const { phone, watch } = widths;
-  const watchVariant = watchVariantForWidth(watch);
-  const watchDims = watchOverlayDimensions(watchVariant);
-
-  const sceneStyle = {
-    "--watch-w": `${watch}px`,
-  } as CSSProperties;
-
   return (
-    <div className="hero-device-scene">
-      <div aria-hidden className="hero-device-scene__fx">
-        <div className="hero-device-scene__ambient" />
-      </div>
-      <div className="hero-device-scene__inner" style={sceneStyle}>
-        <div className="hero-device-scene__phone">
-          <DeviceMockup
-            device={iPhone16Pro}
-            color="Natural Titanium"
-            basePath={MOCKIFY_BASE_PATH}
-            showStatusBar={false}
-            width={phone}
-            className="hero-device-mockup hero-device-mockup--phone"
-          >
-            <div className="h-full w-full">
-              <AppScreen variant="today" priority={priority} />
-            </div>
-          </DeviceMockup>
+    <div className="hero-device-scene hero-device-scene--solo">
+      <DeviceMockup
+        device={iPhone16Pro}
+        color="Natural Titanium"
+        basePath={MOCKIFY_BASE_PATH}
+        showStatusBar={false}
+        width={phone}
+        className="hero-device-mockup hero-device-mockup--phone"
+      >
+        <div className="h-full w-full">
+          <AppScreen variant="today" priority={priority} />
         </div>
-
-        <div aria-hidden className="hero-device-scene__watch-slot-mask" />
-
-        <div className="hero-device-scene__watch">
-          <Image
-            src={`${watchOverlayPath(watchVariant)}?v=${WATCH_OVERLAY_VERSION}`}
-            alt=""
-            aria-hidden
-            width={watchDims.width}
-            height={watchDims.height}
-            sizes={`${watch}px`}
-            style={{ width: watch, height: "auto" }}
-            className="hero-device-mockup hero-device-mockup--watch"
-            priority={priority}
-            loading="eager"
-          />
-        </div>
-      </div>
-      <div aria-hidden className="hero-device-scene__shadow" />
+      </DeviceMockup>
     </div>
   );
 }
