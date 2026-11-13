@@ -576,46 +576,8 @@ input:focus-visible,
   aspect-ratio: 434 / 716;
   pointer-events: none;
   background:
-    linear-gradient(#f4f1ea, #f4f1ea) 13.1% 11.4% / 68.7% 8.2% no-repeat,
-    linear-gradient(#f4f1ea, #f4f1ea) 13.1% 80.4% / 68.7% 8.2% no-repeat;
-}
-.hero-watch-face {
-  position: absolute;
-  z-index: 3;
-  left: 12.2%;
-  top: 18.6%;
-  width: 73.2%;
-  height: 62.4%;
-  border-radius: 26%;
-  background: #f4f1ea;
-  color: #292b28;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 0 11%;
-  pointer-events: none;
-  line-height: 1.05;
-}
-.hero-watch-face__time {
-  font-size: clamp(9px, 0.72vw, 12px);
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  color: #5d5f5c;
-}
-.hero-watch-face__title {
-  margin-top: 0.18em;
-  font-size: clamp(18px, 1.7vw, 28px);
-  font-weight: 650;
-  letter-spacing: -0.04em;
-}
-.hero-watch-face__meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.4em;
-  margin-top: 0.45em;
-  font-size: clamp(9px, 0.7vw, 12px);
-  font-weight: 650;
-  color: #386b4d;
+    linear-gradient(#000, #000) 13.1% 11.4% / 68.7% 8.2% no-repeat,
+    linear-gradient(#000, #000) 13.1% 80.4% / 68.7% 8.2% no-repeat;
 }
 .hero-device-mockup--watch {
   position: relative;

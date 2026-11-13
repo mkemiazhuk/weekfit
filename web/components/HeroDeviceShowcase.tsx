@@ -56,8 +56,8 @@ export default function HeroDeviceShowcase({
             width={phone}
             className="hero-device-mockup hero-device-mockup--phone"
           >
-            <div className="h-full w-full" aria-label="WeekFit Today" role="img">
-              <AppScreen variant="today" />
+            <div className="h-full w-full">
+              <AppScreen variant="today" priority={priority} />
             </div>
           </DeviceMockup>
         </div>
@@ -65,14 +65,6 @@ export default function HeroDeviceShowcase({
         <div aria-hidden className="hero-device-scene__watch-slot-mask" />
 
         <div className="hero-device-scene__watch">
-          <div className="hero-watch-face" aria-hidden>
-            <div className="hero-watch-face__time">07:00</div>
-            <div className="hero-watch-face__title">Easy</div>
-            <div className="hero-watch-face__meta">
-              <span>45 min</span>
-              <span>HR 128</span>
-            </div>
-          </div>
           <Image
             src={`${watchOverlayPath(watchVariant)}?v=${WATCH_OVERLAY_VERSION}`}
             alt=""
