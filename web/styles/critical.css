@@ -35,10 +35,11 @@ body {
   line-height: var(--leading-title);
 }
 .hero-title {
-  font-size: clamp(2.35rem, 4.6vw, 3.65rem);
-  line-height: var(--leading-display);
+  font-size: clamp(2.15rem, 4.2vw, 3.35rem);
+  line-height: 1.08;
   letter-spacing: var(--tracking-display);
   font-weight: 600;
+  text-wrap: pretty;
 }
 .text-gradient-hero {
   color: #1d3b2c;

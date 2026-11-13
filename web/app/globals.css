@@ -469,10 +469,11 @@ input:focus-visible,
 
 /* Hero typography */
 .hero-title {
-  font-size: clamp(2.35rem, 4.6vw, 3.65rem);
-  line-height: var(--leading-display);
+  font-size: clamp(2.15rem, 4.2vw, 3.35rem);
+  line-height: 1.08;
   letter-spacing: var(--tracking-display);
   font-weight: 600;
+  text-wrap: pretty;
 }
 .hero-lead {
   font-weight: 400;
@@ -1268,6 +1269,15 @@ input:focus-visible,
     transparent 70%
   );
 }
+.btn-hero-primary {
+  color: #fff;
+}
+.btn-hero-primary .btn-primary-bg {
+  background: #1d3b2c;
+}
+.btn-hero-primary .btn-primary-shine {
+  opacity: 0;
+}
 
 /* Hero title gradient */
 .text-gradient-hero {
@@ -1980,7 +1990,7 @@ input:focus-visible,
   margin: 0;
   padding: 0;
   list-style: none;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 1px solid rgba(41, 43, 40, 0.12);
 }
 
 .blog-toc-link {
@@ -2059,7 +2069,7 @@ input:focus-visible,
 }
 
 .prose-blog {
-  color: rgba(245, 246, 248, 0.76);
+  color: #3a3d3a;
   font-size: 1.0625rem;
   line-height: 1.88;
   max-width: 48rem;
@@ -2145,8 +2155,8 @@ input:focus-visible,
   padding: 0.875rem 1.125rem;
   border-left: 3px solid var(--color-activity);
   border-radius: 0 12px 12px 0;
-  background: rgba(255, 255, 255, 0.04);
-  color: #3a3d3a;
+  background: #f4f1ea;
+  color: #292b28;
   font-size: 1.02em;
   line-height: 1.78;
   font-style: italic;
@@ -2159,8 +2169,8 @@ input:focus-visible,
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.12) 20%,
-    rgba(255, 255, 255, 0.12) 80%,
+    rgba(41, 43, 40, 0.14) 20%,
+    rgba(41, 43, 40, 0.14) 80%,
     transparent
   );
 }
@@ -2178,8 +2188,8 @@ input:focus-visible,
   transition: color 0.2s var(--ease-calm), text-decoration-color 0.2s var(--ease-calm);
 }
 .prose-blog a:hover {
-  color: #7fdca0;
-  text-decoration-color: rgba(127, 220, 160, 0.65);
+  color: #1d3b2c;
+  text-decoration-color: rgba(29, 59, 44, 0.55);
 }
 
 /* Hide scrollbars on horizontal scrollers */
@@ -2453,11 +2463,20 @@ input:focus-visible,
   }
 
   .hero-lead {
-    color: #747673;
+    color: #3a3d3a;
   }
 
   .btn-hero-primary {
     isolation: isolate;
+    color: #fff;
+  }
+
+  .btn-hero-primary .btn-primary-bg {
+    background: #1d3b2c;
+  }
+
+  .btn-hero-primary .btn-primary-shine {
+    opacity: 0;
   }
 
   .btn-hero-primary::after {

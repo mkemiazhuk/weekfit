@@ -1,6 +1,5 @@
 import dynamic from "next/dynamic";
 import Hero from "@/components/home/Hero";
-import ProofStrip from "@/components/home/ProofStrip";
 import AiNutrition from "@/components/home/AiNutrition";
 import SeoIntro from "@/components/home/SeoIntro";
 import UseCases from "@/components/home/UseCases";
@@ -20,7 +19,6 @@ export default function Home() {
   return (
     <>
       <Hero />
-      <ProofStrip />
       <AiNutrition />
       <SeoIntro />
       <UseCases />

@@ -81,7 +81,7 @@ function TrendChart({ values, caption }: { values: number[]; caption: string }) 
                     height: barHeight,
                   background: isLast
                     ? `linear-gradient(180deg, ${pillars.activity}, ${pillars.activity}88)`
-                    : "rgba(255,255,255,0.12)",
+                    : "rgba(41, 43, 40, 0.12)",
                   boxShadow: isLast ? `0 0 20px -4px ${pillars.activity}66` : undefined,
                 }}
                 />

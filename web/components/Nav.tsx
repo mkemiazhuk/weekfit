@@ -121,16 +121,16 @@ export default function Nav() {
     >
       <nav
         aria-label="Primary"
-        className="site-header__bar mx-auto grid h-16 max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 section-x md:grid-cols-[auto_1fr_auto] md:h-[4.25rem]"
+        className="site-header__bar mx-auto grid h-16 max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 section-x lg:grid-cols-[auto_1fr_auto] lg:h-[4.25rem]"
       >
-        <div className="min-w-0 pr-1 md:hidden">
+        <div className="min-w-0 pr-1 lg:hidden">
           <Wordmark size="navMobile" className="wordmark-lockup--nav-mobile" />
         </div>
-        <div className="hidden shrink-0 justify-self-start md:block">
+        <div className="hidden shrink-0 justify-self-start lg:block">
           <Wordmark size="nav" className="wordmark-lockup--nav-desktop" />
         </div>
 
-        <div className="hidden items-center justify-self-center md:flex md:gap-7 lg:gap-8">
+        <div className="hidden items-center justify-self-center lg:flex lg:gap-8">
           {desktopLinks.map((l) => (
             <a
               key={l.href}
@@ -142,12 +142,12 @@ export default function Nav() {
           ))}
         </div>
 
-        <div className="col-start-2 flex shrink-0 items-center justify-end justify-self-end md:col-start-3 md:gap-3">
-          <div className="hidden md:block">
+        <div className="col-start-2 flex shrink-0 items-center justify-end justify-self-end lg:col-start-3 lg:gap-3">
+          <div className="hidden lg:block">
             <LangToggle />
           </div>
 
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             <Button href={SITE.appInstallUrl} external size="nav" className="btn-nav-cta">
               {t.nav.download}
             </Button>
@@ -161,7 +161,7 @@ export default function Nav() {
             aria-controls="mobile-menu"
             aria-haspopup="dialog"
             aria-label={open ? t.nav.closeMenu : t.nav.menu}
-            className="nav-menu-btn relative grid h-11 w-11 shrink-0 touch-manipulation place-items-center rounded-full text-white transition-[background,transform,color] duration-300 active:scale-[0.94] md:hidden"
+            className="nav-menu-btn relative grid h-11 w-11 shrink-0 touch-manipulation place-items-center rounded-full text-white transition-[background,transform,color] duration-300 active:scale-[0.94] lg:hidden"
           >
             <span className="relative block h-3.5 w-5" aria-hidden>
               <span
@@ -198,7 +198,7 @@ export default function Nav() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: reduce ? 0.12 : 0.22, ease: easeCalm }}
-            className="mobile-menu-scrim fixed inset-0 z-[45] touch-manipulation border-0 md:hidden"
+            className="mobile-menu-scrim fixed inset-0 z-[45] touch-manipulation border-0 lg:hidden"
             onClick={closeMenu}
           />
           <motion.div
@@ -211,7 +211,7 @@ export default function Nav() {
             animate={{ opacity: 1, y: 0 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }}
             transition={{ duration: reduce ? 0.12 : 0.28, ease: easeCalm }}
-            className="mobile-menu-panel fixed inset-x-0 bottom-0 z-[48] flex flex-col overflow-y-auto overscroll-contain md:hidden"
+            className="mobile-menu-panel fixed inset-x-0 bottom-0 z-[48] flex flex-col overflow-y-auto overscroll-contain lg:hidden"
           >
             <nav
               aria-label="Mobile"
