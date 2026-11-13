@@ -61,6 +61,40 @@ final class WeekFitAIUsageRefreshTests: XCTestCase {
         XCTAssertNotNil(store.message)
     }
 
+    func testMissingSubscriptionKeepsTheErrorVisibleOnRetry() async {
+        WeekFitAIUsageCache.clearBalance()
+        WeekFitAIUsageCache.remember(nil)
+        var store: WeekFitAIUsageStore!
+        var reads = 0
+        store = WeekFitAIUsageStore(loadUsage: {
+            reads += 1
+            if reads > 1 {
+                XCTAssertTrue(store.hasResolved)
+                XCTAssertNotNil(store.message)
+                XCTAssertNil(store.usage)
+            }
+            throw WeekFitAIUsageError.subscriptionRequired
+        }, loadProducts: { [] }, recoverPurchases: { nil }, flushStops: {},
+           isEnabled: { true }, isRefused: { false }, retryPause: {})
+        await store.refresh()
+        XCTAssertTrue(store.hasResolved)
+        XCTAssertTrue(store.requiresSubscription)
+        XCTAssertNil(store.usage)
+        let shown = store.message
+        XCTAssertNotNil(shown)
+        await store.refresh()
+        XCTAssertEqual(store.message, shown)
+        XCTAssertNil(store.usage)
+        let reopened = WeekFitAIUsageStore(loadUsage: { throw WeekFitAIUsageError.subscriptionRequired },
+            loadProducts: { [] }, recoverPurchases: { nil }, flushStops: {},
+            isEnabled: { true }, isRefused: { false }, retryPause: {})
+        XCTAssertTrue(reopened.hasResolved)
+        XCTAssertEqual(reopened.message, shown)
+        XCTAssertNil(reopened.usage)
+        WeekFitAIUsageCache.clearBalance()
+        WeekFitAIUsageCache.remember(nil)
+    }
+
     func testMissingSubscriptionIsNotRetriedAndDoesNotBlockPurchaseRecovery() async {
         var reads = 0
         var deliveries = 0

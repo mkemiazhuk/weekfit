@@ -184,10 +184,22 @@ extension Notification.Name {
 enum WeekFitAIUsageCache {
     private(set) static var latest: WeekFitAIUsage?
     private(set) static var storedAt: Date?
+    /// Shown again if the screen is recreated, so a retry does not pass through the skeleton.
+    private(set) static var lastMessage: String?
 
     static func store(_ usage: WeekFitAIUsage, at date: Date = Date()) {
         latest = usage
         storedAt = date
+        lastMessage = nil
+    }
+
+    static func clearBalance() {
+        latest = nil
+        storedAt = nil
+    }
+
+    static func remember(_ message: String?) {
+        lastMessage = message
     }
 
     static func isFresh(since start: Date) -> Bool {
@@ -282,6 +294,8 @@ final class WeekFitAIUsageStore: ObservableObject {
     @Published private(set) var message: String?
     @Published private(set) var requiresSubscription = false
     @Published private(set) var isRefreshing = false
+    /// False only until the first refresh finishes. Later retries keep the current screen.
+    @Published private(set) var hasResolved = false
     @Published private(set) var purchasePhase: WeekFitAIPurchasePhase = .idle
     @Published private(set) var didCreditPurchase = false
     private let loadUsage: () async throws -> WeekFitAIUsage
@@ -321,7 +335,9 @@ final class WeekFitAIUsageStore: ObservableObject {
         self.retryPause = retryPause
         if isEnabled(), !isRefused() {
             usage = WeekFitAIUsageCache.latest
+            message = WeekFitAIUsageCache.lastMessage
             products = WeekFitAIProductCache.latest
+            if usage != nil || message != nil { hasResolved = true }
         }
     }
 
@@ -369,13 +385,21 @@ final class WeekFitAIUsageStore: ObservableObject {
             products = []
             requiresSubscription = false
             message = WeekFitLocalizedString("ai.usage.sandboxMisconfigured")
+            hasResolved = true
+            WeekFitAIUsageCache.clearBalance()
+            WeekFitAIUsageCache.remember(message)
             return
         }
         guard isEnabled(), !isRefreshing else { return }
+        if usage != nil || message != nil { hasResolved = true }
         isRefreshing = true
-        defer { isRefreshing = false }
+        defer {
+            isRefreshing = false
+            hasResolved = true
+            WeekFitAIUsageCache.remember(message)
+        }
         let started = Date()
-        if usage == nil, WeekFitVoiceStopLedger.pending().isEmpty {
+        if usage == nil, message == nil, !requiresSubscription, WeekFitVoiceStopLedger.pending().isEmpty {
             usage = WeekFitAIUsageCache.latest
         }
         if products.isEmpty {
@@ -397,7 +421,10 @@ final class WeekFitAIUsageStore: ObservableObject {
             }
             requiresSubscription = (error as? WeekFitAIUsageError) == .subscriptionRequired
             message = WeekFitAIErrorMessage(error)
-            if requiresSubscription { usage = nil }
+            if requiresSubscription {
+                usage = nil
+                WeekFitAIUsageCache.clearBalance()
+            }
             report(error, stage: "balance")
         }
         await productsReady

@@ -78,7 +78,7 @@ struct WeekFitAIUsageView: View {
             usageHeader
             WeekFitAIBalanceScreen(
                 content: store.usage.map { WeekFitAIBalanceContent.make($0) },
-                isLoading: store.usage == nil && store.message == nil,
+                isLoading: !store.hasResolved && store.usage == nil && store.message == nil,
                 isRefreshing: store.isRefreshing,
                 message: store.message,
                 showsSubscribe: store.usage?.active == false || store.requiresSubscription,
@@ -225,7 +225,12 @@ struct WeekFitAIBalanceScreen: View {
     }
 
     private var showsActions: Bool {
-        message != nil || showsSubscribe || showsManage
+        showsRetry || showsSubscribe || showsManage
+    }
+
+    /// A missing subscription is not a failed load. Subscribe is the action, not retry.
+    private var showsRetry: Bool {
+        message != nil && !(showsSubscribe && content == nil)
     }
 
     @ViewBuilder
@@ -248,7 +253,7 @@ struct WeekFitAIBalanceScreen: View {
 
     private var actions: some View {
         SettingsGroupedSection {
-            if message != nil {
+            if showsRetry {
                 actionRow(
                     text("ai.usage.refresh"),
                     systemImage: "arrow.clockwise",
@@ -257,7 +262,7 @@ struct WeekFitAIBalanceScreen: View {
                 )
                 .disabled(isRefreshing)
             }
-            if message != nil && (showsSubscribe || showsManage) {
+            if showsRetry && (showsSubscribe || showsManage) {
                 SettingsGroupDivider()
             }
             if showsSubscribe {
