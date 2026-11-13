@@ -374,7 +374,6 @@ final class WeekFitAIUsageStore: ObservableObject {
         guard isEnabled(), !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
-        message = nil
         let started = Date()
         if usage == nil, WeekFitVoiceStopLedger.pending().isEmpty {
             usage = WeekFitAIUsageCache.latest
@@ -390,14 +389,15 @@ final class WeekFitAIUsageStore: ObservableObject {
             usage = fresh
             WeekFitAIUsageCache.store(fresh)
             requiresSubscription = false
+            message = nil
         } catch {
             if error is CancellationError || (error as? URLError)?.code == .cancelled {
                 await productsReady
                 return
             }
             requiresSubscription = (error as? WeekFitAIUsageError) == .subscriptionRequired
-            if requiresSubscription { usage = nil }
             message = WeekFitAIErrorMessage(error)
+            if requiresSubscription { usage = nil }
             report(error, stage: "balance")
         }
         await productsReady
@@ -422,6 +422,7 @@ final class WeekFitAIUsageStore: ObservableObject {
             if WeekFitAIUsageCache.isFresh(since: started), let settled = WeekFitAIUsageCache.latest {
                 usage = settled
                 requiresSubscription = false
+                message = nil
                 return
             }
             do {
@@ -429,6 +430,7 @@ final class WeekFitAIUsageStore: ObservableObject {
                 usage = fresh
                 WeekFitAIUsageCache.store(fresh)
                 requiresSubscription = false
+                message = nil
             } catch {
                 report(error, stage: "balance_after_stop")
             }

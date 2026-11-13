@@ -64,6 +64,8 @@ struct WeekFitAIUsageView: View {
     var onClose: (() -> Void)? = nil
     @StateObject private var store = WeekFitAIUsageStore()
     @EnvironmentObject private var subscriptionManager: SubscriptionManager
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.isSettingsNavigationPush) private var isSettingsNavigationPush
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.weekFitPalette) private var palette
     @State private var showPaywall = false
@@ -76,7 +78,8 @@ struct WeekFitAIUsageView: View {
             usageHeader
             WeekFitAIBalanceScreen(
                 content: store.usage.map { WeekFitAIBalanceContent.make($0) },
-                isLoading: store.usage == nil && (store.isRefreshing || store.message == nil),
+                isLoading: store.usage == nil && store.message == nil,
+                isRefreshing: store.isRefreshing,
                 message: store.message,
                 showsSubscribe: store.usage?.active == false || store.requiresSubscription,
                 showsManage: store.usage != nil,
@@ -91,6 +94,11 @@ struct WeekFitAIUsageView: View {
             )
         }
         .background(palette.appScreenBackground.ignoresSafeArea())
+        .background {
+            if isSettingsNavigationPush {
+                WeekFitNavigationPopEnabler()
+            }
+        }
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
         .blur(radius: coversBackground ? 16 : 0)
@@ -137,6 +145,9 @@ struct WeekFitAIUsageView: View {
 
     private var usageHeader: some View {
         HStack(alignment: .center, spacing: 12) {
+            if isSettingsNavigationPush {
+                ProfilePremiumDismissButton(style: .back, action: { dismiss() })
+            }
             Text(WeekFitLocalizedString("ai.usage.title"))
                 .font(.system(.title2, design: .rounded).weight(.bold))
                 .foregroundStyle(WeekFitTheme.primaryText)
@@ -144,7 +155,7 @@ struct WeekFitAIUsageView: View {
                 .minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityAddTraits(.isHeader)
-            if let onClose {
+            if let onClose, !isSettingsNavigationPush {
                 WeekFitCloseButton(size: .regular, playsHaptic: false, action: onClose)
             }
         }
@@ -157,6 +168,7 @@ struct WeekFitAIUsageView: View {
 struct WeekFitAIBalanceScreen: View {
     var content: WeekFitAIBalanceContent?
     var isLoading: Bool
+    var isRefreshing: Bool = false
     var message: String?
     var showsSubscribe: Bool
     var showsManage: Bool
@@ -237,7 +249,13 @@ struct WeekFitAIBalanceScreen: View {
     private var actions: some View {
         SettingsGroupedSection {
             if message != nil {
-                actionRow(text("ai.usage.refresh"), systemImage: "arrow.clockwise", action: onRetry)
+                actionRow(
+                    text("ai.usage.refresh"),
+                    systemImage: "arrow.clockwise",
+                    showsProgress: isRefreshing,
+                    action: onRetry
+                )
+                .disabled(isRefreshing)
             }
             if message != nil && (showsSubscribe || showsManage) {
                 SettingsGroupDivider()
@@ -254,15 +272,25 @@ struct WeekFitAIBalanceScreen: View {
         }
     }
 
-    private func actionRow(_ title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+    private func actionRow(
+        _ title: String,
+        systemImage: String,
+        showsProgress: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             HStack(spacing: 13) {
                 ZStack {
                     Circle()
                         .fill(iconTile)
-                    Image(systemName: systemImage)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(WeekFitTheme.iconPrimary)
+                    if showsProgress {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: systemImage)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(WeekFitTheme.iconPrimary)
+                    }
                 }
                 .frame(width: 34, height: 34)
                 .accessibilityHidden(true)
@@ -271,10 +299,12 @@ struct WeekFitAIBalanceScreen: View {
                     .foregroundStyle(WeekFitTheme.primaryText)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(WeekFitTheme.tertiaryText)
-                    .accessibilityHidden(true)
+                if !showsProgress {
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(WeekFitTheme.tertiaryText)
+                        .accessibilityHidden(true)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)

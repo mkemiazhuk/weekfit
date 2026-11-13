@@ -97,7 +97,6 @@ private extension HelpSupportView {
         supportSection(title: WeekFitLocalizedString("support.help.quickHelp")) {
             SupportRow(
                 icon: "message.fill",
-                iconColor: WeekFitTheme.settingsAccent,
                 title: WeekFitLocalizedString("support.contactSupport"),
                 subtitle: WeekFitLocalizedString("support.contactSupport.subtitle")
             ) {
@@ -108,7 +107,6 @@ private extension HelpSupportView {
 
             SupportRow(
                 icon: "questionmark",
-                iconColor: WeekFitTheme.recovery,
                 title: WeekFitLocalizedString("support.faq.title"),
                 subtitle: WeekFitLocalizedString("support.faq.subtitle")
             ) {
@@ -117,7 +115,6 @@ private extension HelpSupportView {
 
             SupportRow(
                 icon: "doc.text.fill",
-                iconColor: WeekFitTheme.brandGold,
                 title: WeekFitLocalizedString("support.guides.title"),
                 subtitle: WeekFitLocalizedString("support.guides.subtitle")
             ) {
@@ -130,7 +127,6 @@ private extension HelpSupportView {
         supportSection(title: WeekFitLocalizedString("support.help.resources")) {
             SupportRow(
                 icon: "heart.text.square.fill",
-                iconColor: .mint,
                 title: WeekFitLocalizedString("settings.profile.item.healthSignals"),
                 subtitle: WeekFitLocalizedString("settings.profile.item.healthSignals.subtitle")
             ) {
@@ -139,7 +135,6 @@ private extension HelpSupportView {
 
             SupportRow(
                 icon: "lock.shield.fill",
-                iconColor: .indigo,
                 title: WeekFitLocalizedString("settings.profile.item.privacy"),
                 subtitle: WeekFitLocalizedString("settings.profile.item.privacy.subtitle")
             ) {
@@ -148,7 +143,6 @@ private extension HelpSupportView {
 
             SupportRow(
                 icon: "doc.plaintext.fill",
-                iconColor: .orange,
                 title: WeekFitLocalizedString("settings.profile.item.termsPrivacy"),
                 subtitle: WeekFitLocalizedString("settings.profile.item.termsPrivacy.subtitle")
             ) {
@@ -393,7 +387,6 @@ private extension HelpSupportView {
 private struct SupportRow: View {
 
     let icon: String
-    let iconColor: Color
     let title: String
     let subtitle: String
     let action: () -> Void
@@ -403,11 +396,11 @@ private struct SupportRow: View {
             HStack(spacing: 14) {
                 ZStack {
                     Circle()
-                        .fill(iconColor.opacity(0.15))
+                        .fill(WeekFitTheme.internalTile)
 
                     Image(systemName: icon)
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(iconColor)
+                        .foregroundStyle(WeekFitTheme.iconPrimary)
                 }
                 .frame(width: 34, height: 34)
 
@@ -435,7 +428,7 @@ private struct SupportRow: View {
             .padding(.horizontal, 17)
             .padding(.vertical, 12)
             .frame(minHeight: 78)
-            .profilePremiumCard(cornerRadius: 26, glow: iconColor)
+            .profilePremiumCard(cornerRadius: 26)
         }
         .buttonStyle(PressableButtonStyle())
     }
@@ -481,7 +474,6 @@ struct FAQView: View {
             title: WeekFitLocalizedString("support.faq.title"),
             subtitle: WeekFitLocalizedString("support.faq.subtitle"),
             icon: "questionmark",
-            iconColor: WeekFitTheme.settingsAccent,
             items: items,
             dismiss: dismiss
         )
@@ -503,7 +495,6 @@ struct GuidesView: View {
             title: WeekFitLocalizedString("support.guides.title"),
             subtitle: WeekFitLocalizedString("support.guides.subtitle"),
             icon: "doc.text.fill",
-            iconColor: WeekFitTheme.brandGold,
             items: items,
             dismiss: dismiss
         )
@@ -517,14 +508,13 @@ struct SupportDetailView: View {
     let title: String
     let subtitle: String
     let icon: String
-    let iconColor: Color
     let items: [(String, String)]
     let dismiss: DismissAction
 
     var body: some View {
         ZStack {
             WeekFitTheme.backgroundColor.ignoresSafeArea()
-            ProfilePremiumBackground(accent: iconColor)
+            ProfilePremiumBackground()
 
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 18) {
@@ -549,23 +539,9 @@ struct SupportDetailView: View {
 
 private extension SupportDetailView {
 
-    var backgroundGlow: some View {
-        VStack {
-            Circle()
-                .fill(iconColor.opacity(0.075))
-                .frame(width: 220, height: 220)
-                .blur(radius: 120)
-                .offset(x: 84, y: 22)
-
-            Spacer()
-        }
-        .ignoresSafeArea()
-    }
-
     var headerSection: some View {
         ProfilePremiumHeader(
-            title: title,
-            accent: iconColor
+            title: title
         ) {
             dismiss()
         }
@@ -576,17 +552,10 @@ private extension SupportDetailView {
             HStack {
                 Spacer()
 
-                ZStack {
-                    Circle()
-                        .fill(iconColor.opacity(0.07))
-                        .blur(radius: 22)
-                        .frame(width: 56, height: 56)
-
-                    Image(systemName: icon)
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(iconColor)
-                }
-                .frame(width: 54, height: 54)
+                Image(systemName: icon)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(WeekFitTheme.iconPrimary)
+                    .frame(width: 54, height: 54)
 
                 Spacer()
             }

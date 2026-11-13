@@ -16,7 +16,7 @@ struct TermsPrivacyView: View {
         ZStack {
             background
                 .ignoresSafeArea()
-            ProfilePremiumBackground(accent: accentGreen)
+            ProfilePremiumBackground()
 
             VStack(spacing: 0) {
                 fixedHeader
@@ -200,32 +200,16 @@ private extension TermsPrivacyView {
             footerLink
         }
         .padding(20)
-        .profilePremiumCard(cornerRadius: 22, glow: accentGreen)
+        .profilePremiumCard(cornerRadius: 22)
     }
 
     var topIcon: some View {
         HStack {
             Spacer()
 
-            ZStack {
-                Circle()
-                    .fill(accentGreen.opacity(0.08))
-                    .blur(radius: 28)
-                    .frame(width: 88, height: 88)
-
-                Image(systemName: "lock.shield.fill")
-                    .font(.system(size: 38, weight: .semibold))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [
-                                accentGreen,
-                                accentGreen.opacity(0.5)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
+            Image(systemName: "lock.shield.fill")
+                .font(.system(size: 38, weight: .semibold))
+                .foregroundStyle(textPrimary)
             .frame(width: 84, height: 84)
 
             Spacer()
@@ -289,11 +273,11 @@ private extension TermsPrivacyView {
 
             Image(systemName: "info.circle.fill")
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(accentGreen.opacity(0.82))
+                .foregroundStyle(textSecondary)
 
             Text(localizedLegalCopy("Manage Apple Health permissions anytime in Apple Health or iOS Settings."))
                 .font(.system(size: 14.5, weight: .semibold))
-                .foregroundStyle(accentGreen.opacity(0.82))
+                .foregroundStyle(textSecondary)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
