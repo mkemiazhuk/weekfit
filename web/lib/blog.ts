@@ -88,7 +88,7 @@ export const blogCategories: BlogCategory[] = [
   {
     slug: "recovery",
     icon: "recovery",
-    color: "#2edbfa",
+    color: "#9B8ACB",
     name: { en: "Recovery", ru: "Восстановление" },
     desc: {
       en: "Readiness, HRV, resting heart rate and how to train with your recovery, not against it.",
@@ -98,7 +98,7 @@ export const blogCategories: BlogCategory[] = [
   {
     slug: "nutrition",
     icon: "nutrition",
-    color: "#ff9424",
+    color: "#EAA06B",
     name: { en: "Nutrition", ru: "Питание" },
     desc: {
       en: "Fuelling for training, protein and macro balance, and eating for the day you actually have.",
@@ -108,7 +108,7 @@ export const blogCategories: BlogCategory[] = [
   {
     slug: "training",
     icon: "activity",
-    color: "#66f070",
+    color: "#72AD8A",
     name: { en: "Training", ru: "Тренировки" },
     desc: {
       en: "Workout planning, effort management and building a week that adapts to your body.",
@@ -118,7 +118,7 @@ export const blogCategories: BlogCategory[] = [
   {
     slug: "sleep",
     icon: "recovery",
-    color: "#ad8fe6",
+    color: "#9B8ACB",
     name: { en: "Sleep", ru: "Сон" },
     desc: {
       en: "Sleep analysis, why last night matters today, and simple ways to sleep more deeply.",
@@ -138,7 +138,7 @@ export const blogCategories: BlogCategory[] = [
   {
     slug: "wellness",
     icon: "sparkles",
-    color: "#f5bf5c",
+    color: "#B98A32",
     name: { en: "Wellness", ru: "Здоровье" },
     desc: {
       en: "Habits, hydration and the small daily choices that compound into feeling good.",
@@ -148,7 +148,7 @@ export const blogCategories: BlogCategory[] = [
   {
     slug: "coach",
     icon: "coach",
-    color: "#8c66d9",
+    color: "#9B8ACB",
     name: { en: "Coach", ru: "Коуч" },
     desc: {
       en: "How the WeekFit AI coach reads your signals and decides what matters most today.",

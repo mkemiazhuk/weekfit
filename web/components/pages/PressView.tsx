@@ -140,7 +140,7 @@ export default function PressView() {
               <Button href={SITE.googlePreferredSourceUrl} external variant="ghost">
                 {c.preferredCta}
               </Button>
-              <code className="rounded-sm border border-white/[0.08] bg-black/30 px-3 py-2 text-[12px] text-white/55">
+              <code className="rounded-sm border border-black/[0.08] bg-black/[0.04] px-3 py-2 text-[12px] text-ink/70">
                 {SITE.googlePreferredSourceUrl.replace("https://", "")}
               </code>
             </div>

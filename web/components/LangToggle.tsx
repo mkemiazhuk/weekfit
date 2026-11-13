@@ -19,8 +19,8 @@ export default function LangToggle({ variant = "default" }: { variant?: "default
       className={clsx(
         "lang-toggle inline-flex shrink-0 rounded-full border p-0.5",
         isMenu
-          ? "lang-toggle--menu w-full border-white/[0.08] bg-white/[0.04]"
-          : "border-white/10 bg-white/[0.03]"
+          ? "lang-toggle--menu w-full border-black/[0.08] bg-black/[0.03]"
+          : "border-black/10 bg-black/[0.03]"
       )}
     >
       {(["en", "ru"] as const).map((l) => (
@@ -35,11 +35,11 @@ export default function LangToggle({ variant = "default" }: { variant?: "default
               : "px-2.5 py-1 text-[12px]",
             lang === l
               ? isMenu
-                ? "bg-white/[0.14] text-white shadow-none ring-1 ring-white/[0.12]"
-                : "scale-100 bg-white text-black shadow-sm"
+                ? "bg-white text-ink shadow-none ring-1 ring-black/[0.06]"
+                : "scale-100 bg-white text-ink shadow-sm"
               : isMenu
-                ? "text-white/45 hover:text-white/72"
-                : "scale-95 text-white/55 hover:scale-100 hover:text-white"
+                ? "text-ink/45 hover:text-ink/72"
+                : "scale-95 text-ink/55 hover:scale-100 hover:text-ink"
           )}
           aria-pressed={lang === l}
           aria-label={LABELS[l]}

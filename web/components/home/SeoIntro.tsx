@@ -36,7 +36,7 @@ export default function SeoIntro() {
               className="pointer-events-none absolute inset-x-0 top-0 h-32"
               style={{
                 background:
-                  "radial-gradient(70% 100% at 50% 0%, rgba(46,219,250,0.1), transparent 70%)",
+                  "radial-gradient(70% 100% at 50% 0%, rgba(155,138,203,0.16), transparent 70%)",
               }}
             />
 

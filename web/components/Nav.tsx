@@ -115,7 +115,7 @@ export default function Nav() {
       className={clsx(
         "site-header fixed inset-x-0 top-0 z-50 transition-[border-color,background-color,box-shadow] duration-[var(--duration-surface)] ease-[cubic-bezier(0.22,1,0.36,1)]",
         scrolled || open
-          ? "border-b border-white/[0.08] bg-canvas/72 shadow-[var(--shadow-nav)] backdrop-blur-2xl backdrop-saturate-150"
+          ? "border-b border-black/[0.06] bg-canvas/80 shadow-[var(--shadow-nav)] backdrop-blur-2xl backdrop-saturate-150"
           : "border-b border-transparent"
       )}
     >

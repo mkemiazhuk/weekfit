@@ -1,45 +1,44 @@
 @import "tailwindcss";
 
 /* ============================================================
-   WeekFit Design System — extracted from the iOS app
-   Canvas: OLED black. Surfaces: translucent white films.
-   Pillars: activity/nutrition/recovery/hydration/coach.
-   Atmosphere: solar day -> night progression.
+   WeekFit Design System — current iOS light palette
+   Canvas: warm milk #F7F6F2. Cards: porcelain.
+   Pillars: activity sage, nutrition peach, recovery lavender.
    ============================================================ */
 
 @theme {
-  /* Canvas */
-  --color-canvas: #06070a;
-  --color-canvas-deep: #050713;
+  /* Canvas — WeekFitLightTokens.backgroundPrimary */
+  --color-canvas: #f7f6f2;
+  --color-canvas-deep: #f0eee9;
 
-  /* Ink (text is white at opacity) */
-  --color-ink: #f5f6f8;
-  --color-ink-2: rgba(245, 246, 248, 0.62);
-  --color-ink-3: rgba(245, 246, 248, 0.42);
+  /* Ink — graphite on milk */
+  --color-ink: #292b28;
+  --color-ink-2: #5d5f5c;
+  --color-ink-3: #747673;
 
-  /* Pillars — the hero data-viz identity colors */
-  --color-activity: #66f070;
-  --color-nutrition: #ff9424;
-  --color-recovery: #2edbfa;
-  --color-hydration: #4088f2;
-  --color-coach: #8c66d9;
+  /* Pillars — WeekFitSemanticMetricTokens */
+  --color-activity: #72ad8a;
+  --color-nutrition: #eaa06b;
+  --color-recovery: #9b8acb;
+  --color-hydration: #35add0;
+  --color-coach: #9b8acb;
 
-  /* Category pastels — chips / soft accents */
-  --color-meal: #8cd19c;
-  --color-workout: #809eeb;
-  --color-recovery-soft: #ad8fe6;
-  --color-habit: #ed9e57;
+  /* Category accents */
+  --color-meal: #72ad8a;
+  --color-workout: #72ad8a;
+  --color-recovery-soft: #9b8acb;
+  --color-habit: #eaa06b;
 
-  /* Premium accent duo (login/marketing) */
-  --color-gold: #f5bf5c;
-  --color-brand: #66bc87;
-  --color-wordmark-fit: #76a88a;
+  /* Brand gold + activity ink for the wordmark */
+  --color-gold: #b98a32;
+  --color-brand: #72ad8a;
+  --color-wordmark-fit: #386b4d;
 
-  /* Macros (as rendered in Nutrition Details) */
-  --color-protein: #9466f2;
-  --color-carbs: #ff8c29;
-  --color-fat: #ff386e;
-  --color-fiber: #29cc6e;
+  /* Macros — WeekFitLightTokens */
+  --color-protein: #8567d4;
+  --color-carbs: #e48d3e;
+  --color-fat: #d95f87;
+  --color-fiber: #3fb473;
 
   /* Radii — continuous squircle scale from the app */
   --radius-sm: 10px;
@@ -51,22 +50,22 @@
   --radius-xl: 28px;
   --radius-sheet: 30px;
 
-  /* Surfaces & borders */
-  --color-surface-subtle: rgba(255, 255, 255, 0.028);
-  --color-surface-raised: rgba(255, 255, 255, 0.038);
-  --color-border-subtle: rgba(255, 255, 255, 0.06);
-  --color-border-strong: rgba(255, 255, 255, 0.11);
+  /* Surfaces & borders — porcelain on milk */
+  --color-surface-subtle: rgba(255, 253, 251, 0.92);
+  --color-surface-raised: #fffdfb;
+  --color-border-subtle: rgba(92, 87, 79, 0.1);
+  --color-border-strong: rgba(92, 87, 79, 0.16);
 
   /* Text opacity steps */
-  --color-text-secondary: rgba(255, 255, 255, 0.6);
-  --color-text-tertiary: rgba(255, 255, 255, 0.45);
-  --color-text-muted: rgba(255, 255, 255, 0.35);
+  --color-text-secondary: #5d5f5c;
+  --color-text-tertiary: #747673;
+  --color-text-muted: #8f908b;
 
-  /* Button gradient */
-  --color-btn-from: #7fdca0;
-  --color-btn-mid: #4f9e6f;
-  --color-btn-to: #35634d;
-  --color-btn-text: #04240f;
+  /* Button gradient — activity sage */
+  --color-btn-from: #8fcba8;
+  --color-btn-mid: #5e9a78;
+  --color-btn-to: #386b4d;
+  --color-btn-text: #f7fbf8;
   --color-btn-shine: rgba(255, 255, 255, 0.28);
 
   /* Phone mockup frame */
@@ -94,30 +93,28 @@
   --duration-reveal-slow: 0.68s;
   --duration-entrance: 0.7s;
 
-  /* Shadow system — deep, low-opacity layers */
-  --shadow-glass: 0 32px 96px -48px rgba(0, 0, 0, 0.62);
-  --shadow-card-hover: 0 28px 72px -32px rgba(0, 0, 0, 0.58);
-  --shadow-card-depth: 0 16px 48px -24px rgba(0, 0, 0, 0.52);
-  --shadow-product: 0 48px 100px -36px rgba(0, 0, 0, 0.55),
-    0 16px 40px -20px rgba(0, 0, 0, 0.35);
-  --shadow-accent: 0 24px 60px -20px;
-  --shadow-btn-primary: 0 14px 40px -8px rgba(102, 188, 135, 0.5);
-  --shadow-btn-primary-hover: 0 18px 48px -6px rgba(102, 188, 135, 0.55);
-  --shadow-nav: 0 8px 32px -12px rgba(0, 0, 0, 0.45);
+  /* Shadow system — short warm contact on milk */
+  --shadow-glass: 0 18px 48px -28px rgba(40, 32, 24, 0.28);
+  --shadow-card-hover: 0 22px 48px -24px rgba(40, 32, 24, 0.22);
+  --shadow-card-depth: 0 10px 28px -18px rgba(40, 32, 24, 0.16);
+  --shadow-product: 0 28px 60px -28px rgba(40, 32, 24, 0.22);
+  --shadow-accent: 0 18px 40px -18px;
+  --shadow-btn-primary: 0 14px 40px -8px rgba(56, 107, 77, 0.35);
+  --shadow-btn-primary-hover: 0 18px 48px -6px rgba(56, 107, 77, 0.42);
+  --shadow-nav: 0 8px 28px -16px rgba(40, 32, 24, 0.18);
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* Atmosphere — updated by JS on scroll (day -> night).
-     Defaults = morning dawn. */
-  --atm-base-1: #080f1a;
-  --atm-base-2: #05070d;
-  --atm-base-3: #030305;
-  --atm-glow-1: 66, 184, 224; /* sky blue */
-  --atm-glow-1-a: 0.16;
-  --atm-glow-2: 140, 209, 156; /* green */
-  --atm-glow-2-a: 0.1;
+  /* Atmosphere — warm milk. Defaults = morning champagne. */
+  --atm-base-1: #fff9ec;
+  --atm-base-2: #f7f6f2;
+  --atm-base-3: #f3f1ea;
+  --atm-glow-1: 234, 160, 107;
+  --atm-glow-1-a: 0.28;
+  --atm-glow-2: 114, 173, 138;
+  --atm-glow-2-a: 0.2;
   /* Global calm/desaturation factor (0 vivid day -> 1 full night) */
   --night: 0;
 
@@ -175,8 +172,8 @@ body {
 }
 
 ::selection {
-  background: rgba(102, 240, 112, 0.24);
-  color: #fff;
+  background: rgba(114, 173, 138, 0.35);
+  color: #292b28;
 }
 
 @layer base {
@@ -268,7 +265,7 @@ input:focus-visible,
   }
 }
 .wordmark-lockup__week {
-  color: rgba(255, 255, 255, 0.96);
+  color: #292b28;
 }
 .wordmark-lockup__fit {
   color: var(--color-wordmark-fit, #76a88a);
@@ -330,7 +327,7 @@ input:focus-visible,
 }
 @media (hover: hover) {
   .premium-link:hover {
-    color: #fff;
+    color: #292b28;
     gap: 0.625rem;
   }
 }
@@ -344,19 +341,13 @@ input:focus-visible,
   }
 }
 
-/* Glass surface — translucent white film with luminous edge */
+/* Porcelain card — lighter than the milk canvas */
 .glass {
-  background: linear-gradient(
-    152deg,
-    rgba(255, 255, 255, 0.055),
-    rgba(255, 255, 255, 0.018)
-  );
+  background: linear-gradient(165deg, #fffdfb 0%, #fefcf8 100%);
   border: 1px solid var(--color-border-subtle);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
     var(--shadow-glass);
-  backdrop-filter: saturate(150%) blur(22px);
-  -webkit-backdrop-filter: saturate(150%) blur(22px);
 }
 
 .surface-quiet {
@@ -444,28 +435,28 @@ input:focus-visible,
   letter-spacing: var(--tracking-kicker);
   text-transform: uppercase;
   line-height: 1.35;
-  color: rgba(255, 255, 255, 0.32);
+  color: #8f908b;
 }
 .body-lg {
   font-size: clamp(1.03125rem, 2vw, 1.125rem);
   line-height: 1.58;
   font-weight: 400;
   letter-spacing: -0.012em;
-  color: rgba(255, 255, 255, 0.52);
+  color: #747673;
 }
 .body-md {
   font-size: 0.9375rem;
   line-height: var(--leading-body);
   font-weight: 400;
   letter-spacing: var(--tracking-body);
-  color: rgba(255, 255, 255, 0.42);
+  color: #747673;
 }
 .body-sm {
   font-size: 0.8125rem;
   line-height: 1.55;
   font-weight: 400;
   letter-spacing: var(--tracking-body);
-  color: rgba(255, 255, 255, 0.38);
+  color: #8f908b;
 }
 .caption {
   font-size: 0.6875rem;
@@ -473,7 +464,7 @@ input:focus-visible,
   letter-spacing: var(--tracking-kicker);
   text-transform: uppercase;
   line-height: 1.35;
-  color: rgba(255, 255, 255, 0.3);
+  color: #8f908b;
 }
 
 /* Hero typography */
@@ -487,7 +478,7 @@ input:focus-visible,
   font-weight: 400;
   line-height: 1.62;
   letter-spacing: -0.012em;
-  color: rgba(255, 255, 255, 0.52);
+  color: #747673;
   max-width: min(36ch, var(--measure-prose));
   margin-top: 1.4375rem;
 }
@@ -534,7 +525,7 @@ input:focus-visible,
   pointer-events: none;
   background: radial-gradient(
     closest-side at 50% 40%,
-    rgba(46, 219, 250, 0.07) 0%,
+    rgba(155, 138, 203, 0.14) 0%,
     transparent 68%
   );
   filter: blur(18px);
@@ -762,7 +753,7 @@ input:focus-visible,
 }
 
 .hero-phone .phone-frame {
-  border-color: rgba(255, 255, 255, 0.09);
+  border-color: #202227;
   box-shadow: var(--shadow-product);
 }
 
@@ -804,13 +795,13 @@ input:focus-visible,
   font-weight: 400;
   letter-spacing: -0.012em;
   line-height: 1.2;
-  color: rgba(255, 255, 255, 0.38);
+  color: #5d5f5c;
   transition: color var(--duration-ui) var(--ease-calm);
 }
 @media (min-width: 1024px) {
   .nav-link {
     font-size: 0.9375rem;
-    color: rgba(255, 255, 255, 0.4);
+    color: #747673;
   }
 }
 
@@ -873,15 +864,12 @@ input:focus-visible,
   }
 }
 .card-accent {
-  backdrop-filter: saturate(160%) blur(20px);
-  -webkit-backdrop-filter: saturate(160%) blur(20px);
   background: linear-gradient(
     150deg,
-    color-mix(in srgb, var(--accent-color) 14%, transparent),
-    rgba(255, 255, 255, 0.05) 45%,
-    rgba(255, 255, 255, 0.02)
+    color-mix(in srgb, var(--accent-color) 16%, #fffdfb),
+    #fefcf8 55%
   );
-  border: 1px solid color-mix(in srgb, var(--accent-color) 24%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 28%, transparent);
   box-shadow: var(--shadow-accent) color-mix(in srgb, var(--accent-color) 33%, transparent),
     var(--shadow-card-depth);
 }
@@ -890,18 +878,11 @@ input:focus-visible,
 .signal-overlay-card {
   position: relative;
   isolation: isolate;
-  background: linear-gradient(
-    165deg,
-    rgba(14, 15, 20, 0.97) 0%,
-    rgba(9, 10, 14, 0.99) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(165deg, #fffdfb 0%, #fefcf8 100%);
+  border: 1px solid rgba(92, 87, 79, 0.12);
   box-shadow:
-    0 28px 56px -16px rgba(0, 0, 0, 0.82),
-    0 0 0 1px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.09);
-  backdrop-filter: blur(24px) saturate(130%);
-  -webkit-backdrop-filter: blur(24px) saturate(130%);
+    0 22px 48px -22px rgba(40, 32, 24, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 .signal-overlay-card::before {
   content: "";
@@ -920,21 +901,21 @@ input:focus-visible,
   font-weight: 600;
   line-height: 1.45;
   letter-spacing: -0.012em;
-  color: rgba(255, 255, 255, 0.95);
+  color: #292b28;
 }
 .signal-overlay-card__tip {
   margin-top: 0.375rem;
   font-size: 0.8125rem;
   line-height: 1.52;
   letter-spacing: -0.008em;
-  color: rgba(255, 255, 255, 0.76);
+  color: #3a3d3a;
 }
 .signal-overlay-card__detail {
   margin-top: 0.375rem;
   font-size: 0.75rem;
   line-height: 1.48;
   letter-spacing: -0.006em;
-  color: rgba(255, 255, 255, 0.58);
+  color: #5d5f5c;
 }
 @media (min-width: 768px) {
   .signal-overlay-card__title {
@@ -970,7 +951,7 @@ input:focus-visible,
   z-index: 4;
   pointer-events: none;
   background: transparent;
-  box-shadow: 0 0 0 9999px rgba(4, 5, 8, 0.34);
+  box-shadow: 0 0 0 9999px rgba(247, 246, 242, 0.72);
 }
 
 .journey-spotlight-phone__cutout::before {
@@ -1083,7 +1064,7 @@ input:focus-visible,
     rgba(255, 255, 255, 0.1),
     rgba(255, 255, 255, 0.04)
   );
-  color: rgba(255, 255, 255, 0.72);
+  color: #3a3d3a;
   box-shadow:
     0 12px 32px -12px rgba(0, 0, 0, 0.55),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -1097,8 +1078,8 @@ input:focus-visible,
 }
 @media (hover: hover) {
   .scroll-to-top:hover {
-    color: rgba(255, 255, 255, 0.92);
-    border-color: rgba(255, 255, 255, 0.16);
+    color: #292b28;
+    border-color: #8f908b;
     transform: translateY(-1px);
   }
 }
@@ -1339,7 +1320,7 @@ input:focus-visible,
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.28em;
-  color: rgba(255, 255, 255, 0.42);
+  color: #747673;
 }
 .hero-time::before {
   content: "";
@@ -1347,7 +1328,7 @@ input:focus-visible,
   height: 6px;
   border-radius: 50%;
   background: var(--color-recovery);
-  box-shadow: 0 0 12px rgba(46, 219, 250, 0.55);
+  box-shadow: 0 0 10px rgba(155, 138, 203, 0.45);
   animation: time-pulse 3.2s var(--ease-calm) infinite;
 }
 .hero-time__clock {
@@ -1419,7 +1400,7 @@ input:focus-visible,
   display: block;
   width: 1px;
   height: 28px;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent);
+  background: linear-gradient(to bottom, rgba(41, 43, 40, 0.35), transparent);
   animation: scroll-line 2.2s var(--ease-calm) infinite;
 }
 @keyframes scroll-line {
@@ -1441,13 +1422,13 @@ input:focus-visible,
 }
 
 .proof-dot {
-  box-shadow: 0 0 8px rgba(102, 188, 135, 0.55);
+  box-shadow: 0 0 8px rgba(114, 173, 138, 0.55);
 }
 
 .proof-strip {
   font-size: 12.5px;
   letter-spacing: -0.008em;
-  color: rgba(255, 255, 255, 0.38);
+  color: #5d5f5c;
 }
 @media (min-width: 768px) {
   .proof-strip {
@@ -1465,7 +1446,7 @@ input:focus-visible,
   background: var(--color-surface-raised);
   padding: 0.375rem 0.875rem;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
+  color: #5d5f5c;
 }
 
 /* Unified reveal motion — used by Reveal.tsx via easeCalm */
@@ -1488,9 +1469,9 @@ input:focus-visible,
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse 90% 70% at 18% 40%, rgba(46, 219, 250, 0.07), transparent 58%),
-    radial-gradient(ellipse 75% 55% at 88% 62%, rgba(140, 102, 217, 0.06), transparent 52%),
-    radial-gradient(ellipse 60% 45% at 50% 100%, rgba(102, 188, 135, 0.05), transparent 55%);
+    radial-gradient(ellipse 90% 70% at 18% 40%, rgba(155, 138, 203, 0.14), transparent 58%),
+    radial-gradient(ellipse 75% 55% at 88% 62%, rgba(234, 160, 107, 0.14), transparent 52%),
+    radial-gradient(ellipse 60% 45% at 50% 100%, rgba(114, 173, 138, 0.12), transparent 55%);
 }
 
 .download-hero__orb {
@@ -1504,7 +1485,7 @@ input:focus-visible,
   height: min(55vw, 420px);
   top: 8%;
   left: -8%;
-  background: radial-gradient(closest-side, rgba(46, 219, 250, 0.14), transparent 70%);
+  background: radial-gradient(closest-side, rgba(155, 138, 203, 0.22), transparent 70%);
 }
 .download-hero__orb--violet {
   width: min(48vw, 380px);
@@ -1640,14 +1621,14 @@ input:focus-visible,
 }
 .download-hero-phone__glow--recovery {
   inset: -28% -18% -22% -18%;
-  background: radial-gradient(closest-side, rgba(46, 219, 250, 0.32), transparent 72%);
+  background: radial-gradient(closest-side, rgba(155, 138, 203, 0.28), transparent 72%);
 }
 
 /* Premium glass CTA — download hero */
 .btn-premium-glass {
   position: relative;
   overflow: hidden;
-  color: rgba(255, 255, 255, 0.96) !important;
+  color: #292b28 !important;
   border: 1px solid rgba(255, 255, 255, 0.22) !important;
   background: linear-gradient(
     165deg,
@@ -1681,7 +1662,7 @@ input:focus-visible,
 }
 @media (hover: hover) {
   .btn-premium-glass:hover {
-    border-color: rgba(255, 255, 255, 0.32) !important;
+    border-color: #8f908b !important;
     box-shadow:
       0 26px 60px -14px rgba(102, 188, 135, 0.52),
       inset 0 1px 0 rgba(255, 255, 255, 0.42),
@@ -1766,7 +1747,7 @@ input:focus-visible,
   min-height: 2rem;
   font-size: 12px;
   line-height: 1.25;
-  color: rgba(255, 255, 255, 0.58);
+  color: #5d5f5c;
   transition:
     color 0.25s var(--ease-calm),
     border-color 0.25s var(--ease-calm),
@@ -1774,7 +1755,7 @@ input:focus-visible,
 }
 @media (hover: hover) {
   .sim-preset:hover {
-    color: rgba(255, 255, 255, 0.82);
+    color: #3a3d3a;
   }
 }
 .sim-preset:active {
@@ -1871,7 +1852,7 @@ input:focus-visible,
 
 /* Long-form document typography */
 .prose {
-  color: rgba(245, 246, 248, 0.72);
+  color: #5d5f5c;
   font-size: 1.02rem;
   line-height: 1.72;
 }
@@ -1881,13 +1862,13 @@ input:focus-visible,
   font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #fff;
+  color: #292b28;
 }
 .prose h3 {
   margin: 1.6rem 0 0.5rem;
   font-size: 1.06rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.92);
+  color: #292b28;
 }
 .prose p {
   margin: 0.7rem 0;
@@ -1914,7 +1895,7 @@ input:focus-visible,
   opacity: 0.7;
 }
 .prose strong {
-  color: #fff;
+  color: #292b28;
   font-weight: 600;
 }
 .prose a {
@@ -2007,7 +1988,7 @@ input:focus-visible,
   font-weight: 600;
   letter-spacing: 0.13em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.38);
+  color: #8f908b;
 }
 
 .blog-toc-list {
@@ -2029,7 +2010,7 @@ input:focus-visible,
 }
 
 .blog-toc-link:hover {
-  color: rgba(255, 255, 255, 0.82);
+  color: #3a3d3a;
 }
 
 .blog-toc-link--active {
@@ -2042,7 +2023,7 @@ input:focus-visible,
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.34);
+  color: #8f908b;
   transition: color 0.25s var(--ease-calm);
 }
 
@@ -2057,16 +2038,16 @@ input:focus-visible,
   font-weight: 500;
   line-height: 1.38;
   letter-spacing: -0.014em;
-  color: rgba(255, 255, 255, 0.5);
+  color: #747673;
   transition: color 0.25s var(--ease-calm);
 }
 
 .blog-toc-link:hover .blog-toc-label {
-  color: rgba(255, 255, 255, 0.78);
+  color: #3a3d3a;
 }
 
 .blog-toc-link--active .blog-toc-label {
-  color: rgba(255, 255, 255, 0.94);
+  color: #292b28;
   font-weight: 600;
 }
 
@@ -2082,7 +2063,7 @@ input:focus-visible,
   margin-top: 0.875rem;
   font-size: 1.0625rem;
   line-height: 1.72;
-  color: rgba(255, 255, 255, 0.64);
+  color: #5d5f5c;
   text-wrap: pretty;
 }
 @media (min-width: 768px) {
@@ -2121,7 +2102,7 @@ input:focus-visible,
   font-weight: 700;
   letter-spacing: -0.024em;
   line-height: 1.2;
-  color: #fff;
+  color: #292b28;
 }
 @media (min-width: 768px) {
   .prose-blog h2 {
@@ -2136,7 +2117,7 @@ input:focus-visible,
   font-weight: 600;
   letter-spacing: -0.015em;
   line-height: 1.35;
-  color: rgba(255, 255, 255, 0.94);
+  color: #292b28;
 }
 @media (min-width: 768px) {
   .prose-blog h3 {
@@ -2164,7 +2145,7 @@ input:focus-visible,
 .prose-blog .prose-lead {
   font-size: 1.125rem;
   line-height: 1.78;
-  color: rgba(255, 255, 255, 0.84);
+  color: #3a3d3a;
   margin-bottom: 1.35em;
 }
 @media (min-width: 768px) {
@@ -2180,7 +2161,7 @@ input:focus-visible,
   border-left: 3px solid var(--color-activity);
   border-radius: 0 12px 12px 0;
   background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.78);
+  color: #3a3d3a;
   font-size: 1.02em;
   line-height: 1.78;
   font-style: italic;
@@ -2200,7 +2181,7 @@ input:focus-visible,
 }
 
 .prose-blog strong {
-  color: #fff;
+  color: #292b28;
   font-weight: 600;
 }
 
@@ -2271,13 +2252,13 @@ input:focus-visible,
   font-size: 0.875rem;
   line-height: 1.58;
   letter-spacing: -0.01em;
-  color: rgba(255, 255, 255, 0.72);
+  color: #3a3d3a;
 }
 
 .privacy-updated {
   font-size: 0.8125rem;
   letter-spacing: -0.008em;
-  color: rgba(255, 255, 255, 0.36);
+  color: #8f908b;
 }
 
 /* Touch targets — primary CTAs */
@@ -2408,8 +2389,8 @@ input:focus-visible,
   pointer-events: none;
   background: radial-gradient(
     120% 90% at 50% 0%,
-    transparent 55%,
-    rgba(0, 0, 0, 0.35) 100%
+    transparent 62%,
+    rgba(92, 70, 40, 0.05) 100%
   );
 }
 
@@ -2487,7 +2468,7 @@ input:focus-visible,
   }
 
   .hero-lead {
-    color: rgba(255, 255, 255, 0.5);
+    color: #747673;
   }
 
   .btn-hero-primary {
@@ -2499,14 +2480,9 @@ input:focus-visible,
   }
 
   .btn-hero-glass {
-    background: linear-gradient(
-      152deg,
-      rgba(255, 255, 255, 0.06) 0%,
-      rgba(255, 255, 255, 0.024) 42%,
-      rgba(255, 255, 255, 0.01) 100%
-    ) !important;
-    border: 1px solid rgba(255, 255, 255, 0.055) !important;
-    color: rgba(255, 255, 255, 0.64) !important;
+    background: #fffdfb !important;
+    border: 1px solid rgba(92, 87, 79, 0.14) !important;
+    color: #292b28 !important;
     font-weight: 500 !important;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
@@ -2523,14 +2499,14 @@ input:focus-visible,
   }
 
   .btn-hero-glass:active {
-    border-color: rgba(255, 255, 255, 0.1) !important;
+    border-color: #8f908b !important;
     background: linear-gradient(
       152deg,
       rgba(255, 255, 255, 0.06) 0%,
       rgba(255, 255, 255, 0.024) 42%,
       rgba(255, 255, 255, 0.01) 100%
     ) !important;
-    color: rgba(255, 255, 255, 0.72) !important;
+    color: #3a3d3a !important;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.1),
       inset 0 2px 8px rgba(0, 0, 0, 0.14),
@@ -2579,7 +2555,7 @@ input:focus-visible,
 
   /* Full-screen mobile menu */
   .mobile-menu-scrim {
-    background: rgba(2, 3, 6, 0.72);
+    background: rgba(247, 246, 242, 0.72);
     backdrop-filter: blur(18px) saturate(120%);
     -webkit-backdrop-filter: blur(18px) saturate(120%);
   }
@@ -2587,16 +2563,9 @@ input:focus-visible,
     top: var(--site-header-offset);
     max-height: calc(100dvh - var(--site-header-offset));
     padding-bottom: max(1.25rem, var(--safe-bottom));
-    background: linear-gradient(
-      180deg,
-      rgba(7, 8, 11, 0.96) 0%,
-      rgba(4, 5, 8, 0.99) 55%,
-      rgba(3, 4, 7, 1) 100%
-    );
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow:
-      0 -32px 80px -40px rgba(0, 0, 0, 0.75),
-      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    background: linear-gradient(180deg, #fffdfb 0%, #f7f6f2 100%);
+    border-top: 1px solid rgba(92, 87, 79, 0.1);
+    box-shadow: 0 24px 48px -28px rgba(40, 32, 24, 0.18);
     backdrop-filter: blur(32px) saturate(150%);
     -webkit-backdrop-filter: blur(32px) saturate(150%);
   }
@@ -2616,8 +2585,8 @@ input:focus-visible,
     pointer-events: none;
     background: radial-gradient(
       closest-side,
-      rgba(102, 188, 135, 0.14) 0%,
-      rgba(66, 184, 224, 0.06) 42%,
+      rgba(114, 173, 138, 0.22) 0%,
+      rgba(234, 160, 107, 0.12) 42%,
       transparent 74%
     );
     filter: blur(28px);
@@ -2644,7 +2613,7 @@ input:focus-visible,
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.34);
+    color: #8f908b;
   }
   .mobile-menu-links {
     margin: 0;
@@ -2662,7 +2631,7 @@ input:focus-visible,
     font-size: 0.9375rem;
     font-weight: 500;
     letter-spacing: -0.012em;
-    color: rgba(255, 255, 255, 0.84);
+    color: #3a3d3a;
     transition:
       background-color var(--duration-micro) var(--ease-calm),
       color var(--duration-micro) var(--ease-calm),
@@ -2671,19 +2640,19 @@ input:focus-visible,
   }
   .mobile-menu-link__chev {
     flex-shrink: 0;
-    color: rgba(255, 255, 255, 0.28);
+    color: #8f908b;
     transition: color var(--duration-micro) var(--ease-calm);
   }
   .mobile-menu-link:focus-visible {
     outline: none;
     background: rgba(102, 188, 135, 0.08);
     box-shadow: inset 0 0 0 1px rgba(102, 188, 135, 0.22);
-    color: rgba(255, 255, 255, 0.96);
+    color: #292b28;
   }
   .mobile-menu-link:active {
     transform: scale(0.985);
     background: rgba(255, 255, 255, 0.045);
-    color: rgba(255, 255, 255, 0.96);
+    color: #292b28;
   }
   .mobile-menu-footer {
     position: relative;
@@ -2873,14 +2842,9 @@ input:focus-visible,
   }
 
   .btn-hero-glass {
-    background: linear-gradient(
-      152deg,
-      rgba(255, 255, 255, 0.07) 0%,
-      rgba(255, 255, 255, 0.026) 42%,
-      rgba(255, 255, 255, 0.012) 100%
-    ) !important;
-    border: 1px solid rgba(255, 255, 255, 0.05) !important;
-    color: rgba(255, 255, 255, 0.62) !important;
+    background: #fffdfb !important;
+    border: 1px solid rgba(92, 87, 79, 0.14) !important;
+    color: #292b28 !important;
     font-weight: 500 !important;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.08),
@@ -2898,7 +2862,7 @@ input:focus-visible,
   }
 
   .btn-hero-glass:hover {
-    border-color: rgba(255, 255, 255, 0.1) !important;
+    border-color: #8f908b !important;
     background: linear-gradient(
       152deg,
       rgba(255, 255, 255, 0.09) 0%,
@@ -2911,7 +2875,7 @@ input:focus-visible,
       0 22px 56px -24px rgba(0, 0, 0, 0.58),
       0 0 0 0.5px rgba(255, 255, 255, 0.04) !important;
     transform: translateY(-1px) !important;
-    color: rgba(255, 255, 255, 0.82) !important;
+    color: #3a3d3a !important;
   }
 
   .phone-float-hero {
@@ -3045,7 +3009,7 @@ input:focus-visible,
   height: min(70vw, 520px);
   bottom: -32%;
   left: -18%;
-  background: radial-gradient(closest-side, rgba(102, 188, 135, 0.06), transparent 74%);
+  background: radial-gradient(closest-side, rgba(114, 173, 138, 0.16), transparent 74%);
 }
 
 .footer-premium__inner {
@@ -3080,7 +3044,7 @@ input:focus-visible,
   font-size: 0.9375rem;
   line-height: 1.5;
   letter-spacing: -0.012em;
-  color: rgba(255, 255, 255, 0.44);
+  color: #747673;
 }
 
 /* Social row — own full-width band */
@@ -3109,7 +3073,7 @@ input:focus-visible,
   max-width: 3.25rem;
   height: 2.75rem;
   border-radius: var(--radius-md);
-  color: rgba(255, 255, 255, 0.42);
+  color: #747673;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.07);
   transition:
@@ -3119,9 +3083,9 @@ input:focus-visible,
 }
 @media (hover: hover) {
   .footer-social:hover {
-    color: rgba(255, 255, 255, 0.78);
+    color: #3a3d3a;
     background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.12);
+    border-color: #8f908b;
   }
 }
 
@@ -3166,7 +3130,7 @@ input:focus-visible,
   font-size: 0.8125rem;
   font-weight: 400;
   letter-spacing: -0.008em;
-  color: rgba(255, 255, 255, 0.4);
+  color: #747673;
   transition: color var(--duration-ui) var(--ease-calm);
 }
 .footer-link__text {
@@ -3175,7 +3139,7 @@ input:focus-visible,
 }
 @media (hover: hover) {
   .footer-link:hover {
-    color: rgba(255, 255, 255, 0.72);
+    color: #3a3d3a;
   }
   .footer-link:hover .footer-link__text {
     transform: translateX(1px);
@@ -3204,7 +3168,7 @@ input:focus-visible,
   font-size: 0.75rem;
   line-height: 1.45;
   letter-spacing: -0.004em;
-  color: rgba(255, 255, 255, 0.26);
+  color: #8f908b;
 }
 
 .footer-meta__disclaimer {
@@ -3212,7 +3176,7 @@ input:focus-visible,
   font-size: 0.6875rem;
   line-height: 1.4;
   letter-spacing: -0.004em;
-  color: rgba(255, 255, 255, 0.22);
+  color: #8f908b;
 }
 
 .footer-trust {
@@ -3230,7 +3194,7 @@ input:focus-visible,
   font-size: 0.75rem;
   line-height: 1.4;
   letter-spacing: -0.004em;
-  color: rgba(255, 255, 255, 0.28);
+  color: #8f908b;
 }
 
 .footer-trust-item::before {
@@ -3320,7 +3284,7 @@ input:focus-visible,
     max-width: 28ch;
     font-size: 0.8125rem;
     line-height: 1.52;
-    color: rgba(255, 255, 255, 0.32);
+    color: #8f908b;
   }
 
   .footer-socials {
@@ -3344,7 +3308,7 @@ input:focus-visible,
     border-radius: 999px;
     background: transparent;
     border-color: transparent;
-    color: rgba(255, 255, 255, 0.26);
+    color: #8f908b;
   }
 
   .footer-nav-grid {
@@ -3393,7 +3357,7 @@ input:focus-visible,
     display: inline-flex;
     min-height: 1.45rem;
     font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.32);
+    color: #8f908b;
   }
 
   .footer-legal {
@@ -3402,17 +3366,17 @@ input:focus-visible,
     justify-content: space-between;
     gap: 2rem;
     padding-top: 0.75rem;
-    border-top-color: rgba(255, 255, 255, 0.03);
+    border-top-color: #8f908b;
   }
 
   .footer-meta__line {
     font-size: 0.6875rem;
-    color: rgba(255, 255, 255, 0.2);
+    color: #8f908b;
   }
 
   .footer-meta__disclaimer {
     font-size: 0.625rem;
-    color: rgba(255, 255, 255, 0.18);
+    color: #8f908b;
   }
 
   .footer-trust {
@@ -3425,7 +3389,7 @@ input:focus-visible,
 
   .footer-trust-item {
     font-size: 0.6875rem;
-    color: rgba(255, 255, 255, 0.22);
+    color: #8f908b;
     white-space: nowrap;
   }
 
@@ -3448,4 +3412,63 @@ input:focus-visible,
   .footer-link:hover .footer-link__text {
     transform: none !important;
   }
+}
+
+/* OLED-era white utilities, remapped onto the milk canvas.
+   .on-dark keeps white ink (App Store badge). */
+.text-white,
+.hover\:text-white:hover {
+  color: #292b28;
+}
+.text-white\/28,
+.text-white\/32,
+.text-white\/35,
+.hover\:text-white\/45:hover {
+  color: #8f908b;
+}
+.text-white\/38,
+.text-white\/40,
+.text-white\/42,
+.text-white\/45,
+.text-white\/46,
+.text-white\/50,
+.text-white\/52,
+.text-white\/55,
+.placeholder\:text-white\/40::placeholder {
+  color: #747673;
+}
+.text-white\/58,
+.text-white\/60,
+.text-white\/62,
+.text-white\/64,
+.text-white\/65,
+.text-white\/68,
+.text-white\/70,
+.text-white\/72,
+.text-white\/75,
+.text-white\/78,
+.text-white\/80,
+.hover\:text-white\/72:hover,
+.hover\:text-white\/80:hover,
+.hover\:text-white\/88:hover,
+.hover\:text-white\/90:hover {
+  color: #5d5f5c;
+}
+.text-white\/82,
+.text-white\/84,
+.text-white\/88,
+.text-white\/90,
+.text-white\/92,
+.text-white\/94,
+.text-white\/96 {
+  color: #292b28;
+}
+.on-dark,
+.on-dark .text-white,
+.on-dark .hover\:text-white:hover {
+  color: #fff;
+}
+.on-dark .text-white\/35,
+.on-dark .text-white\/55 {
+  color: rgba(255, 255, 255, 0.55);
 }

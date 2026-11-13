@@ -1,10 +1,10 @@
 /* Above-the-fold shell — inlined in HTML; full Tailwind bundle loads right after. */
 :root {
-  color-scheme: dark;
-  --color-canvas: #06070a;
-  --color-ink: #f5f6f8;
-  --color-activity: #66f070;
-  --color-recovery: #2edbfa;
+  color-scheme: light;
+  --color-canvas: #f7f6f2;
+  --color-ink: #292b28;
+  --color-activity: #72ad8a;
+  --color-recovery: #9b8acb;
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
   --section-x: clamp(1.25rem, 4.5vw, 1.5rem);
   --safe-top: env(safe-area-inset-top, 0px);

@@ -26,8 +26,8 @@ export default function WebMarkIcon({
         width="39"
         height="39"
         rx="9.5"
-        fill="#08090c"
-        stroke="rgba(46, 219, 250, 0.24)"
+        fill="#F7F6F2"
+        stroke="rgba(114, 173, 138, 0.45)"
       />
       <path
         d="M11 27V13l2.8 5.6L16.6 13l2.8 5.6L22.2 13v14"
@@ -43,8 +43,8 @@ export default function WebMarkIcon({
       />
       <defs>
         <linearGradient id={gradId} x1="11" y1="13" x2="31" y2="27" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#2edbfa" />
-          <stop offset="1" stopColor="#66bc87" />
+          <stop stopColor="#9B8ACB" />
+          <stop offset="1" stopColor="#72AD8A" />
         </linearGradient>
       </defs>
     </svg>

@@ -50,7 +50,7 @@ export default function Button({
       "hover:shadow-[var(--shadow-btn-primary-hover)]",
       "hover:brightness-[1.04]"
     ),
-    ghost: "glass text-white/90 hover:text-white hover:border-white/20 hover:bg-white/[0.06]",
+    ghost: "glass text-ink/90 hover:text-ink hover:border-black/15 hover:bg-black/[0.03]",
   };
 
   const content = (

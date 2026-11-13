@@ -34,7 +34,7 @@ export default function SupportView() {
       <PageHero kicker={c.kicker} title={c.title} lead={c.lead}>
         <div className="mx-auto max-w-xl">
           <div className="flex items-center gap-3 rounded-full glass px-5 py-3.5">
-            <svg viewBox="0 0 24 24" className="h-5 w-5 flex-none fill-none stroke-white/50" strokeWidth={1.8} aria-hidden>
+            <svg viewBox="0 0 24 24" className="h-5 w-5 flex-none fill-none stroke-ink/50" strokeWidth={1.8} aria-hidden>
               <circle cx="11" cy="11" r="7" />
               <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
             </svg>

@@ -16,8 +16,8 @@ const MARK_WIDTH = Math.round(MARK_HEIGHT * MARK_ASPECT);
 export const OG_SIZE = { width: 1200, height: 630 };
 export const OG_CONTENT_TYPE = "image/png";
 
-const CANVAS = "#06070a";
-const GREEN = "#66bc87";
+const CANVAS = "#F7F6F2";
+const GREEN = "#386B4D";
 
 export function renderOgImage(opts: {
   kicker?: string;
@@ -35,8 +35,8 @@ export function renderOgImage(opts: {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: "72px 80px",
-          background: `linear-gradient(135deg, #0a0d12 0%, ${CANVAS} 55%, #0a0710 100%)`,
-          color: "#f5f6f8",
+          background: `linear-gradient(135deg, #FFF9EC 0%, ${CANVAS} 55%, #F3F1EA 100%)`,
+          color: "#292B28",
           fontFamily: "Inter",
           position: "relative",
         }}
@@ -48,7 +48,7 @@ export function renderOgImage(opts: {
             inset: 0,
             display: "flex",
             backgroundImage:
-              "radial-gradient(900px 500px at 82% 12%, rgba(102,240,112,0.16), rgba(6,7,10,0) 60%), radial-gradient(700px 500px at 10% 100%, rgba(46,219,250,0.10), rgba(6,7,10,0) 55%)",
+              "radial-gradient(900px 500px at 82% 12%, rgba(114,173,138,0.28), rgba(247,246,242,0) 60%), radial-gradient(700px 500px at 10% 100%, rgba(234,160,107,0.22), rgba(247,246,242,0) 55%)",
           }}
         />
 
@@ -91,7 +91,7 @@ export function renderOgImage(opts: {
                 fontSize: 30,
                 fontWeight: 400,
                 lineHeight: 1.35,
-                color: "rgba(245,246,248,0.66)",
+                color: "#5D5F5C",
                 marginTop: 26,
                 maxWidth: 900,
               }}
@@ -108,12 +108,12 @@ export function renderOgImage(opts: {
             alignItems: "center",
             gap: 14,
             fontSize: 24,
-            color: "rgba(245,246,248,0.5)",
+            color: "#5D5F5C",
           }}
         >
           <div style={{ display: "flex", width: 10, height: 10, borderRadius: 10, background: GREEN }} />
           <span>weekfit.app</span>
-          <span style={{ color: "rgba(245,246,248,0.28)" }}>·</span>
+          <span style={{ color: "#8F908B" }}>·</span>
           <span>{ENTITY.socialFooter ?? `${ENTITY.category} for ${ENTITY.platform}`}</span>
         </div>
       </div>

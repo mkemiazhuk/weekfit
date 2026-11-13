@@ -4,7 +4,7 @@ import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { SITE } from "@/lib/site";
-import { accents } from "@/lib/tokens";
+import { pillars } from "@/lib/tokens";
 import { easeReveal, durationReveal, stagger } from "@/lib/motion";
 import Button from "../Button";
 import Reveal from "../Reveal";
@@ -26,7 +26,7 @@ export default function AiNutrition() {
       <div className="mx-auto grid max-w-6xl items-center gap-10 md:grid-cols-[1.05fr_0.95fr] md:gap-14">
         <Reveal>
           <div className="max-w-xl">
-            <p className="kicker" style={{ color: accents.gold }}>
+            <p className="kicker" style={{ color: pillars.nutrition }}>
               {a.kicker}
             </p>
             <h2
@@ -54,7 +54,7 @@ export default function AiNutrition() {
                   <span
                     aria-hidden
                     className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
-                    style={{ background: accents.gold, boxShadow: `0 0 10px ${accents.gold}66` }}
+                    style={{ background: pillars.nutrition, boxShadow: `0 0 10px ${pillars.nutrition}66` }}
                   />
                   {point}
                 </motion.li>
@@ -68,9 +68,9 @@ export default function AiNutrition() {
               <span
                 className="inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em]"
                 style={{
-                  color: accents.gold,
-                  background: `${accents.gold}18`,
-                  border: `1px solid ${accents.gold}33`,
+                  color: "#A76432",
+                  background: "#F8EBE2",
+                  border: `1px solid ${pillars.nutrition}55`,
                 }}
               >
                 {a.badge}
@@ -85,7 +85,7 @@ export default function AiNutrition() {
               aria-hidden
               className="pointer-events-none absolute -inset-8 rounded-[40%] opacity-70 blur-3xl"
               style={{
-                background: `radial-gradient(circle at 50% 40%, ${accents.gold}28, transparent 68%)`,
+                background: `radial-gradient(circle at 50% 40%, ${pillars.nutrition}44, transparent 68%)`,
               }}
             />
             <PhoneMockup width={280} depth alt={a.imageAlt} className="relative mx-auto">

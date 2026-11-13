@@ -1,24 +1,25 @@
 // WeekFit design tokens for JS-side use (rings, gradients, atmosphere).
 // Extracted from the iOS app's Theme layer.
 
+// Canonical app palette — WeekFitSemanticMetricTokens + WeekFitLightTokens.
 export const pillars = {
-  activity: "#66f070",
-  nutrition: "#ff9424",
-  recovery: "#2edbfa",
-  hydration: "#4088f2",
-  coach: "#8c66d9",
+  activity: "#72AD8A",
+  nutrition: "#EAA06B",
+  recovery: "#9B8ACB",
+  hydration: "#35ADD0",
+  coach: "#9B8ACB",
 } as const;
 
 export const pastels = {
-  meal: "#8cd19c",
-  workout: "#809eeb",
-  recovery: "#ad8fe6",
-  habit: "#ed9e57",
+  meal: "#72AD8A",
+  workout: "#72AD8A",
+  recovery: "#9B8ACB",
+  habit: "#EAA06B",
 } as const;
 
 export const accents = {
-  gold: "#f5bf5c",
-  brand: "#66bc87",
+  gold: "#B98A32",
+  brand: "#72AD8A",
   appleHealth: "#ff2d55",
 } as const;
 
@@ -34,43 +35,43 @@ export interface AtmospherePhase {
   night: number; // 0 vivid -> 1 calm/desaturated
 }
 
-// The canonical READY palette progression from TodayAtmosphereBackground.swift.
+// Warm milk canvas from the app. Glows are sage, peach, and lavender — the page stays light.
 export const atmosphere: AtmospherePhase[] = [
   {
     key: "morning",
-    base: ["#080f1a", "#05070d", "#030305"],
-    glow1: [107, 184, 224],
-    glow1Alpha: 0.16,
-    glow2: [140, 209, 156],
-    glow2Alpha: 0.1,
-    night: 0.05,
+    base: ["#FFF9EC", "#F7F6F2", "#F3F1EA"],
+    glow1: [234, 160, 107],
+    glow1Alpha: 0.28,
+    glow2: [114, 173, 138],
+    glow2Alpha: 0.2,
+    night: 0,
   },
   {
     key: "day",
-    base: ["#06090d", "#05070b", "#000000"],
-    glow1: [140, 209, 156],
-    glow1Alpha: 0.14,
-    glow2: [128, 158, 235],
-    glow2Alpha: 0.08,
+    base: ["#F7F6F2", "#F4F2EC", "#F0EEE9"],
+    glow1: [114, 173, 138],
+    glow1Alpha: 0.22,
+    glow2: [155, 138, 203],
+    glow2Alpha: 0.16,
     night: 0,
   },
   {
     key: "evening",
-    base: ["#0a080f", "#050508", "#000000"],
-    glow1: [173, 143, 230],
-    glow1Alpha: 0.13,
-    glow2: [237, 148, 66],
-    glow2Alpha: 0.09,
-    night: 0.55,
+    base: ["#F8F3EA", "#F6F1E8", "#F3EEE6"],
+    glow1: [155, 138, 203],
+    glow1Alpha: 0.2,
+    glow2: [234, 160, 107],
+    glow2Alpha: 0.22,
+    night: 0,
   },
   {
     key: "night",
-    base: ["#04050a", "#020305", "#000000"],
-    glow1: [128, 158, 235],
-    glow1Alpha: 0.1,
-    glow2: [140, 102, 217],
-    glow2Alpha: 0.07,
-    night: 1,
+    base: ["#F4F2F6", "#F3F1EA", "#EEEAE4"],
+    glow1: [155, 138, 203],
+    glow1Alpha: 0.18,
+    glow2: [114, 173, 138],
+    glow2Alpha: 0.12,
+    night: 0,
   },
 ];
 

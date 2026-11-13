@@ -9,14 +9,16 @@ export interface PageSeoCopy {
 
 export const HOME_SEO: Record<Locale, PageSeoCopy> = {
   en: {
-    title: "WeekFit — What is today for?",
+    title: "WeekFit — All in one for today",
     description:
-      "One clear call for today — plus AI Nutrition Assistant to estimate calories and macros from a photo. Private on your iPhone.",
-    socialTitle: "WeekFit — Your AI coach, powered by Apple Health",
+      "Training, food, recovery, and Maya in one app. Photograph a meal for calories and macros. Private on your iPhone.",
+    socialTitle: "WeekFit — All in one. Training, food, recovery, Maya.",
     keywords: [
       "WeekFit",
       "Week Fit",
-      "AI coach",
+      "all in one fitness app",
+      "Maya",
+      "food recognition",
       "AI Nutrition Assistant",
       "calorie estimation from photo",
       "Apple Health",
@@ -26,14 +28,16 @@ export const HOME_SEO: Record<Locale, PageSeoCopy> = {
     ],
   },
   ru: {
-    title: "WeekFit — Что важно сегодня?",
+    title: "WeekFit — Всё в одном на сегодня",
     description:
-      "Один понятный вывод на сегодня — плюс AI Nutrition Assistant: калории и БЖУ по фото. Приватно на iPhone.",
-    socialTitle: "WeekFit — Ваш AI-коуч на основе Apple Health",
+      "Тренировки, еда, восстановление и Maya в одном приложении. Фото блюда — калории и БЖУ. Приватно на iPhone.",
+    socialTitle: "WeekFit — всё в одном: тренировки, еда, восстановление, Maya",
     keywords: [
       "WeekFit",
       "Week Fit",
-      "AI фитнес-коуч",
+      "фитнес приложение всё в одном",
+      "Maya",
+      "распознавание еды",
       "AI Nutrition Assistant",
       "калории по фото",
       "Apple Health",

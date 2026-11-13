@@ -64,13 +64,13 @@ export default function AtmosphereBackground() {
       className="atmosphere pointer-events-none fixed inset-0 -z-10 overflow-hidden"
       style={
         {
-          "--b1": "#080f1a",
-          "--b2": "#05070d",
-          "--b3": "#030305",
-          "--g1": "107, 184, 224",
-          "--g1a": "0.16",
-          "--g2": "140, 209, 156",
-          "--g2a": "0.1",
+          "--b1": "#FFF9EC",
+          "--b2": "#F7F6F2",
+          "--b3": "#F3F1EA",
+          "--g1": "234, 160, 107",
+          "--g1a": "0.28",
+          "--g2": "114, 173, 138",
+          "--g2a": "0.2",
         } as React.CSSProperties
       }
     >

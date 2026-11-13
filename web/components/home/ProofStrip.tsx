@@ -11,7 +11,7 @@ export default function ProofStrip() {
   return (
     <section
       aria-label={t.proof.ariaLabel}
-      className="relative z-[1] border-y border-white/[0.05] bg-white/[0.012]"
+      className="relative z-[1] border-y border-black/[0.06] bg-[#fffdfb]/80"
     >
       <div
         aria-hidden
@@ -26,7 +26,7 @@ export default function ProofStrip() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-10% 0px" }}
               transition={{ duration: durationUI, ease: easeReveal, delay: i * 0.05 }}
-              className="proof-strip flex items-center gap-2.5 border-white/[0.06] md:justify-center md:border-l md:px-6 md:first:border-l-0"
+              className="proof-strip flex items-center gap-2.5 border-black/[0.06] md:justify-center md:border-l md:px-6 md:first:border-l-0"
             >
               <span
                 aria-hidden

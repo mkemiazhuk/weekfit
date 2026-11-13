@@ -798,5 +798,5 @@ export const brandColors = [
   { name: "Recovery", hex: pillars.recovery },
   { name: "Hydration", hex: pillars.hydration },
   { name: "Coach", hex: pillars.coach },
-  { name: "Canvas", hex: "#06070a" },
+  { name: "Canvas", hex: "#F7F6F2" },
 ];
