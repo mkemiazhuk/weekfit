@@ -79,6 +79,7 @@ const RULES = [
     test: (s) => {
       const allowed = [
         "WeekFit",
+        "Maya",
         "Bevel",
         "Apple",
         "Health",

@@ -4,6 +4,9 @@ import { vo2MaxArticleSections } from "./blog/vo2-max-article";
 import { preWorkoutNutritionArticleSections } from "./blog/pre-workout-nutrition-article";
 import { sleepBetterTonightArticleSections } from "./blog/sleep-better-tonight";
 import { bevelVsWeekFitArticleSections } from "./blog/bevel-vs-weekfit-article";
+import { stressIndexArticleSections } from "./blog/stress-index-article";
+import { mayaCoachArticleSections } from "./blog/maya-coach-article";
+import { foodRecognitionArticleSections } from "./blog/food-recognition-article";
 import type { IconName } from "@/components/Icon";
 import { accents } from "./tokens";
 
@@ -165,6 +168,51 @@ export function blogSectionsToc(sections: DocSection[]): { id: string; label: st
 export const BLOG_TOC_MIN_SECTIONS = 3;
 
 export const blogPosts: BlogPost[] = [
+  {
+    slug: "stress-index",
+    category: "recovery",
+    date: "2026-11-13",
+    readMinutes: 6,
+    title: {
+      en: "What the stress index is actually telling you",
+      ru: "Что показывает индекс стресса",
+    },
+    excerpt: {
+      en: "WeekFit’s stress index is physiological strain — HRV, resting heart rate, sleep, and yesterday’s load — not a verdict on your mood.",
+      ru: "Индекс стресса в WeekFit — это нагрузка по ВСР, пульсу покоя, сну и вчерашней тренировке, а не оценка настроения.",
+    },
+    sections: stressIndexArticleSections,
+  },
+  {
+    slug: "maya-voice-coach",
+    category: "coach",
+    date: "2026-11-12",
+    readMinutes: 6,
+    title: {
+      en: "Maya, the voice coach on Today",
+      ru: "Maya — голосовой коуч на экране «Сегодня»",
+    },
+    excerpt: {
+      en: "Call Maya from Today when the day needs a sentence, not another chart. She can see the plan and help you change it.",
+      ru: "Позвоните Maya с экрана «Сегодня», когда дню нужно одно решение, а не ещё один график. Она видит план и помогает его изменить.",
+    },
+    sections: mayaCoachArticleSections,
+  },
+  {
+    slug: "food-recognition",
+    category: "nutrition",
+    date: "2026-11-11",
+    readMinutes: 6,
+    title: {
+      en: "How food recognition works — and when to correct it",
+      ru: "Как работает распознавание еды — и когда его поправить",
+    },
+    excerpt: {
+      en: "A photo becomes calories and macros you confirm before they hit the day. An estimate you fix beats a meal you never log.",
+      ru: "Фото становится калориями и БЖУ, которые вы подтверждаете до записи в день. Исправленная оценка лучше ужина, который вы не записали.",
+    },
+    sections: foodRecognitionArticleSections,
+  },
   {
     slug: "bevel-vs-weekfit",
     category: "coach",
