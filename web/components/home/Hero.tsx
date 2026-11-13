@@ -25,7 +25,7 @@ export default function Hero() {
   });
 
   return (
-    <section className="hero-polish relative z-0 isolate mx-auto flex max-w-6xl flex-col section-x pb-4 pt-[4.75rem] max-md:min-h-0 md:grid md:grid-cols-[minmax(0,1fr)_292px] md:items-center md:gap-x-10 md:gap-y-5 md:pb-8 md:pt-[5.25rem] lg:gap-x-14">
+    <section className="hero-polish relative z-0 isolate mx-auto flex min-h-[100dvh] max-w-6xl flex-col justify-center section-x pb-8 pt-[4.75rem] md:grid md:grid-cols-[minmax(0,1fr)_292px] md:items-center md:gap-x-10 md:gap-y-5 md:pt-[5.25rem] lg:gap-x-14">
       <SectionAmbient tone="morning" />
 
       <div className="relative text-center md:col-start-1 md:row-start-1 md:text-left">
