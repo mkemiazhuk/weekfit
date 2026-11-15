@@ -664,19 +664,19 @@ test('ringing continues until the assistant starts the greeting', async () => {
   assert.equal(sent.length, 0);
   channel.onopen();
   assert.deepEqual(events.slice(-2).map(event => event.value), ['connected', 'answered']);
-  assert.equal(track.enabled, true);
+  assert.equal(track.enabled, false);
   assert.equal(sent.length, 0);
   timers.find(timer => timer.delay === 400).callback();
   assert.deepEqual(JSON.parse(JSON.stringify(sent)), [{ type: 'response.create' }]);
   channel.onmessage({ data: JSON.stringify({ type: 'response.created' }) });
   assert.equal(events.at(-1).value, 'speaking');
-  assert.equal(track.enabled, true);
+  assert.equal(track.enabled, false);
   window.weekfit.answered();
-  assert.equal(track.enabled, true);
+  assert.equal(track.enabled, false);
   assert.equal(events.some(event => event.value === 'voice'), false);
   channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.started' }) });
   assert.equal(events.at(-1).value, 'voice');
-  assert.equal(track.enabled, true);
+  assert.equal(track.enabled, false);
   channel.onmessage({ data: JSON.stringify({ type: 'output_audio_buffer.stopped' }) });
   assert.equal(track.enabled, true);
 

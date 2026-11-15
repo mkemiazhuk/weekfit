@@ -68,6 +68,10 @@ struct LoggedMealDetailView: View {
         return snapshot?.estimateKind ?? .estimated
     }
 
+    private var hasRecordedNutrients: Bool {
+        activity.protein > 0 || activity.carbs > 0 || activity.fats > 0 || activity.fiber > 0
+    }
+
     var body: some View {
         let _ = languageManager.selectedLanguage
 
@@ -151,16 +155,32 @@ struct LoggedMealDetailView: View {
                     }
                 }
 
-                MealNutritionSummaryStrip(
-                    calories: activity.calories,
-                    protein: activity.protein,
-                    carbs: activity.carbs,
-                    fats: activity.fats,
-                    fiber: activity.fiber,
-                    accent: accent,
-                    style: .embedded
-                )
-                .padding(.top, 2)
+                if hasRecordedNutrients {
+                    MealNutritionSummaryStrip(
+                        calories: activity.calories,
+                        protein: activity.protein,
+                        carbs: activity.carbs,
+                        fats: activity.fats,
+                        fiber: activity.fiber,
+                        accent: accent,
+                        style: .embedded
+                    )
+                    .padding(.top, 2)
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text("\(activity.calories)")
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundStyle(accent)
+                        Text(WeekFitLocalizedString("common.unit.kcal"))
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(palette.textSecondary)
+                    }
+                    .padding(.top, 2)
+                    Text(WeekFitLocalizedString("planner.loggedMeal.nutrientsUnavailable"))
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(palette.textSecondary.opacity(0.8))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

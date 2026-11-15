@@ -368,6 +368,8 @@ enum StressIndexEngine {
 
         let strain: Int
         switch load.strainLevel {
+        case .rest:
+            strain = 12
         case .light:
             strain = 15
         case .moderate:
@@ -650,6 +652,8 @@ enum StressIndexCopy {
                 band = "heavy"
             case .training(.moderate):
                 band = "moderate"
+            case .training(.rest):
+                band = "rest"
             case .training(.light), .none:
                 band = "light"
             default:
@@ -838,6 +842,8 @@ enum StressIndexCopy {
                 return WeekFitLocalizedString("recovery.stressIndex.chip.training.heavy")
             case .training(.moderate):
                 return WeekFitLocalizedString("recovery.stressIndex.chip.training.moderate")
+            case .training(.rest):
+                return WeekFitLocalizedString("recovery.stressIndex.chip.training.rest")
             default:
                 return WeekFitLocalizedString("recovery.stressIndex.chip.training.light")
             }

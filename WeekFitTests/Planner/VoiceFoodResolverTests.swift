@@ -117,6 +117,77 @@ final class VoiceFoodResolverTests: XCTestCase {
         XCTAssertEqual(portion.protein, 12)
     }
 
+    func testSavedCoffeeKeepsItsNumbersWhenTheModelGuesses() {
+        let coffee = QuickItem(
+            id: "drink_coffee",
+            title: "coffee",
+            subtitle: "",
+            category: .drink,
+            imageName: "drink-coffee",
+            icon: "cup.and.saucer.fill",
+            calories: 40,
+            protein: 2,
+            carbs: 4,
+            fats: 1,
+            mlPerServing: 200
+        )
+        let decision = VoiceFoodResolver.resolve(
+            title: "чашка кофе",
+            kind: "drink",
+            calories: 90,
+            protein: 3,
+            carbs: 8,
+            fat: 3,
+            grams: 0,
+            milliliters: 0,
+            meals: [],
+            quickItems: [coffee]
+        )
+        guard case .ready(let portion) = decision else {
+            return XCTFail("expected the saved coffee")
+        }
+        XCTAssertEqual(portion.calories, 40)
+        XCTAssertEqual(portion.protein, 2)
+        XCTAssertEqual(portion.carbs, 4)
+        XCTAssertEqual(portion.fats, 1)
+        XCTAssertFalse(portion.estimated)
+    }
+
+    func testNamedCaloriesStillReplaceASavedMeal() {
+        let meal = Meals(
+            id: "custom-buckwheat",
+            title: "Гречка",
+            subtitle: "",
+            imageName: "meal",
+            type: .balanced,
+            calories: 320,
+            protein: 12,
+            carbs: 40,
+            fats: 8,
+            benefits: [],
+            ingredients: []
+        )
+        let decision = VoiceFoodResolver.resolve(
+            title: "гречка",
+            kind: "meal",
+            calories: 200,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            grams: 0,
+            milliliters: 0,
+            meals: [meal],
+            quickItems: []
+        )
+        guard case .ready(let portion) = decision else {
+            return XCTFail("expected the named calories")
+        }
+        XCTAssertEqual(portion.calories, 200)
+        XCTAssertEqual(portion.protein, 8)
+        XCTAssertEqual(portion.libraryMealId, "custom-buckwheat")
+        XCTAssertFalse(portion.estimated)
+    }
+
     func testWaterStaysOnTheWaterLog() {
         let decision = VoiceFoodResolver.resolve(
             title: "стакан воды",

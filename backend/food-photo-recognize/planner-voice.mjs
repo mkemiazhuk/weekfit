@@ -879,13 +879,14 @@ export function consoleDocument() {
             openMic();
             return;
           }
-          // The microphone stays open so a question can replace the greeting and the greeting can be interrupted.
+          // The microphone stays closed until the greeting has finished playing,
+          // so the speaker cannot cut the first line and make her start again.
           greetingPending = true;
-          openMic();
           setTimeout(() => {
             if (thisCall !== callNumber || !channel || channel.readyState !== 'open') return;
             if (userSpokeBeforeGreeting) {
               greetingPending = false;
+              if (!goodbyeLocked) openMic();
               return;
             }
             channel.send(JSON.stringify({ type: 'response.create' }));
@@ -1851,7 +1852,7 @@ function logFoodTool() {
   return {
     type: 'function',
     name: 'log_food',
-    description: 'Record food or a caloric drink the person already consumed. This updates today\'s eaten calories and does not add the food to their meal library. It is not a plan activity. Water is log_water, never this tool. If they did not say a calorie number, call once with calories 0 so the phone can fill a known portion. Do not invent protein, carbs, fat, grams, or milliliters. If needsCalories is true, nothing was saved: do not say the speak field and do not ask them to supply a number. Say one approximate typical-portion kilocalorie figure and ask whether to log it. Call again only after they agree, and pass that agreed calorie number. Say the speak field once only when saved is true.',
+    description: 'Record food or a caloric drink the person already consumed. This updates today\'s eaten calories and does not add the food to their meal library. It is not a plan activity. Water is log_water, never this tool. If they did not say a calorie number, call once with calories 0 so the phone can fill a saved or catalog portion. Do not cover a saved food with your own calories or nutrients: leave protein, carbs, and fat at 0 on that first call. Do not invent grams or milliliters. If needsCalories is true, nothing was saved: do not say the speak field and do not ask them to supply a number. Say one approximate typical-portion kilocalorie figure and ask whether to log it. Call again only after they agree, and pass that agreed calorie number plus protein, carbs, and fat for the same portion. Do not pass 0 for those three on an estimate. Say only the calories aloud unless they ask about the rest. Say the speak field once only when saved is true.',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -1859,9 +1860,9 @@ function logFoodTool() {
         title: { type: 'string', description: 'The food or drink they named, in their words.' },
         kind: { type: 'string', enum: ['meal', 'snack', 'drink'] },
         calories: { type: 'integer', description: 'Kilocalories they stated, or the approximate number they just agreed to. 0 when they have not said a number and have not agreed to an estimate yet.' },
-        protein: { type: 'integer', description: 'Grams of protein they stated. 0 if they did not.' },
-        carbs: { type: 'integer', description: 'Grams of carbohydrate they stated. 0 if they did not.' },
-        fat: { type: 'integer', description: 'Grams of fat they stated. 0 if they did not.' },
+        protein: { type: 'integer', description: 'Grams of protein for the agreed portion. 0 only when a known portion will fill them, or they did not agree to an estimate yet.' },
+        carbs: { type: 'integer', description: 'Grams of carbohydrate for the agreed portion. 0 only when a known portion will fill them, or they did not agree to an estimate yet.' },
+        fat: { type: 'integer', description: 'Grams of fat for the agreed portion. 0 only when a known portion will fill them, or they did not agree to an estimate yet.' },
         grams: { type: 'integer', description: 'Grams they stated. 0 if they did not.' },
         milliliters: { type: 'integer', description: 'Milliliters they stated for a drink that is not water. 0 if they did not.' },
       },

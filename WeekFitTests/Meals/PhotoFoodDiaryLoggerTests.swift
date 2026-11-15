@@ -252,4 +252,28 @@ final class PlanTimelineLoggedMealRouterTests: XCTestCase {
             "lib_1"
         )
     }
+
+    func testVoiceFoodLogOpensTheDiaryDetailInsteadOfACustomProduct() {
+        let activity = PlannedActivity(
+            date: Date(),
+            type: "meal",
+            title: "хот-дог с сосиской",
+            durationMinutes: 10,
+            icon: "fork.knife",
+            colorRed: 0.9,
+            colorGreen: 0.5,
+            colorBlue: 0.2,
+            calories: 300,
+            isCompleted: true,
+            source: "foodlog"
+        )
+
+        XCTAssertTrue(
+            PlanTimelineRouter.shouldOpenLoggedMealDetail(
+                for: activity,
+                customMeals: []
+            )
+        )
+        XCTAssertFalse(Meals.fromLoggedActivity(activity).isFoodProduct)
+    }
 }

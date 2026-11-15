@@ -37,17 +37,26 @@ struct RecoveryPriorDayLoad: Equatable, Hashable {
     static let empty = RecoveryPriorDayLoad(exerciseMinutes: 0, activeCalories: 0, workoutCount: 0)
 
     var strainLevel: RecoveryStrainLevel {
-        if exerciseMinutes >= 90 || activeCalories >= 800 {
+        // Active energy includes ordinary movement. A rest day can pass 450 kcal
+        // with no workout, so calories raise the band only together with a session.
+        let hasSession = workoutCount > 0 && exerciseMinutes >= 20
+        if exerciseMinutes >= 90 || (activeCalories >= 800 && (exerciseMinutes >= 45 || hasSession)) {
             return .heavy
         }
-        if exerciseMinutes >= 45 || activeCalories >= 450 || workoutCount >= 2 {
+        if exerciseMinutes >= 45
+            || (activeCalories >= 450 && (exerciseMinutes >= 25 || hasSession))
+            || (workoutCount >= 2 && exerciseMinutes >= 30) {
             return .moderate
+        }
+        if workoutCount == 0 && exerciseMinutes < 15 {
+            return .rest
         }
         return .light
     }
 }
 
 enum RecoveryStrainLevel: Equatable, Hashable {
+    case rest
     case light
     case moderate
     case heavy
@@ -773,7 +782,7 @@ enum RecoveryScoreEngine {
         guard let load else { return 0 }
 
         switch load.strainLevel {
-        case .light:
+        case .rest, .light:
             return 0
         case .moderate:
             if physiology.hrvSignificantlyBelowBaseline && physiology.rhrElevatedVsBaseline {

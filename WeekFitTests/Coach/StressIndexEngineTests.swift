@@ -105,6 +105,24 @@ final class StressIndexEngineTests: XCTestCase {
         )
     }
 
+    func testRestDayCaloriesDoNotCountAsModerateTraining() {
+        let rest = RecoveryPriorDayLoad(exerciseMinutes: 8, activeCalories: 640, workoutCount: 0)
+        XCTAssertEqual(rest.strainLevel, .rest)
+
+        let result = StressIndexEngine.calculate(
+            makeInput(priorDayLoad: rest),
+            at: fixedDate
+        )
+        let training = result.contributors.first { $0.kind == .trainingLoad }
+        XCTAssertEqual(training?.tone, .stabilizing)
+        XCTAssertLessThan(training?.strainScore ?? 100, 30)
+    }
+
+    func testWorkoutWithCaloriesStaysModerateTraining() {
+        let session = RecoveryPriorDayLoad(exerciseMinutes: 25, activeCalories: 520, workoutCount: 1)
+        XCTAssertEqual(session.strainLevel, .moderate)
+    }
+
     func testHeavyRecentTrainingIncreasesStress() {
         let light = StressIndexEngine.calculate(
             makeInput(priorDayLoad: RecoveryPriorDayLoad(exerciseMinutes: 20, activeCalories: 180, workoutCount: 1)),

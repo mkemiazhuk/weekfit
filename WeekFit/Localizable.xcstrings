@@ -366126,6 +366126,21 @@
         }
       }
     },
+    "recovery.stressIndex.chip.training.rest" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gestern kein Training" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No workout yesterday" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ayer sin entrenamiento" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Pas d’entraînement hier" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Ieri senza allenamento" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "昨日はトレーニングなし" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "어제 운동 없음" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Wczoraj bez treningu" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Вчера без тренировки" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "昨天没有训练" } }
+      }
+    },
     "recovery.stressIndex.chip.training.light" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -366904,6 +366919,21 @@
             "value" : "昨天的活动量较高。"
           }
         }
+      }
+    },
+    "recovery.stressIndex.clause.training.rest" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gestern gab es kein Training." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "There was no workout yesterday." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ayer no hubo entrenamiento." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Il n’y a pas eu d’entraînement hier." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Ieri non c’è stato un allenamento." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "昨日はトレーニングがありませんでした。" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "어제 운동이 없었습니다." } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Wczoraj nie było treningu." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Вчера тренировки не было." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "昨天没有训练。" } }
       }
     },
     "recovery.stressIndex.clause.training.light" : {
@@ -372307,61 +372337,61 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ein Faktor, nicht der Index selbst.\nAb 90 Minuten oder 800 kcal steigt der Wert stärker.\nAb 45 Minuten, 450 kcal oder zwei Trainingseinheiten schwächer.\nEin leichterer Tag senkt ihn."
+            "value" : "Ein Faktor, nicht der Index selbst.\nEin Tag ohne Training hebt den Wert nicht, auch wenn normale Bewegung Kalorien verbraucht hat.\nAb 45 Minuten Belastung oder einem Training ab 450 kcal steigt er.\nAb 90 Minuten steigt er stärker."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "One factor, not the index itself.\nAt least 90 minutes or 800 kcal raises the score more.\nAt least 45 minutes, 450 kcal, or two workouts raises it less.\nA lighter day lowers the score."
+            "value" : "One factor, not the index itself.\nA day without a workout does not raise the score, even if ordinary movement burned calories.\nAt least 45 minutes of exercise, or a workout of 450 kcal, raises it.\nAt least 90 minutes raises it more."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un factor, no el índice en sí.\nDesde 90 minutos o 800 kcal sube más la puntuación.\nDesde 45 minutos, 450 kcal o dos entrenamientos, menos.\nUn día más ligero la baja."
+            "value" : "Un factor, no el índice en sí.\nUn día sin entrenamiento no sube la puntuación, aunque el movimiento habitual haya gastado calorías.\nA partir de 45 minutos de ejercicio, o un entrenamiento de 450 kcal, sube.\nA partir de 90 minutos sube más."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un facteur, pas l’indice lui-même.\nÀ partir de 90 minutes ou 800 kcal, le score monte davantage.\nÀ partir de 45 minutes, 450 kcal ou deux séances, moins.\nUne journée plus légère le baisse."
+            "value" : "Un facteur, pas l’indice lui-même.\nUn jour sans entraînement ne fait pas monter le score, même si les mouvements du quotidien ont brûlé des calories.\nÀ partir de 45 minutes d’effort, ou d’un entraînement de 450 kcal, il monte.\nÀ partir de 90 minutes, il monte davantage."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un fattore, non l’indice stesso.\nDa 90 minuti o 800 kcal il punteggio sale di più.\nDa 45 minuti, 450 kcal o due allenamenti, di meno.\nUna giornata più leggera lo abbassa."
+            "value" : "Un fattore, non l’indice stesso.\nUn giorno senza allenamento non alza il punteggio, anche se il movimento quotidiano ha bruciato calorie.\nDa 45 minuti di esercizio, o un allenamento da 450 kcal, sale.\nDa 90 minuti sale di più."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "指数そのものではなく、要因の一つです。\n90分以上または800kcal以上だと、より上がります。\n45分以上、450kcal以上、または運動2回以上だと、より小さく上がります。\nそれより軽い日は下がります。"
+            "value" : "指数そのものではなく、一つの要因です。\nトレーニングのない日は、日常の動きでカロリーを消費していても点数を上げません。\n45分以上の運動、または450kcal以上のトレーニングで上がります。\n90分以上では、さらに上がります。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "지수 자체가 아니라 요인 중 하나입니다.\n90분 또는 800kcal 이상이면 점수가 더 오릅니다.\n45분, 450kcal 또는 운동 2회 이상이면 그보다 덜 오릅니다.\n더 가벼운 날은 점수를 내립니다."
+            "value" : "지수 자체가 아니라 요인 중 하나입니다.\n운동이 없는 날은 일상적인 움직임으로 칼로리를 태워도 점수를 올리지 않습니다.\n45분 이상의 운동이거나 450kcal 이상의 운동이면 올라갑니다.\n90분 이상이면 더 올라갑니다."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Jeden z czynników, a nie sam indeks.\nOd 90 minut lub 800 kcal wynik rośnie mocniej.\nOd 45 minut, 450 kcal albo dwóch treningów — słabiej.\nLżejszy dzień obniża wynik."
+            "value" : "Jeden z czynników, nie sam indeks.\nDzień bez treningu nie podnosi wyniku, nawet jeśli zwykły ruch spalił kalorie.\nOd 45 minut wysiłku albo treningu od 450 kcal wynik rośnie.\nOd 90 minut rośnie mocniej."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Один из факторов, а не сам индекс.\nОт 90 минут или 800 ккал балл растёт сильнее.\nОт 45 минут, 450 ккал или двух тренировок — слабее.\nБолее лёгкий день снижает балл."
+            "value" : "Один из факторов, а не сам индекс.\nДень без тренировки не повышает балл, даже если обычное движение сожгло калории.\nОт 45 минут нагрузки или тренировки от 450 ккал балл растёт.\nОт 90 минут — сильнее."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "这是因素之一，而不是指数本身。\n达到 90 分钟或 800 千卡时，分数提高得更多。\n达到 45 分钟、450 千卡或两次锻炼时，提高得少一些。\n更轻松的一天会降低分数。"
+            "value" : "这是因素之一，不是指数本身。\n没有训练的一天不会提高分数，即使日常活动消耗了卡路里。\n运动满 45 分钟，或一次 450 千卡的训练，分数会上升。\n满 90 分钟会升得更多。"
           }
         }
       }
@@ -374186,6 +374216,21 @@
         }
       }
     },
+    "recovery.stressIndex.row.training.rest" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gestern kein Training" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No workout yesterday" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ayer no hubo entrenamiento" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Pas d’entraînement hier" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Ieri nessun allenamento" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "昨日はトレーニングなし" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "어제 운동 없음" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Wczoraj bez treningu" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Вчера без тренировки" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "昨天没有训练" } }
+      }
+    },
     "recovery.stressIndex.row.training.light" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -374966,6 +375011,21 @@
         }
       }
     },
+    "recovery.stressIndex.rowDetail.training.rest" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alltägliche Bewegung zählt nicht als Training." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ordinary movement is not counted as training." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El movimiento habitual no cuenta como entrenamiento." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Les mouvements du quotidien ne comptent pas comme un entraînement." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Il movimento quotidiano non conta come allenamento." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "日常の動きはトレーニングに数えません。" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "일상적인 움직임은 운동으로 치지 않습니다." } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Zwykły ruch nie liczy się jako trening." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Обычное движение не считается тренировкой." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "日常活动不算作训练。" } }
+      }
+    },
     "recovery.stressIndex.rowDetail.training.light" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -375037,61 +375097,61 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gestern mindestens 45 Minuten oder 450 kcal."
+            "value" : "Gestern mindestens 45 Minuten Belastung oder ein Training ab 450 kcal."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "At least 45 minutes or 450 kcal yesterday."
+            "value" : "At least 45 minutes of exercise, or a workout of 450 kcal, yesterday."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ayer, al menos 45 minutos o 450 kcal."
+            "value" : "Ayer, al menos 45 minutos de ejercicio o un entrenamiento de 450 kcal."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hier, au moins 45 minutes ou 450 kcal."
+            "value" : "Hier, au moins 45 minutes d’effort ou un entraînement de 450 kcal."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ieri, almeno 45 minuti o 450 kcal."
+            "value" : "Ieri, almeno 45 minuti di esercizio o un allenamento da 450 kcal."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "昨日は45分以上、または450kcal以上です。"
+            "value" : "昨日は45分以上の運動、または450kcal以上のトレーニングでした。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "어제는 45분 이상 또는 450kcal 이상입니다."
+            "value" : "어제 45분 이상의 운동이거나 450kcal 이상의 운동이었습니다."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wczoraj co najmniej 45 minut albo 450 kcal."
+            "value" : "Wczoraj co najmniej 45 minut wysiłku albo trening od 450 kcal."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вчера от 45 минут или 450 ккал."
+            "value" : "Вчера от 45 минут нагрузки или тренировка от 450 ккал."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "昨天至少 45 分钟或 450 千卡。"
+            "value" : "昨天运动至少 45 分钟，或有一次 450 千卡的训练。"
           }
         }
       }

@@ -906,7 +906,7 @@ final class PlanViewModel: ObservableObject {
                 title: portion.title,
                 durationMinutes: 10,
                 icon: portion.icon,
-                imageName: portion.imageName,
+                imageName: portion.estimated ? "" : portion.imageName,
                 colorRed: 0.898,
                 colorGreen: 0.553,
                 colorBlue: 0.196,
@@ -916,7 +916,12 @@ final class PlanViewModel: ObservableObject {
                 fats: portion.fats,
                 fiber: portion.fiber,
                 isCompleted: true,
-                source: "foodlog"
+                source: "foodlog",
+                nutritionSnapshotJSON: voiceFoodSnapshotJSON(portion),
+                nutritionEstimateKind: portion.estimated
+                    ? PhotoFoodEstimateKind.estimated.rawValue
+                    : PhotoFoodEstimateKind.database.rawValue,
+                libraryMealId: portion.libraryMealId
             )
             modelContext.insert(activity)
             do {
@@ -930,6 +935,43 @@ final class PlanViewModel: ObservableObject {
             markPlannerDataChanged()
             return portion
         }
+    }
+
+    private func voiceFoodSnapshotJSON(_ portion: VoiceFoodPortion) -> String? {
+        let hasMacros = portion.protein > 0 || portion.carbs > 0 || portion.fats > 0 || portion.fiber > 0
+        let component = PhotoFoodComponent(
+            id: "voice",
+            displayName: portion.title,
+            grams: 100,
+            catalogIngredientId: nil,
+            preparation: nil,
+            caloriesPer100g: Double(portion.calories),
+            proteinPer100g: Double(portion.protein),
+            carbsPer100g: Double(portion.carbs),
+            fatsPer100g: Double(portion.fats),
+            fiberPer100g: Double(portion.fiber),
+            nutritionSource: portion.estimated ? .photoAIEstimate : .photoCatalog,
+            isAIEstimated: portion.estimated
+        )
+        let totals = PhotoFoodNutritionTotals(
+            calories: portion.calories,
+            protein: portion.protein,
+            carbs: portion.carbs,
+            fats: portion.fats,
+            fiber: portion.fiber
+        )
+        let snapshot = PhotoFoodDiarySnapshot(
+            mealName: portion.title,
+            mealSlotRaw: portion.activityType == "snack" ? WeekFitMealSlot.snack.rawValue : "",
+            components: hasMacros ? [component] : [],
+            portionMultiplier: 1,
+            totals: .init(totals),
+            estimateKind: portion.estimated ? .estimated : .database,
+            captureMethod: "voice",
+            libraryMealId: portion.libraryMealId,
+            loggedAt: Date()
+        )
+        return PhotoFoodNutritionCalculator.encodeSnapshot(snapshot)
     }
 
     /// Moves, resizes, or retitles one planned activity. Completed items stay as history.

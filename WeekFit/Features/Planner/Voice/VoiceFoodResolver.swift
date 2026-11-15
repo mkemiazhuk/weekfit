@@ -10,6 +10,10 @@ struct VoiceFoodPortion: Equatable {
     var carbs: Int
     var fats: Int
     var fiber: Int
+    /// True when the numbers are an estimate, not a saved meal or catalog portion.
+    var estimated: Bool
+    /// Saved meal this portion came from. Nil for a quick item, catalog ingredient, or estimate.
+    var libraryMealId: String? = nil
 }
 
 enum VoiceFoodDecision: Equatable {
@@ -55,7 +59,42 @@ enum VoiceFoodResolver {
             meals: meals,
             quickItems: quickItems
         )
-        guard let base = known ?? (statedCalories > 0 ? emptyPortion(title: spoken, kind: kind) : nil) else {
+        if let known {
+            if known.unscalable {
+                guard statedCalories > 0 else { return .needsCalories }
+                return portion(
+                    known,
+                    title: spoken,
+                    kind: kind,
+                    calories: statedCalories,
+                    protein: statedProtein,
+                    carbs: statedCarbs,
+                    fats: statedFat,
+                    fiber: 0,
+                    gaveMacros: true,
+                    estimated: true
+                )
+            }
+            // A saved or catalog portion wins over a calorie guess. A number the
+            // person named, sent without invented nutrients, still replaces it.
+            let personNamedCalories = statedCalories > 0 && !gaveMacros
+            let resolvedCalories = personNamedCalories ? statedCalories : known.calories
+            guard resolvedCalories > 0 else { return .needsCalories }
+            return portion(
+                known,
+                title: spoken,
+                kind: kind,
+                calories: resolvedCalories,
+                protein: personNamedCalories ? scaled(known.protein, from: known.calories, to: resolvedCalories) : known.protein,
+                carbs: personNamedCalories ? scaled(known.carbs, from: known.calories, to: resolvedCalories) : known.carbs,
+                fats: personNamedCalories ? scaled(known.fats, from: known.calories, to: resolvedCalories) : known.fats,
+                fiber: personNamedCalories ? scaled(known.fiber, from: known.calories, to: resolvedCalories) : known.fiber,
+                gaveMacros: false,
+                estimated: false
+            )
+        }
+
+        guard let base = statedCalories > 0 ? emptyPortion(title: spoken, kind: kind) : nil else {
             return .needsCalories
         }
 
@@ -70,12 +109,14 @@ enum VoiceFoodResolver {
                 carbs: statedCarbs,
                 fats: statedFat,
                 fiber: 0,
-                gaveMacros: true
+                gaveMacros: true,
+                estimated: true
             )
         }
 
         let resolvedCalories = statedCalories > 0 ? statedCalories : base.calories
         guard resolvedCalories > 0 else { return .needsCalories }
+        let usedKnownNumbers = known != nil && statedCalories == 0 && !gaveMacros
 
         return portion(
             base,
@@ -86,7 +127,8 @@ enum VoiceFoodResolver {
             carbs: gaveMacros ? statedCarbs : scaled(base.carbs, from: base.calories, to: resolvedCalories),
             fats: gaveMacros ? statedFat : scaled(base.fats, from: base.calories, to: resolvedCalories),
             fiber: gaveMacros ? 0 : scaled(base.fiber, from: base.calories, to: resolvedCalories),
-            gaveMacros: gaveMacros
+            gaveMacros: gaveMacros,
+            estimated: !usedKnownNumbers
         )
     }
 
@@ -102,6 +144,7 @@ enum VoiceFoodResolver {
         var fats: Int
         var fiber: Int
         var unscalable: Bool = false
+        var libraryMealId: String? = nil
     }
 
     private static func knownPortion(
@@ -112,17 +155,42 @@ enum VoiceFoodResolver {
         quickItems: [QuickItem]
     ) -> Base? {
         let query = normalized(title)
+        if let match = lookup(query, grams: grams, milliliters: milliliters, meals: meals, quickItems: quickItems, folded: title) {
+            return match
+        }
+        let stripped = withoutQuantityWords(query)
+        guard stripped != query, !stripped.isEmpty else { return nil }
+        return lookup(stripped, grams: grams, milliliters: milliliters, meals: meals, quickItems: quickItems, folded: stripped)
+    }
+
+    private static func lookup(
+        _ query: String,
+        grams: Int,
+        milliliters: Int,
+        meals: [Meals],
+        quickItems: [QuickItem],
+        folded: String
+    ) -> Base? {
         if let meal = meals.first(where: { normalized($0.title) == query || normalized($0.localizedShortTitle) == query }) {
             return mealPortion(meal, grams: grams, milliliters: milliliters)
         }
         if let item = quickItems.first(where: { normalized($0.title) == query || normalized($0.localizedTitle) == query }) {
             return quickPortion(item, grams: grams, milliliters: milliliters)
         }
-        let folded = title.replacingOccurrences(of: "ё", with: "е").replacingOccurrences(of: "Ё", with: "Е")
-        if let match = PhotoFoodCatalogMatcher.match(name: folded), match.score == 100 {
+        let name = folded.replacingOccurrences(of: "ё", with: "е").replacingOccurrences(of: "Ё", with: "Е")
+        if let match = PhotoFoodCatalogMatcher.match(name: name), match.score == 100 {
             return ingredientPortion(match.ingredient, grams: grams, milliliters: milliliters)
         }
         return nil
+    }
+
+    private static func withoutQuantityWords(_ query: String) -> String {
+        let fillers: Set<String> = [
+            "cup", "cups", "mug", "mugs", "glass", "glasses",
+            "чашка", "чашку", "чашки", "кружка", "кружку", "кружки",
+            "стакан", "стакана", "стаканчик"
+        ]
+        return query.split(separator: " ").map(String.init).filter { !fillers.contains($0) }.joined(separator: " ")
     }
 
     private static func mealPortion(_ meal: Meals, grams: Int, milliliters: Int) -> Base {
@@ -146,7 +214,8 @@ enum VoiceFoodResolver {
             protein: scaledDouble(Double(meal.protein), factor),
             carbs: scaledDouble(Double(meal.carbs), factor),
             fats: scaledDouble(Double(meal.fats), factor),
-            fiber: scaledDouble(Double(meal.fiber), factor)
+            fiber: scaledDouble(Double(meal.fiber), factor),
+            libraryMealId: meal.id
         )
     }
 
@@ -219,7 +288,8 @@ enum VoiceFoodResolver {
         carbs: Int,
         fats: Int,
         fiber: Int,
-        gaveMacros: Bool
+        gaveMacros: Bool,
+        estimated: Bool
     ) -> VoiceFoodDecision {
         let type = activityType(kind: kind, fallback: base.activityType)
         return .ready(VoiceFoodPortion(
@@ -231,7 +301,9 @@ enum VoiceFoodResolver {
             protein: protein,
             carbs: carbs,
             fats: fats,
-            fiber: gaveMacros ? 0 : fiber
+            fiber: gaveMacros ? 0 : fiber,
+            estimated: estimated,
+            libraryMealId: base.libraryMealId
         ))
     }
 

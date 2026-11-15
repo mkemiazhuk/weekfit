@@ -31,7 +31,10 @@ enum PlanTimelineRouter {
         let hasSnapshot = !(activity.nutritionSnapshotJSON ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .isEmpty
-        return hasDiaryPhoto || hasSnapshot
+        let source = activity.source
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        return hasDiaryPhoto || hasSnapshot || source == "foodlog"
     }
 
     static func shouldOpenNutrition(for activity: PlannedActivity) -> Bool {
@@ -137,6 +140,5 @@ extension Meals {
         let source = activity.source.lowercased()
         return source == "today"
             || source == "nutritionlog"
-            || source == "foodlog"
     }
 }
