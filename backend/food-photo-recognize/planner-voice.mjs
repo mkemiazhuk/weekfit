@@ -1067,7 +1067,7 @@ export function consoleDocument() {
       }
       return;
     }
-    if (type === 'response.function_call_arguments.done' && ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'log_water', 'remind_water'].includes(event.name)) {
+    if (type === 'response.function_call_arguments.done' && ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'log_water', 'log_food', 'remind_water'].includes(event.name)) {
       toolBusy = true;
       clearReplyWatch();
       clearPresence();
@@ -1213,7 +1213,7 @@ function answerRules(language) {
       'На вопрос про восстановление и еду отвечай по данным звонка, своими словами. Процент называй, если он есть. Смысл шкалы не зачитывай готовой фразой и не говори «ты умеренно готова». Разница калорий — цель минус записанное, не обязательная еда. Один совет из конкретных цифр этого звонка. Не выдумывай числа и не описывай любое состояние одинаково. Неполный дневник упоминай, только если это меняет ответ и ты ещё этого не говорила.',
       'На вопрос, поесть до занятия или после, используй время этого занятия и время последней записанной еды. Если времени еды нет, задай один короткий вопрос или ответь условно. Не выбирай «после» только потому, что занятие есть в плане.',
       '«Её», «это занятие» и «то же» — это последнее занятие, которое уже однозначно обсудили, и его ref. Если подходят несколько, спроси какое. Не выбирай последнюю запись только потому, что она последняя.',
-      'После инструмента список items — это уже текущий план. Если человек сообщает новое, например что уже поел или как себя чувствует, используй это в следующем ответе. Такая реплика не становится записью еды и не новым измерением. Тот же факт заново не спрашивай.',
+      'После инструмента список items — это уже текущий план. Если человек сообщает новое, например что уже поел или как себя чувствует, используй это в следующем ответе. Если это уже съеденная или выпитая еда или напиток и калории не названы, вызови log_food с калориями 0. Если он вернул needsCalories, назови одну примерную порцию и спроси «Записываем?», не записывая в том же ответе. Вода — только log_water. Настроение и фраза без продукта — не запись и не новое измерение. Тот же факт заново не спрашивай.',
       '«Спасибо», «хорошо, спасибо» и «понятно» звонок не заканчивают: короткий ответ и пауза. «Пока», «до свидания», «до встречи» и «это всё, заканчиваем» заканчивают: в ответе звучит только «До встречи.», и в том же ответе end_call. Других слов нет.',
     ],
     en: [
@@ -1221,7 +1221,7 @@ function answerRules(language) {
       'When they ask about recovery and food, answer from the call details in your own words. Say the percent when you have it. Explain the scale without a fixed sentence, and never call the middle band average. The calorie difference is the goal minus logged intake, not food they must eat. One suggestion from the numbers in this call. Do not invent numbers or describe every state the same way. Mention an incomplete diary only when it changes the answer, and not again if you already said it.',
       'If they ask whether to eat before or after an activity, use that activity\'s time and the last logged meal time. If the last meal is missing, ask one short question or answer conditionally. Do not choose after only because the activity is on the plan.',
       '"It", "that activity", and "the same one" mean the last activity that was discussed clearly, and its ref. If more than one activity could match, ask which one. Do not choose the latest row only because it is last.',
-      'After a tool returns items, those refs and times are the current plan. If they tell you something new, such as that they already ate or how they feel, use it in the next answer. That remark is not a saved meal or a new measurement. Do not ask for the same fact again.',
+      'After a tool returns items, those refs and times are the current plan. If they tell you something new, such as that they already ate or how they feel, use it in the next answer. If they already ate or drank a specific food and did not say calories, call log_food with calories 0. If it returns needsCalories, name one approximate portion and ask whether to log it. Do not log in that same reply. Water is log_water. A mood, or a remark with no food or drink, is not a log and not a new measurement. Do not ask for the same fact again.',
       'Thanks, okay thanks, and got it do not end the call: a short reply, then wait, with no farewell. Goodbye, bye, and that\'s all do. Say one short goodbye and call end_call in that same response.',
     ],
     pl: [
@@ -1229,7 +1229,7 @@ function answerRules(language) {
       'Gdy pytają o regenerację i jedzenie, odpowiedz własnymi słowami na podstawie szczegółów rozmowy. Podaj procent, jeśli jest. Skalę wyjaśnij zwyczajnie, bez gotowego zdania i bez nazywania środka średnią. Różnica kalorii to cel minus zapisane spożycie, nie obowiązkowa porcja. Jedna propozycja z liczb tej rozmowy. Nie wymyślaj liczb i nie opisuj każdego stanu tak samo. O niekompletnym dzienniku mów tylko wtedy, gdy zmienia to odpowiedź, i nie powtarzaj, gdy już to powiedziałaś.',
       'Gdy pytają, czy zjeść przed zajęciem czy po nim, użyj godziny tego zajęcia i godziny ostatniego zapisanego posiłku. Gdy godziny posiłku nie ma, zadaj jedno krótkie pytanie albo odpowiedz warunkowo. Nie wybieraj „po” tylko dlatego, że zajęcie jest w planie.',
       '„To”, „to zajęcie” i „to samo” oznaczają ostatnie zajęcie, które już jednoznacznie omówiliście, i jego ref. Gdy pasuje kilka, spytaj które. Nie wybieraj ostatniego wpisu tylko dlatego, że jest ostatni.',
-      'Po narzędziu lista items to już bieżący plan. Gdy osoba mówi coś nowego, na przykład że już jadła albo jak się czuje, użyj tego w następnej odpowiedzi. Ta wypowiedź nie jest zapisanym posiłkiem ani nowym pomiarem. Tego samego faktu nie pytaj ponownie.',
+      'Po narzędziu lista items to już bieżący plan. Gdy osoba mówi coś nowego, na przykład że już jadła albo jak się czuje, użyj tego w następnej odpowiedzi. Jeśli już zjadła albo wypiła konkretne jedzenie lub napój, wywołaj log_food. Woda to tylko log_water. Nastrój i zdanie bez produktu nie są zapisem ani nowym pomiarem. Tego samego faktu nie pytaj ponownie.',
       'Same „dzięki” i „jasne” nie kończą rozmowy. „Pa”, „do widzenia”, „na razie” i „to wszystko” kończą. Powiedz jedno krótkie pożegnanie i w tej samej odpowiedzi wywołaj end_call.',
     ],
     fr: [
@@ -1237,7 +1237,7 @@ function answerRules(language) {
       'S\'ils demandent la récupération et les repas, réponds avec tes mots à partir des détails de l\'appel. Dis le pourcentage s\'il est là. Explique l\'échelle simplement, sans phrase toute faite, et n\'appelle pas le milieu moyen. La différence de calories est l\'objectif moins ce qui est noté, pas une quantité obligatoire. Une suggestion à partir des chiffres de cet appel. N\'invente pas de chiffres et ne décris pas chaque état de la même façon. Mentionne un journal incomplet seulement si cela change la réponse, et ne le redis pas si tu l\'as déjà dit.',
       'S\'ils demandent s\'il vaut mieux manger avant ou après une activité, utilise l\'heure de cette activité et l\'heure du dernier repas noté. Si l\'heure du repas manque, pose une courte question ou réponds de façon conditionnelle. Ne choisis pas « après » seulement parce que l\'activité est au planning.',
       '« Ça », « cette activité » et « la même » désignent la dernière activité déjà discutée sans ambiguïté, et son ref. Si plusieurs correspondent, demande laquelle. Ne choisis pas la dernière ligne seulement parce qu\'elle est la dernière.',
-      'Après un outil, la liste items est déjà le planning actuel. Si la personne dit quelque chose de nouveau, par exemple qu\'elle a déjà mangé ou comment elle se sent, utilise-le dans la réponse suivante. Cette phrase n\'est pas un repas enregistré ni une nouvelle mesure. Ne redemande pas le même fait.',
+      'Après un outil, la liste items est déjà le planning actuel. Si la personne dit quelque chose de nouveau, par exemple qu\'elle a déjà mangé ou comment elle se sent, utilise-le dans la réponse suivante. Si c\'est un aliment ou une boisson déjà pris, appelle log_food. L\'eau, c\'est seulement log_water. Une humeur, ou une phrase sans aliment, n\'est pas un enregistrement ni une nouvelle mesure. Ne redemande pas le même fait.',
       'Un simple merci ou « d\'accord » ne termine pas l\'appel. « Au revoir », « à plus » et « c\'est tout » le terminent. Dis un court au revoir et appelle end_call dans la même réponse.',
     ],
     es: [
@@ -1245,7 +1245,7 @@ function answerRules(language) {
       'Si preguntan por la recuperación y la comida, responde con tus palabras a partir de los datos de la llamada. Di el porcentaje si está. Explica la escala con naturalidad, sin una frase fija, y no llames media a la zona intermedia. La diferencia de calorías es la meta menos lo registrado, no una cantidad obligatoria. Una sugerencia a partir de los números de esta llamada. No inventes números ni describas todos los estados igual. Menciona un diario incompleto solo si cambia la respuesta, y no lo repitas si ya lo dijiste.',
       'Si preguntan si comer antes o después de una actividad, usa la hora de esa actividad y la hora de la última comida anotada. Si falta la hora de la comida, haz una pregunta corta o responde de forma condicional. No elijas «después» solo porque la actividad está en el plan.',
       '«Esa», «esa actividad» y «la misma» son la última actividad que ya se habló sin ambigüedad, y su ref. Si encajan varias, pregunta cuál. No elijas la última fila solo porque es la última.',
-      'Después de una herramienta, la lista items ya es el plan actual. Si la persona cuenta algo nuevo, por ejemplo que ya comió o cómo se siente, úsalo en la siguiente respuesta. Esa frase no es una comida guardada ni una medición nueva. No vuelvas a pedir el mismo dato.',
+      'Después de una herramienta, la lista items ya es el plan actual. Si la persona cuenta algo nuevo, por ejemplo que ya comió o cómo se siente, úsalo en la siguiente respuesta. Si es una comida o una bebida que ya tomó, llama a log_food. El agua es solo log_water. Un estado de ánimo, o una frase sin alimento, no es un registro ni una medición nueva. No vuelvas a pedir el mismo dato.',
       'Un simple gracias o «vale» no termina la llamada. «Adiós», «hasta luego» y «eso es todo» sí. Di una despedida corta y llama a end_call en esa misma respuesta.',
     ],
     de: [
@@ -1253,7 +1253,7 @@ function answerRules(language) {
       'Fragen sie nach Erholung und Essen, antworte in eigenen Worten aus den Anrufdetails. Nenne den Prozentwert, wenn er da ist. Erkläre die Skala gewöhnlich, ohne festen Satz, und nenne die Mitte nicht mittel. Die Kaloriendifferenz ist das Ziel minus das Eingetragene, keine Pflichtmenge. Ein Vorschlag aus den Zahlen dieses Anrufs. Erfinde keine Zahlen und beschreibe nicht jeden Zustand gleich. Ein unvollständiges Tagebuch erwähnst du nur, wenn es die Antwort ändert, und nicht noch einmal, wenn du es schon gesagt hast.',
       'Fragen sie, ob sie vor oder nach einer Aktivität essen sollen, nutze die Uhrzeit dieser Aktivität und die Uhrzeit der letzten eingetragenen Mahlzeit. Fehlt die Uhrzeit der Mahlzeit, stell eine kurze Frage oder antworte bedingt. Wähle nicht „danach“ nur, weil die Aktivität im Plan steht.',
       '„Sie“, „diese Aktivität“ und „dieselbe“ meinen die letzte Aktivität, die schon eindeutig besprochen wurde, und ihre ref. Passen mehrere, frag welche. Wähle nicht den letzten Eintrag nur, weil er der letzte ist.',
-      'Nach einem Werkzeug ist die Liste items schon der aktuelle Plan. Sagt die Person etwas Neues, etwa dass sie schon gegessen hat oder wie sie sich fühlt, nutze das in der nächsten Antwort. Dieser Satz ist keine gespeicherte Mahlzeit und keine neue Messung. Dieselbe Angabe frag nicht noch einmal.',
+      'Nach einem Werkzeug ist die Liste items schon der aktuelle Plan. Sagt die Person etwas Neues, etwa dass sie schon gegessen hat oder wie sie sich fühlt, nutze das in der nächsten Antwort. Ist es ein schon gegessenes oder getrunkenes Lebensmittel, rufe log_food auf. Wasser ist nur log_water. Eine Stimmung oder ein Satz ohne Lebensmittel ist kein Eintrag und keine neue Messung. Dieselbe Angabe frag nicht noch einmal.',
       'Ein bloßes Danke oder „alles klar“ beendet den Anruf nicht. „Tschüss“, „bis dann“ und „das war alles“ schon. Sag einen kurzen Abschied und rufe end_call in derselben Antwort auf.',
     ],
     it: [
@@ -1261,7 +1261,7 @@ function answerRules(language) {
       'Se chiedono recupero e pasti, rispondi con parole tue dai dettagli della chiamata. Di\' la percentuale se c\'è. Spiega la scala in modo ordinario, senza una frase fissa, e non chiamare media la fascia centrale. La differenza di calorie è l\'obiettivo meno quanto è registrato, non una quantità obbligatoria. Un consiglio dai numeri di questa chiamata. Non inventare numeri e non descrivere ogni stato allo stesso modo. Un diario incompleto lo dici solo se cambia la risposta, e non lo ripeti se l\'hai già detto.',
       'Se chiedono se mangiare prima o dopo un\'attività, usa l\'ora di quell\'attività e l\'ora dell\'ultimo pasto annotato. Se manca l\'ora del pasto, fai una domanda breve o rispondi in modo condizionale. Non scegliere «dopo» solo perché l\'attività è nel piano.',
       '«Quella», «quell\'attività» e «la stessa» sono l\'ultima attività già discussa senza ambiguità, e il suo ref. Se ne corrispondono più di una, chiedi quale. Non scegliere l\'ultima riga solo perché è l\'ultima.',
-      'Dopo uno strumento, la lista items è già il piano attuale. Se la persona dice qualcosa di nuovo, per esempio che ha già mangiato o come si sente, usalo nella risposta successiva. Quella frase non è un pasto salvato né una nuova misura. Non richiedere lo stesso dato.',
+      'Dopo uno strumento, la lista items è già il piano attuale. Se la persona dice qualcosa di nuovo, per esempio che ha già mangiato o come si sente, usalo nella risposta successiva. Se è un cibo o una bevanda già presi, chiama log_food. L\'acqua è solo log_water. Uno stato d\'animo, o una frase senza alimento, non è una registrazione né una nuova misura. Non richiedere lo stesso dato.',
       'Un semplice grazie o «va bene» non chiude la chiamata. «Ciao», «a dopo» e «è tutto» sì. Di\' un breve commiato e chiama end_call nella stessa risposta.',
     ],
     ja: [
@@ -1269,7 +1269,7 @@ function answerRules(language) {
       '回復と食事を聞かれたら、通話の内容から自分の言葉で答える。パーセントがあれば言う。尺度は決まった文にせず、普通に説明する。中間を平均と呼ばない。カロリーの差は目標から記録を引いたもので、必ず食べる量ではない。この通話の数字から提案を一つ。数字を作らない。どの状態も同じ説明にしない。日記が不完全なことは、答えが変わるときだけ言い、すでに言ったなら繰り返さない。',
       '予定の前に食べるか後に食べるかを聞かれたら、その予定の時刻と最後に記録された食事の時刻を使う。食事の時刻がなければ、短い質問を一つするか、条件つきで答える。予定があるというだけで「後」を選ばない。',
       '「それ」「その予定」「同じもの」は、すでに一意に話した最後の予定とその ref を指す。複数が当たるならどれか聞く。最後の行だからという理由だけでは選ばない。',
-      'ツールのあと、items が今の予定である。相手が新しい事情を言ったら、たとえばもう食べた、気分がこうだ、それを次の返事に使う。その発言は保存された食事でも新しい測定でもない。同じ事実を聞き直さない。',
+      'ツールのあと、items が今の予定である。相手が新しい事情を言ったら、たとえばもう食べた、気分がこうだ、それを次の返事に使う。すでに食べた、または飲んだ食べ物や飲み物なら log_food を呼ぶ。水は log_water だけ。気分や、食べ物のない発言は記録でも新しい測定でもない。同じ事実を聞き直さない。',
       '「ありがとう」や「わかった」だけでは切らない。「じゃあね」「またね」「以上です」で切る。短い別れを一言言って、同じ応答で end_call を呼ぶ。',
     ],
     ko: [
@@ -1277,7 +1277,7 @@ function answerRules(language) {
       '회복과 식사를 물으면 통화 내용으로 자기 말로 답한다. 퍼센트가 있으면 말한다. 척도는 정해진 문장 없이 보통으로 설명한다. 중간을 평균이라고 하지 않는다. 칼로리 차이는 목표에서 기록을 뺀 것이고, 꼭 먹을 양이 아니다. 이 통화의 숫자로 제안 하나. 숫자를 만들지 않고, 모든 상태를 같게 말하지 않는다. 일기가 빈 것은 답이 달라질 때만 말하고, 이미 말했으면 반복하지 않는다.',
       '활동 전에 먹을지 후에 먹을지 물으면 그 활동의 시각과 마지막으로 기록된 식사의 시각을 쓴다. 식사 시각이 없으면 짧은 질문 하나를 하거나 조건부로 답한다. 활동이 있다는 이유만으로 「후」를 고르지 않는다.',
       '「그거」, 「그 활동」, 「같은 것」은 이미 하나로 이야기한 마지막 활동과 그 ref다. 여러 개가 맞으면 어느 것인지 묻는다. 마지막 줄이라는 이유만으로 고르지 않는다.',
-      '도구 뒤에 items가 현재 계획이다. 상대가 새 사정을 말하면, 예를 들어 이미 먹었다거나 컨디션이 어떻다거나, 다음 답에 그것을 쓴다. 그 말은 저장된 식사도 새 측정도 아니다. 같은 사실을 다시 묻지 않는다.',
+      '도구 뒤에 items가 현재 계획이다. 상대가 새 사정을 말하면, 예를 들어 이미 먹었다거나 컨디션이 어떻다거나, 다음 답에 그것을 쓴다. 이미 먹거나 마신 음식이나 음료라면 log_food를 호출한다. 물은 log_water만 쓴다. 기분이나 음식이 없는 말은 기록도 새 측정도 아니다. 같은 사실을 다시 묻지 않는다.',
       '「고마워」나 「알겠어」만으로는 통화를 끝내지 않는다. 「잘 가」, 「나중에 봐」, 「이걸로 끝」이면 끝낸다. 짧은 작별 한 마디를 하고 같은 응답에서 end_call을 호출한다.',
     ],
     'zh-Hans': [
@@ -1285,7 +1285,7 @@ function answerRules(language) {
       '问到恢复和饮食时，用这通电话里的资料，用自己的话说。有百分比就说百分比。量表用平常的话解释，不要背固定的句子，也不要把中间档说成一般。热量差是目标减去已记录的，不是必须吃完的量。用这次通话里的数字给一个建议。不要编数字，也不要用同一句话描述每种状态。日记不全只在它改变答案时说，说过了就不要重复。',
       '问到活动前吃还是活动后吃，用这个活动的时间和最近一次已记录用餐的时间。如果没有用餐时间，就问一个短问题，或者有条件地回答。不要只因为计划里有这个活动就选「之后」。',
       '「它」「这个活动」「同一个」指已经明确谈过的最后一个活动，以及它的 ref。如果有几个都符合，就问是哪一个。不要只因为它是最后一行就选它。',
-      '工具返回之后，items 就是当前计划。如果对方说出新情况，比如已经吃过，或者现在感觉如何，就在下一句里用上。这句话不是已保存的一餐，也不是一次新测量。不要再问同一个事实。',
+      '工具返回之后，items 就是当前计划。如果对方说出新情况，比如已经吃过，或者现在感觉如何，就在下一句里用上。如果是已经吃过或喝过的食物或饮料，调用 log_food。水只用 log_water。心情，或者没有食物的一句话，不是记录，也不是一次新测量。不要再问同一个事实。',
       '单独的「谢谢」或「知道了」不结束通话。「再见」「回头见」「就这些」才结束。说一句短告别，并在同一轮调用 end_call。',
     ],
   };
@@ -1376,7 +1376,7 @@ export function plannerSessionConfiguration(config, payload) {
     model: config.plannerVoiceLanguageModel && config.plannerVoiceLanguageModelLanguages?.includes(language)
       ? config.plannerVoiceLanguageModel : config.plannerVoiceModel,
     instructions: instructions(days, planningDay, safeName, language, plan, dayContext, introduced, reconnected, addressee),
-    tools: [createActivityTool(), listPlanTool(), updateActivityTool(), deleteActivityTool(), logWaterTool(), remindWaterTool(), endCallTool()],
+    tools: [createActivityTool(), listPlanTool(), updateActivityTool(), deleteActivityTool(), logWaterTool(), logFoodTool(), remindWaterTool(), endCallTool()],
     tool_choice: 'auto',
     // Budget covers audio and tool calls, not just the short spoken transcript.
     max_output_tokens: 2048,
@@ -1511,6 +1511,8 @@ function nutritionSnapshot(raw) {
   if (fatGoalGrams != null) nutrition.fatGoalGrams = fatGoalGrams;
   if (waterMilliliters != null) nutrition.waterMilliliters = waterMilliliters;
   if (waterGoalMilliliters != null) nutrition.waterGoalMilliliters = waterGoalMilliliters;
+  const activeCaloriesBurned = boundedInteger(raw.activeCaloriesBurned, 1, 20000);
+  if (activeCaloriesBurned != null) nutrition.activeCaloriesBurned = activeCaloriesBurned;
   if (foodGoal) nutrition.goal = foodGoal;
   return Object.keys(nutrition).length ? nutrition : null;
 }
@@ -1582,6 +1584,55 @@ function spokenCaloriePair(eaten, budget, language) {
   return lines[language] || lines.en;
 }
 
+function activeBurnLine(burned, eaten, language) {
+  const spoken = spokenCalorieCount(burned);
+  const lines = {
+    ru: `активно сожжено ${burned} килокалорий за сегодня, вслух около ${spoken}. Это расход движения с экрана Сегодня, не список занятий и не весь дневной обмен`,
+    en: `active burn ${burned} kilocalories today, say about ${spoken}. This is today's movement burn from the Today screen, not the activity list and not the whole day's metabolism`,
+    pl: `spalone aktywnie ${burned} kilokalorii dzisiaj, powiedz około ${spoken}. To wydatek ruchu z ekranu Dziś, nie lista zajęć i nie cała przemiana dnia`,
+    fr: `dépense active ${burned} kilocalories aujourd'hui, dis environ ${spoken}. C'est la dépense du mouvement sur l'écran Aujourd'hui, pas la liste des activités et pas tout le métabolisme du jour`,
+    es: `quemadas activas ${burned} kilocalorías hoy, di unos ${spoken}. Es el gasto de movimiento de la pantalla Hoy, no la lista de actividades ni todo el metabolismo del día`,
+    de: `aktiv verbrannt ${burned} Kilokalorien heute, sag etwa ${spoken}. Das ist der Bewegungsverbrauch vom Heute-Bildschirm, nicht die Aktivitätsliste und nicht der ganze Tagesumsatz`,
+    it: `bruciate attive ${burned} chilocalorie oggi, di' circa ${spoken}. È il consumo di movimento della schermata Oggi, non l'elenco delle attività e non tutto il metabolismo del giorno`,
+    ja: `今日の活動消費 ${burned} キロカロリー、話すときは約${spoken}。今日画面の動きの消費で、予定の一覧でも一日の代謝全体でもない`,
+    ko: `오늘 활동 소모 ${burned} 킬로칼로리, 말할 때는 약 ${spoken}. 오늘 화면의 움직임 소모이고, 활동 목록도 하루 대사 전체도 아니다`,
+    'zh-Hans': `今天活动消耗 ${burned} 千卡，说话时大约${spoken}。这是今天页面上的运动消耗，不是活动清单，也不是全天代谢`,
+  };
+  let text = lines[language] || lines.en;
+  if (eaten != null) {
+    const compare = {
+      ru: `Съедено ${eaten} и активно сожжено ${burned}: когда спрашивают, сравни эти два числа. Разницу не называй дефицитом и основной обмен не прибавляй`,
+      en: `Eaten ${eaten} and active burn ${burned}: when they ask, compare these two numbers. Do not call the difference a deficit and do not add resting metabolism`,
+      pl: `Zjedzone ${eaten} i spalone aktywnie ${burned}: gdy pytają, porównaj te dwie liczby. Różnicy nie nazywaj deficytem i nie dodawaj spoczynkowej przemiany`,
+      fr: `Mangé ${eaten} et dépense active ${burned} : s'ils demandent, compare ces deux nombres. N'appelle pas la différence un déficit et n'ajoute pas le métabolisme de repos`,
+      es: `Comidas ${eaten} y quemadas activas ${burned}: si preguntan, compara esos dos números. No llames déficit a la diferencia ni sumes el metabolismo en reposo`,
+      de: `Gegessen ${eaten} und aktiv verbrannt ${burned}: wenn sie fragen, vergleiche diese zwei Zahlen. Nenne die Differenz kein Defizit und addiere nicht den Ruheumsatz`,
+      it: `Mangiate ${eaten} e bruciate attive ${burned}: se chiedono, confronta questi due numeri. Non chiamare la differenza un deficit e non aggiungere il metabolismo a riposo`,
+      ja: `摂取 ${eaten}、活動消費 ${burned}。聞かれたらこの二つの数を比べる。差を赤字と呼ばず、安静時代謝は足さない`,
+      ko: `섭취 ${eaten}, 활동 소모 ${burned}. 물으면 이 두 수를 비교한다. 차이를 결핍이라 하지 말고 안정 대사는 더하지 않는다`,
+      'zh-Hans': `已吃 ${eaten}，活动消耗 ${burned}。问到就比较这两个数。不要把差值叫成赤字，也不要加上静息代谢`,
+    };
+    text += `. ${compare[language] || compare.en}`;
+  }
+  return text;
+}
+
+function missingActiveBurnLine(language) {
+  const lines = {
+    ru: 'Активно сожжённых килокалорий за сегодня нет. Не выводи их из списка занятий',
+    en: 'Active kilocalories burned today were not provided. Do not derive them from the activity list',
+    pl: 'Aktywnie spalonych kilokalorii na dziś nie podano. Nie wyliczaj ich z listy zajęć',
+    fr: 'Les kilocalories actives brûlées aujourd\'hui ne sont pas là. Ne les déduis pas de la liste des activités',
+    es: 'No están las kilocalorías activas quemadas hoy. No las saques de la lista de actividades',
+    de: 'Aktiv verbrannte Kilokalorien für heute fehlen. Leite sie nicht aus der Aktivitätsliste ab',
+    it: 'Le chilocalorie attive bruciate oggi non ci sono. Non ricavarle dall\'elenco delle attività',
+    ja: '今日の活動消費キロカロリーは無い。予定の一覧から計算しない',
+    ko: '오늘의 활동 소모 킬로칼로리는 없다. 활동 목록으로 계산하지 않는다',
+    'zh-Hans': '今天的活动消耗千卡没有。不要从活动清单推算',
+  };
+  return lines[language] || lines.en;
+}
+
 function calorieGapLine(left, language) {
   const spoken = spokenCalorieCount(left);
   const lines = {
@@ -1634,6 +1685,11 @@ function dayContextLine(dayContext, language) {
       bits.push(calorieGapLine(left, language));
     } else if (nutrition.caloriesEaten != null) {
       bits.push(facts.eaten(nutrition.caloriesEaten));
+    }
+    if (nutrition.activeCaloriesBurned != null) {
+      bits.push(activeBurnLine(nutrition.activeCaloriesBurned, nutrition.caloriesEaten, language));
+    } else {
+      bits.push(missingActiveBurnLine(language));
     }
     if (nutrition.proteinGrams != null && nutrition.proteinGoalGrams != null) {
       bits.push(facts.proteinOf(nutrition.proteinGrams, nutrition.proteinGoalGrams));
@@ -1706,7 +1762,7 @@ function createActivityTool() {
   return {
     type: 'function',
     name: 'create_activity',
-    description: 'Create one catalog activity only after this activity, time, and duration are accepted: they named the time, they told you to pick any free time, or they agreed to a slot you just offered. Agreement to keep choosing is not this call. Not a meal, not water already drunk, and not a water reminder. For before or after one plan item, set place to before or after and anchorRef to its ref, and leave startTime empty. Do not ask for a clock time when that ref is unique. Say the speak field once, and only after saved is true.',
+    description: 'Create one catalog activity only after this activity, time, and duration are accepted: they named the time, they told you to pick any free time, or they agreed to a slot you just offered. Agreement to keep choosing is not this call. Not food or a caloric drink already consumed, not water already drunk, and not a water reminder. For before or after one plan item, set place to before or after and anchorRef to its ref, and leave startTime empty. Do not ask for a clock time when that ref is unique. Say the speak field once, and only after saved is true.',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -1787,6 +1843,29 @@ function logWaterTool() {
         milliliters: { type: 'integer', description: 'Milliliters already drunk, from 50 to 2000. 0 when they did not say an amount.' },
       },
       required: ['milliliters'],
+    },
+  };
+}
+
+function logFoodTool() {
+  return {
+    type: 'function',
+    name: 'log_food',
+    description: 'Record food or a caloric drink the person already consumed. This updates today\'s eaten calories and does not add the food to their meal library. It is not a plan activity. Water is log_water, never this tool. If they did not say a calorie number, call once with calories 0 so the phone can fill a known portion. Do not invent protein, carbs, fat, grams, or milliliters. If needsCalories is true, nothing was saved: do not say the speak field and do not ask them to supply a number. Say one approximate typical-portion kilocalorie figure and ask whether to log it. Call again only after they agree, and pass that agreed calorie number. Say the speak field once only when saved is true.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        title: { type: 'string', description: 'The food or drink they named, in their words.' },
+        kind: { type: 'string', enum: ['meal', 'snack', 'drink'] },
+        calories: { type: 'integer', description: 'Kilocalories they stated, or the approximate number they just agreed to. 0 when they have not said a number and have not agreed to an estimate yet.' },
+        protein: { type: 'integer', description: 'Grams of protein they stated. 0 if they did not.' },
+        carbs: { type: 'integer', description: 'Grams of carbohydrate they stated. 0 if they did not.' },
+        fat: { type: 'integer', description: 'Grams of fat they stated. 0 if they did not.' },
+        grams: { type: 'integer', description: 'Grams they stated. 0 if they did not.' },
+        milliliters: { type: 'integer', description: 'Milliliters they stated for a drink that is not water. 0 if they did not.' },
+      },
+      required: ['title', 'kind', 'calories', 'protein', 'carbs', 'fat', 'grams', 'milliliters'],
     },
   };
 }

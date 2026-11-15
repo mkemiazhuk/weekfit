@@ -82,12 +82,14 @@ nonisolated struct PlanRealtimeToolReply: Equatable {
     var saved: Bool
     var speak: String?
     var error: String?
+    var needsCalories: Bool = false
     var schedule: [PlanRealtimeScheduleRow] = []
 
     var jsonObject: [String: Any] {
         var body: [String: Any] = ["ok": ok, "saved": saved]
         if let speak { body["speak"] = speak }
         if let error { body["error"] = error }
+        if needsCalories { body["needsCalories"] = true }
         if !schedule.isEmpty {
             body["items"] = schedule.map {
                 var row: [String: Any] = [
@@ -265,6 +267,8 @@ struct PlanVoiceDayContext: Equatable {
         var goal: String?
         var waterMilliliters: Int?
         var waterGoalMilliliters: Int?
+        /// Today's movement burn, the same number as on Today. Not the list of logged activities.
+        var activeCaloriesBurned: Int?
     }
 
     struct Training: Equatable {
@@ -313,6 +317,7 @@ private extension PlanVoiceDayContext.Nutrition {
             && proteinGoalGrams == nil && carbsGrams == nil && carbsGoalGrams == nil
             && fatGrams == nil && fatGoalGrams == nil && goal == nil
             && waterMilliliters == nil && waterGoalMilliliters == nil
+            && activeCaloriesBurned == nil
     }
 
     func jsonObject() -> [String: Any] {
@@ -328,6 +333,7 @@ private extension PlanVoiceDayContext.Nutrition {
         if let goal, ["lose", "maintain", "gain"].contains(goal) { body["goal"] = goal }
         if let waterMilliliters { body["waterMilliliters"] = waterMilliliters }
         if let waterGoalMilliliters { body["waterGoalMilliliters"] = waterGoalMilliliters }
+        if let activeCaloriesBurned { body["activeCaloriesBurned"] = activeCaloriesBurned }
         return body
     }
 }
@@ -1005,6 +1011,38 @@ enum PlanRealtimeAnchorResult: Equatable {
     case suggest(day: String, time: String, duration: Int)
     case missing
     case ambiguous
+}
+
+struct PlanRealtimeFoodArguments: Equatable {
+    var title: String
+    var kind: String
+    var calories: Int
+    var protein: Int
+    var carbs: Int
+    var fat: Int
+    var grams: Int
+    var milliliters: Int
+}
+
+func planRealtimeFoodArguments(_ arguments: String) -> PlanRealtimeFoodArguments? {
+    guard let object = planRealtimeJSON(arguments) else { return nil }
+    return PlanRealtimeFoodArguments(
+        title: object["title"] as? String ?? "",
+        kind: object["kind"] as? String ?? "",
+        calories: planRealtimeWholeNumber(object["calories"]),
+        protein: planRealtimeWholeNumber(object["protein"]),
+        carbs: planRealtimeWholeNumber(object["carbs"]),
+        fat: planRealtimeWholeNumber(object["fat"]),
+        grams: planRealtimeWholeNumber(object["grams"]),
+        milliliters: planRealtimeWholeNumber(object["milliliters"])
+    )
+}
+
+private func planRealtimeWholeNumber(_ raw: Any?) -> Int {
+    if let int = raw as? Int { return int }
+    if let number = raw as? Double { return Int(number) }
+    if let text = raw as? String, let int = Int(text) { return int }
+    return 0
 }
 
 func planRealtimeWaterMilliliters(_ arguments: String) -> Int? {

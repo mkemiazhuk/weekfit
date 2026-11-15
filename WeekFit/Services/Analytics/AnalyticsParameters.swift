@@ -139,6 +139,8 @@ enum FoodLoggingMethod: String, Sendable {
     case mealBuilder = "meal_builder"
     case quickLog = "quick_log"
     case photo
+    /// Spoken to Maya. Calories are a stated number or an exact known portion.
+    case voice
     /// One-tap log from the Meals library or a library food/meal detail.
     case library
     case other

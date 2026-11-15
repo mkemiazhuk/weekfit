@@ -536,6 +536,21 @@ struct TodayView: View {
                         modelContext: modelContext
                     )
                 },
+                onLogFood: { title, kind, calories, protein, carbs, fat, grams, milliliters in
+                    try PlanViewModel().saveVoiceFood(
+                        title: title,
+                        kind: kind,
+                        calories: calories,
+                        protein: protein,
+                        carbs: carbs,
+                        fat: fat,
+                        grams: grams,
+                        milliliters: milliliters,
+                        meals: userSettings.customMealsCatalog + NutritionRepository().loadMeals(),
+                        quickItems: NutritionRepository().loadQuickItems(),
+                        modelContext: modelContext
+                    )
+                },
                 onRemindWater: { start, minutes in
                     _ = try PlanViewModel().saveVoiceActivity(
                         PlanVoiceCreateRequest(
@@ -2842,6 +2857,8 @@ struct TodayView: View {
             if goals.waterLiters > 0 { nutrition.waterGoalMilliliters = Int((goals.waterLiters * 1000).rounded()) }
             nutrition.goal = voiceFoodGoal()
         }
+        let burned = Int(healthManager.activeCalories.rounded())
+        if burned > 0 { nutrition.activeCaloriesBurned = burned }
         return nutrition
     }
 

@@ -754,6 +754,8 @@ final class PlanViewModel: ObservableObject {
         case persistence
         case notFound
         case alreadyDone
+        case needsCalories
+        case water
     }
 
     /// Same fields and conflict rule as the add sheet. The caller already validated the intent.
@@ -863,6 +865,71 @@ final class PlanViewModel: ObservableObject {
         markPlannerDataChanged()
         guard recorded >= 50 else { throw VoiceSaveError.persistence }
         return recorded
+    }
+
+    /// Completed food or caloric drink. It stays out of the meal library.
+    /// Stored calories are the number they said, or an exact known portion. Nothing is guessed.
+    @discardableResult
+    func saveVoiceFood(
+        title: String,
+        kind: String,
+        calories: Int,
+        protein: Int,
+        carbs: Int,
+        fat: Int,
+        grams: Int,
+        milliliters: Int,
+        meals: [Meals],
+        quickItems: [QuickItem],
+        modelContext: ModelContext
+    ) throws -> VoiceFoodPortion {
+        switch VoiceFoodResolver.resolve(
+            title: title,
+            kind: kind,
+            calories: calories,
+            protein: protein,
+            carbs: carbs,
+            fat: fat,
+            grams: grams,
+            milliliters: milliliters,
+            meals: meals,
+            quickItems: quickItems
+        ) {
+        case .water:
+            throw VoiceSaveError.water
+        case .needsCalories:
+            throw VoiceSaveError.needsCalories
+        case .ready(let portion):
+            let activity = PlannedActivity(
+                date: Date(),
+                type: portion.activityType,
+                title: portion.title,
+                durationMinutes: 10,
+                icon: portion.icon,
+                imageName: portion.imageName,
+                colorRed: 0.898,
+                colorGreen: 0.553,
+                colorBlue: 0.196,
+                calories: portion.calories,
+                protein: portion.protein,
+                carbs: portion.carbs,
+                fats: portion.fats,
+                fiber: portion.fiber,
+                isCompleted: true,
+                source: "foodlog"
+            )
+            modelContext.insert(activity)
+            do {
+                try modelContext.save()
+            } catch {
+                modelContext.delete(activity)
+                throw VoiceSaveError.persistence
+            }
+            ReviewEngagement.record(.foodLogged)
+            ProductAnalytics.foodLoggingCompleted(method: .voice, source: .plan, operation: .diary)
+            markPlannerDataChanged()
+            return portion
+        }
     }
 
     /// Moves, resizes, or retitles one planned activity. Completed items stay as history.

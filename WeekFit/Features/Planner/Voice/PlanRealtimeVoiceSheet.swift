@@ -38,6 +38,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
     var onUpdate: ((PlanVoiceUpdateRequest) throws -> Void)?
     var onDelete: ((String) throws -> Void)?
     var onLogWater: ((Int) throws -> Int)?
+    var onLogFood: ((String, String, Int, Int, Int, Int, Int, Int) throws -> VoiceFoodPortion)?
     var onRemindWater: ((Date, Int) throws -> Void)?
     var languageCode = "ru"
     var engine = PlanVoiceEngine.current
@@ -599,6 +600,8 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             ))
         case "log_water":
             return logWater(arguments)
+        case "log_food":
+            return logFood(arguments)
         case "remind_water":
             return remindWater(arguments)
         case "create_activity":
@@ -1001,6 +1004,50 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
         }
     }
 
+    private func logFood(_ arguments: String) -> String {
+        guard let food = planRealtimeFoodArguments(arguments) else {
+            return encode(planRealtimeToolReply(action: .reject("save_failed"), speak: nil))
+        }
+        let title = food.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else {
+            let ask = callLanguage.hasPrefix("ru") ? "Что именно записать?" : "What should I log?"
+            return encode(PlanRealtimeToolReply(ok: false, saved: false, speak: ask, error: "title_required"))
+        }
+        guard let onLogFood else {
+            return encode(planRealtimeToolReply(action: .reject("save_failed"), speak: nil))
+        }
+        do {
+            let fingerprint = "food|\(title.lowercased())|\(food.calories)|\(food.grams)|\(food.milliliters)"
+            if let replay = replayedSave(fingerprint, within: 60) {
+                return replay
+            }
+            let stored = try onLogFood(
+                title,
+                food.kind,
+                food.calories,
+                food.protein,
+                food.carbs,
+                food.fat,
+                food.grams,
+                food.milliliters
+            )
+            let speak = callLanguage.hasPrefix("ru")
+                ? "Записала \(stored.title), \(stored.calories) килокалорий."
+                : "Logged \(stored.title), \(stored.calories) kilocalories."
+            noteReceipt(id: "food-\(stored.title)", title: speak, detail: "\(stored.calories)", success: true)
+            let reply = encode(PlanRealtimeToolReply(ok: true, saved: true, speak: speak, error: nil))
+            rememberSave(fingerprint, reply: reply)
+            return reply
+        } catch PlanViewModel.VoiceSaveError.water {
+            let ask = callLanguage.hasPrefix("ru") ? "Это вода. Сколько миллилитров?" : "That's water. How many milliliters?"
+            return encode(PlanRealtimeToolReply(ok: false, saved: false, speak: ask, error: "water"))
+        } catch PlanViewModel.VoiceSaveError.needsCalories {
+            return encode(PlanRealtimeToolReply(ok: false, saved: false, speak: nil, error: "calories_required", needsCalories: true))
+        } catch {
+            return encode(planRealtimeToolReply(action: .reject("save_failed"), speak: nil))
+        }
+    }
+
     private func remindWater(_ arguments: String) -> String {
         guard let draft = planRealtimeRemindDraft(arguments) else {
             return encode(planRealtimeToolReply(action: .reject("save_failed"), speak: nil))
@@ -1251,6 +1298,9 @@ struct PlanRealtimeVoiceSheet: View {
     var onUpdate: (PlanVoiceUpdateRequest) throws -> Void
     var onDelete: (String) throws -> Void
     var onLogWater: (Int) throws -> Int = { _ in throw PlanViewModel.VoiceSaveError.persistence }
+    var onLogFood: (String, String, Int, Int, Int, Int, Int, Int) throws -> VoiceFoodPortion = { _, _, _, _, _, _, _, _ in
+        throw PlanViewModel.VoiceSaveError.persistence
+    }
     var onRemindWater: (Date, Int) throws -> Void = { _, _ in }
     var addresseeSex: String = "unknown"
 
@@ -1271,6 +1321,7 @@ struct PlanRealtimeVoiceSheet: View {
             onUpdate: onUpdate,
         onDelete: onDelete,
         onLogWater: onLogWater,
+        onLogFood: onLogFood,
         onRemindWater: onRemindWater,
         languageCode: languageManager.selectedLanguage.rawValue,
             dayContext: dayContext,
@@ -1747,6 +1798,7 @@ extension PlanRealtimeSessionController {
         onUpdate: @escaping (PlanVoiceUpdateRequest) throws -> Void,
         onDelete: @escaping (String) throws -> Void,
         onLogWater: @escaping (Int) throws -> Int,
+        onLogFood: @escaping (String, String, Int, Int, Int, Int, Int, Int) throws -> VoiceFoodPortion,
         onRemindWater: @escaping (Date, Int) throws -> Void,
         languageCode: String,
         dayContext: PlanVoiceDayContext,
@@ -1758,6 +1810,7 @@ extension PlanRealtimeSessionController {
         self.onUpdate = onUpdate
         self.onDelete = onDelete
         self.onLogWater = onLogWater
+        self.onLogFood = onLogFood
         self.onRemindWater = onRemindWater
         self.languageCode = languageCode
         self.dayContext = dayContext

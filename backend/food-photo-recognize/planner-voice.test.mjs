@@ -443,8 +443,12 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(sent.session.model, 'gpt-realtime-2.1');
     assert.equal(sent.session.audio.input.transcription, undefined);
     assert.deepEqual(sent.session.output_modalities, ['audio']);
-    assert.deepEqual(sent.session.tools.map(tool => tool.name), ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'log_water', 'remind_water', 'end_call']);
+    assert.deepEqual(sent.session.tools.map(tool => tool.name), ['create_activity', 'list_plan', 'update_activity', 'delete_activity', 'log_water', 'log_food', 'remind_water', 'end_call']);
     assert.equal(sent.session.tools.some(tool => tool.name === 'log_meal'), false);
+    assert.equal(sent.session.instructions.includes('Записать еду в этом звонке нельзя'), false);
+    assert.match(sent.session.instructions, /log_food/);
+    assert.match(sent.session.tools.find(tool => tool.name === 'log_food').description, /approximate typical-portion/);
+    assert.match(sent.session.tools.find(tool => tool.name === 'log_food').description, /only after they agree/);
     assert.equal(sent.session.tools.find(tool => tool.name === 'create_activity').parameters.properties.catalogTitle.enum.includes('Drink Water'), false);
     assert.match(sent.session.instructions, /Не добавляй этот вопрос после приветствия/);
     assert.match(sent.session.instructions, /До встречи\./);
@@ -540,6 +544,7 @@ test('signed-in accounts can open a session and the server key stays hidden', as
           nutrition: {
             caloriesEaten: 1450,
             caloriesBudget: 2400,
+            activeCaloriesBurned: 620,
             proteinGrams: 62,
             proteinGoalGrams: 140,
             waterMilliliters: 1200,
@@ -570,6 +575,9 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(dayText.includes('ignore this'), false);
     assert.match(dayText, /не в приветствии/);
     assert.match(dayText, /съедено 1450 из 2400 килокалорий/);
+    assert.match(dayText, /активно сожжено 620 килокалорий за сегодня/);
+    assert.match(dayText, /Съедено 1450 и активно сожжено 620/);
+    assert.equal(dayText.includes('Активно сожжённых килокалорий за сегодня нет'), false);
     assert.match(dayText, /разница между дневной целью и записанным потреблением: точно 950, вслух около 950/);
     assert.match(dayText, /белок 62 из 140 граммов/);
     assert.match(dayText, /углеводы 140 из 250 граммов/);
@@ -583,7 +591,10 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.match(dayText, /что лучше съесть/);
     assert.match(dayText, /Один совет/);
     assert.equal(dayText.includes('два конкретных продукта'), false);
-    assert.match(dayText, /инструмента Meals нет/);
+    assert.match(dayText, /Это совет, не запись/);
+    assert.match(dayText, /Уже съеденную еду и калорийный напиток записывает log_food/);
+    assert.match(dayText, /Записываем\?/);
+    assert.equal(dayText.includes('инструмента Meals нет'), false);
     assert.equal(dayText.includes('По записям сегодня пока мало'), false);
     assert.equal(dayText.includes('Не выдумывай блюда'), false);
 
@@ -1054,6 +1065,7 @@ test('77 percent is moderately ready and goodbye closes the call once', async ()
   assert.match(rounded.instructions, /1782/);
   assert.match(rounded.instructions, /вслух около 1780/);
   assert.match(rounded.instructions, /точно 718, вслух около 720/);
+  assert.match(rounded.instructions, /Активно сожжённых килокалорий за сегодня нет/);
   const female = plannerSessionConfiguration(plannerVoiceSettings({}), {
     timeZone: 'Europe/Warsaw',
     language: 'ru',
