@@ -1857,7 +1857,7 @@ function logFoodTool() {
       type: 'object',
       additionalProperties: false,
       properties: {
-        title: { type: 'string', description: 'The food or drink they named, in their words.' },
+        title: { type: 'string', description: 'The food they named, in their words, including the preparation. Fried stays fried and boiled stays boiled. Do not insert a different catalog name into the title.' },
         kind: { type: 'string', enum: ['meal', 'snack', 'drink'] },
         calories: { type: 'integer', description: 'Kilocalories they stated, or the approximate number they just agreed to. 0 when they have not said a number and have not agreed to an estimate yet.' },
         protein: { type: 'integer', description: 'Grams of protein for the agreed portion. 0 only when a known portion will fill them, or they did not agree to an estimate yet.' },

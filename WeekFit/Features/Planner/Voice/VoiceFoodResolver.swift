@@ -334,7 +334,43 @@ enum VoiceFoodResolver {
     private static func clampedTitle(_ title: String) -> String {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let collapsed = trimmed.split(whereSeparator: \.isWhitespace).joined(separator: " ")
-        return String(collapsed.prefix(80))
+        let cleaned = dropConflictingPreparation(String(collapsed))
+        return String(cleaned.prefix(80))
+    }
+
+    /// «два жареных Яйца варёные» keeps the preparation the person said.
+    private static func dropConflictingPreparation(_ title: String) -> String {
+        let tokens = title.split(separator: " ").map(String.init)
+        guard tokens.count > 2 else { return title }
+        func preparation(_ word: String) -> String? {
+            let token = normalized(word)
+            if token.contains("жарен") || token.contains("fried") { return "fried" }
+            if token.contains("варен") || token.contains("boiled") { return "boiled" }
+            return nil
+        }
+        func isEgg(_ word: String) -> Bool {
+            let token = normalized(word)
+            return token.hasPrefix("яйц") || token.hasPrefix("egg")
+        }
+        guard Set(tokens.compactMap(preparation)).count > 1 else { return title }
+        var drop = Set<Int>()
+        for index in tokens.indices where isEgg(tokens[index]) {
+            let next = tokens.index(after: index)
+            if next < tokens.endIndex, preparation(tokens[next]) != nil {
+                drop.insert(next)
+            }
+            if index > tokens.startIndex {
+                let previous = tokens.index(before: index)
+                guard let attached = preparation(tokens[previous]) else { continue }
+                let earlierDiffers = tokens[..<previous].contains { word in
+                    guard let kind = preparation(word) else { return false }
+                    return kind != attached
+                }
+                if earlierDiffers { drop.insert(previous) }
+            }
+        }
+        guard !drop.isEmpty else { return title }
+        return tokens.enumerated().filter { !drop.contains($0.offset) }.map(\.element).joined(separator: " ")
     }
 
     private static func activityType(kind: String, fallback: String) -> String {

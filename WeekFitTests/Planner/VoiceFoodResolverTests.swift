@@ -153,6 +153,25 @@ final class VoiceFoodResolverTests: XCTestCase {
         XCTAssertFalse(portion.estimated)
     }
 
+    func testFriedEggsDoNotKeepABoiledCatalogName() {
+        let decision = VoiceFoodResolver.resolve(
+            title: "два жареных Яйца варёные и половина небольшого огурца",
+            kind: "meal",
+            calories: 170,
+            protein: 13,
+            carbs: 3,
+            fat: 12,
+            grams: 0,
+            milliliters: 0,
+            meals: [],
+            quickItems: []
+        )
+        guard case .ready(let portion) = decision else {
+            return XCTFail("expected the spoken meal")
+        }
+        XCTAssertEqual(portion.title, "два жареных Яйца и половина небольшого огурца")
+    }
+
     func testNamedCaloriesStillReplaceASavedMeal() {
         let meal = Meals(
             id: "custom-buckwheat",
