@@ -1588,7 +1588,7 @@ function spokenCaloriePair(eaten, budget, language) {
 function activeBurnLine(burned, eaten, language) {
   const spoken = spokenCalorieCount(burned);
   const lines = {
-    ru: `активно сожжено ${burned} килокалорий за сегодня, вслух около ${spoken}. Это расход движения с экрана Сегодня, не список занятий и не весь дневной обмен`,
+    ru: `На движение сегодня ушло около ${spoken} килокалорий, точно ${burned}. Говори это смыслом: «на движение сегодня ушло около ${spoken}». Не говори «расход движения», «посмотрю движение» и «активно сожжено». Это число с экрана Сегодня: только движение, не список занятий и не весь обмен за день`,
     en: `active burn ${burned} kilocalories today, say about ${spoken}. This is today's movement burn from the Today screen, not the activity list and not the whole day's metabolism`,
     pl: `spalone aktywnie ${burned} kilokalorii dzisiaj, powiedz około ${spoken}. To wydatek ruchu z ekranu Dziś, nie lista zajęć i nie cała przemiana dnia`,
     fr: `dépense active ${burned} kilocalories aujourd'hui, dis environ ${spoken}. C'est la dépense du mouvement sur l'écran Aujourd'hui, pas la liste des activités et pas tout le métabolisme du jour`,
@@ -1602,7 +1602,7 @@ function activeBurnLine(burned, eaten, language) {
   let text = lines[language] || lines.en;
   if (eaten != null) {
     const compare = {
-      ru: `Съедено ${eaten} и активно сожжено ${burned}: когда спрашивают, сравни эти два числа. Разницу не называй дефицитом и основной обмен не прибавляй`,
+      ru: `Съедено ${eaten}, на движение ушло ${burned}. Если спрашивают, сравни эти два числа своими словами. Разницу не называй дефицитом и обмен в покое не прибавляй`,
       en: `Eaten ${eaten} and active burn ${burned}: when they ask, compare these two numbers. Do not call the difference a deficit and do not add resting metabolism`,
       pl: `Zjedzone ${eaten} i spalone aktywnie ${burned}: gdy pytają, porównaj te dwie liczby. Różnicy nie nazywaj deficytem i nie dodawaj spoczynkowej przemiany`,
       fr: `Mangé ${eaten} et dépense active ${burned} : s'ils demandent, compare ces deux nombres. N'appelle pas la différence un déficit et n'ajoute pas le métabolisme de repos`,
@@ -1620,7 +1620,7 @@ function activeBurnLine(burned, eaten, language) {
 
 function missingActiveBurnLine(language) {
   const lines = {
-    ru: 'Активно сожжённых килокалорий за сегодня нет. Не выводи их из списка занятий',
+    ru: 'Сколько ушло на движение, сегодня неизвестно. Из списка занятий это не считай и не говори, что посмотрела движение',
     en: 'Active kilocalories burned today were not provided. Do not derive them from the activity list',
     pl: 'Aktywnie spalonych kilokalorii na dziś nie podano. Nie wyliczaj ich z listy zajęć',
     fr: 'Les kilocalories actives brûlées aujourd\'hui ne sont pas là. Ne les déduis pas de la liste des activités',

@@ -1034,7 +1034,7 @@ final class PlanRealtimeSessionController: NSObject, ObservableObject, WKNavigat
             let speak = callLanguage.hasPrefix("ru")
                 ? "Записала \(stored.title), \(stored.calories) килокалорий."
                 : "Logged \(stored.title), \(stored.calories) kilocalories."
-            noteReceipt(id: "food-\(stored.title)", title: speak, detail: "\(stored.calories)", success: true)
+            noteReceipt(id: "food-\(stored.title)", title: speak, detail: "", success: true)
             let reply = encode(PlanRealtimeToolReply(ok: true, saved: true, speak: speak, error: nil))
             rememberSave(fingerprint, reply: reply)
             return reply

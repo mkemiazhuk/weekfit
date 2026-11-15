@@ -575,9 +575,9 @@ test('signed-in accounts can open a session and the server key stays hidden', as
     assert.equal(dayText.includes('ignore this'), false);
     assert.match(dayText, /не в приветствии/);
     assert.match(dayText, /съедено 1450 из 2400 килокалорий/);
-    assert.match(dayText, /активно сожжено 620 килокалорий за сегодня/);
-    assert.match(dayText, /Съедено 1450 и активно сожжено 620/);
-    assert.equal(dayText.includes('Активно сожжённых килокалорий за сегодня нет'), false);
+    assert.match(dayText, /на движение сегодня ушло около 620/);
+    assert.match(dayText, /Съедено 1450, на движение ушло 620/);
+    assert.equal(dayText.includes('Сколько ушло на движение, сегодня неизвестно'), false);
     assert.match(dayText, /разница между дневной целью и записанным потреблением: точно 950, вслух около 950/);
     assert.match(dayText, /белок 62 из 140 граммов/);
     assert.match(dayText, /углеводы 140 из 250 граммов/);
@@ -1065,7 +1065,7 @@ test('77 percent is moderately ready and goodbye closes the call once', async ()
   assert.match(rounded.instructions, /1782/);
   assert.match(rounded.instructions, /вслух около 1780/);
   assert.match(rounded.instructions, /точно 718, вслух около 720/);
-  assert.match(rounded.instructions, /Активно сожжённых килокалорий за сегодня нет/);
+  assert.match(rounded.instructions, /Сколько ушло на движение, сегодня неизвестно/);
   const female = plannerSessionConfiguration(plannerVoiceSettings({}), {
     timeZone: 'Europe/Warsaw',
     language: 'ru',
