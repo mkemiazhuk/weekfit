@@ -119,13 +119,17 @@ enum ProposalInputFingerprintBuilder {
         recoveryBand: ProposalRecoveryBandToken,
         sleepPresence: ProposalSleepPresenceToken,
         yesterdayHeavy: Bool,
-        stackedLoad: ProposalStackedLoadToken
+        stackedLoad: ProposalStackedLoadToken,
+        stressLevel: StressIndexLevel? = nil,
+        reportedFeeling: CoachFeelingKind? = nil
     ) -> String {
         [
             recoveryBand.rawValue,
             sleepPresence.rawValue,
             yesterdayHeavy ? "yh1" : "yh0",
-            stackedLoad.rawValue
+            stackedLoad.rawValue,
+            stressLevel?.rawValue ?? "stress0",
+            reportedFeeling?.rawValue ?? "feel0"
         ].joined(separator: "|")
     }
 

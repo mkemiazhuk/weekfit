@@ -70,7 +70,9 @@ enum DailyContextBuilder {
                 strategy: .recover
             ),
             canMutate: input.canMutate && input.generationMode != .closed,
-            fingerprint: input.fingerprint
+            fingerprint: input.fingerprint,
+            stressLevel: input.stressLevel,
+            reportedFeeling: input.reportedFeeling
         )
     }
 

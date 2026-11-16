@@ -561,7 +561,9 @@ final class MorningAdjustmentsMovementPhaseATests: XCTestCase {
             outdoorSuitability: outdoor,
             existingPlanMovementSuitability: planSuitability,
             canMutate: true,
-            fingerprint: fingerprint
+            fingerprint: fingerprint,
+            stressLevel: nil,
+            reportedFeeling: nil
         )
     }
 

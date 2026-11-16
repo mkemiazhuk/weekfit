@@ -19,6 +19,8 @@ enum MorningProposalEvaluator {
         var mealLibraryRevision: String
         var weatherRiskToken: ProposalWeatherRiskToken
         var outdoorSuitability: OutdoorSuitability = .acceptable
+        var stressLevel: StressIndexLevel? = nil
+        var reportedFeeling: CoachFeelingKind? = nil
         var forceRegenerate: Bool = false
     }
 
@@ -168,9 +170,25 @@ enum MorningProposalEvaluator {
                 walkRejectPenalty: ProposalBehavioralPreferences.walkRejectPenalty(from: behavioralSnapshot),
                 stronglyRejectsWalk: ProposalBehavioralPreferences.stronglyRejectsWalk(from: behavioralSnapshot),
                 weatherRiskToken: input.weatherRiskToken,
-                outdoorSuitability: input.outdoorSuitability
+                outdoorSuitability: input.outdoorSuitability,
+                stressLevel: input.stressLevel,
+                reportedFeeling: input.reportedFeeling
             )
         )
+    }
+
+    /// Stress index from the same recovery input Today already uses. Nil when the index stays blank.
+    static func stressLevel(from input: RecoveryScoreInput) -> StressIndexLevel? {
+        let result = StressIndexEngine.calculate(input)
+        guard result.confidence != .unavailable else { return nil }
+        return result.level
+    }
+
+    /// Self-report from this morning or last night. Older check-ins do not steer today.
+    static func recentFeeling(now: Date = Date()) -> CoachFeelingKind? {
+        guard let latest = CoachFeelingCheckInStore.all().first else { return nil }
+        guard now.timeIntervalSince(latest.createdAt) <= 18 * 60 * 60 else { return nil }
+        return latest.feeling
     }
 
     /// Convenience readiness when Coach input is unavailable.

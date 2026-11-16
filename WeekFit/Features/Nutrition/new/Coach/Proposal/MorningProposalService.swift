@@ -31,6 +31,8 @@ enum MorningProposalService {
         let stronglyRejectsWalk: Bool
         let weatherRiskToken: ProposalWeatherRiskToken
         let outdoorSuitability: OutdoorSuitability
+        var stressLevel: StressIndexLevel? = nil
+        var reportedFeeling: CoachFeelingKind? = nil
     }
 
     @discardableResult
@@ -147,7 +149,9 @@ enum MorningProposalService {
             recoveryBand: recoveryBand,
             sleepPresence: sleepPresence,
             yesterdayHeavy: context.yesterdayHeavy,
-            stackedLoad: context.stackedLoad
+            stackedLoad: context.stackedLoad,
+            stressLevel: context.stressLevel,
+            reportedFeeling: context.reportedFeeling
         )
         let fingerprint = ProposalInputFingerprintBuilder.make(
             dayKey: dayKey,
@@ -200,7 +204,9 @@ enum MorningProposalService {
             outdoorSuitability: context.outdoorSuitability,
             preferAvoidHardLoadOnLowRecovery: CoachLearnedContextBuilder.preferAvoidHardLoadOnLowRecovery(
                 recoveryPercent: context.readiness.recoveryPercent
-            )
+            ),
+            stressLevel: context.stressLevel,
+            reportedFeeling: context.reportedFeeling
         )
 
         let proposal = MorningProposalEngine.generate(input: engineInput)

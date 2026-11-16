@@ -23,33 +23,15 @@ struct BarcodeFoodLookupService: BarcodeFoodLookupProviding {
             return cached
         }
 
-        var sawOffline = false
-
         do {
             let offResult = try await OpenFoodFactsBarcodeProvider.fetch(barcode: normalized, session: session)
             await cache.store(offResult)
             return offResult
         } catch BarcodeLookupError.offline {
-            sawOffline = true
-        } catch {
-            sawOffline = false
-        }
-
-        do {
-            let usdaResult = try await USDABarcodeProvider.fetch(barcode: normalized, session: session)
-            await cache.store(usdaResult)
-            return usdaResult
-        } catch BarcodeLookupError.offline {
-            sawOffline = true
-        } catch {
-            // Not found in USDA either.
-        }
-
-        if sawOffline {
             return offlineResult(barcode: normalized)
+        } catch {
+            return notFoundResult(barcode: normalized)
         }
-
-        return notFoundResult(barcode: normalized)
     }
 
     private func offlineResult(barcode: String) -> BarcodeFoodLookupResult {

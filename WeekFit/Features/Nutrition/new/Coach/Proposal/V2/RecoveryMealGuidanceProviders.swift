@@ -828,7 +828,8 @@ enum MealLibraryProvider {
                 from: context.mealLibrary,
                 preferredTypes: preferredTypes,
                 excludedTitles: excludedTitles,
-                usedIds: usedIds
+                usedIds: usedIds,
+                loggedCounts: loggedMealCounts(context: context, slot: slot)
             ) else { continue }
             usedIds.insert(meal.id)
             guard let proposedDate = slotDate(slot, now: context.now, meal: meal) else {
@@ -964,7 +965,8 @@ enum MealLibraryProvider {
         from library: [ProposalMealCandidate],
         preferredTypes: [String],
         excludedTitles: Set<String>,
-        usedIds: Set<String>
+        usedIds: Set<String>,
+        loggedCounts: [String: Int] = [:]
     ) -> ProposalMealCandidate? {
         func isAvailable(_ meal: ProposalMealCandidate) -> Bool {
             !usedIds.contains(meal.id) && !excludedTitles.contains(normalizedTitle(meal.storedTitle))
@@ -973,26 +975,70 @@ enum MealLibraryProvider {
         let slotMeals = library.filter { meal in
             isAvailable(meal) && (ProposalMealSlot.from(suggestedTime: meal.suggestedTime) == slot)
         }
-        if let typed = firstPreferred(in: slotMeals, preferredTypes: preferredTypes) {
+        if let typed = firstPreferred(in: slotMeals, preferredTypes: preferredTypes, loggedCounts: loggedCounts) {
             return typed
         }
-        if let first = slotMeals.first {
-            return first
+        if let familiar = mostLogged(in: slotMeals, loggedCounts: loggedCounts) {
+            return familiar
         }
         // Don't dump a dinner plate into breakfast just to fill the list.
         return nil
     }
 
+    /// How often each title was logged in this slot. Both the stored and display titles count.
+    private static func loggedMealCounts(
+        context: DailyContext,
+        slot: ProposalMealSlot,
+        calendar: Calendar = .current
+    ) -> [String: Int] {
+        var counts: [String: Int] = [:]
+        for template in context.recentDayTemplates {
+            for activity in template.activities {
+                guard !activity.isSkipped, CoachCanonicalDayState.isNutritionLog(activity) else { continue }
+                guard ProposalMealSlot.from(date: activity.date, calendar: calendar) == slot else { continue }
+                let key = normalizedTitle(activity.title)
+                guard !key.isEmpty else { continue }
+                counts[key, default: 0] += 1
+            }
+        }
+        return counts
+    }
+
     private static func firstPreferred(
         in meals: [ProposalMealCandidate],
-        preferredTypes: [String]
+        preferredTypes: [String],
+        loggedCounts: [String: Int]
     ) -> ProposalMealCandidate? {
         for type in preferredTypes {
-            if let match = meals.first(where: { $0.mealsTypeRaw.lowercased().contains(type) }) {
+            let matches = meals.filter { $0.mealsTypeRaw.lowercased().contains(type) }
+            if let match = mostLogged(in: matches, loggedCounts: loggedCounts) {
                 return match
             }
         }
         return nil
+    }
+
+    /// Among one type, the meal they have actually eaten wins. Ties keep library order.
+    private static func mostLogged(
+        in meals: [ProposalMealCandidate],
+        loggedCounts: [String: Int]
+    ) -> ProposalMealCandidate? {
+        meals.enumerated().max { lhs, rhs in
+            let left = logCount(lhs.element, loggedCounts: loggedCounts)
+            let right = logCount(rhs.element, loggedCounts: loggedCounts)
+            if left != right { return left < right }
+            return lhs.offset > rhs.offset
+        }?.element
+    }
+
+    private static func logCount(
+        _ meal: ProposalMealCandidate,
+        loggedCounts: [String: Int]
+    ) -> Int {
+        max(
+            loggedCounts[normalizedTitle(meal.storedTitle)] ?? 0,
+            loggedCounts[normalizedTitle(meal.title)] ?? 0
+        )
     }
 
     private static func slotDate(

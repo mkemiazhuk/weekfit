@@ -886,6 +886,9 @@ enum MealBuilderTitleComposer {
             }
             result = replaceWholePhrase(pair.source, with: pair.target, in: result)
         }
+        if let withLegacyEggs = applyingLegacyEggWord(in: result, language: targetLanguage) {
+            result = withLegacyEggs
+        }
 
         remapLock.lock()
         remapResultCache[cacheKey] = result
@@ -970,19 +973,6 @@ enum MealBuilderTitleComposer {
             }
         }
 
-        // Pre–boiled/fried split titles used a single "Eggs" / "Яйца" label.
-        if let boiled = ingredients.first(where: { $0.id == "protein_eggs" }) {
-            let target = label(for: boiled, language: targetLanguage)
-            for legacy in ["Eggs", "Яйца", "鸡蛋"] {
-                guard legacy.compare(target, options: [.caseInsensitive, .diacriticInsensitive]) != .orderedSame else {
-                    continue
-                }
-                let dedupeKey = legacy.lowercased()
-                guard seenSources.insert(dedupeKey).inserted else { continue }
-                pairs.append((legacy, target))
-            }
-        }
-
         // Longer sources first (Sweet Potato before Potato).
         pairs.sort { $0.source.count > $1.source.count }
 
@@ -990,6 +980,37 @@ enum MealBuilderTitleComposer {
         replacementPairsCache[targetLanguage] = pairs
         remapLock.unlock()
         return pairs
+    }
+
+    /// Old builder meals used a single "Eggs" / "Яйца" / "鸡蛋" word, including "Eggs Oatmeal".
+    /// That word is left alone when the title already says how the eggs were cooked.
+    private static func applyingLegacyEggWord(in title: String, language: AppLanguage) -> String? {
+        let folded = title.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .lowercased()
+        let alreadyPrepared = [
+            "fried", "жарен", "boiled", "варен", "варён", "scrambled", "poached",
+            "omelet", "omelette", "глазун", "всмятку", "пашот", "омлет", "煎", "炒"
+        ]
+        if alreadyPrepared.contains(where: { folded.contains($0) }) {
+            return nil
+        }
+        guard let boiled = MealBuilderDemoData.ingredients.first(where: { $0.id == "protein_eggs" }) else {
+            return nil
+        }
+        let target = label(for: boiled, language: language)
+        var result = title
+        var changed = false
+        for source in ["Eggs", "Яйца", "鸡蛋"] {
+            guard source.compare(target, options: [.caseInsensitive, .diacriticInsensitive]) != .orderedSame else {
+                continue
+            }
+            let replaced = replaceWholePhrase(source, with: target, in: result)
+            if replaced != result {
+                result = replaced
+                changed = true
+            }
+        }
+        return changed ? result : nil
     }
 
     private static func replaceWholePhrase(_ phrase: String, with replacement: String, in text: String) -> String {

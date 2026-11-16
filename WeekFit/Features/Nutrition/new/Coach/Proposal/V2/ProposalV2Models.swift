@@ -111,6 +111,10 @@ struct DailyContext: Sendable, Equatable {
     // Derived
     let canMutate: Bool
     let fingerprint: ProposalInputFingerprint
+    /// Nil when there are not enough signals for a stress index.
+    let stressLevel: StressIndexLevel?
+    /// Latest self-report from the last 18 hours. Nil when they have not checked in.
+    let reportedFeeling: CoachFeelingKind?
 
     /// No similar-day history yet — first mornings before WeekFit has patterns to mine.
     var isColdStart: Bool { recentDayTemplates.isEmpty }

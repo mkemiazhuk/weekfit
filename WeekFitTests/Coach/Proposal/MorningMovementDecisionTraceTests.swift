@@ -179,7 +179,9 @@ final class MorningMovementDecisionTraceTests: XCTestCase {
             outdoorSuitability: outdoor,
             existingPlanMovementSuitability: .none,
             canMutate: true,
-            fingerprint: fingerprint
+            fingerprint: fingerprint,
+            stressLevel: nil,
+            reportedFeeling: nil
         )
     }
 

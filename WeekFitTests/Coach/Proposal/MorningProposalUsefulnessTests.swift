@@ -76,6 +76,92 @@ final class MorningProposalUsefulnessTests: XCTestCase {
         )
     }
 
+    func testHighStressOrTiredFeelingKeepsTheMorningLight() {
+        let stressed = makeContext(
+            recoveryBand: .good,
+            yesterdayHeavy: false,
+            templates: [],
+            stressLevel: .high
+        )
+        XCTAssertEqual(DailyStrategyResolver.resolve(context: stressed), .recover)
+
+        let tired = makeContext(
+            recoveryBand: .good,
+            yesterdayHeavy: false,
+            templates: [],
+            reportedFeeling: .tired
+        )
+        XCTAssertEqual(DailyStrategyResolver.resolve(context: tired), .recover)
+    }
+
+    func testBadWeatherDoesNotInventAnOutdoorRun() {
+        let templates = [
+            runTemplate(dayKey: "2026-07-01", day: 1),
+            runTemplate(dayKey: "2026-07-08", day: 8)
+        ]
+        let context = makeContext(
+            recoveryBand: .good,
+            yesterdayHeavy: false,
+            templates: templates,
+            outdoorSuitability: .adverse
+        )
+        let historical = HistoricalActivityProvider.generate(context: context, strategy: .train)
+        XCTAssertFalse(
+            historical.contains { candidate in
+                if case .createPlannedActivity(let payload) = candidate.payload {
+                    return payload.title == "Run"
+                }
+                return false
+            }
+        )
+    }
+
+    func testTrainDayKeepsWeekdayYogaWhenNoHardHabitExists() {
+        let templates = [
+            yogaTemplate(dayKey: "2026-07-01", day: 1),
+            yogaTemplate(dayKey: "2026-07-08", day: 8)
+        ]
+        let context = makeContext(
+            recoveryBand: .good,
+            yesterdayHeavy: false,
+            templates: templates
+        )
+        let historical = HistoricalActivityProvider.generate(context: context, strategy: .train)
+        XCTAssertTrue(
+            historical.contains { candidate in
+                if case .createPlannedActivity(let payload) = candidate.payload {
+                    return payload.title == "Yoga"
+                }
+                return false
+            }
+        )
+    }
+
+    func testLunchPrefersTheMealTheyActuallyLog() {
+        let library = [
+            meal("starter", "Starter Bowl", time: "13:00", type: "recovery"),
+            meal("usual", "Usual Plate", time: "13:00", type: "recovery"),
+            meal("dinner", "Evening Bowl", time: "19:00", type: "recovery")
+        ]
+        let templates = [
+            loggedLunch(dayKey: "2026-07-15", day: 15),
+            loggedLunch(dayKey: "2026-07-22", day: 22)
+        ]
+        let context = makeContext(
+            recoveryBand: .good,
+            yesterdayHeavy: true,
+            templates: templates,
+            mealLibrary: library
+        )
+        let meals = MealLibraryProvider.generate(context: context, strategy: .recover)
+        let lunch = meals.compactMap { candidate -> String? in
+            guard case .createMealFromLibrary(let payload) = candidate.payload else { return nil }
+            guard ProposalMealSlot.from(date: payload.proposedDate) == .lunch else { return nil }
+            return payload.title
+        }
+        XCTAssertEqual(lunch, ["Usual Plate"])
+    }
+
     func testRecoverDayDoesNotInventElevatedSwim() {
         let templates = [
             swimTemplate(dayKey: "2026-07-01", day: 1, minute: 0),
@@ -346,6 +432,67 @@ final class MorningProposalUsefulnessTests: XCTestCase {
 
     // MARK: - Helpers
 
+    private func runTemplate(dayKey: String, day: Int) -> SimilarDayTemplate {
+        SimilarDayTemplate(
+            dayKey: dayKey,
+            recoveryBand: .good,
+            observationAvailable: true,
+            sleepPresence: .present,
+            activities: [
+                CoachPlannedActivitySnapshot(
+                    id: "run-\(day)",
+                    date: date(2026, 7, day, 18, 0),
+                    type: "running",
+                    title: "Run",
+                    durationMinutes: 80,
+                    icon: "figure.run",
+                    imageName: "workout-running",
+                    isCompleted: true
+                )
+            ]
+        )
+    }
+
+    private func yogaTemplate(dayKey: String, day: Int) -> SimilarDayTemplate {
+        SimilarDayTemplate(
+            dayKey: dayKey,
+            recoveryBand: .good,
+            observationAvailable: true,
+            sleepPresence: .present,
+            activities: [
+                CoachPlannedActivitySnapshot(
+                    id: "yoga-\(day)",
+                    date: date(2026, 7, day, 18, 0),
+                    type: "yoga",
+                    title: "Yoga",
+                    durationMinutes: 30,
+                    icon: "figure.yoga",
+                    imageName: "recovery-yoga",
+                    isCompleted: true
+                )
+            ]
+        )
+    }
+
+    private func loggedLunch(dayKey: String, day: Int) -> SimilarDayTemplate {
+        SimilarDayTemplate(
+            dayKey: dayKey,
+            recoveryBand: .good,
+            observationAvailable: true,
+            sleepPresence: .present,
+            activities: [
+                CoachPlannedActivitySnapshot(
+                    id: "lunch-\(day)",
+                    date: date(2026, 7, day, 13, 0),
+                    type: "meal",
+                    title: "Usual Plate",
+                    durationMinutes: 20,
+                    isCompleted: true
+                )
+            ]
+        )
+    }
+
     private func swimTemplate(dayKey: String, day: Int, minute: Int) -> SimilarDayTemplate {
         SimilarDayTemplate(
             dayKey: dayKey,
@@ -388,7 +535,10 @@ final class MorningProposalUsefulnessTests: XCTestCase {
         templates: [SimilarDayTemplate],
         mealLibrary: [ProposalMealCandidate] = [],
         stronglyRejectsWalk: Bool = false,
-        now: Date? = nil
+        now: Date? = nil,
+        stressLevel: StressIndexLevel? = nil,
+        reportedFeeling: CoachFeelingKind? = nil,
+        outdoorSuitability: OutdoorSuitability = .acceptable
     ) -> DailyContext {
         let mode = MorningProposalGenerationMode.compose
         let nowDate = now ?? date(2026, 7, 29, 8, 19)
@@ -440,10 +590,12 @@ final class MorningProposalUsefulnessTests: XCTestCase {
             mealLibrary: mealLibrary,
             mealLibraryRevision: "1",
             weatherRiskToken: .unavailable,
-            outdoorSuitability: .acceptable,
+            outdoorSuitability: outdoorSuitability,
             existingPlanMovementSuitability: .none,
             canMutate: true,
-            fingerprint: fingerprint
+            fingerprint: fingerprint,
+            stressLevel: stressLevel,
+            reportedFeeling: reportedFeeling
         )
     }
 

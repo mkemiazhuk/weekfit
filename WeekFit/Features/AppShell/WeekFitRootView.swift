@@ -1568,7 +1568,9 @@ struct WeekFitRootView: View {
                     mealLibrary: meals.candidates,
                     mealLibraryRevision: meals.revision,
                     weatherRiskToken: OutdoorSuitabilityResolver.assess(from: weather).riskToken,
-                    outdoorSuitability: OutdoorSuitabilityResolver.assess(from: weather).suitability
+                    outdoorSuitability: OutdoorSuitabilityResolver.assess(from: weather).suitability,
+                    stressLevel: MorningProposalEvaluator.stressLevel(from: healthManager.currentRecoveryScoreInput),
+                    reportedFeeling: MorningProposalEvaluator.recentFeeling(now: now)
                 )
             )
 

@@ -835,6 +835,9 @@ struct TodayView: View {
             guard hasSignals else { return }
             scheduleMorningProposalRefresh()
         }
+        .onChange(of: morningWeatherSummary) { _, _ in
+            scheduleMorningProposalRefresh()
+        }
         .onChange(of: morningProposal?.id) { _, _ in
             morningProposalChromeHidden = false
         }
@@ -3680,6 +3683,8 @@ struct TodayView: View {
                 mealLibraryRevision: meals.revision,
                 weatherRiskToken: weatherRiskToken,
                 outdoorSuitability: outdoorSuitability,
+                stressLevel: MorningProposalEvaluator.stressLevel(from: healthManager.currentRecoveryScoreInput),
+                reportedFeeling: MorningProposalEvaluator.recentFeeling(now: now),
                 forceRegenerate: forceRegenerate
             )
         )

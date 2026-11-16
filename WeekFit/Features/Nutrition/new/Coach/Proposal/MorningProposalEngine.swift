@@ -23,6 +23,8 @@ struct MorningProposalEngineInput: Sendable, Equatable {
     var weatherRiskToken: ProposalWeatherRiskToken = .unavailable
     var outdoorSuitability: OutdoorSuitability = .acceptable
     var preferAvoidHardLoadOnLowRecovery: Bool = false
+    var stressLevel: StressIndexLevel? = nil
+    var reportedFeeling: CoachFeelingKind? = nil
 }
 
 /// Thin orchestrator over the deterministic v2 proposal stages.

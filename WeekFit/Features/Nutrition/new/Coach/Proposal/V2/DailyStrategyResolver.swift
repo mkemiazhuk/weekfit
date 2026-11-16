@@ -49,6 +49,12 @@ enum DailyStrategyResolver {
             return .protectTomorrow
         }
 
+        // Elevated stress or a tired / low check-in keeps the morning light
+        // even when recovery itself still looks fine.
+        if easesForBodyState(context) {
+            return .recover
+        }
+
         // 7 train
         if context.recoveryBand == .good,
            context.sleepPresence == .present,
@@ -75,6 +81,21 @@ enum DailyStrategyResolver {
         }
 
         return .continueExistingPlan
+    }
+
+    private static func easesForBodyState(_ context: DailyContext) -> Bool {
+        switch context.stressLevel {
+        case .elevated, .high:
+            return true
+        case .low, .moderate, .none:
+            break
+        }
+        switch context.reportedFeeling {
+        case .tired, .low:
+            return true
+        case .energized, .okay, .none:
+            return false
+        }
     }
 
     private static func seriousLoadInappropriate(_ context: DailyContext) -> Bool {

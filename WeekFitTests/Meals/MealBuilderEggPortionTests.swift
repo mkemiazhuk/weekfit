@@ -45,4 +45,42 @@ final class MealBuilderEggPortionTests: XCTestCase {
         let text = MealBuilderTitleComposer.amountText(for: eggs, grams: 150)
         XCTAssertTrue(text.contains("3"))
     }
+
+    func testSpokenFriedEggsKeepTheSameTitleOnNutrition() {
+        let spoken = "завтрак: два яйца жареных, тост белый, огурец с помидором"
+        XCTAssertEqual(
+            MealBuilderTitleComposer.remapStoredTitle(spoken, targetLanguage: .russian),
+            spoken
+        )
+    }
+
+    func testBareEggTitleStillMeansBoiledEggs() {
+        XCTAssertEqual(
+            MealBuilderTitleComposer.remapStoredTitle("Яйца", targetLanguage: .russian),
+            "Яйца варёные"
+        )
+    }
+
+    func testBuilderEggMealStillLocalizesWithoutTouchingOtherFoods() {
+        XCTAssertEqual(
+            MealBuilderTitleComposer.remapStoredTitle("Eggs Oatmeal", targetLanguage: .russian),
+            "Яйца варёные Овсянка"
+        )
+        XCTAssertEqual(
+            MealBuilderTitleComposer.remapStoredTitle("Chicken Rice", targetLanguage: .russian),
+            "Курица Рис"
+        )
+        XCTAssertEqual(
+            MealBuilderTitleComposer.remapStoredTitle("Fried Egg", targetLanguage: .russian),
+            "Яйца жареные"
+        )
+        XCTAssertEqual(
+            MealBuilderTitleComposer.remapStoredTitle("Яйца жареные", targetLanguage: .russian),
+            "Яйца жареные"
+        )
+        XCTAssertEqual(
+            MealBuilderTitleComposer.remapStoredTitle("омлет с яйцами", targetLanguage: .russian),
+            "омлет с яйцами"
+        )
+    }
 }

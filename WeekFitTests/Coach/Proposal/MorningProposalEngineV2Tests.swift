@@ -786,7 +786,9 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             outdoorSuitability: .acceptable,
             existingPlanMovementSuitability: .none,
             canMutate: context.canMutate,
-            fingerprint: context.fingerprint
+            fingerprint: context.fingerprint,
+            stressLevel: nil,
+            reportedFeeling: nil
         )
         let candidate = ProposalCandidate(
             id: "shorten",
@@ -908,7 +910,9 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             outdoorSuitability: .acceptable,
             existingPlanMovementSuitability: .none,
             canMutate: true,
-            fingerprint: context.fingerprint
+            fingerprint: context.fingerprint,
+            stressLevel: nil,
+            reportedFeeling: nil
         )
         XCTAssertTrue(RecoveryMovementProvider.isWeekdayWorkday(now))
         let slot = RecoveryMovementProvider.recoveryWalkSlot(context: fridayContext)
@@ -1350,7 +1354,9 @@ final class MorningProposalEngineV2Tests: XCTestCase {
             outdoorSuitability: .acceptable,
             existingPlanMovementSuitability: .none,
             canMutate: canMutate,
-            fingerprint: fingerprint
+            fingerprint: fingerprint,
+            stressLevel: nil,
+            reportedFeeling: nil
         )
     }
 

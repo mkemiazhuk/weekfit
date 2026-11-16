@@ -55,10 +55,6 @@ enum HistoricalActivityProvider {
                aggregate.weekdayMatchCount < 2 {
                 continue
             }
-            if strategy == .train, !isSerious {
-                // Prefer serious for train; still allow light supporting only after a serious pick at compose.
-                continue
-            }
             if (strategy == .recover || strategy == .maintain),
                CoachActivityClassifier.type(for: rawSnapshot) == .walk,
                context.hasExistingMovement || context.completedWalkToday {
@@ -66,6 +62,10 @@ enum HistoricalActivityProvider {
             }
 
             let activityType = CoachActivityClassifier.type(for: rawSnapshot)
+            if (context.outdoorSuitability == .adverse || context.outdoorSuitability == .unsafe),
+               ProposalOutdoorClassifier.isOutdoorLikely(rawSnapshot) {
+                continue
+            }
             if activityType == .cycling,
                !CyclingInvitePolicy.allows(
                    now: context.now,
@@ -171,7 +171,31 @@ enum HistoricalActivityProvider {
             )
         }
 
+        // A ready day prefers a real session. If none of their habits qualify,
+        // keep the weekday practice they actually do instead of an empty morning.
+        if strategy == .train, result.contains(where: isSeriousSession) {
+            result.removeAll { !isSeriousSession($0) }
+        }
+
         return Array(result.prefix(6))
+    }
+
+    private static func isSeriousSession(_ candidate: ProposalCandidate) -> Bool {
+        guard case .createPlannedActivity(let payload) = candidate.payload else { return false }
+        return CoachActivityClassifier.isSeriousTraining(
+            CoachPlannedActivitySnapshot(
+                id: candidate.id,
+                date: payload.proposedDate,
+                type: payload.activityType,
+                title: payload.title,
+                durationMinutes: payload.durationMinutes,
+                icon: payload.icon,
+                imageName: payload.imageName,
+                isCompleted: false,
+                isSkipped: false,
+                source: "history"
+            )
+        )
     }
 
     private static func makeSnapshot(
