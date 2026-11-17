@@ -1984,7 +1984,7 @@ struct TodayView: View {
                 format: WeekFitLocalizedString("today.pending.messageFormat"),
                 title
             ),
-            pendingTitle: String(localized: AppText.Today.pendingActionTitle),
+            pendingTitle: WeekFitLocalizedString("today.pending.title"),
             textPrimary: textPrimary,
             cardBackground: cardBackground
         ) {
@@ -4430,29 +4430,38 @@ private struct TodayPendingActivityConfirmCard: View {
     let cardBackground: Color
     let onConfirm: () -> Void
 
-    private let attentionColor = Color(red: 0.95, green: 0.60, blue: 0.15)
+    @Environment(\.weekFitPalette) private var palette
+    @ScaledMetric(relativeTo: .body) private var titleSize: CGFloat = 17
+    @ScaledMetric(relativeTo: .subheadline) private var messageSize: CGFloat = 15
+
+    private var attentionColor: Color {
+        palette.isLight
+            ? WeekFitLightTokens.warning
+            : Color(red: 0.95, green: 0.60, blue: 0.15)
+    }
 
     var body: some View {
         Button(action: onConfirm) {
             HStack(alignment: .top, spacing: 12) {
                 ZStack {
                     Circle()
-                        .fill(attentionColor.opacity(0.10))
-                        .frame(width: 36, height: 36)
+                        .fill(attentionColor.opacity(palette.isLight ? 0.16 : 0.14))
+                        .frame(width: 40, height: 40)
 
                     Image(systemName: "exclamationmark.circle.fill")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(attentionColor)
                 }
 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(pendingTitle)
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(size: titleSize, weight: .semibold))
                         .foregroundStyle(attentionColor)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     Text(message)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(textPrimary.opacity(0.92))
+                        .font(.system(size: messageSize, weight: .regular))
+                        .foregroundStyle(textPrimary.opacity(palette.isLight ? 1 : 0.92))
                         .lineSpacing(2)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
@@ -4470,8 +4479,8 @@ private struct TodayPendingActivityConfirmCard: View {
             .background(
                 LinearGradient(
                     colors: [
-                        attentionColor.opacity(0.05),
-                        cardBackground.opacity(0.90)
+                        attentionColor.opacity(palette.isLight ? 0.14 : 0.10),
+                        cardBackground.opacity(palette.isLight ? 0.96 : 0.90)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -4480,7 +4489,7 @@ private struct TodayPendingActivityConfirmCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(attentionColor.opacity(0.22), lineWidth: 1)
+                    .stroke(attentionColor.opacity(palette.isLight ? 0.38 : 0.28), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)

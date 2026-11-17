@@ -416234,61 +416234,61 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ihr Slot „ %@ “ braucht Bestätigung. Tippen, um Metriken zu aktualisieren."
+            "value" : "„%@“. Tippen, um es zu aktualisieren."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your slot '%@' needs confirmation. Tap to update your metrics."
+            "value" : "%@. Tap to update it."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Su franja « %@ » necesita confirmación. Toque para actualizar sus métricas."
+            "value" : "«%@». Toque para actualizarlo."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Votre créneau « %@ » nécessite une confirmation. Appuyez pour mettre à jour vos métriques."
+            "value" : "« %@ ». Touchez pour le mettre à jour."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La fascia « %@ » richiede conferma. Tocca per aggiornare le metriche."
+            "value" : "«%@». Tocca per aggiornarlo."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "スロット「 %@ 」の確認が必要です。タップして指標を更新。"
+            "value" : "「%@」。タップして更新します。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "슬롯 ‘ %@ ’ 확인이 필요합니다. 탭하여 지표를 업데이트하세요."
+            "value" : "‘%@’. 탭하여 업데이트하세요."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Slot „ %@ ” wymaga potwierdzenia. Dotknij, aby zaktualizować metryki."
+            "value" : "„%@”. Dotknij, aby zaktualizować."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Слот '%@' нужно подтвердить. Нажмите, чтобы обновить метрики."
+            "value" : "«%@» — нажмите, чтобы отметить."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你的时段“%@”需要确认。点按以更新指标。"
+            "value" : "「%@」。点按即可更新。"
           }
         }
       }
@@ -416299,55 +416299,55 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ausstehende Aktion erforderlich"
+            "value" : "Bitte bestätigen"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pending Action Required"
+            "value" : "Needs confirmation"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Acción pendiente requerida"
+            "value" : "Falta confirmar"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Action en attente requise"
+            "value" : "À confirmer"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Azione in sospeso richiesta"
+            "value" : "Da confermare"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "保留中のアクションが必要"
+            "value" : "確認が必要"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "대기 중인 작업 필요"
+            "value" : "확인이 필요함"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wymagane oczekujące działanie"
+            "value" : "Do potwierdzenia"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Требуется действие"
+            "value" : "Нужно подтвердить"
           }
         },
         "zh-Hans" : {
