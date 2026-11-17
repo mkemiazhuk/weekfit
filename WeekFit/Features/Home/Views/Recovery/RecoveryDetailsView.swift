@@ -320,22 +320,49 @@ struct StressIndexDetailSheet: View {
                     Circle().fill(toneColor(contributor.tone).opacity(0.16))
                 }
                 .accessibilityLabel(Text(StressIndexCopy.iconAccessibilityLabel(for: contributor.tone)))
+                .accessibilityHidden(physiologyTerm(for: contributor.kind) != nil)
                 .padding(.top, 1)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(StressIndexCopy.contributorHeadline(for: contributor))
-                    .font(.system(size: RecoveryTypography.stressSecondary, weight: .semibold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
-                    .fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .firstTextBaseline, spacing: 0) {
+                    Text(StressIndexCopy.contributorHeadline(for: contributor))
+                        .font(.system(size: RecoveryTypography.stressSecondary, weight: .semibold, design: .rounded))
+                        .foregroundStyle(WeekFitTheme.whiteOpacity(0.92))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityLabel(Text(StressIndexCopy.contributorAccessibilityLabel(for: contributor)))
+                    if let term = physiologyTerm(for: contributor.kind) {
+                        PhysiologyTermInfoButton(term: term)
+                    }
+                }
 
                 Text(StressIndexCopy.contributionTitle(contributor.tone))
                     .font(.system(size: RecoveryTypography.helperText, weight: .semibold, design: .rounded))
                     .foregroundStyle(toneColor(contributor.tone).opacity(0.95))
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityHidden(physiologyTerm(for: contributor.kind) != nil)
             }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(StressIndexCopy.contributorAccessibilityLabel(for: contributor)))
+        .accessibilityElement(children: physiologyTerm(for: contributor.kind) == nil ? .combine : .contain)
+        .modifier(
+            RecoveryRowAccessibilityLabel(
+                text: physiologyTerm(for: contributor.kind) == nil
+                    ? StressIndexCopy.contributorAccessibilityLabel(for: contributor)
+                    : nil
+            )
+        )
+    }
+
+    private func physiologyTerm(for kind: StressIndexContributorKind) -> PhysiologyTerm? {
+        switch kind {
+        case .hrv:
+            return .hrv
+        case .restingHeartRate:
+            return .restingHeartRate
+        case .sleep:
+            return .sleep
+        case .trainingLoad:
+            return nil
+        }
     }
 
     private var calculationRow: some View {
@@ -401,6 +428,7 @@ private struct StressIndexCalculationSheet: View {
         let id: String
         let title: String
         let body: String
+        let term: PhysiologyTerm?
     }
 
     private var methodSections: [MethodSection] {
@@ -408,12 +436,14 @@ private struct StressIndexCalculationSheet: View {
             MethodSection(
                 id: "intro",
                 title: "",
-                body: StressIndexCopy.calculationBody(usedKinds: usedKinds)
+                body: StressIndexCopy.calculationBody(usedKinds: usedKinds),
+                term: nil
             ),
             MethodSection(
                 id: "scale",
                 title: WeekFitLocalizedString("recovery.stressIndex.method.section.scale"),
-                body: WeekFitLocalizedString("recovery.stressIndex.method.scale")
+                body: WeekFitLocalizedString("recovery.stressIndex.method.scale"),
+                term: nil
             )
         ]
         let signalOrder: [StressIndexContributorKind] = [.hrv, .restingHeartRate, .sleep, .trainingLoad]
@@ -422,7 +452,8 @@ private struct StressIndexCalculationSheet: View {
                 MethodSection(
                     id: kind.rawValue,
                     title: WeekFitLocalizedString(signalTitleKey(kind)),
-                    body: WeekFitLocalizedString(signalBodyKey(kind))
+                    body: WeekFitLocalizedString(signalBodyKey(kind)),
+                    term: physiologyTerm(kind)
                 )
             )
         }
@@ -430,7 +461,8 @@ private struct StressIndexCalculationSheet: View {
             MethodSection(
                 id: "missing",
                 title: WeekFitLocalizedString("recovery.stressIndex.method.section.missing"),
-                body: WeekFitLocalizedString("recovery.stressIndex.method.missing")
+                body: WeekFitLocalizedString("recovery.stressIndex.method.missing"),
+                term: nil
             )
         )
         return sections
@@ -454,13 +486,31 @@ private struct StressIndexCalculationSheet: View {
         }
     }
 
-    private func methodBlock(title: String, body: String) -> some View {
+    private func physiologyTerm(_ kind: StressIndexContributorKind) -> PhysiologyTerm? {
+        switch kind {
+        case .hrv:
+            return .hrv
+        case .restingHeartRate:
+            return .restingHeartRate
+        case .sleep:
+            return .sleep
+        case .trainingLoad:
+            return nil
+        }
+    }
+
+    private func methodBlock(title: String, body: String, term: PhysiologyTerm?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             if !title.isEmpty {
-                Text(title)
-                    .font(.system(size: RecoveryTypography.stressSecondary, weight: .semibold, design: .rounded))
-                    .foregroundStyle(WeekFitTheme.primaryText)
-                    .fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .firstTextBaseline, spacing: 0) {
+                    Text(title)
+                        .font(.system(size: RecoveryTypography.stressSecondary, weight: .semibold, design: .rounded))
+                        .foregroundStyle(WeekFitTheme.primaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let term {
+                        PhysiologyTermInfoButton(term: term)
+                    }
+                }
             }
 
             Text(body)
@@ -470,7 +520,7 @@ private struct StressIndexCalculationSheet: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: term == nil ? .combine : .contain)
     }
 
     var body: some View {
@@ -519,7 +569,7 @@ private struct StressIndexCalculationSheet: View {
                     }
 
                     ForEach(methodSections) { section in
-                        methodBlock(title: section.title, body: section.body)
+                        methodBlock(title: section.title, body: section.body, term: section.term)
                     }
 
                     Text(WeekFitLocalizedString("recovery.stressIndex.calculation.vsRecovery"))

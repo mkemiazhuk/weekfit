@@ -1688,16 +1688,27 @@ struct TodayView: View {
                     if let activeSession {
                         AnyView(activeSessionCard(activeSession))
                     }
+                    if let pendingSlot = pendingConfirmationSlot(
+                        now: now,
+                        excludingActivityID: activeSession?.id
+                    ) {
+                        pendingSlot
+                    }
                     AnyView(quickActionsSection)
 
                 case .upcoming:
+                    if let pendingSlot = pendingConfirmationSlot(now: now) {
+                        pendingSlot
+                    }
                     if let upcoming {
                         AnyView(upcomingActivityCard(upcoming, now: now))
                     }
                     AnyView(quickActionsSection)
 
                 case .idle:
-                    if let suggestion = ActivityBadgePresenter.focusSuggestion(
+                    if let pendingSlot = pendingConfirmationSlot(now: now) {
+                        pendingSlot
+                    } else if let suggestion = ActivityBadgePresenter.focusSuggestion(
                         ledger: activityBadges.ledger,
                         inputs: plannedActivities.map(ActivityBadgeCenter.input(from:))
                     ) {
@@ -1720,23 +1731,17 @@ struct TodayView: View {
         return AnyView(coachInsightWithOptionalProposalOverlay)
     }
 
-    /// Pending confirmations take the Up Next slot; Coach stays visible separately.
-    private func erasedPlanAttentionSlot(
+    /// Unconfirmed activities replace Focus of the day until each one is confirmed or skipped.
+    private func pendingConfirmationSlot(
         now: Date,
-        upcoming: PlannedActivity?,
         excludingActivityID: String? = nil
     ) -> AnyView? {
         let pending = pendingConfirmationActivities(
             now: now,
             excludingActivityID: excludingActivityID
         )
-        if !pending.isEmpty {
-            return AnyView(pendingConfirmationStack(pending))
-        }
-        if let upcoming {
-            return AnyView(upcomingActivityCard(upcoming, now: now))
-        }
-        return nil
+        guard !pending.isEmpty else { return nil }
+        return AnyView(pendingConfirmationStack(pending))
     }
 
     private func todayStackMode(
@@ -2621,14 +2626,14 @@ struct TodayView: View {
         .frame(maxWidth: .infinity, alignment: .top)
     }
 
-    /// One line per caption, and the sleep row stays reserved when empty.
-    /// Wrapping used to grow this card on the layout pass after it appeared.
+    /// One line. A slightly long word shrinks instead of wrapping under the ring.
+    /// The sleep row stays reserved when its text is empty.
     private func ringCaptionLine(_ text: String, font: Font, color: Color) -> some View {
         Text(text)
             .font(font)
             .foregroundStyle(color)
             .lineLimit(shouldStackRings ? ringCaptionLineLimit : 1)
-            .minimumScaleFactor(shouldStackRings ? 1 : 0.72)
+            .minimumScaleFactor(shouldStackRings ? 1 : 0.82)
             .multilineTextAlignment(.center)
             .frame(
                 maxWidth: .infinity,

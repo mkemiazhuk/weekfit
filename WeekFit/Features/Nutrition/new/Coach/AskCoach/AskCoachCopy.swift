@@ -166,8 +166,8 @@ enum AskCoachCopy {
             )
         case "hrv":
             return coverageLine(
-                metricEnglish: "HRV",
-                metricRussian: "HRV",
+                metricEnglish: "Heart rhythm variation",
+                metricRussian: "Разброс ритма",
                 observed: coverage.observedDays,
                 total: coverage.totalDays
             )

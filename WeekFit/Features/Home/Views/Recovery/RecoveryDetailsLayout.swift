@@ -361,13 +361,15 @@ private struct RecoveryHeroCard: View {
                     title: WeekFitLocalizedString("today.status.metric.hrv"),
                     value: hrvValue,
                     icon: "waveform.path.ecg",
-                    color: RecoveryStyle.recoveryColor
+                    color: RecoveryStyle.recoveryColor,
+                    term: .hrv
                 )
                 physiologyColumn(
                     title: WeekFitLocalizedString("recovery.details.breakdown.restingHeartRate"),
                     value: restingHeartRateValue,
                     icon: "heart.fill",
-                    color: RecoveryStyle.red
+                    color: RecoveryStyle.red,
+                    term: .restingHeartRate
                 )
             }
         } else {
@@ -376,13 +378,15 @@ private struct RecoveryHeroCard: View {
                     title: WeekFitLocalizedString("today.status.metric.hrv"),
                     value: hrvValue,
                     icon: "waveform.path.ecg",
-                    color: RecoveryStyle.recoveryColor
+                    color: RecoveryStyle.recoveryColor,
+                    term: .hrv
                 )
                 physiologyColumn(
                     title: WeekFitLocalizedString("recovery.details.breakdown.restingHeartRate"),
                     value: restingHeartRateValue,
                     icon: "heart.fill",
-                    color: RecoveryStyle.red
+                    color: RecoveryStyle.red,
+                    term: .restingHeartRate
                 )
             }
         }
@@ -406,7 +410,8 @@ private struct RecoveryHeroCard: View {
         title: String,
         value: String,
         icon: String,
-        color: Color
+        color: Color,
+        term: PhysiologyTerm
     ) -> some View {
         HStack(alignment: .center, spacing: 8) {
             Image(systemName: icon)
@@ -416,10 +421,13 @@ private struct RecoveryHeroCard: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(palette.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .firstTextBaseline, spacing: 0) {
+                    Text(title)
+                        .font(.caption)
+                        .foregroundStyle(palette.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    PhysiologyTermInfoButton(term: term)
+                }
                 Text(value)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(palette.textPrimary)
@@ -428,7 +436,7 @@ private struct RecoveryHeroCard: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 
     private var statusText: String {
@@ -627,13 +635,16 @@ private struct RecoverySleepNightCard: View {
             if snapshot.timeInBedMinutes > 0 {
                 let caption = WeekFitLocalizedString("recovery.details.sleep.timeInBedCaption")
                 let duration = RecoveryFormat.duration(snapshot.timeInBedMinutes)
-                ViewThatFits(in: .horizontal) {
-                    Text("\(caption) · \(duration)")
-                        .lineLimit(1)
-                    VStack(alignment: dynamicTypeSize.isAccessibilitySize ? .leading : .trailing, spacing: 0) {
-                        Text(caption)
-                        Text(duration)
+                HStack(alignment: .firstTextBaseline, spacing: 0) {
+                    ViewThatFits(in: .horizontal) {
+                        Text("\(caption) · \(duration)")
+                            .lineLimit(1)
+                        VStack(alignment: dynamicTypeSize.isAccessibilitySize ? .leading : .trailing, spacing: 0) {
+                            Text(caption)
+                            Text(duration)
+                        }
                     }
+                    PhysiologyTermInfoButton(term: .timeInBed)
                 }
                 .font(.caption)
                 .foregroundStyle(palette.textSecondary)
@@ -685,22 +696,25 @@ private struct RecoverySleepNightCard: View {
             stageRow(
                 title: WeekFitLocalizedString("recovery.details.sleep.stage.deep"),
                 minutes: snapshot.deepSleepMinutes,
-                color: RecoveryStyle.deepBlue
+                color: RecoveryStyle.deepBlue,
+                term: .deepSleep
             )
             stageRow(
                 title: WeekFitLocalizedString("recovery.details.sleep.stage.rem"),
                 minutes: snapshot.remSleepMinutes,
-                color: RecoveryStyle.purple
+                color: RecoveryStyle.purple,
+                term: .remSleep
             )
             stageRow(
                 title: WeekFitLocalizedString("recovery.details.sleep.stage.core"),
                 minutes: snapshot.coreSleepMinutes,
-                color: RecoveryStyle.recoveryColor.opacity(0.72)
+                color: RecoveryStyle.recoveryColor.opacity(0.72),
+                term: .coreSleep
             )
         }
     }
 
-    private func stageRow(title: String, minutes: Int, color: Color) -> some View {
+    private func stageRow(title: String, minutes: Int, color: Color, term: PhysiologyTerm) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Circle()
                 .fill(color)
@@ -710,10 +724,13 @@ private struct RecoverySleepNightCard: View {
                 }
                 .accessibilityHidden(true)
 
-            Text(title)
-                .font(.subheadline)
-                .foregroundStyle(palette.textPrimary)
-                .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                Text(title)
+                    .font(.subheadline)
+                    .foregroundStyle(palette.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                PhysiologyTermInfoButton(term: term)
+            }
 
             Spacer(minLength: 8)
 
@@ -728,7 +745,7 @@ private struct RecoverySleepNightCard: View {
                 .monospacedDigit()
                 .frame(minWidth: 40, alignment: .trailing)
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 
     private func displayPercent(_ minutes: Int) -> Int {
@@ -747,10 +764,11 @@ private struct RecoverySleepNightCard: View {
             Text(RecoveryFormat.measuredDuration(snapshot.awakeMinutes))
                 .fontWeight(.semibold)
                 .monospacedDigit()
+            PhysiologyTermInfoButton(term: .awake)
         }
         .font(.footnote)
         .foregroundStyle(palette.textPrimary)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
 
         let awakenings = HStack(spacing: 6) {
             Image(systemName: "sparkles")
@@ -761,10 +779,11 @@ private struct RecoverySleepNightCard: View {
             Text("\(snapshot.awakeningsCount)")
                 .fontWeight(.semibold)
                 .monospacedDigit()
+            PhysiologyTermInfoButton(term: .awakenings)
         }
         .font(.footnote)
         .foregroundStyle(palette.textPrimary)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
 
         if dynamicTypeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: 8) {
@@ -943,6 +962,11 @@ private struct RecoveryFactorRow: View {
                     .font(.subheadline)
                     .foregroundStyle(palette.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(Text(term == nil ? RecoveryFactorCopy.title(for: signal) : accessibilityText))
+
+                if let term {
+                    PhysiologyTermInfoButton(term: term)
+                }
 
                 Spacer(minLength: 8)
 
@@ -951,10 +975,12 @@ private struct RecoveryFactorRow: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(scoreColor)
                         .monospacedDigit()
+                        .accessibilityHidden(term != nil)
                 } else {
                     Text(WeekFitLocalizedString("recovery.details.metricUnavailable"))
                         .font(.caption)
                         .foregroundStyle(palette.textSecondary)
+                        .accessibilityHidden(term != nil)
                 }
             }
 
@@ -962,8 +988,25 @@ private struct RecoveryFactorRow: View {
                 RecoveryFactorScale(value: grade, color: attributeColor)
             }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityText)
+        .accessibilityElement(children: term == nil ? .combine : .contain)
+        .modifier(RecoveryRowAccessibilityLabel(text: term == nil ? accessibilityText : nil))
+    }
+
+    private var term: PhysiologyTerm? {
+        switch signal {
+        case .hrv:
+            return .hrv
+        case .restingHeartRate:
+            return .restingHeartRate
+        case .sleepDuration:
+            return .sleepDuration
+        case .sleepConsistency:
+            return .sleepConsistency
+        case .sleepContinuity:
+            return .sleepContinuity
+        case .sleepArchitecture:
+            return .sleepArchitecture
+        }
     }
 
     private var accessibilityText: String {

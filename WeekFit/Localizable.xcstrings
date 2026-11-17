@@ -351076,13 +351076,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tasso cardiaco a riposo"
+            "value" : "Frequenza cardiaca a riposo"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "心拍数の回復"
+            "value" : "安静時の心拍数"
           }
         },
         "ko" : {
@@ -351182,55 +351182,55 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schlafarchitektur"
+            "value" : "Schlafstruktur"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sleep architecture"
+            "value" : "Sleep structure"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Arquitectura del sueño"
+            "value" : "Estructura del sueño"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Architecture du sommeil"
+            "value" : "Structure du sommeil"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Architettura del sonno"
+            "value" : "Struttura del sonno"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "睡眠アーキテクチャ"
+            "value" : "睡眠の構成"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "잠 건축"
+            "value" : "수면 구조"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Architektura snu"
+            "value" : "Struktura snu"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Архитектура сна"
+            "value" : "Структура сна"
           }
         },
         "zh-Hans" : {
@@ -351247,7 +351247,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schlafenszeit Konsistenz"
+            "value" : "Konstanz der Schlafenszeit"
           }
         },
         "en" : {
@@ -351271,19 +351271,19 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Consistenza del letto"
+            "value" : "Regolarità dell’orario"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ベッドタイムの一貫性"
+            "value" : "就寝時刻の安定"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "지금 예약"
+            "value" : "취침 시각"
           }
         },
         "pl" : {
@@ -351348,7 +351348,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "잠 continuity"
+            "value" : "수면의 연속성"
           }
         },
         "pl" : {
@@ -356790,7 +356790,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "REM"
+            "value" : "Paradoxal"
           }
         },
         "it" : {
@@ -356802,13 +356802,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "REM"
+            "value" : "レム"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "REM"
+            "value" : "렘"
           }
         },
         "pl" : {
@@ -356820,13 +356820,13 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "REM"
+            "value" : "Быстрый"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "REM"
+            "value" : "快速"
           }
         }
       }
@@ -357718,7 +357718,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "잠 continuity는 공정했습니다"
+            "value" : "수면의 연속성은 보통이었습니다"
           }
         },
         "pl" : {
@@ -357783,7 +357783,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "잠 continuity는 좋습니다"
+            "value" : "수면의 연속성은 좋습니다"
           }
         },
         "pl" : {
@@ -357848,7 +357848,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "잠 continuity는 중단되었습니다"
+            "value" : "수면의 연속성이 낮았습니다"
           }
         },
         "pl" : {
@@ -361446,67 +361446,1822 @@
         }
       }
     },
+    "recovery.term.sleep.architecture.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das ist die Mischung aus Tiefschlaf und REM-Schlaf in der Nacht. Beides gehört zu einer vollen Nacht. Fehlt eine Phase in der Aufzeichnung, bleibt sie außen vor. Das ist keine Diagnose."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is the mix of deep sleep and REM sleep in the night. Both belong in a full night. If the watch did not record one of them, that part is left out. This is not a diagnosis."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es la mezcla de sueño profundo y sueño REM de la noche. Los dos forman parte de una noche completa. Si el reloj no registró uno, esa parte no entra. No es un diagnóstico."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "C’est le mélange de sommeil profond et de sommeil paradoxal dans la nuit. Les deux font partie d’une nuit complète. Si la montre n’a pas enregistré l’un d’eux, cette partie reste dehors. Ce n’est pas un diagnostic."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "È il mix di sonno profondo e sonno REM nella notte. Entrambi fanno parte di una notte intera. Se l’orologio non ne ha registrato uno, quella parte resta fuori. Non è una diagnosi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "夜の深い睡眠とレム睡眠の組み合わせです。どちらも一晩の一部です。ウォッチが片方を記録していない場合、その部分は入りません。診断ではありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "밤의 깊은 잠과 렘수면이 어떻게 섞였는지입니다. 둘 다 온전한 밤의 일부입니다. 워치가 하나를 기록하지 않으면 그 부분은 들어가지 않습니다. 진단이 아닙니다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To mieszanka snu głębokiego i snu REM w nocy. Oba należą do pełnej nocy. Jeśli zegarek nie zapisał jednego z nich, ta część nie wchodzi. To nie jest diagnoza."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это сочетание глубокого и быстрого сна за ночь. Оба входят в полную ночь. Если часы не записали одну из фаз, она не входит в оценку. Это не диагноз."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这是一夜中深睡和快速眼动睡眠的组合。两者都属于完整的一夜。如果手表没有记录其中一种，这一部分就不进入评估。这不是诊断。"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.architecture.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schlafstruktur"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sleep structure"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estructura del sueño"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Structure du sommeil"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Struttura del sonno"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "睡眠の構成"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "수면 구조"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Struktura snu"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Структура сна"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "睡眠结构"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.awake.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minuten, die die Uhr nach dem Zubettgehen und vor dem endgültigen Aufwachen als wach gezählt hat. Ein wenig davon ist häufig. Das ist keine Diagnose."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minutes the watch counted you as awake after you went to bed and before the final wake-up. A little of this is common. This is not a diagnosis."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minutos que el reloj contó como despierto después de acostarse y antes de despertar del todo. Un poco es habitual. No es un diagnóstico."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minutes que la montre a comptées comme éveil après le coucher et avant le réveil définitif. Un peu, c’est fréquent. Ce n’est pas un diagnostic."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minuti che l’orologio ha contato come veglia dopo che ti sei messo a letto e prima del risveglio definitivo. Un po’ è frequente. Non è una diagnosi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ベッドに入ってから最後に起きるまでのあいだ、ウォッチが覚醒と数えた分数です。少しならよくあります。診断ではありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "잠자리에 든 뒤 마지막으로 깨기 전까지, 워치가 깨어 있다고 센 시간입니다. 조금은 흔합니다. 진단이 아닙니다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minuty, które zegarek policzył jako czuwanie po położeniu się spać i przed ostatecznym wstaniem. Trochę tego zdarza się często. To nie jest diagnoza."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Минуты, которые часы посчитали бодрствованием после того, как вы легли, и до окончательного подъёма. Немного такого времени бывает часто. Это не диагноз."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这是入睡后、最后醒来前，手表记为清醒的分钟数。有一点很常见。这不是诊断。"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.awake.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wachzeit"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Awake"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Despierto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Éveil"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Veglia"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "覚醒"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "깨어 있음"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Czuwanie"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Бодрствование"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清醒"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.awakenings.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie oft der Schlaf unterbrochen wurde. Ein paar kurze Momente sind häufig. Viele davon können die Nacht bruchstückhaft machen. Das ist keine Diagnose."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How many times sleep was interrupted. A few brief ones are common. Many of them can make the night feel broken. This is not a diagnosis."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuántas veces se interrumpió el sueño. Unos pocos y breves son habituales. Si hay muchos, la noche puede sentirse partida. No es un diagnóstico."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Combien de fois le sommeil a été interrompu. Quelques brefs réveils sont fréquents. S’il y en a beaucoup, la nuit peut sembler hachée. Ce n’est pas un diagnostic."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quante volte il sonno si è interrotto. Qualche risveglio breve è frequente. Se sono molti, la notte può sembrare spezzata. Non è una diagnosi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "睡眠が何回中断されたかです。短いものが少しならよくあります。多いと、夜が途切れ途切れに感じられます。診断ではありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "잠이 몇 번 끊겼는지입니다. 짧은 깨움이 몇 번인 것은 흔합니다. 많으면 밤이 조각난 것처럼 느껴질 수 있습니다. 진단이 아닙니다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ile razy sen został przerwany. Kilka krótkich pobudek zdarza się często. Gdy jest ich dużo, noc może wydawać się poszarpana. To nie jest diagnoza."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сколько раз сон прерывался. Несколько коротких пробуждений бывают часто. Если их много, ночь может ощущаться рваной. Это не диагноз."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "睡眠被打断了多少次。几次短暂醒来很常见。如果很多次，这一夜会显得断断续续。这不是诊断。"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.awakenings.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufwachmomente"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Awakenings"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Despertares"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réveils"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Risvegli"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目覚めの回数"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "깬 횟수"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pobudki"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пробуждения"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "醒来次数"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für den Stressindex zählt vor allem, wie lange Sie geschlafen haben. Der Bezug liegt bei etwa 8 Stunden. Eine kürzere Nacht hebt den Index. Eine stark unterbrochene Nacht hebt ihn ein wenig. Das ist keine Diagnose."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For the stress index, sleep is mainly how long you slept. The reference is about 8 hours. A shorter night raises the index. A very broken night raises it a little. This is not a diagnosis."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para el índice de estrés, el sueño es sobre todo cuánto durmió. La referencia es unas 8 horas. Una noche más corta sube el índice. Una noche muy partida lo sube un poco. No es un diagnóstico."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pour l’indice de stress, le sommeil est surtout le temps dormi. Le repère est d’environ 8 heures. Une nuit plus courte monte l’indice. Une nuit très hachée le monte un peu. Ce n’est pas un diagnostic."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Per l’indice di stress, il sonno è soprattutto quanto hai dormito. Il riferimento è circa 8 ore. Una notte più corta alza l’indice. Una notte molto spezzata lo alza un poco. Non è una diagnosi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ストレス指数では、睡眠は主に眠っていた時間です。目安は約8時間です。短い夜は指数を上げます。大きく途切れた夜は少し上げます。診断ではありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "스트레스 지수에서 수면은 주로 잔 시간입니다. 기준은 약 8시간입니다. 더 짧은 밤은 지수를 올립니다. 심하게 끊긴 밤은 조금 올립니다. 진단이 아닙니다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dla indeksu stresu sen to głównie to, jak długo spałeś. Punktem odniesienia jest około 8 godzin. Krótsza noc podnosi indeks. Bardzo poszarpana noc podnosi go trochę. To nie jest diagnoza."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для индекса стресса сон — это в первую очередь сколько вы спали. Ориентир — около 8 часов. Более короткая ночь повышает индекс. Сильно прерывистая ночь повышает его немного. Это не диагноз."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在压力指数里，睡眠主要是您睡了多久。参照大约是 8 小时。更短的一夜会提高指数。非常破碎的一夜会把它略微提高。这不是诊断。"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.consistency.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie nah die letzte Nacht an Ihrer gewohnten Schlafenszeit lag. Eine Nacht, die deutlich früher oder später begann, kann die Erholung senken. WeekFit vergleicht sie mit Ihren eigenen letzten Nächten. Das ist keine Diagnose."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How close last night’s bedtime was to your usual time. A night that started much earlier or later can lower recovery. WeekFit compares it with your own recent nights. This is not a diagnosis."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuánto se acercó la hora de acostarse de anoche a su hora habitual. Una noche que empezó mucho antes o después puede bajar la recuperación. WeekFit la compara con sus noches recientes. No es un diagnóstico."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À quel point l’heure du coucher d’hier soir était proche de votre heure habituelle. Une nuit commencée beaucoup plus tôt ou plus tard peut baisser la récupération. WeekFit la compare à vos nuits récentes. Ce n’est pas un diagnostic."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quanto l’ora in cui ti sei addormentato ieri sera era vicina al tuo orario abituale. Una notte iniziata molto prima o molto dopo può abbassare il recupero. WeekFit la confronta con le tue notti recenti. Non è una diagnosi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨夜の就寝時刻が、いつもの時刻にどれだけ近いかです。かなり早い、または遅い夜は回復を下げることがあります。WeekFitはあなた自身の最近の夜と比べます。診断ではありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "지난밤 잠든 시각이 평소 시각과 얼마나 가까운지입니다. 훨씬 이르거나 늦은 밤은 회복을 낮출 수 있습니다. WeekFit은 최근 밤과 비교합니다. 진단이 아닙니다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jak blisko wczorajsza pora zaśnięcia była Twojej zwykłej pory. Noc zaczęta dużo wcześniej albo później może obniżyć regenerację. WeekFit porównuje ją z Twoimi niedawnymi nocami. To nie jest diagnoza."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Насколько вчерашний отбой близок к вашему обычному времени. Ночь, которая началась заметно раньше или позже, может снизить восстановление. WeekFit сравнивает её с вашими недавними ночами. Это не диагноз."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨晚的入睡时间和您平时的时间有多接近。开始得明显更早或更晚的一夜，可能会降低恢复。WeekFit 会把它和您最近几晚比较。这不是诊断。"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.consistency.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konstanz der Schlafenszeit"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bedtime consistency"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regularidad de la hora de acostarse"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Régularité du coucher"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regolarità dell’orario"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "就寝時刻の安定"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "취침 시각"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regularność pory snu"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Регулярность отхода ко сну"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "就寝规律"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.continuity.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie zusammenhängend die Nacht war: wie viel der Zeit im Bett wirklich Schlaf war und wie oft Sie aufgewacht sind. Mehr wache Zeit im Bett bedeutet eine stärker unterbrochene Nacht. Das ist keine Diagnose."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How unbroken the night was: how much of the time in bed was actually sleep, and how often you woke. More time awake in bed means a more fragmented night. This is not a diagnosis."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuánto de seguida fue la noche: qué parte del tiempo en la cama fue sueño de verdad y cuántas veces se despertó. Más tiempo despierto en la cama significa una noche más partida. No es un diagnóstico."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À quel point la nuit a été d’un seul tenant : quelle part du temps au lit était vraiment du sommeil, et combien de fois vous vous êtes réveillé. Plus de temps éveillé au lit veut dire une nuit plus hachée. Ce n’est pas un diagnostic."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quanto la notte è stata continua: quanta parte del tempo a letto era davvero sonno e quante volte ti sei svegliato. Più tempo sveglio a letto significa una notte più spezzata. Non è una diagnosi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "夜がどれだけ途切れなかったかです。ベッドにいた時間のうち実際に眠っていた割合と、何回起きたかを見ます。ベッドで起きていた時間が長いほど、夜は途切れています。診断ではありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "밤이 얼마나 이어졌는지입니다. 침대에 있던 시간 중 실제로 잔 비율과, 몇 번 깼는지를 봅니다. 침대에서 깨어 있던 시간이 길수록 밤이 더 끊긴 것입니다. 진단이 아닙니다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jak bardzo noc była ciągła: jaka część czasu w łóżku była naprawdę snem i jak często się budziłeś. Więcej czasu bez snu w łóżku oznacza bardziej poszarpaną noc. To nie jest diagnoza."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Насколько ночь была цельной: какая часть времени в постели была сном и как часто вы просыпались. Больше времени без сна в постели значит более прерывистую ночь. Это не диагноз."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这一夜有多连贯：在床时间里真正睡着的比例，以及醒来了多少次。在床上清醒的时间越多，这一夜就越破碎。这不是诊断。"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.continuity.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schlafkontinuität"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sleep continuity"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuidad del sueño"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuité du sommeil"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuità del sonno"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "睡眠の連続"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "수면의 연속성"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciągłość snu"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Непрерывность сна"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "睡眠连续性"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.core.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das ist der leichtere Schlaf zwischen Tiefschlaf und REM. Er macht den größten Teil einer normalen Nacht aus und ist keine schlechtere Schlafart. Die Zeit ist das, was die Uhr als Kernschlaf markiert hat. Das ist keine Diagnose."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is the lighter sleep between deep sleep and REM. It is most of a normal night, not a worse kind of sleep. The time is what the watch marked as core. This is not a diagnosis."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es el sueño más ligero entre el profundo y el REM. Suele ser la mayor parte de una noche normal, no un sueño peor. El tiempo es lo que el reloj marcó como principal. No es un diagnóstico."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "C’est le sommeil plus léger entre le profond et le paradoxal. C’est en général la plus grande part d’une nuit normale, pas un sommeil moins bon. Le temps est celui que la montre a marqué comme principal. Ce n’est pas un diagnostic."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "È il sonno più leggero tra il profondo e il REM. Di solito è la parte più lunga di una notte normale, non un sonno peggiore. Il tempo è quello che l’orologio ha segnato come principale. Non è una diagnosi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "深い睡眠とレム睡眠のあいだの、より軽い睡眠です。ふつうの夜の大部分で、悪い睡眠ではありません。時間はウォッチがコアと記したものです。診断ではありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "깊은 잠과 렘수면 사이의 더 가벼운 잠입니다. 보통 밤의 대부분이며, 더 나쁜 잠이 아닙니다. 시간은 워치가 기본 수면으로 표시한 것입니다. 진단이 아닙니다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To lżejszy sen między snem głębokim a REM. Zwykle stanowi większość zwykłej nocy i nie jest gorszym rodzajem snu. Czas to ten, który zegarek oznaczył jako podstawowy. To nie jest diagnoza."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это более лёгкий сон между глубоким и быстрым. Обычно это большая часть ночи, а не худший вид сна. Время — то, что часы отметили как основной сон. Это не диагноз."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这是深睡和快速眼动睡眠之间较浅的睡眠。它通常占正常一夜的大部分，并不是更差的睡眠。时间是手表标为核心睡眠的部分。这不是诊断。"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.core.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kernschlaf"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Core sleep"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sueño principal"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sommeil principal"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sonno principale"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コア睡眠"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기본 수면"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sen podstawowy"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Основной сон"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "核心睡眠"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.deep.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das ist der stillste Teil der Nacht, in dem Sie am schwersten zu wecken sind. Die Zeit ist das, was die Uhr als Tiefschlaf markiert hat. Das ist keine Diagnose."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is the stillest part of the night, when you are hardest to wake. The time is what the watch marked as deep sleep. This is not a diagnosis."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es la parte más quieta de la noche, cuando más cuesta despertarle. El tiempo es lo que el reloj marcó como sueño profundo. No es un diagnóstico."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "C’est la partie la plus calme de la nuit, celle où il est le plus difficile de vous réveiller. Le temps est celui que la montre a marqué comme sommeil profond. Ce n’est pas un diagnostic."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "È la parte più ferma della notte, quando è più difficile svegliarti. Il tempo è quello che l’orologio ha segnato come sonno profondo. Non è una diagnosi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "夜のなかでいちばん静かで、起こしにくい部分です。時間はウォッチが深い睡眠と記したものです。診断ではありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "밤에서 가장 고요하고, 깨우기 가장 어려운 부분입니다. 시간은 워치가 깊은 잠으로 표시한 것입니다. 진단이 아닙니다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To najspokojniejsza część nocy, kiedy najtrudniej Cię obudzić. Czas to ten, który zegarek oznaczył jako sen głęboki. To nie jest diagnoza."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это самая спокойная часть ночи, когда разбудить вас труднее всего. Время — то, что часы отметили как глубокий сон. Это не диагноз."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这是一夜中最安静的部分，这时最难把您叫醒。时间是手表标为深睡的部分。这不是诊断。"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.deep.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiefschlaf"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deep sleep"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sueño profundo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sommeil profond"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sonno profondo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "深い睡眠"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "깊은 잠"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sen głęboki"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Глубокий сон"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "深睡"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.duration.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie lange Sie wirklich geschlafen haben, nicht wie lange Sie im Bett lagen. WeekFit nimmt etwa 8 Stunden als Bezug für eine volle Nacht. Eine kürzere Nacht kann die Erholung senken. Das ist keine Diagnose."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How long you were actually asleep, not how long you were in bed. WeekFit uses about 8 hours as the reference for a full night. A shorter night can lower recovery. This is not a diagnosis."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuánto tiempo estuvo realmente dormido, no cuánto estuvo en la cama. WeekFit usa unas 8 horas como referencia de una noche completa. Una noche más corta puede bajar la recuperación. No es un diagnóstico."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Combien de temps vous avez vraiment dormi, pas combien de temps vous êtes resté au lit. WeekFit prend environ 8 heures comme repère d’une nuit complète. Une nuit plus courte peut baisser la récupération. Ce n’est pas un diagnostic."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quanto hai dormito davvero, non quanto sei rimasto a letto. WeekFit usa circa 8 ore come riferimento di una notte intera. Una notte più corta può abbassare il recupero. Non è una diagnosi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ベッドにいた時間ではなく、実際に眠っていた時間です。WeekFitは満睡眠の目安を約8時間にしています。短い夜は回復を下げることがあります。診断ではありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "침대에 있던 시간이 아니라 실제로 잔 시간입니다. WeekFit은 온전한 밤의 기준을 약 8시간으로 둡니다. 더 짧은 밤은 회복을 낮출 수 있습니다. 진단이 아닙니다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jak długo naprawdę spałeś, a nie jak długo leżałeś w łóżku. WeekFit przyjmuje około 8 godzin jako punkt odniesienia pełnej nocy. Krótsza noc może obniżyć regenerację. To nie jest diagnoza."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сколько вы действительно спали, а не сколько лежали в постели. WeekFit берёт около 8 часов как ориентир полной ночи. Более короткая ночь может снизить восстановление. Это не диагноз."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这是您真正睡着的时间，不是躺在床上的时间。WeekFit 把大约 8 小时作为完整一夜的参照。更短的一夜可能会降低恢复。这不是诊断。"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.duration.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schlafdauer"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sleep duration"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duración del sueño"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Durée du sommeil"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Durata del sonno"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "睡眠時間"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "수면 시간"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Czas snu"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Длительность сна"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "睡眠时长"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.rem.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das ist eine leichtere Phase mit schnellen Augenbewegungen, oft mit Träumen. Die Zeit ist das, was die Uhr als REM markiert hat. Das ist keine Diagnose."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is a lighter stage with quick eye movements, often when dreams happen. The time is what the watch marked as this stage. This is not a diagnosis."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es una fase más ligera con movimientos rápidos de los ojos, a menudo con sueños. El tiempo es lo que el reloj marcó como esta fase. No es un diagnóstico."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "C’est une phase plus légère, avec des mouvements rapides des yeux, souvent celle des rêves. Le temps est celui que la montre a marqué comme cette phase. Ce n’est pas un diagnostic."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "È una fase più leggera, con movimenti rapidi degli occhi, spesso quella dei sogni. Il tempo è quello che l’orologio ha segnato come questa fase. Non è una diagnosi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "急速な眼球運動を伴う、より軽い段階で、夢を見ることが多いです。時間はウォッチがこの段階と記したものです。診断ではありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "눈이 빠르게 움직이는 더 가벼운 단계로, 꿈을 꾸는 때가 많습니다. 시간은 워치가 이 단계로 표시한 것입니다. 진단이 아닙니다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To lżejsza faza z szybkimi ruchami oczu, często wtedy pojawiają się sny. Czas to ten, który zegarek oznaczył jako tę fazę. To nie jest diagnoza."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это более лёгкая фаза с быстрыми движениями глаз, часто со сновидениями. Время — то, что часы отметили как эту фазу. Это не диагноз."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这是伴有快速眼动的较浅阶段，做梦常常发生在这时。时间是手表标为这一阶段的部分。这不是诊断。"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.rem.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "REM-Schlaf"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "REM sleep"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sueño REM"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sommeil paradoxal"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sonno REM"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "レム睡眠"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "렘수면"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sen REM"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Быстрый сон"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "快速眼动睡眠"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.timeInBed.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von dem Moment, in dem Sie ins Bett gegangen sind, bis zum Aufstehen, einschließlich der wachen Zeit. Bei einer unterbrochenen Nacht ist sie länger als der Schlaf selbst. Das ist keine Diagnose."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From when you went to bed until you got up, including time awake. When the night was broken, this is longer than time asleep. This is not a diagnosis."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desde que se acostó hasta que se levantó, incluido el tiempo despierto. Si la noche estuvo partida, es más largo que el tiempo dormido. No es un diagnóstico."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du moment où vous vous êtes couché jusqu’au lever, y compris le temps éveillé. Si la nuit a été hachée, c’est plus long que le temps de sommeil. Ce n’est pas un diagnostic."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Da quando ti sei messo a letto fino a quando ti sei alzato, compreso il tempo sveglio. Se la notte è stata spezzata, è più lungo del tempo di sonno. Non è una diagnosi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ベッドに入ってから起きるまでで、起きていた時間も含みます。夜が途切れていると、実際の睡眠より長くなります。診断ではありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "잠자리에 든 때부터 일어날 때까지이며, 깨어 있던 시간도 포함합니다. 밤이 끊기면 실제 수면보다 깁니다. 진단이 아닙니다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Od położenia się do wstania, razem z czasem bez snu. Gdy noc była poszarpana, jest dłuższy niż sam sen. To nie jest diagnoza."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "От момента, когда вы легли, до подъёма, включая время без сна. Если ночь была прерывистой, оно длиннее, чем сам сон. Это не диагноз."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从躺下到起床，包括清醒的时间。如果这一夜是断的，它会比真正睡着的时间更长。这不是诊断。"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.timeInBed.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeit im Bett"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time in bed"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiempo en la cama"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temps au lit"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tempo a letto"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ベッドにいた時間"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "침대에 있던 시간"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Czas w łóżku"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Время в постели"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在床时间"
+          }
+        }
+      }
+    },
+    "recovery.term.sleep.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schlaf"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sleep"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sueño"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sommeil"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sonno"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "睡眠"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "수면"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sen"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сон"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "睡眠"
+          }
+        }
+      }
+    },
+    "recovery.term.hrv.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Abstand zwischen den Herzschlägen ist nicht völlig gleichmäßig. Diese Zahl zeigt, wie stark er sich in der Nacht verändert. WeekFit vergleicht die letzte Nacht mit Ihren eigenen letzten Nächten. Eine kleinere Streuung als gewöhnlich kann mehr Belastung bedeuten. Das ist keine Diagnose."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The pause between heartbeats is not perfectly even. This number is how much that pause changes while you sleep. WeekFit compares last night with your own recent nights. A smaller variation than usual can mean more strain. This is not a diagnosis."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La pausa entre latidos no es perfectamente regular. Este número muestra cuánto cambia mientras duerme. WeekFit compara la noche pasada con sus noches recientes. Una variación menor de lo habitual puede indicar más carga. No es un diagnóstico."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La pause entre les battements n’est pas parfaitement régulière. Ce nombre montre à quel point elle change pendant la nuit. WeekFit compare la nuit dernière à vos nuits récentes. Un écart plus petit que d’habitude peut indiquer plus de charge. Ce n’est pas un diagnostic."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La pausa tra i battiti non è perfettamente regolare. Questo numero mostra quanto cambia durante la notte. WeekFit confronta la notte scorsa con le tue notti recenti. Una variazione più piccola del solito può indicare più carico. Non è una diagnosi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "心拍の間隔は完全には一定ではありません。この数値は、眠っている間にその間隔がどれだけ変わるかを示します。WeekFitは昨夜を、あなた自身の最近の夜と比べます。いつものより変動が小さいと、負担が大きいことがあります。診断ではありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "심장 박동 사이의 간격은 완전히 일정하지 않습니다. 이 숫자는 잠든 동안 그 간격이 얼마나 달라지는지 보여 줍니다. WeekFit은 지난밤을 최근 밤과 비교합니다. 평소보다 변동이 작으면 부담이 더 클 수 있습니다. 진단이 아닙니다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przerwa między uderzeniami serca nie jest idealnie równa. Ta liczba pokazuje, jak bardzo zmienia się w nocy. WeekFit porównuje ostatnią noc z Twoimi niedawnymi nocami. Mniejsza zmienność niż zwykle może oznaczać większe obciążenie. To nie jest diagnoza."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза между ударами сердца не бывает идеально ровной. Это число показывает, насколько она меняется за ночь. WeekFit сравнивает прошлую ночь с вашими недавними ночами. Если разброс меньше обычного, нагрузка может быть выше. Это не диагноз."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "心跳之间的间隔并不完全均匀。这个数字表示睡觉时这个间隔变化了多少。WeekFit 会把昨晚和您最近几晚比较。波动比平时更小，可能表示负担更大。这不是诊断。"
+          }
+        }
+      }
+    },
+    "recovery.term.hrv.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schwankung des Herzrhythmus"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Heart rhythm variation"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Variación del ritmo cardíaco"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Variation du rythme cardiaque"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Variazione del ritmo cardiaco"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "心拍のゆらぎ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "심박 변동"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zmienność rytmu serca"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вариабельность ритма"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "心率波动"
+          }
+        }
+      }
+    },
+    "recovery.term.info.a11y" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was das ist"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What this is"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Qué es esto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce que c’est"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Che cos’è"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "これは何か"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이것이 무엇인지"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Co to jest"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что это"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这是什么"
+          }
+        }
+      }
+    },
+    "recovery.term.rhr.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "So oft schlägt das Herz in einer Minute, während Sie ruhen, meist nachts. WeekFit vergleicht den Wert mit Ihren eigenen letzten Nächten. Höher als gewöhnlich kann mehr Belastung bedeuten. Das ist keine Diagnose."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is how many times the heart beats in a minute while you rest, usually overnight. WeekFit compares it with your own recent nights. Higher than usual can mean more strain. This is not a diagnosis."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es cuántas veces late el corazón por minuto en reposo, normalmente por la noche. WeekFit lo compara con sus noches recientes. Más alto de lo habitual puede indicar más carga. No es un diagnóstico."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "C’est le nombre de battements par minute au repos, en général la nuit. WeekFit le compare à vos nuits récentes. Plus haut que d’habitude peut indiquer plus de charge. Ce n’est pas un diagnostic."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "È quante volte il cuore batte al minuto a riposo, di solito di notte. WeekFit lo confronta con le tue notti recenti. Più alto del solito può indicare più carico. Non è una diagnosi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "休んでいるときの1分あたりの心拍です。多くは夜間の値です。WeekFitはあなた自身の最近の夜と比べます。いつものより高いと、負担が大きいことがあります。診断ではありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "쉴 때 1분 동안 심장이 뛰는 횟수입니다. 보통 밤의 값입니다. WeekFit은 최근 밤과 비교합니다. 평소보다 높으면 부담이 더 클 수 있습니다. 진단이 아닙니다."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To, ile razy na minutę bije serce w spoczynku, zwykle w nocy. WeekFit porównuje ten wynik z Twoimi niedawnymi nocami. Wyższe niż zwykle może oznaczać większe obciążenie. To nie jest diagnoza."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это сколько раз в минуту бьётся сердце, когда вы отдыхаете, обычно ночью. WeekFit сравнивает его с вашими недавними ночами. Выше обычного может значить большую нагрузку. Это не диагноз."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这是休息时每分钟的心跳次数，通常来自夜间。WeekFit 会把它和您最近几晚比较。比平时更高，可能表示负担更大。这不是诊断。"
+          }
+        }
+      }
+    },
+    "recovery.term.rhr.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ruheherzfrequenz"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resting heart rate"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frecuencia cardíaca en reposo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fréquence cardiaque au repos"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frequenza cardiaca a riposo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "安静時の心拍数"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "안정시 심박수"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tętno spoczynkowe"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пульс в покое"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "静息心率"
+          }
+        }
+      }
+    },
     "recovery.metric.hrv" : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "Rhythmusstreuung"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "Rhythm variation"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "Variación del ritmo"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "Variation du rythme"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "Variazione del ritmo"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "心拍のゆらぎ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "심박 변동"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "Zmienność rytmu"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "Разброс ритма"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "心率波动"
           }
         }
       }
@@ -361541,13 +363296,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tasso cardiaco a riposo"
+            "value" : "Frequenza cardiaca a riposo"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "心拍数の回復"
+            "value" : "安静時の心拍数"
           }
         },
         "ko" : {
@@ -361683,7 +363438,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "잠 continuity"
+            "value" : "수면의 연속성"
           }
         },
         "pl" : {
@@ -364496,7 +366251,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "接近您个人夜间 HRV 基线值。"
+            "value" : "接近您个人的夜间心率波动基线。"
           }
         }
       }
@@ -365299,31 +367054,31 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VFC nocturna, frecuencia cardiaca en reposo, sueño y actividad de ayer"
+            "value" : "Variación nocturna del ritmo, frecuencia cardiaca en reposo, sueño y actividad de ayer"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VFC nocturne, fréquence cardiaque au repos, sommeil et activité d’hier"
+            "value" : "Variation nocturne du rythme, fréquence cardiaque au repos, sommeil et activité d’hier"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV notturno, frequenza a riposo, sonno e attività di ieri"
+            "value" : "Variazione notturna del ritmo, frequenza a riposo, sonno e attività di ieri"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜間HRV、安静時心拍、睡眠、昨日の活動"
+            "value" : "夜の心拍のゆらぎ、安静時心拍、睡眠、昨日の活動"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "야간 HRV, 안정시 심박수, 수면, 어제 활동"
+            "value" : "밤의 심박 변동, 안정시 심박수, 수면, 어제 활동"
           }
         },
         "pl" : {
@@ -365341,7 +367096,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜间 HRV、静息心率、睡眠和昨天的活动"
+            "value" : "夜间心率波动、静息心率、睡眠和昨天的活动"
           }
         }
       }
@@ -366283,55 +368038,55 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Overnight HRV is below your usual level."
+            "value" : "Overnight rhythm variation is below your usual level."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La VFC nocturna está por debajo de su nivel habitual."
+            "value" : "La variación nocturna del ritmo está por debajo de su nivel habitual."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La VFC nocturne est sous votre niveau habituel."
+            "value" : "La variation nocturne du rythme est sous votre niveau habituel."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L’HRV notturno è sotto il suo livello abituale."
+            "value" : "La variazione notturna del ritmo è sotto il suo livello abituale."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜間HRVはいつもの水準より低いです。"
+            "value" : "夜の心拍のゆらぎはいつもの水準より低いです。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "야간 HRV가 평소 수준보다 낮습니다."
+            "value" : "밤의 심박 변동이 평소 수준보다 낮습니다."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nocne HRV jest poniżej zwykłego poziomu."
+            "value" : "Nocna zmienność rytmu jest poniżej zwykłego poziomu."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ночной HRV ниже вашего привычного уровня."
+            "value" : "Ночной разброс ритма ниже вашего привычного уровня."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜间 HRV 低于您的惯常水平。"
+            "value" : "夜间心率波动低于您的惯常水平。"
           }
         }
       }
@@ -366348,55 +368103,55 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Overnight HRV is almost at your usual level."
+            "value" : "Overnight rhythm variation is almost at your usual level."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La VFC nocturna está casi en su nivel habitual."
+            "value" : "La variación nocturna del ritmo está casi en su nivel habitual."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La VFC nocturne est presque à votre niveau habituel."
+            "value" : "La variation nocturne du rythme est presque à votre niveau habituel."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L’HRV notturno è quasi al suo livello abituale."
+            "value" : "La variazione notturna del ritmo è quasi al suo livello abituale."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜間HRVはいつもの水準に近いです。"
+            "value" : "夜の心拍のゆらぎはいつもの水準に近いです。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "야간 HRV가 평소 수준과 거의 같습니다."
+            "value" : "밤의 심박 변동이 평소 수준과 거의 같습니다."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nocne HRV jest prawie na zwykłym poziomie."
+            "value" : "Nocna zmienność rytmu jest prawie na zwykłym poziomie."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ночной HRV почти как ваш привычный уровень."
+            "value" : "Ночной разброс ритма почти как ваш привычный уровень."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜间 HRV 接近您的惯常水平。"
+            "value" : "夜间心率波动接近您的惯常水平。"
           }
         }
       }
@@ -366413,55 +368168,55 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Overnight HRV is not below your usual level."
+            "value" : "Overnight rhythm variation is not below your usual level."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La VFC nocturna no está por debajo de su nivel habitual."
+            "value" : "La variación nocturna del ritmo no está por debajo de su nivel habitual."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La VFC nocturne n’est pas sous votre niveau habituel."
+            "value" : "La variation nocturne du rythme n’est pas sous votre niveau habituel."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L’HRV notturno non è sotto il suo livello abituale."
+            "value" : "La variazione notturna del ritmo non è sotto il suo livello abituale."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜間HRVはいつもの水準を下回っていません。"
+            "value" : "夜の心拍のゆらぎはいつもの水準を下回っていません。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "야간 HRV가 평소 수준보다 낮지 않습니다."
+            "value" : "밤의 심박 변동이 평소 수준보다 낮지 않습니다."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nocne HRV nie jest poniżej zwykłego poziomu."
+            "value" : "Nocna zmienność rytmu nie jest poniżej zwykłego poziomu."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ночной HRV не ниже вашего привычного уровня."
+            "value" : "Ночной разброс ритма не ниже вашего привычного уровня."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜间 HRV 不低于您的惯常水平。"
+            "value" : "夜间心率波动不低于您的惯常水平。"
           }
         }
       }
@@ -371173,7 +372928,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Overnight HRV below your usual level raises the score the most."
+            "value" : "Overnight rhythm variation below your usual level raises the score the most."
           }
         },
         "es" : {
@@ -371191,19 +372946,19 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ad alzare di più il punteggio è l’HRV notturno: è sotto il Suo livello abituale."
+            "value" : "Ad alzare di più il punteggio è l’Variazione notturna del ritmo: è sotto il Suo livello abituale."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "スコアを最も上げているのは、いつもの水準より低い夜間HRVです。"
+            "value" : "スコアを最も上げているのは、いつもの水準より低い夜の心拍のゆらぎです。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "점수를 가장 올리는 것은 평소보다 낮은 야간 HRV입니다."
+            "value" : "점수를 가장 올리는 것은 평소보다 낮은 밤의 심박 변동입니다."
           }
         },
         "pl" : {
@@ -371221,7 +372976,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "最拉高分数的是夜间 HRV：它低于您的惯常水平。"
+            "value" : "最拉高分数的是夜间心率波动：它低于您的惯常水平。"
           }
         }
       }
@@ -371238,7 +372993,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Overnight HRV is close to your usual level and barely moves the score."
+            "value" : "Overnight rhythm variation is close to your usual level and barely moves the score."
           }
         },
         "es" : {
@@ -371256,37 +373011,37 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L’HRV notturno è vicino al Suo livello abituale e sposta appena il punteggio."
+            "value" : "La variazione notturna del ritmo è vicino al Suo livello abituale e sposta appena il punteggio."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜間HRVはいつもの水準に近く、スコアはほとんど変わりません。"
+            "value" : "夜の心拍のゆらぎはいつもの水準に近く、スコアはほとんど変わりません。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "야간 HRV는 평소 수준에 가깝고 점수를 거의 바꾸지 않습니다."
+            "value" : "밤의 심박 변동은 평소 수준에 가깝고 점수를 거의 바꾸지 않습니다."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nocne HRV jest blisko zwykłego poziomu i prawie nie zmienia wyniku."
+            "value" : "Nocna zmienność rytmu jest blisko zwykłego poziomu i prawie nie zmienia wyniku."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ночной HRV близок к привычному уровню и почти не меняет балл."
+            "value" : "Ночной разброс ритма близок к привычному уровню и почти не меняет балл."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜间 HRV 接近您的惯常水平，几乎不改变分数。"
+            "value" : "夜间心率波动接近您的惯常水平，几乎不改变分数。"
           }
         }
       }
@@ -371303,7 +373058,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Overnight HRV is not below your usual level and lowers the score."
+            "value" : "Overnight rhythm variation is not below your usual level and lowers the score."
           }
         },
         "es" : {
@@ -371321,37 +373076,37 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L’HRV notturno non è sotto il Suo livello abituale e abbassa il punteggio."
+            "value" : "La variazione notturna del ritmo non è sotto il Suo livello abituale e abbassa il punteggio."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜間HRVはいつもの水準を下回っておらず、スコアを下げています。"
+            "value" : "夜の心拍のゆらぎはいつもの水準を下回っておらず、スコアを下げています。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "야간 HRV는 평소보다 낮지 않아 점수를 낮춥니다."
+            "value" : "밤의 심박 변동은 평소보다 낮지 않아 점수를 낮춥니다."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nocne HRV nie jest niższe niż zwykle i obniża wynik."
+            "value" : "Nocna zmienność rytmu nie jest niższa niż zwykle i obniża wynik."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ночной HRV не ниже привычного уровня и снижает балл."
+            "value" : "Ночной разброс ритма не ниже привычного уровня и снижает балл."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜间 HRV 没有低于您的惯常水平，并且拉低了分数。"
+            "value" : "夜间心率波动没有低于您的惯常水平，并且拉低了分数。"
           }
         }
       }
@@ -372727,61 +374482,61 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nächtliche HRV"
+            "value" : "Nächtliche Rhythmusstreuung"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Overnight HRV"
+            "value" : "Overnight rhythm variation"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VFC nocturna"
+            "value" : "Variación nocturna del ritmo"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VFC nocturne"
+            "value" : "Variation nocturne du rythme"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV notturno"
+            "value" : "Variazione notturna del ritmo"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜間HRV"
+            "value" : "夜の心拍のゆらぎ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "야간 HRV"
+            "value" : "밤의 심박 변동"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nocne HRV"
+            "value" : "Nocna zmienność rytmu"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ночной HRV"
+            "value" : "Ночной разброс ритма"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜间 HRV"
+            "value" : "夜间心率波动"
           }
         }
       }
@@ -373572,61 +375327,61 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nächtliche HRV unter dem Gewohnten"
+            "value" : "Nächtliche Rhythmusstreuung unter dem Gewohnten"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Overnight HRV below usual"
+            "value" : "Overnight rhythm variation below usual"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VFC nocturna por debajo de lo habitual"
+            "value" : "Variación nocturna del ritmo por debajo de lo habitual"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VFC nocturne sous le niveau habituel"
+            "value" : "Variation nocturne du rythme sous le niveau habituel"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV notturno sotto il livello abituale"
+            "value" : "Variazione notturna del ritmo sotto il livello abituale"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜間HRVがいつもの水準より低い"
+            "value" : "夜の心拍のゆらぎがいつもの水準より低い"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "야간 HRV가 평소보다 낮음"
+            "value" : "밤의 심박 변동이 평소보다 낮음"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nocne HRV poniżej zwykłego"
+            "value" : "Nocna zmienność rytmu poniżej zwykłego"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ночной HRV ниже привычного"
+            "value" : "Ночной разброс ритма ниже привычного"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜间 HRV 低于惯常水平"
+            "value" : "夜间心率波动低于惯常水平"
           }
         }
       }
@@ -373637,61 +375392,61 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nächtliche HRV nahe dem Gewohnten"
+            "value" : "Nächtliche Rhythmusstreuung nahe dem Gewohnten"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Overnight HRV near usual"
+            "value" : "Overnight rhythm variation near usual"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VFC nocturna cerca de lo habitual"
+            "value" : "Variación nocturna del ritmo cerca de lo habitual"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VFC nocturne proche du niveau habituel"
+            "value" : "Variation nocturne du rythme proche du niveau habituel"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV notturno vicino al livello abituale"
+            "value" : "Variazione notturna del ritmo vicino al livello abituale"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜間HRVがいつもの水準に近い"
+            "value" : "夜の心拍のゆらぎがいつもの水準に近い"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "야간 HRV가 평소와 비슷함"
+            "value" : "밤의 심박 변동이 평소와 비슷함"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nocne HRV blisko zwykłego"
+            "value" : "Nocna zmienność rytmu blisko zwykłego"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ночной HRV почти как привычный"
+            "value" : "Ночной разброс ритма почти как привычный"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜间 HRV 接近惯常水平"
+            "value" : "夜间心率波动接近惯常水平"
           }
         }
       }
@@ -373702,61 +375457,61 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nächtliche HRV nicht unter dem Gewohnten"
+            "value" : "Nächtliche Rhythmusstreuung nicht unter dem Gewohnten"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Overnight HRV not below usual"
+            "value" : "Overnight rhythm variation not below usual"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VFC nocturna no por debajo de lo habitual"
+            "value" : "Variación nocturna del ritmo no por debajo de lo habitual"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VFC nocturne pas sous le niveau habituel"
+            "value" : "Variation nocturne du rythme pas sous le niveau habituel"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV notturno non sotto il livello abituale"
+            "value" : "Variazione notturna del ritmo non sotto il livello abituale"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜間HRVはいつもの水準以上"
+            "value" : "夜の心拍のゆらぎはいつもの水準以上"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "야간 HRV가 평소보다 낮지 않음"
+            "value" : "밤의 심박 변동이 평소보다 낮지 않음"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nocne HRV nie poniżej zwykłego"
+            "value" : "Nocna zmienność rytmu nie poniżej zwykłego"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ночной HRV не ниже привычного"
+            "value" : "Ночной разброс ритма не ниже привычного"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜间 HRV 不低于惯常水平"
+            "value" : "夜间心率波动不低于惯常水平"
           }
         }
       }
@@ -374379,31 +376134,31 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Comparado con la mediana de su VFC nocturna, no con el borde de un rango."
+            "value" : "Comparado con la mediana de su variación nocturna del ritmo, no con el borde de un rango."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Comparé à la médiane de votre VFC nocturne, pas au bord d’une plage."
+            "value" : "Comparé à la médiane de votre variation nocturne du rythme, pas au bord d’une plage."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Confronto con la mediana dell’HRV notturno, non con il bordo di un intervallo."
+            "value" : "Confronto con la mediana della variazione notturna del ritmo, non con il bordo di un intervallo."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜間HRVの中央値との比較で、範囲の端との比較ではありません。"
+            "value" : "夜の心拍のゆらぎの中央値との比較で、範囲の端との比較ではありません。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "야간 HRV 중앙값과 비교한 것이며, 범위의 경계와 비교한 것이 아닙니다."
+            "value" : "밤의 심박 변동 중앙값과 비교한 것이며, 범위의 경계와 비교한 것이 아닙니다."
           }
         },
         "pl" : {
@@ -374421,7 +376176,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "与夜间 HRV 的中位数比较，不是与区间边界比较。"
+            "value" : "与夜间心率波动的中位数比较，不是与区间边界比较。"
           }
         }
       }
@@ -374509,31 +376264,31 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En la mediana de su VFC nocturna o por encima."
+            "value" : "En la mediana de su variación nocturna del ritmo o por encima."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Au niveau de la médiane de votre VFC nocturne, ou au-dessus."
+            "value" : "Au niveau de la médiane de votre variation nocturne du rythme, ou au-dessus."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alla mediana dell’HRV notturno o sopra."
+            "value" : "Alla mediana della variazione notturna del ritmo o sopra."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜間HRVの中央値と同じか、それより高いです。"
+            "value" : "夜の心拍のゆらぎの中央値と同じか、それより高いです。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "야간 HRV 중앙값과 같거나 그보다 높습니다."
+            "value" : "밤의 심박 변동 중앙값과 같거나 그보다 높습니다."
           }
         },
         "pl" : {
@@ -374551,7 +376306,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "达到或高于夜间 HRV 的中位数。"
+            "value" : "达到或高于夜间心率波动的中位数。"
           }
         }
       }
@@ -375954,31 +377709,31 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VFC nocturna"
+            "value" : "Variación nocturna del ritmo"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VFC nocturne"
+            "value" : "Variation nocturne du rythme"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV notturno"
+            "value" : "Variazione notturna del ritmo"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜間HRV"
+            "value" : "夜の心拍のゆらぎ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "야간 HRV"
+            "value" : "밤의 심박 변동"
           }
         },
         "pl" : {
@@ -375996,7 +377751,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "夜间 HRV"
+            "value" : "夜间心率波动"
           }
         }
       }
@@ -408742,7 +410497,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "осталось %lld"
+            "value" : "Осталось %lld"
           }
         },
         "zh-Hans" : {
@@ -408771,19 +410526,19 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld por encima del objetivo"
+            "value" : "%lld de más"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld au-dessus de l'objectif"
+            "value" : "%lld en trop"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld oltre l’obiettivo"
+            "value" : "+%lld kcal"
           }
         },
         "ja" : {
@@ -408807,7 +410562,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "сверх цели %lld"
+            "value" : "Сверх цели %lld"
           }
         },
         "zh-Hans" : {
@@ -423733,13 +425488,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bene."
+            "value" : "Bene"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "お問い合わせ"
+            "value" : "良い"
           }
         },
         "ko" : {
@@ -423774,7 +425529,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Geringe Erholung"
+            "value" : "Niedrig"
           }
         },
         "en" : {
@@ -423786,13 +425541,13 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recuperación baja"
+            "value" : "Baja"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Faible récupération"
+            "value" : "Faible"
           }
         },
         "it" : {
@@ -423816,13 +425571,13 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Niska regeneracja"
+            "value" : "Niska"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Низкое восстановление"
+            "value" : "Нужен отдых"
           }
         },
         "zh-Hans" : {
@@ -423969,31 +425724,31 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kein Schlaf protokolliert"
+            "value" : "Kein Schlaf"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No sleep recorded"
+            "value" : "No sleep"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sin sueño registrado"
+            "value" : "Sin sueño"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sommeil manquant"
+            "value" : "Pas de sommeil"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nessun sonno registrato"
+            "value" : "Nessun sonno"
           }
         },
         "ja" : {
@@ -424011,7 +425766,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Brak zarejestrowanego snu"
+            "value" : "Brak snu"
           }
         },
         "ru" : {
@@ -424099,31 +425854,31 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Auswertung wird vorbereitet"
+            "value" : "Berechne"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preparing your read"
+            "value" : "Preparing"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preparando su lectura"
+            "value" : "Preparando"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Préparation de votre lecture"
+            "value" : "Prépare"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preparazione lettura"
+            "value" : "Preparo"
           }
         },
         "ja" : {
@@ -424141,19 +425896,19 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przygotowywanie odczytu"
+            "value" : "Liczę"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Готовлю оценку"
+            "value" : "Считаю"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在准备恢复读数"
+            "value" : "计算中"
           }
         }
       }
@@ -424164,7 +425919,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schlaf wird synchronisiert"
+            "value" : "Schlaf-Sync"
           }
         },
         "en" : {
@@ -424176,7 +425931,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sincronizando sueño"
+            "value" : "Sync sueño"
           }
         },
         "fr" : {
@@ -424188,7 +425943,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sincronizzazione sonno"
+            "value" : "Sync sonno"
           }
         },
         "ja" : {
@@ -424206,13 +425961,13 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Synchronizacja snu"
+            "value" : "Sync snu"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Синхронизирую сон"
+            "value" : "Жду сон"
           }
         },
         "zh-Hans" : {
@@ -424229,19 +425984,19 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Erholung nicht verfügbar"
+            "value" : "Keine Daten"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recovery unavailable"
+            "value" : "No data"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recuperación no disponible"
+            "value" : "Sin datos"
           }
         },
         "fr" : {
@@ -424253,7 +426008,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recupero non disponibile"
+            "value" : "Nessun dato"
           }
         },
         "ja" : {
@@ -424271,19 +426026,19 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Regeneracja niedostępna"
+            "value" : "Brak danych"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Восстановление недоступно"
+            "value" : "Нет данных"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "恢复暂不可用"
+            "value" : "暂无数据"
           }
         }
       }
@@ -425009,7 +426764,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schlaf %1$lld Std. %2$lld Min."
+            "value" : "Schlaf %1$lldh %2$lld Min"
           }
         },
         "en" : {
@@ -425021,19 +426776,19 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sueño %1$lld h %2$lld min"
+            "value" : "Sueño %1$lldh %2$lld min"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sommeil %1$lld h %2$lld min"
+            "value" : "Nuit %1$lld h %2$lld min"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sonno %1$lld h %2$lld min"
+            "value" : "Sonno %1$lldh %2$lld min"
           }
         },
         "ja" : {
@@ -425281,7 +427036,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Objetivo %lld kcal"
+            "value" : "Meta %lld kcal"
           }
         },
         "fr" : {
@@ -425293,19 +427048,19 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obiettivo %lld kcal"
+            "value" : "Meta %lld kcal"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "目標 %lld キロカロリー"
+            "value" : "目標 %lldkcal"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "목표 %lld 킬로칼로리"
+            "value" : "목표 %lldkcal"
           }
         },
         "pl" : {
@@ -425789,61 +427544,61 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "Rhythmusstreuung"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "Rhythm variation"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "Variación del ritmo"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "Variation du rythme"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "Variazione del ritmo"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "心拍のゆらぎ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "심박 변동"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "Zmienność rytmu"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ВСР"
+            "value" : "Разброс ритма"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HRV"
+            "value" : "心率波动"
           }
         }
       }
@@ -425854,61 +427609,61 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "RHR"
+            "value" : "Ruhepuls"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "RHR"
+            "value" : "Resting pulse"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "RHR"
+            "value" : "Pulso en reposo"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "RHR"
+            "value" : "Pouls au repos"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "RHR"
+            "value" : "Battito a riposo"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "RHR"
+            "value" : "安静時心拍"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "RHR"
+            "value" : "안정시 심박"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "RHR"
+            "value" : "Tętno spoczynkowe"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ПП"
+            "value" : "Пульс покоя"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "RHR"
+            "value" : "静息心率"
           }
         }
       }
@@ -426061,13 +427816,13 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recup."
+            "value" : "Recuperación"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Récup."
+            "value" : "Récupération"
           }
         },
         "it" : {
@@ -426097,7 +427852,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Восст."
+            "value" : "Восстановление"
           }
         },
         "zh-Hans" : {
